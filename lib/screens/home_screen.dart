@@ -1,0 +1,150 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:skeletonizer/skeletonizer.dart';
+import '../providers/channel_provider.dart';
+import '../widgets/channel_card.dart';
+import '../widgets/search_header.dart';
+import '../widgets/matches_hero.dart';
+import '../models/channel.dart';
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header con logo, búsqueda y filtros
+            const SearchHeader(),
+
+            // Contenido scrolleable
+            Expanded(
+              child: CustomScrollView(
+                physics: const ClampingScrollPhysics(),
+                slivers: [
+                  // Hero de partidos
+                  const SliverToBoxAdapter(
+                    child: MatchesHero(),
+                  ),
+
+                  // Grid de canales
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    sliver: Consumer<ChannelProvider>(
+                      builder: (context, channelProvider, child) {
+                        final isLoading = channelProvider.isLoading;
+                        final channels = isLoading
+                            ? List.generate(
+                                8,
+                                (index) => Channel(
+                                      id: 'dummy',
+                                      name: 'Channel Name',
+                                      logoUrl: [''],
+                                      streamUrl: [''],
+                                      category: 'General',
+                                      description: 'Description',
+                                    ))
+                            : channelProvider.channels;
+
+                        if (!isLoading && channels.isEmpty) {
+                          return SliverToBoxAdapter(
+                            child: _buildEmptyState(context, channelProvider),
+                          );
+                        }
+
+                        return SliverGrid(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 1.05,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              return Skeletonizer(
+                                enabled: isLoading,
+                                child: ChannelCard(channel: channels[index]),
+                              );
+                            },
+                            childCount: channels.length,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(
+      BuildContext context, ChannelProvider channelProvider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).colorScheme.primary.withAlpha(38),
+                    Theme.of(context).colorScheme.secondary.withAlpha(38),
+                  ],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.tv_off_rounded,
+                size: 72,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'No se encontraron canales',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Intenta ajustar tus filtros o realiza\nuna nueva búsqueda',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: isDark ? Colors.grey[500] : Colors.grey[600],
+                    height: 1.5,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () {
+                channelProvider.clearFilters();
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 22),
+              label: const Text('Limpiar filtros'),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                elevation: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
