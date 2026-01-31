@@ -21,26 +21,4 @@ class SoccerService {
       rethrow;
     }
   }
-
-  Future<MatchDetailData> fetchMatchDetail(String detailsPath) async {
-    try {
-      // Remove leading slash if present in detailsPath
-      final path =
-          detailsPath.startsWith('/') ? detailsPath.substring(1) : detailsPath;
-      final fullUrl = 'https://pivote-api.vercel.app/$path';
-
-      final response = await http.get(Uri.parse(fullUrl));
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        return MatchDetailData.fromJson(data);
-      } else {
-        throw Exception(
-            'Error al cargar detalles del partido: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Error en fetchMatchDetail: $e');
-      rethrow;
-    }
-  }
 }

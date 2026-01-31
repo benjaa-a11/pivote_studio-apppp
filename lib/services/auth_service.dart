@@ -7,7 +7,7 @@ import '../models/user_model.dart';
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static const String _usersCollection = 'users';
+  static const String _usersCollection = 'usuarios-pivote';
 
   /// Stream of auth state changes
   static Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -23,11 +23,12 @@ class AuthService {
     );
   }
 
-  /// Sign up with email, password and name
+  /// Sign up with email, password, name and lastName
   static Future<void> signUp({
     required String email,
     required String password,
     required String name,
+    required String lastName,
   }) async {
     final userCredential = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
@@ -40,10 +41,12 @@ class AuthService {
         uid: userCredential.user!.uid,
         email: email.trim(),
         name: name.trim(),
+        lastName: lastName.trim(),
       );
 
       // Update display name in Auth
-      await userCredential.user!.updateDisplayName(name.trim());
+      final fullName = '${name.trim()} ${lastName.trim()}';
+      await userCredential.user!.updateDisplayName(fullName);
     }
   }
 
@@ -52,15 +55,17 @@ class AuthService {
     required String uid,
     required String email,
     required String name,
+    required String lastName,
   }) async {
     final userRef = _firestore.collection(_usersCollection).doc(uid);
 
-    // Check if user already exists to avoid overwriting (though unlikely on signup)
+    // Check if user already exists to avoid overwriting
     final doc = await userRef.get();
     if (!doc.exists) {
       await userRef.set({
         'uid': uid,
         'name': name,
+        'lastName': lastName,
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
         'favorites': [], // Initialize empty favorites
@@ -81,7 +86,9 @@ class AuthService {
       } else {
         // Backup if document doesn't exist but user is logged in
         return UserModel(
-            name: user.displayName ?? 'Usuario', email: user.email ?? '');
+            name: user.displayName ?? 'Usuario',
+            lastName: '',
+            email: user.email ?? '');
       }
     } catch (e) {
       debugPrint('Error getting user data: $e');

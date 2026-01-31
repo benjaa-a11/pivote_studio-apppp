@@ -18,7 +18,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  late PageController _pageController;
 
   final List<Widget> _screens = [
     const HomeScreen(),
@@ -31,33 +30,16 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(
-      initialPage: _selectedIndex,
-      viewportFraction: 1.0,
-    );
     FlutterNativeSplash.remove();
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
     super.dispose();
-  }
-
-  void _onPageChanged(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
   }
 
   void _onNavItemTapped(int index) {
     if (_selectedIndex == index) return;
-
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutQuart,
-    );
     setState(() {
       _selectedIndex = index;
     });
@@ -69,14 +51,9 @@ class _MainScreenState extends State<MainScreen> {
     final selectedColor = theme.colorScheme.primary;
 
     return Scaffold(
-      body: PageView.builder(
-        controller: _pageController,
-        onPageChanged: _onPageChanged,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: _screens.length,
-        itemBuilder: (context, index) {
-          return _screens[index];
-        },
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

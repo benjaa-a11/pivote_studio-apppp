@@ -41,9 +41,10 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     final audioManager = context.watch<AudioManager>();
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0a0a0a),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
@@ -64,6 +65,8 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -71,9 +74,9 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
           opacity: 0.5,
           child: IconButton(
             onPressed: () => _handleBack(context),
-            icon: const Icon(
+            icon: Icon(
               Icons.arrow_back_ios_new,
-              color: Colors.white,
+              color: theme.colorScheme.onSurface,
               size: 28,
             ),
           ),
@@ -82,10 +85,9 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
           children: [
             Text(
               'RADIO EN VIVO',
-              style: TextStyle(
+              style: theme.textTheme.labelLarge?.copyWith(
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.4),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                 letterSpacing: 2.5,
               ),
             ),
@@ -95,9 +97,9 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
           opacity: 0.5,
           child: IconButton(
             onPressed: () {},
-            icon: const Icon(
+            icon: Icon(
               Icons.more_horiz,
-              color: Colors.white,
+              color: theme.colorScheme.onSurface,
               size: 32,
             ),
           ),
@@ -107,6 +109,10 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
   }
 
   Widget _buildMainContent() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final audioManager = context.watch<AudioManager>();
+
     return Column(
       children: [
         // Squircle-like Logo
@@ -118,7 +124,9 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
               borderRadius: BorderRadius.circular(48),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.5)
+                      : Colors.black.withValues(alpha: 0.15),
                   blurRadius: 40,
                   offset: const Offset(0, 20),
                 ),
@@ -129,9 +137,14 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
               child: CachedNetworkImage(
                 imageUrl: widget.station.logoUrl,
                 fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: Colors.white10),
-                errorWidget: (context, url, error) =>
-                    const Icon(Icons.radio, size: 80, color: Colors.white24),
+                placeholder: (context, url) => Container(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                ),
+                errorWidget: (context, url, error) => Icon(
+                  Icons.radio,
+                  size: 80,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
               ),
             ),
           ),
@@ -139,29 +152,50 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
         const SizedBox(height: 48),
         Text(
           widget.station.name,
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: -1,
-          ),
+          style: theme.textTheme.displayMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
           widget.station.frequency,
-          style: const TextStyle(
+          style: theme.textTheme.titleMedium?.copyWith(
             fontSize: 18,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF86868b),
           ),
           textAlign: TextAlign.center,
         ),
+        // Reconnection status indicator
+        if (audioManager.isReconnecting) ...[
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Reconectando...',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
 
   Widget _buildControls(BuildContext context, AudioManager audioManager) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return StreamBuilder<PlayerState>(
       stream: audioManager.playerStateStream,
       builder: (context, snapshot) {
@@ -189,7 +223,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                   }
                 },
                 icon: const Icon(Icons.skip_previous, size: 40),
-                color: Colors.white,
+                color: theme.colorScheme.onSurface,
               ),
               AppAnimations.scaleIn(
                 duration: AppAnimations.fast,
@@ -205,18 +239,19 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                   child: Container(
                     width: 80,
                     height: 80,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary,
                       shape: BoxShape.circle,
                     ),
                     child: Center(
                       child: isLoading
-                          ? const CircularProgressIndicator(
-                              color: Color(0xFF0a0a0a))
+                          ? CircularProgressIndicator(
+                              color: isDark ? Colors.white : Colors.white,
+                            )
                           : Icon(
                               isPlaying ? Icons.pause : Icons.play_arrow,
                               size: 48,
-                              color: const Color(0xFF0a0a0a),
+                              color: isDark ? Colors.white : Colors.white,
                             ),
                     ),
                   ),
@@ -237,7 +272,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                   }
                 },
                 icon: const Icon(Icons.skip_next, size: 40),
-                color: Colors.white,
+                color: theme.colorScheme.onSurface,
               ),
             ],
           ),
@@ -247,11 +282,13 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
   }
 
   Widget _buildFooter() {
+    final theme = Theme.of(context);
+
     return Container(
       width: 120,
       height: 6,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(3),
       ),
     );

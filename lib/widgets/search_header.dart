@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import '../screens/search_screen.dart';
+import '../providers/user_provider.dart';
 
 class SearchHeader extends StatefulWidget {
   const SearchHeader({super.key});
@@ -9,28 +10,14 @@ class SearchHeader extends StatefulWidget {
   State<SearchHeader> createState() => _SearchHeaderState();
 }
 
-class _SearchHeaderState extends State<SearchHeader>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _logoAnimController;
-  late Animation<double> _logoScaleAnim;
-
+class _SearchHeaderState extends State<SearchHeader> {
   @override
   void initState() {
     super.initState();
-
-    // Logo animation
-    _logoAnimController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _logoScaleAnim = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(parent: _logoAnimController, curve: Curves.easeInOut),
-    );
   }
 
   @override
   void dispose() {
-    _logoAnimController.dispose();
     super.dispose();
   }
 
@@ -54,74 +41,30 @@ class _SearchHeaderState extends State<SearchHeader>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              // Premium Logo
-              GestureDetector(
-                onTap: () {
-                  _logoAnimController
-                      .forward()
-                      .then((_) => _logoAnimController.reverse());
-                },
-                child: ScaleTransition(
-                  scale: _logoScaleAnim,
-                  child: Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          theme.colorScheme.primary,
-                          theme.colorScheme.tertiary.withValues(alpha: 0.8),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              theme.colorScheme.primary.withValues(alpha: 0.25),
-                          blurRadius: 15,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: SvgPicture.asset(
-                        'assets/logo.svg',
-                        width: 22,
-                        height: 22,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
-                      ),
+          Consumer<UserProvider>(
+            builder: (context, userProvider, child) {
+              final name = userProvider.user?.name ?? 'Usuario';
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Hola,',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              RichText(
-                text: TextSpan(
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.8,
-                    fontSize: 22,
+                  Text(
+                    name,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: theme.colorScheme.primary,
+                      fontSize: 24,
+                    ),
                   ),
-                  children: [
-                    TextSpan(
-                      text: 'Pivote',
-                      style: TextStyle(color: theme.colorScheme.onSurface),
-                    ),
-                    TextSpan(
-                      text: 'Studio',
-                      style: TextStyle(color: theme.colorScheme.primary),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
 
           // High-End Search Button

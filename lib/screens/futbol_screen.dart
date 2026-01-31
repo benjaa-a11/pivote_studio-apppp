@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/soccer_models.dart';
 import '../providers/soccer_provider.dart';
-import 'match_details_screen.dart';
+import '../widgets/match_details_sheet.dart';
 import '../widgets/world_cup_countdown.dart';
 
 class FutbolScreen extends StatefulWidget {
@@ -780,7 +780,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
                     color: theme.colorScheme.primary.withValues(alpha: 0.4),
                   ),
                 ),
-                const TextSpan(text: ' v1.3.0'),
+                const TextSpan(text: ' v1.4.0'),
               ],
             ),
           ),
@@ -790,10 +790,12 @@ class _FutbolScreenState extends State<FutbolScreen> {
   }
 
   void _showMatchDetails(SoccerMatch match, SoccerData data) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MatchDetailsScreen(match: match),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => MatchDetailsSheet(
+        matchId: match.id,
       ),
     );
   }

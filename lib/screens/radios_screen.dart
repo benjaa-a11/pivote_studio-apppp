@@ -48,6 +48,8 @@ class _RadiosScreenState extends State<RadiosScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
@@ -61,8 +63,9 @@ class _RadiosScreenState extends State<RadiosScreen> {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                  ),
                   image: const DecorationImage(
                     image: CachedNetworkImageProvider(
                       'https://lh3.googleusercontent.com/aida-public/AB6AXuBeZBVApXA4Kn_nPhRbesiswLugllFqjCiSNCE2rgAhnhLSB7_PBBO4c2RMxP5vktIAm3hJr-8swvSv0FAe33wZxm3StSXsyPrBXtW3PTReju-hN50ydr0_IZNuwOZIZnFAeUBdCYrzfWkO1tzL78aL6ssmKhPcr1e2tYoWnAdWSSPQ7GdHeXLoz_ZPcHl0wOo5Bu3ZOINYpaJJjKZaIewAFx0sVvw6OcJpPhhsv45rxVzpOPYNIPSpAXsIaDHyKl9II_h59cWjXvHB',
@@ -81,7 +84,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
                 },
                 icon: Icon(
                   _isSearching ? Icons.close : Icons.search,
-                  color: Colors.white,
+                  color: theme.colorScheme.onSurface,
                   size: 28,
                 ),
               ),
@@ -93,32 +96,30 @@ class _RadiosScreenState extends State<RadiosScreen> {
               child: TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: const TextStyle(color: Colors.white),
+                style: theme.textTheme.bodyLarge,
                 decoration: InputDecoration(
                   hintText: 'Buscar emisora...',
-                  hintStyle:
-                      TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                  hintStyle: theme.textTheme.bodyMedium,
                   filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.05),
+                  fillColor:
+                      theme.colorScheme.onSurface.withValues(alpha: 0.05),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
                 ),
                 onChanged: (value) =>
                     context.read<RadioProvider>().searchStations(value),
               ),
             )
           else
-            const Text(
+            Text(
               'Emisoras',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -1,
-                color: Colors.white,
-              ),
+              style: theme.textTheme.displayLarge,
             ),
         ],
       ),
@@ -127,6 +128,8 @@ class _RadiosScreenState extends State<RadiosScreen> {
 
   Widget _buildFilters(BuildContext context) {
     final radioProvider = context.watch<RadioProvider>();
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       height: 45,
@@ -150,24 +153,23 @@ class _RadiosScreenState extends State<RadiosScreen> {
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.05),
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(25),
                   border: Border.all(
                     color: isSelected
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.1),
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Center(
                   child: Text(
                     category.toUpperCase(),
-                    style: TextStyle(
+                    style: theme.textTheme.labelLarge?.copyWith(
                       color: isSelected
-                          ? Colors.black
-                          : Colors.white.withValues(alpha: 0.6),
+                          ? (isDark ? Colors.white : Colors.white)
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       fontSize: 10,
-                      fontWeight: FontWeight.bold,
                       letterSpacing: 1.2,
                     ),
                   ),
@@ -182,6 +184,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
 
   Widget _buildStationList(BuildContext context) {
     final radioProvider = context.watch<RadioProvider>();
+    final theme = Theme.of(context);
 
     if (radioProvider.isLoading) {
       return _buildSkeletonList();
@@ -191,16 +194,16 @@ class _RadiosScreenState extends State<RadiosScreen> {
       return Center(
         child: Text(
           radioProvider.error!,
-          style: const TextStyle(color: Colors.white54),
+          style: theme.textTheme.bodyMedium,
         ),
       );
     }
 
     if (radioProvider.stations.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No se encontraron emisoras',
-          style: TextStyle(color: Colors.white54),
+          style: theme.textTheme.bodyMedium,
         ),
       );
     }
@@ -220,20 +223,27 @@ class _RadiosScreenState extends State<RadiosScreen> {
   }
 
   Widget _buildSkeletonList() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       itemCount: 5,
       separatorBuilder: (context, index) => const SizedBox(height: 24),
       itemBuilder: (context, index) => Shimmer.fromColors(
-        baseColor: Colors.white.withValues(alpha: 0.05),
-        highlightColor: Colors.white.withValues(alpha: 0.1),
+        baseColor: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.05),
+        highlightColor: isDark
+            ? Colors.white.withValues(alpha: 0.1)
+            : Colors.black.withValues(alpha: 0.1),
         child: Row(
           children: [
             Container(
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
@@ -242,9 +252,17 @@ class _RadiosScreenState extends State<RadiosScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(width: 150, height: 16, color: Colors.white),
+                  Container(
+                    width: 150,
+                    height: 16,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                  ),
                   const SizedBox(height: 8),
-                  Container(width: 100, height: 12, color: Colors.white),
+                  Container(
+                    width: 100,
+                    height: 12,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                  ),
                 ],
               ),
             ),
@@ -295,67 +313,78 @@ class _StationRow extends StatelessWidget {
   }
 
   Widget _buildLogo() {
-    return Container(
-      width: 64,
-      height: 64,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1a1a1a),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return Builder(
+      builder: (context) {
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+
+        return Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1a1a1a) : theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.3)
+                    : Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: CachedNetworkImage(
-          imageUrl: station.logoUrl,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(color: Colors.white10),
-          errorWidget: (context, url, error) =>
-              const Icon(Icons.radio, color: Colors.white24),
-        ),
-      ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: CachedNetworkImage(
+              imageUrl: station.logoUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+              ),
+              errorWidget: (context, url, error) => Icon(
+                Icons.radio,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildInfo() {
     return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            station.name,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            station.frequency,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 14,
-              fontWeight: FontWeight.w300,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+      child: Builder(
+        builder: (context) {
+          final theme = Theme.of(context);
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                station.name,
+                style: theme.textTheme.titleLarge,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                station.frequency,
+                style: theme.textTheme.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildActions(BuildContext context, bool isPlaying, bool isLoading) {
     final audioManager = context.read<AudioManager>();
+    final theme = Theme.of(context);
 
     return Row(
       children: [
@@ -370,7 +399,7 @@ class _StationRow extends StatelessWidget {
           },
           icon: Icon(
             Icons.favorite_border,
-            color: Colors.white.withValues(alpha: 0.2),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
             size: 20,
           ),
         ),
@@ -383,19 +412,22 @@ class _StationRow extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
             child: Center(
               child: isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    )
                   : Icon(
                       isPlaying ? Icons.pause : Icons.play_arrow,
-                      color: Colors.white,
+                      color: theme.colorScheme.onSurface,
                       size: 24,
                     ),
             ),

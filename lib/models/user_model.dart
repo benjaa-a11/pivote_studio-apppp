@@ -3,18 +3,21 @@ import 'dart:convert';
 /// Model representing a user in the application
 class UserModel {
   final String name;
+  final String lastName;
   final String email;
 
   UserModel({
     required this.name,
+    required this.lastName,
     required this.email,
   });
 
   /// Create UserModel from JSON
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      name: json['name'] as String,
-      email: json['email'] as String,
+      name: json['name'] as String? ?? '',
+      lastName: json['lastName'] as String? ?? '',
+      email: json['email'] as String? ?? '',
     );
   }
 
@@ -22,6 +25,7 @@ class UserModel {
   Map<String, dynamic> toJson() {
     return {
       'name': name,
+      'lastName': lastName,
       'email': email,
     };
   }
@@ -52,23 +56,29 @@ class UserModel {
   /// Create a copy with updated fields
   UserModel copyWith({
     String? name,
+    String? lastName,
     String? email,
   }) {
     return UserModel(
       name: name ?? this.name,
+      lastName: lastName ?? this.lastName,
       email: email ?? this.email,
     );
   }
 
   @override
-  String toString() => 'UserModel(name: $name, email: $email)';
+  String toString() =>
+      'UserModel(name: $name, lastName: $lastName, email: $email)';
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is UserModel && other.name == name && other.email == email;
+    return other is UserModel &&
+        other.name == name &&
+        other.lastName == lastName &&
+        other.email == email;
   }
 
   @override
-  int get hashCode => name.hashCode ^ email.hashCode;
+  int get hashCode => name.hashCode ^ lastName.hashCode ^ email.hashCode;
 }

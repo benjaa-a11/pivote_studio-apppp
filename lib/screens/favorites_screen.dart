@@ -32,7 +32,7 @@ class FavoritesScreen extends StatelessWidget {
                   }
 
                   return CustomScrollView(
-                    physics: const BouncingScrollPhysics(),
+                    physics: const ClampingScrollPhysics(),
                     slivers: [
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),

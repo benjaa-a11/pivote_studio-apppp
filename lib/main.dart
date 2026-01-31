@@ -8,11 +8,13 @@ import 'providers/theme_provider.dart';
 import 'providers/match_provider.dart';
 import 'providers/soccer_provider.dart';
 import 'providers/audio_manager.dart';
+import 'providers/user_provider.dart';
 import 'config/app_theme.dart';
 import 'services/firebase_service.dart';
 import 'services/auth_service.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'screens/main_screen.dart';
+import 'screens/login_screen.dart';
 import 'widgets/connectivity_wrapper.dart';
 
 void main() async {
@@ -52,6 +54,7 @@ class PivoteApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RadioProvider()),
         ChangeNotifierProvider(create: (_) => MatchProvider()),
         ChangeNotifierProvider(create: (_) => SoccerProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => AudioManager()..initialize()),
       ],
       child: Consumer<ThemeProvider>(
@@ -103,8 +106,11 @@ class _AuthenticationWrapper extends StatelessWidget {
         FlutterNativeSplash.remove();
 
         // Navigate based on authentication status
-        // For now, always navigate to MainScreen
-        return const MainScreen();
+        if (snapshot.data == true) {
+          return const MainScreen();
+        } else {
+          return const LoginScreen();
+        }
       },
     );
   }

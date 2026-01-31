@@ -55,6 +55,8 @@ dependencies:
   flutter_native_splash: ^2.4.7
   url_launcher: ^6.3.2
   firebase_auth: ^4.16.0
+  image_picker: ^1.2.1
+  path: ^1.9.1
 
 # Flutter Native Splash configuration
 flutter_native_splash:
