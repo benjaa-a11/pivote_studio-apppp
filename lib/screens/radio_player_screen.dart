@@ -31,13 +31,17 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
 
   @override
   void dispose() {
-    // IMPORTANT: Stop the radio when leaving the player as per user request
-    // We do this in a microtask or after pop to avoid state issues during build
+    // ⚠️ CRÍTICO: Detener la radio al salir del player
+    // Esto es lo que solicitaste específicamente
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final audioManager = context.read<AudioManager>();
+      audioManager.stop();
+    });
     super.dispose();
   }
 
   void _handleBack(BuildContext context) {
-    // We no longer stop the radio on back to allow background playback
+    // El audio se detendrá automáticamente en dispose()
     Navigator.pop(context);
   }
 
@@ -46,21 +50,29 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
     final audioManager = context.watch<AudioManager>();
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-          child: Column(
-            children: [
-              _buildHeader(context),
-              const Spacer(),
-              _buildMainContent(),
-              const Spacer(),
-              _buildControls(context, audioManager),
-              const SizedBox(height: 48),
-              _buildFooter(),
-            ],
+    return PopScope(
+      // Detener el audio cuando se use el botón de retroceso del sistema
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          audioManager.stop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+            child: Column(
+              children: [
+                _buildHeader(context),
+                const Spacer(),
+                _buildMainContent(),
+                const Spacer(),
+                _buildControls(context, audioManager),
+                const SizedBox(height: 48),
+                _buildFooter(),
+              ],
+            ),
           ),
         ),
       ),
@@ -99,7 +111,9 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
         Opacity(
           opacity: 0.5,
           child: IconButton(
-            onPressed: () {},
+            onPressed: () {
+              // Opciones adicionales si las necesitas
+            },
             icon: Icon(
               Icons.more_horiz,
               color: theme.colorScheme.onSurface,
@@ -118,10 +132,11 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
 
     return Column(
       children: [
-        // Squircle-like Logo
+        // Logo con animación sutil cuando está reproduciendo
         AspectRatio(
           aspectRatio: 1,
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(48),
@@ -130,7 +145,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                   color: isDark
                       ? Colors.black.withValues(alpha: 0.5)
                       : Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 40,
+                  blurRadius: audioManager.isPlaying ? 50 : 40,
                   offset: const Offset(0, 20),
                 ),
               ],
@@ -142,11 +157,17 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
-                errorWidget: (context, url, error) => Icon(
-                  Icons.radio,
-                  size: 80,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                errorWidget: (context, url, error) => Container(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                  child: Icon(
+                    Icons.radio,
+                    size: 80,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
                 ),
               ),
             ),
@@ -166,7 +187,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
           ),
           textAlign: TextAlign.center,
         ),
-        // Reconnection status indicator
+        // Estado de reconexión
         if (audioManager.isReconnecting) ...[
           const SizedBox(height: 16),
           Row(
@@ -191,6 +212,39 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
             ],
           ),
         ],
+        // Indicador de streaming en vivo
+        if (audioManager.isPlaying && !audioManager.isReconnecting) ...[
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withValues(alpha: 0.5),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'EN VIVO',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -204,40 +258,49 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
       builder: (context, snapshot) {
         final isPlaying = snapshot.data?.playing ?? false;
         final isLoading =
-            snapshot.data?.processingState == ProcessingState.loading;
+            snapshot.data?.processingState == ProcessingState.loading ||
+                snapshot.data?.processingState == ProcessingState.buffering;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Botón anterior
               IconButton(
                 onPressed: () {
                   final prev = context
                       .read<RadioProvider>()
                       .getPreviousStation(widget.station);
                   if (prev != null) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => RadioPlayerScreen(station: prev),
-                      ),
-                    );
+                    final navigator = Navigator.of(context);
+                    audioManager.stop().then((_) {
+                      if (!mounted) return;
+                      navigator.pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              RadioPlayerScreen(station: prev),
+                        ),
+                      );
+                    });
                   }
                 },
                 icon: const Icon(Icons.skip_previous, size: 40),
-                color: theme.colorScheme.onSurface,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
+              // Botón play/pause principal
               AppAnimations.scaleIn(
                 duration: AppAnimations.fast,
                 child: InkWell(
-                  onTap: () {
-                    if (isPlaying) {
-                      audioManager.pause();
-                    } else {
-                      audioManager.resume();
-                    }
-                  },
+                  onTap: isLoading
+                      ? null
+                      : () {
+                          if (isPlaying) {
+                            audioManager.pause();
+                          } else {
+                            audioManager.resume();
+                          }
+                        },
                   borderRadius: BorderRadius.circular(40),
                   child: Container(
                     width: 80,
@@ -245,11 +308,20 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primary,
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
                     ),
                     child: Center(
                       child: isLoading
                           ? CircularProgressIndicator(
                               color: isDark ? Colors.white : Colors.white,
+                              strokeWidth: 3,
                             )
                           : Icon(
                               isPlaying ? Icons.pause : Icons.play_arrow,
@@ -260,22 +332,27 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                   ),
                 ),
               ),
+              // Botón siguiente
               IconButton(
                 onPressed: () {
                   final next = context
                       .read<RadioProvider>()
                       .getNextStation(widget.station);
                   if (next != null) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => RadioPlayerScreen(station: next),
-                      ),
-                    );
+                    final navigator = Navigator.of(context);
+                    audioManager.stop().then((_) {
+                      if (!mounted) return;
+                      navigator.pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              RadioPlayerScreen(station: next),
+                        ),
+                      );
+                    });
                   }
                 },
                 icon: const Icon(Icons.skip_next, size: 40),
-                color: theme.colorScheme.onSurface,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ],
           ),

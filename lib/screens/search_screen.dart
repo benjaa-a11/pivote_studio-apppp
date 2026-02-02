@@ -90,85 +90,98 @@ class _SearchScreenState extends State<SearchScreen>
   Widget _buildHeader(BuildContext context, bool isDark) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 12, 20, 12),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 22),
-            style: IconButton.styleFrom(
-              backgroundColor: isDark
-                  ? theme.colorScheme.surface.withValues(alpha: 0.5)
-                  : Colors.grey[100],
-              padding: const EdgeInsets.all(12),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: 52,
-              decoration: BoxDecoration(
-                color: isDark
-                    ? theme.colorScheme.surface.withValues(alpha: 0.8)
-                    : theme.colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? (theme.dividerTheme.color ?? theme.dividerColor)
-                          .withValues(alpha: 0.15)
-                      : Colors.black.withValues(alpha: 0.05),
-                  width: 1,
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                style: IconButton.styleFrom(
+                  backgroundColor: isDark
+                      ? theme.colorScheme.surface.withValues(alpha: 0.8)
+                      : theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.4),
+                  padding: const EdgeInsets.all(14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
-                boxShadow: isDark
-                    ? []
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
               ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: _onSearch,
-                style: GoogleFonts.montserrat(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 16),
+              Text(
+                'Buscar',
+                style: GoogleFonts.inter(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1,
                   color: theme.colorScheme.onSurface,
                 ),
-                decoration: InputDecoration(
-                  hintText: 'Buscar canales...',
-                  hintStyle: GoogleFonts.montserrat(
-                    fontSize: 15,
-                    color: isDark
-                        ? AppTheme.darkMutedForeground
-                        : Colors.grey[500],
-                    fontWeight: FontWeight.w500,
-                  ),
-                  prefixIcon: Icon(
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: 56,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? theme.colorScheme.surface.withValues(alpha: 0.6)
+                  : theme.colorScheme.surfaceContainerHighest
+                      .withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: (isDark ? Colors.white : Colors.black)
+                    .withValues(alpha: 0.05),
+                width: 1.5,
+              ),
+              boxShadow: isDark
+                  ? []
+                  : [
+                      BoxShadow(
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              onChanged: _onSearch,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Encuentra tus canales favoritos...',
+                hintStyle: GoogleFonts.inter(
+                  fontSize: 15,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  fontWeight: FontWeight.w500,
+                ),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Icon(
                     Icons.search_rounded,
                     color: theme.colorScheme.primary,
-                    size: 22,
+                    size: 26,
                   ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          onPressed: () {
-                            _searchController.clear();
-                            _onSearch('');
-                          },
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                 ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearch('');
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
           ),
@@ -212,8 +225,8 @@ class _SearchScreenState extends State<SearchScreen>
       children: [
         Text(
           title,
-          style: GoogleFonts.montserrat(
-            fontSize: 18,
+          style: GoogleFonts.inter(
+            fontSize: 20,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
             color: theme.colorScheme.onSurface,
@@ -229,10 +242,10 @@ class _SearchScreenState extends State<SearchScreen>
             ),
             child: Text(
               'Limpiar',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.inter(
                 color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
               ),
             ),
           ),
@@ -253,28 +266,27 @@ class _SearchScreenState extends State<SearchScreen>
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: isDark
-              ? theme.colorScheme.surface.withValues(alpha: 0.6)
+              ? theme.colorScheme.onSurface.withValues(alpha: 0.05)
               : theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(12),
+                  .withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: (theme.dividerTheme.color ?? theme.dividerColor)
-                .withValues(alpha: 0.1),
+            color:
+                (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.history_rounded,
-                size: 16,
-                color: theme.colorScheme.primary.withValues(alpha: 0.7)),
+                size: 16, color: theme.colorScheme.primary),
             const SizedBox(width: 8),
             Text(
               query,
-              style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
               ),
             ),
           ],
@@ -330,17 +342,18 @@ class _SearchScreenState extends State<SearchScreen>
               const SizedBox(height: 32),
               Text(
                 'No encontramos resultados',
-                style: GoogleFonts.montserrat(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                style: GoogleFonts.inter(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
                   color: theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                'Prueba con otras palabras o revisa que no haya errores de escritura.',
-                style: GoogleFonts.montserrat(
-                  fontSize: 14,
+                'Prueba con otras palabras o revisa que no haya errores de escritura para encontrar el canal que buscas.',
+                style: GoogleFonts.inter(
+                  fontSize: 15,
                   height: 1.5,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   fontWeight: FontWeight.w500,

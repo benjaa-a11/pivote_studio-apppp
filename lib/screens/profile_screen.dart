@@ -13,7 +13,9 @@ import '../services/cache_manager_service.dart';
 import '../services/viewing_history_service.dart';
 import '../services/auth_service.dart';
 import '../config/app_animations.dart';
+import '../widgets/app_notifications.dart';
 import '../widgets/profile/section_header.dart';
+import 'dart:ui';
 import 'profile/storage_manager_screen.dart';
 import 'profile/history_screen.dart';
 import 'profile/support_screen.dart';
@@ -56,7 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         child: Column(
           children: [
             _buildModernHeader(context),
@@ -411,18 +413,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildLogoutButton(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: OutlinedButton(
-        onPressed: () => _showLogoutDialog(context),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.red,
-          side: const BorderSide(color: Colors.red),
-          minimumSize: const Size(double.infinity, 56),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+      child: Container(
+        width: double.infinity,
+        height: 65,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFE7714D), Color(0xFFE57C5D)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFE7714D).withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
-        child: Text('Cerrar Sesión',
-            style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.bold, fontSize: 16)),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showLogoutDialog(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.logout_rounded,
+                      color: Colors.white, size: 22),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Cerrar Sesión',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -462,42 +496,341 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // --- Dialogs (Simplified for brevity but keeping original logic) ---
 
   void _showLogoutDialog(BuildContext context) {
-    showDialog(
+    final theme = Theme.of(context);
+
+    showGeneralDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cerrar Sesión'),
-        content: const Text('¿Estás seguro de que deseas salir de tu cuenta?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () async {
-              await AuthService.logout();
-              if (context.mounted) {
-                Provider.of<UserProvider>(context, listen: false).clearUser();
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Salir', style: TextStyle(color: Colors.red)),
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, a1, a2) => Container(),
+      transitionBuilder: (context, a1, a2, child) {
+        return Transform.scale(
+          scale: a1.value,
+          child: Opacity(
+            opacity: a1.value,
+            child: AlertDialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              contentPadding: EdgeInsets.zero,
+              content: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFFE7714D).withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.logout_rounded,
+                            color: Color(0xFFE7714D),
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          '¿Cerrar Sesión?',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '¿Estás seguro de que deseas salir de tu cuenta?',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 15,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.6),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: TextButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Cancelar',
+                                  style: GoogleFonts.montserrat(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFE7714D),
+                                      Color(0xFFE57C5D)
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFE7714D)
+                                          .withValues(alpha: 0.3),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    Navigator.pop(context); // Cerrar diálogo
+                                    await AuthService.logout();
+                                    if (context.mounted) {
+                                      Provider.of<UserProvider>(context,
+                                              listen: false)
+                                          .clearUser();
+                                      AppNotifications.showInfo(context,
+                                          'Has cerrado sesión correctamente');
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Salir',
+                                    style: GoogleFonts.montserrat(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   void _showAboutDialog(BuildContext context) {
-    showAboutDialog(
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
       context: context,
-      applicationName: 'Pivote Studio',
-      applicationVersion: _appVersion,
-      applicationIcon: Image.asset('assets/logo.png', height: 40),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Decorative elements
+            Positioned(
+              top: -50,
+              left: -50,
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+
+            Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 40),
+
+                // Logo or Icon
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Image.asset('assets/logo.png',
+                      height: 80,
+                      errorBuilder: (c, e, s) => Icon(Icons.tv_rounded,
+                          size: 80, color: theme.colorScheme.primary)),
+                ),
+
+                const SizedBox(height: 24),
+                Text(
+                  'Pivote Studio',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                    letterSpacing: -1,
+                  ),
+                ),
+                Text(
+                  'Versión $_appVersion',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
+                    letterSpacing: 1,
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Text(
+                    'Pivote Studio es la plataforma definitiva para el streaming de televisión en vivo. '
+                    'Disfruta de tus canales favoritos con la mejor calidad y una interfaz diseñada para la excelencia.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 15,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+
+                const Spacer(),
+
+                // Social / Links
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildAboutLink(context, FontAwesomeIcons.globe, 'Web'),
+                      _buildAboutLink(
+                          context, FontAwesomeIcons.instagram, 'Instagram'),
+                      _buildAboutLink(
+                          context, FontAwesomeIcons.telegram, 'Telegram'),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 40),
+
+                // Bottom Copyright
+                Text(
+                  '© 2026 Pivote Studio. Todos los derechos reservados.',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+              ],
+            ),
+
+            // Close Button
+            Positioned(
+              top: 24,
+              right: 24,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded, size: 20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAboutLink(BuildContext context, IconData icon, String label) {
+    final theme = Theme.of(context);
+    return Column(
       children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+        ),
+        const SizedBox(height: 8),
         Text(
-          'Pivote Studio es la plataforma definitiva para el streaming de televisión en vivo. '
-          'Disfruta de tus canales favoritos con la mejor calidad y una interfaz moderna y profesional.',
-          style: GoogleFonts.montserrat(),
-        )
+          label,
+          style: GoogleFonts.montserrat(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
       ],
     );
   }

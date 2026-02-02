@@ -1,8 +1,7 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/soccer_models.dart';
 import '../providers/soccer_provider.dart';
 
@@ -24,18 +23,19 @@ class MatchDetailsSheet extends StatelessWidget {
         final soccerData = provider.soccerData;
         if (soccerData == null) {
           return const SizedBox(
-              height: 300, child: Center(child: CircularProgressIndicator()));
+              height: 400, child: Center(child: CircularProgressIndicator()));
         }
 
         SoccerMatch? match;
         try {
           match = soccerData.matches.firstWhere((m) => m.id == matchId);
         } catch (e) {
-          return const SizedBox(
+          return SizedBox(
               height: 200,
               child: Center(
                   child: Text('Partido no encontrado',
-                      style: TextStyle(color: Colors.white))));
+                      style: GoogleFonts.inter(
+                          color: theme.colorScheme.onSurface))));
         }
         final currentMatch = match;
 
@@ -43,9 +43,9 @@ class MatchDetailsSheet extends StatelessWidget {
             (l) => l.id == currentMatch.leagueId,
             orElse: () => SoccerLeague(
                 id: currentMatch.leagueId,
-                name: 'Liga',
+                name: 'Competición',
                 country: '',
-                shortName: 'LIGA'));
+                shortName: 'LEAGUE'));
 
         final homeTeam = soccerData.teams.firstWhere(
             (t) => t.id == currentMatch.homeTeamId,
@@ -60,444 +60,513 @@ class MatchDetailsSheet extends StatelessWidget {
                 name: currentMatch.awayTeam,
                 shortName: currentMatch.awayTeam));
 
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                color: (isDark ? const Color(0xFF13191F) : Colors.white)
-                    .withValues(alpha: 0.85),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(40)),
-                border: Border(
-                  top: BorderSide(
-                      color: (isDark ? Colors.white : Colors.black)
-                          .withValues(alpha: 0.08)),
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF121418) : theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+            border: Border.all(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 30,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 48,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: (isDark ? Colors.white : Colors.black)
-                          .withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+              const SizedBox(height: 20),
 
-                  // League Header
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      league.name.toUpperCase(),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2.0,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
+              // Scoreboard Card
+              _buildModernScoreboard(
+                  context, currentMatch, league, homeTeam, awayTeam),
 
-                  // Scoreboard
-                  _buildTemplateScoreboard(match, homeTeam, awayTeam, theme),
-
-                  const SizedBox(height: 32),
-
-                  Flexible(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Goals Section
-                          _buildEventSection(
-                            title: 'Goles',
-                            icon: FontAwesomeIcons.futbol,
-                            iconColor: theme.colorScheme.primary,
-                            events: match.goals
-                                .map((g) => _EventData(
-                                      name: g.playerShortName,
-                                      time: g.timeToDisplay,
-                                      isHome:
-                                          g.teamId == currentMatch.homeTeamId,
-                                    ))
-                                .toList(),
-                            emptyText: 'Sin goles registrados',
-                            theme: theme,
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Yellow Cards Section
-                          _buildEventSection(
-                            title: 'Tarjetas Amarillas',
-                            icon: FontAwesomeIcons.solidSquare,
-                            iconColor: Colors.amber,
-                            events: match.yellowCards
-                                .map((c) => _EventData(
-                                      name: c.playerShortName,
-                                      time: c.timeToDisplay,
-                                      isHome: c.teamId == match!.homeTeamId,
-                                    ))
-                                .toList(),
-                            emptyText: 'Sin tarjetas amarillas',
-                            theme: theme,
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Red Cards Section
-                          _buildEventSection(
-                            title: 'Tarjetas Rojas',
-                            icon: FontAwesomeIcons.solidSquare,
-                            iconColor: Colors.red,
-                            events: match.redCards
-                                .map((c) => _EventData(
-                                      name: c.playerShortName,
-                                      time: c.timeToDisplay,
-                                      isHome: c.teamId == match!.homeTeamId,
-                                    ))
-                                .toList(),
-                            emptyText: 'Sin tarjetas rojas',
-                            theme: theme,
-                          ),
-
-                          if (match.tvChannels.isNotEmpty) ...[
-                            const SizedBox(height: 32),
-                            _buildSectionHeader(
-                                'Transmisión', Icons.live_tv_rounded, theme),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: match.tvChannels
-                                    .map((channel) =>
-                                        _buildChannelBadge(channel, theme))
-                                    .toList(),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+              // Events Timeline
+              Flexible(
+                child: Container(
+                  width: double.infinity,
+                  color: isDark
+                      ? const Color(0xFF0A0C10).withValues(alpha: 0.5)
+                      : theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.1),
+                  child: _buildTimeline(context, currentMatch),
+                ),
               ),
-            ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildTemplateScoreboard(
-      SoccerMatch match, SoccerTeam home, SoccerTeam away, ThemeData theme) {
+  Widget _buildModernScoreboard(BuildContext context, SoccerMatch match,
+      SoccerLeague league, SoccerTeam home, SoccerTeam away) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final homeScore = match.score.isNotEmpty ? match.score[0] : 0;
     final awayScore =
         match.score.isNotEmpty && match.score.length > 1 ? match.score[1] : 0;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Row(
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2229) : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+            color:
+                (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05)),
+        boxShadow: [
+          isDark
+              ? BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 25,
+                  offset: const Offset(0, 8))
+              : BoxShadow(
+                  color: theme.colorScheme.shadow.withValues(alpha: 0.1),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Column(
         children: [
-          // Home Team
-          Expanded(
-            child: Column(
-              children: [
-                _buildTeamLogo(home.logoUrl, theme),
-                const SizedBox(height: 12),
-                Text(
-                  home.shortName,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-
-          // Center Score & Status
-          Column(
+          // Tournament Info
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Status Badge
-              _buildModernStatusBadge(match, theme),
-              const SizedBox(height: 12),
-              // Score
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 500),
-                child: Row(
-                  key: ValueKey('$homeScore-$awayScore'),
-                  mainAxisAlignment: MainAxisAlignment.center,
+              Icon(Icons.sports_soccer_rounded,
+                  size: 16,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+              const SizedBox(width: 8),
+              Text(
+                league.name.toUpperCase(),
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                ),
+              ),
+              if (match.isLive) ...[
+                const SizedBox(width: 8),
+                _buildLivePulse(),
+              ],
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Match Stats (Score and Teams)
+          Row(
+            children: [
+              // Home Team
+              Expanded(
+                child: Column(
                   children: [
+                    _buildTeamBadge(home.logoUrl, theme),
+                    const SizedBox(height: 12),
                     Text(
-                      '$homeScore',
-                      style: theme.textTheme.displayMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -2,
+                      home.name,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface,
                       ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '-',
-                      style: theme.textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.w200,
-                        color: theme.hintColor.withValues(alpha: 0.2),
-                      ),
+                  ],
+                ),
+              ),
+
+              // Score
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('$homeScore',
+                            style: GoogleFonts.inter(
+                                fontSize: 42,
+                                fontWeight: FontWeight.w900,
+                                color: theme.colorScheme.onSurface)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('-',
+                              style: GoogleFonts.inter(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w200,
+                                  color: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.3))),
+                        ),
+                        Text('$awayScore',
+                            style: GoogleFonts.inter(
+                                fontSize: 42,
+                                fontWeight: FontWeight.w900,
+                                color: theme.colorScheme.onSurface)),
+                      ],
                     ),
-                    const SizedBox(width: 12),
+                    _buildStatusIndicator(match, theme),
+                  ],
+                ),
+              ),
+
+              // Away Team
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildTeamBadge(away.logoUrl, theme),
+                    const SizedBox(height: 12),
                     Text(
-                      '$awayScore',
-                      style: theme.textTheme.displayMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -2,
+                      away.name,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface,
                       ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-
-          // Away Team
-          Expanded(
-            child: Column(
-              children: [
-                _buildTeamLogo(away.logoUrl, theme),
-                const SizedBox(height: 12),
-                Text(
-                  away.shortName,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildTeamLogo(String? url, ThemeData theme) {
+  Widget _buildTeamBadge(String? url, ThemeData theme) {
     return Container(
-      width: 64,
-      height: 64,
-      padding: const EdgeInsets.all(10),
+      width: 65,
+      height: 65,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.03),
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
       ),
       child: url != null
           ? CachedNetworkImage(
               imageUrl: url,
               fit: BoxFit.contain,
-              placeholder: (context, url) => const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2)),
-              errorWidget: (context, url, error) =>
-                  const Icon(Icons.shield, color: Colors.white24),
+              errorWidget: (c, e, s) => Icon(Icons.shield_rounded,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+                  size: 30),
             )
-          : const Icon(Icons.shield, color: Colors.white24, size: 32),
+          : Icon(Icons.shield_rounded,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+              size: 30),
     );
   }
 
-  Widget _buildModernStatusBadge(SoccerMatch match, ThemeData theme) {
+  Widget _buildStatusIndicator(SoccerMatch match, ThemeData theme) {
     final isLive = match.isLive;
-    final color = isLive ? const Color(0xFFFF4B4B) : theme.colorScheme.primary;
+
+    String statusStr = match.status;
+    if (isLive) {
+      statusStr = match.time.replaceAll("'", "");
+    }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        color: isLive
+            ? Colors.green.withValues(alpha: 0.1)
+            : theme.colorScheme.onSurface.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isLive) ...[
-            _buildLiveIndicator(),
-            const SizedBox(width: 6),
-          ],
-          Text(
-            (isLive ? "LIVE ${match.time.replaceAll("'", "")}'" : match.status)
-                .toUpperCase(),
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w900,
-              fontSize: 9,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
+      child: Text(
+        isLive ? '$statusStr\'' : statusStr.toUpperCase(),
+        style: GoogleFonts.inter(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: isLive
+              ? Colors.green
+              : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
 
-  Widget _buildLiveIndicator() {
+  Widget _buildLivePulse() {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.4, end: 1.0),
       duration: const Duration(seconds: 1),
       builder: (context, value, child) {
         return Container(
-          width: 6,
-          height: 6,
+          width: 8,
+          height: 8,
           decoration: BoxDecoration(
-            color: const Color(0xFFFF4B4B).withValues(alpha: value),
+            color: Colors.green.withValues(alpha: value),
             shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withValues(alpha: value * 0.5),
+                blurRadius: 8,
+                spreadRadius: 2,
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildEventSection({
-    required String title,
-    required IconData icon,
-    required Color iconColor,
-    required List<_EventData> events,
-    required String emptyText,
-    required ThemeData theme,
-  }) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            children: [
-              Icon(icon, size: 14, color: iconColor),
-              const SizedBox(width: 10),
-              Text(
-                title.toUpperCase(),
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: Colors.white.withValues(alpha: 0.4),
-                  fontSize: 10,
-                ),
-              ),
-              const Expanded(child: SizedBox()),
-            ],
-          ),
-        ),
-        Container(height: 1, color: Colors.white.withValues(alpha: 0.05)),
-        const SizedBox(height: 12),
-        if (events.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Center(
-              child: Text(
-                emptyText,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontStyle: FontStyle.italic,
-                  color: Colors.white.withValues(alpha: 0.2),
-                  fontSize: 10,
-                ),
+  Widget _buildTimeline(BuildContext context, SoccerMatch match) {
+    final theme = Theme.of(context);
+    final events = _getSortedEvents(match);
+
+    if (events.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(60),
+        child: Column(
+          children: [
+            Icon(Icons.event_note_rounded,
+                size: 48,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+            const SizedBox(height: 16),
+            Text(
+              match.isScheduled
+                  ? 'El partido aún no ha comenzado'
+                  : 'Sin eventos registrados',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                fontWeight: FontWeight.w500,
               ),
             ),
-          )
-        else
-          ...events.map((event) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    if (event.isHome) ...[
-                      Text(
-                        "${event.time} ${event.name}",
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 11,
-                        ),
-                      ),
-                      const Spacer(),
-                    ] else ...[
-                      const Spacer(),
-                      Text(
-                        "${event.time} ${event.name}",
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              )),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(String title, IconData icon, ThemeData theme) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: theme.colorScheme.primary),
-        const SizedBox(width: 10),
-        Text(
-          title.toUpperCase(),
-          style: theme.textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.5,
-            color: Colors.white.withValues(alpha: 0.4),
-            fontSize: 10,
-          ),
+          ],
         ),
-        const Expanded(child: SizedBox()),
-      ],
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: events.length + 2, // Start, End, and events
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return _buildTimelinePoint(
+              context, 'Inicio del partido', '0\'', Icons.sports_score_rounded);
+        }
+        if (index == events.length + 1) {
+          String endLabel = match.isFinished ? 'Final del partido' : 'En juego';
+          return _buildTimelinePoint(
+              context,
+              endLabel,
+              match.time.isEmpty ? '?' : match.time,
+              Icons.sports_score_rounded);
+        }
+
+        final event = events[index - 1];
+        return _buildTimelineEventRow(context, event, match.homeTeamId);
+      },
     );
   }
 
-  Widget _buildChannelBadge(String name, ThemeData theme) {
+  Widget _buildTimelinePoint(
+      BuildContext context, String title, String time, IconData icon) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.1)),
+        color: isDark
+            ? const Color(0xFF121418).withValues(alpha: 0.5)
+            : theme.colorScheme.onSurface.withValues(alpha: 0.05),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.play_circle_fill,
-              size: 14, color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
-          Text(
-            name,
-            style: theme.textTheme.labelMedium?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
-            ),
+          Expanded(
+              child: Text(title,
+                  textAlign: TextAlign.right,
+                  style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.5)))),
+          const SizedBox(width: 16),
+          Column(
+            children: [
+              Icon(icon, size: 16, color: Colors.blue.shade400),
+              const SizedBox(height: 4),
+              Text(time,
+                  style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.4))),
+            ],
+          ),
+          const SizedBox(width: 16),
+          const Expanded(child: SizedBox()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineEventRow(
+      BuildContext context, _MatchEvent event, String homeTeamId) {
+    final theme = Theme.of(context);
+    final isHome = event.teamId == homeTeamId;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      decoration: BoxDecoration(
+        border: Border(
+            bottom: BorderSide(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.03))),
+      ),
+      child: Row(
+        children: [
+          // Left Side (Home)
+          Expanded(
+            child: isHome
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(event.playerName,
+                          style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.onSurface)),
+                    ],
+                  )
+                : const SizedBox(),
+          ),
+
+          // Center Icon & Time
+          const SizedBox(width: 16),
+          Column(
+            children: [
+              _buildEventIcon(event),
+              const SizedBox(height: 4),
+              Text('${event.time}\'',
+                  style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.5))),
+            ],
+          ),
+          const SizedBox(width: 16),
+
+          // Right Side (Away)
+          Expanded(
+            child: !isHome
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(event.playerName,
+                          style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.onSurface)),
+                    ],
+                  )
+                : const SizedBox(),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildEventIcon(_MatchEvent event) {
+    switch (event.type) {
+      case _EventType.goal:
+        return const Icon(Icons.sports_soccer_rounded,
+            size: 18, color: Colors.green);
+      case _EventType.yellowCard:
+        return Container(
+          width: 12,
+          height: 16,
+          decoration: BoxDecoration(
+              color: Colors.amber, borderRadius: BorderRadius.circular(2)),
+        );
+      case _EventType.redCard:
+        return Container(
+          width: 12,
+          height: 16,
+          decoration: BoxDecoration(
+              color: Colors.red, borderRadius: BorderRadius.circular(2)),
+        );
+      case _EventType.substitution:
+        return const Icon(Icons.swap_vert_rounded,
+            size: 18, color: Colors.blue);
+    }
+  }
+
+  List<_MatchEvent> _getSortedEvents(SoccerMatch match) {
+    final List<_MatchEvent> events = [];
+
+    for (var g in match.goals) {
+      events.add(_MatchEvent(
+        type: _EventType.goal,
+        time: g.time,
+        playerName: g.playerShortName,
+        teamId: g.teamId,
+      ));
+    }
+
+    for (var c in match.yellowCards) {
+      events.add(_MatchEvent(
+        type: _EventType.yellowCard,
+        time: c.time,
+        playerName: c.playerShortName,
+        teamId: c.teamId,
+      ));
+    }
+
+    for (var c in match.redCards) {
+      events.add(_MatchEvent(
+        type: _EventType.redCard,
+        time: c.time,
+        playerName: c.playerShortName,
+        teamId: c.teamId,
+      ));
+    }
+
+    // Note: Substitutions are not currently in the model,
+    // but the structure allows adding them later easily.
+
+    events.sort((a, b) => a.time.compareTo(b.time));
+    return events;
+  }
 }
 
-class _EventData {
-  final String name;
-  final String time;
-  final bool isHome;
+enum _EventType { goal, yellowCard, redCard, substitution }
 
-  _EventData({required this.name, required this.time, required this.isHome});
+class _MatchEvent {
+  final _EventType type;
+  final int time;
+  final String playerName;
+  final String teamId;
+
+  _MatchEvent({
+    required this.type,
+    required this.time,
+    required this.playerName,
+    required this.teamId,
+  });
 }

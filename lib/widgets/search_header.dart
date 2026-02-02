@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../screens/search_screen.dart';
 import '../providers/user_provider.dart';
 
@@ -11,14 +12,11 @@ class SearchHeader extends StatefulWidget {
 }
 
 class _SearchHeaderState extends State<SearchHeader> {
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) return 'Buenos días,';
+    if (hour >= 12 && hour < 19) return 'Buenas tardes,';
+    return 'Buenas noches,';
   }
 
   @override
@@ -43,23 +41,31 @@ class _SearchHeaderState extends State<SearchHeader> {
         children: [
           Consumer<UserProvider>(
             builder: (context, userProvider, child) {
-              final name = userProvider.user?.name ?? 'Usuario';
+              final isLoading =
+                  userProvider.isLoading || userProvider.user == null;
+              final name = userProvider.user?.name ?? 'Usuario Pro';
+
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Hola,',
+                    _getGreeting(),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  Text(
-                    name,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: theme.colorScheme.primary,
-                      fontSize: 24,
+                  Skeletonizer(
+                    enabled: isLoading,
+                    child: Text(
+                      name,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: theme.colorScheme.primary,
+                        fontSize: 24,
+                        letterSpacing: -0.5,
+                      ),
                     ),
                   ),
                 ],
@@ -96,23 +102,48 @@ class _SearchHeaderState extends State<SearchHeader> {
                   ),
                 );
               },
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? theme.colorScheme.surface.withValues(alpha: 0.8)
-                      : theme.colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(14),
+                  gradient: isDark
+                      ? LinearGradient(
+                          colors: [
+                            theme.colorScheme.surface.withValues(alpha: 0.8),
+                            theme.colorScheme.surface.withValues(alpha: 0.4),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : LinearGradient(
+                          colors: [
+                            theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.4),
+                            theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.1),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: (theme.dividerTheme.color ?? theme.dividerColor)
-                        .withValues(alpha: 0.1),
+                    color: (isDark ? Colors.white : Colors.black)
+                        .withValues(alpha: 0.05),
                   ),
+                  boxShadow: isDark
+                      ? []
+                      : [
+                          BoxShadow(
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                 ),
                 child: Icon(
                   Icons.search_rounded,
-                  size: 24,
+                  size: 26,
                   color: theme.colorScheme.primary,
                 ),
               ),

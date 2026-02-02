@@ -171,4 +171,34 @@ class AuthService {
       await currentUser.updateDisplayName(user.name);
     }
   }
+
+  /// Map Firebase Auth error codes to professional Spanish messages
+  static String getErrorMessage(dynamic error) {
+    if (error is! FirebaseAuthException) {
+      return 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.';
+    }
+
+    switch (error.code) {
+      case 'user-not-found':
+        return 'No hemos encontrado una cuenta con este correo electrónico.';
+      case 'wrong-password':
+        return 'La contraseña es incorrecta. Por favor, verifica tus datos.';
+      case 'email-already-in-use':
+        return 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
+      case 'invalid-email':
+        return 'El formato del correo electrónico no es válido.';
+      case 'user-disabled':
+        return 'Esta cuenta ha sido deshabilitada. Contacta al soporte.';
+      case 'operation-not-allowed':
+        return 'El inicio de sesión con este método no está habilitado.';
+      case 'weak-password':
+        return 'La contraseña es muy débil. Intenta con una más segura.';
+      case 'network-request-failed':
+        return 'Error de conexión. Revisa tu internet e inténtalo de nuevo.';
+      case 'too-many-requests':
+        return 'Demasiados intentos. Por favor, inténtalo más tarde.';
+      default:
+        return 'Algo salió mal: ${error.message ?? "Error desconocido"}';
+    }
+  }
 }

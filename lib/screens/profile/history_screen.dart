@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui';
 import '../../providers/channel_provider.dart';
 import '../../services/viewing_history_service.dart';
 import '../../models/channel.dart';
 import '../../config/app_animations.dart';
+import '../../widgets/app_notifications.dart';
+import '../player_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -50,31 +53,158 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  Future<void> _clearHistory() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Limpiar Historial',
-            style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
-        content: const Text(
-            '¿Estás seguro de que deseas borrar todo tu historial de visualización?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child:
-                const Text('Borrar Todo', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+  void _showClearHistoryDialog(BuildContext context) {
+    final theme = Theme.of(context);
 
-    if (confirmed == true) {
-      await ViewingHistoryService.clearHistory();
-      _loadHistory();
-    }
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, a1, a2) => Container(),
+      transitionBuilder: (context, a1, a2, child) {
+        return Transform.scale(
+          scale: a1.value,
+          child: Opacity(
+            opacity: a1.value,
+            child: AlertDialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              contentPadding: EdgeInsets.zero,
+              content: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFFE7714D).withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.delete_sweep_rounded,
+                            color: Color(0xFFE7714D),
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          '¿Limpiar Historial?',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Esta acción borrará todos los canales que has visto recientemente. ¿Deseas continuar?',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 15,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.6),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: TextButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Cancelar',
+                                  style: GoogleFonts.montserrat(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFE7714D),
+                                      Color(0xFFE57C5D)
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFE7714D)
+                                          .withValues(alpha: 0.3),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    Navigator.pop(context); // Cerrar diálogo
+                                    await ViewingHistoryService.clearHistory();
+                                    _loadHistory();
+                                    if (context.mounted) {
+                                      AppNotifications.showInfo(context,
+                                          'Historial limpiado correctamente');
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Borrar',
+                                    style: GoogleFonts.montserrat(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -83,19 +213,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
-          'Historial de Canales',
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+          'Historial',
+          style: GoogleFonts.montserrat(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
+        flexibleSpace: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
         centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface.withValues(alpha: 0.5),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ),
         actions: [
           if (_historyChannels.isNotEmpty)
-            IconButton(
-              onPressed: _clearHistory,
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE7714D).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: () => _showClearHistoryDialog(context),
+                  icon: const Icon(Icons.delete_outline_rounded,
+                      color: Color(0xFFE7714D)),
+                ),
+              ),
             ),
         ],
       ),
@@ -104,8 +267,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
           : _historyChannels.isEmpty
               ? _buildEmptyState()
               : ListView.builder(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + 80,
+                    left: 24,
+                    right: 24,
+                    bottom: 40,
+                  ),
                   itemCount: _historyChannels.length,
                   itemBuilder: (context, index) {
                     final channel = _historyChannels[index];
@@ -124,74 +291,194 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final logoUrl = channel.getLogoUrl(isDark);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
         border: Border.all(color: theme.dividerColor.withValues(alpha: 0.05)),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(12),
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PlayerScreen(channel: channel),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Hero(
+                  tag: 'history_logo_${channel.id}',
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer
+                          .withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(18),
+                      gradient: LinearGradient(
+                        colors: [
+                          theme.colorScheme.primary.withValues(alpha: 0.1),
+                          theme.colorScheme.primary.withValues(alpha: 0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(10),
+                    child: logoUrl.isNotEmpty
+                        ? Image.network(
+                            logoUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                                Icons.tv,
+                                color: theme.colorScheme.primary),
+                          )
+                        : Icon(Icons.tv, color: theme.colorScheme.primary),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        channel.name,
+                        style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 17,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        channel.category.toUpperCase(),
+                        style: GoogleFonts.montserrat(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.8),
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    size: 20,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
           ),
-          child: logoUrl.isNotEmpty
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(logoUrl, fit: BoxFit.cover),
-                )
-              : Icon(Icons.tv, color: theme.colorScheme.primary),
         ),
-        title: Text(
-          channel.name,
-          style:
-              GoogleFonts.montserrat(fontWeight: FontWeight.w600, fontSize: 16),
-        ),
-        subtitle: Text(
-          channel.category,
-          style: GoogleFonts.montserrat(
-            fontSize: 12,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-          ),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-        onTap: () {
-          // Navegar al reproductor (esto depende de cómo manejes la navegación)
-          // Navigator.of(context).pushNamed('/player', arguments: channel);
-        },
       ),
     );
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+          AppAnimations.smoothFadeIn(
+            child: Container(
+              padding: const EdgeInsets.all(40),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(Icons.history_rounded,
+                      size: 80,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.2)),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                          )
+                        ],
+                      ),
+                      child: Icon(Icons.close_rounded,
+                          size: 20, color: theme.colorScheme.primary),
+                    ),
+                  )
+                ],
+              ),
             ),
-            child: Icon(Icons.history_toggle_off,
-                size: 64, color: Colors.grey.withValues(alpha: 0.5)),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           Text(
-            'Tu historial está vacío',
+            'Sin historial',
             style: GoogleFonts.montserrat(
-              fontSize: 18,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.grey,
+              color: theme.colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text('Los canales que veas aparecerán aquí.'),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: Text(
+              'Aún no has visto ningún canal. ¡Explora nuestra lista y comienza a disfrutar!',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.montserrat(
+                fontSize: 15,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                height: 1.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 40),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(100),
+              ),
+              elevation: 0,
+            ),
+            child: const Text('Volver al Perfil',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
     );

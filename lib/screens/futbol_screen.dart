@@ -310,7 +310,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
             padding: const EdgeInsets.all(12),
             child: ListView.separated(
               shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               itemCount: matches.length,
               separatorBuilder: (context, index) => const SizedBox(height: 8),
               itemBuilder: (context, index) =>

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../config/app_animations.dart';
+import '../widgets/app_notifications.dart';
 import 'signup_screen.dart';
 import 'main_screen.dart';
 
@@ -35,18 +36,12 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sesión iniciada con éxito')),
-        );
+        AppNotifications.showSuccess(context, '¡Bienvenido de nuevo!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        final errorMessage = AuthService.getErrorMessage(e);
+        AppNotifications.showError(context, errorMessage);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -58,18 +53,12 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await AuthService.signInWithGoogle();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sesión iniciada con Google')),
-        );
+        AppNotifications.showSuccess(context, 'Sesión iniciada con Google');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error con Google: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        final errorMessage = AuthService.getErrorMessage(e);
+        AppNotifications.showError(context, errorMessage);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -384,6 +373,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 index: 5,
                 child: TextButton(
                   onPressed: () {
+                    // Este botón es solo para desarrollo, permite entrar sin login
+                    // Usamos pushReplacement para que no pueda volver atrás al login
                     Navigator.of(context).pushReplacement(
                       MaterialPageRoute(
                         builder: (context) => const MainScreen(),

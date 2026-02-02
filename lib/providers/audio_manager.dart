@@ -6,7 +6,7 @@ import 'dart:async';
 import '../models/radio.dart' as model;
 
 /// Enhanced manager for handling live audio streams with advanced features
-/// Supports multiple formats (m3u8, aac, mp3, sc) with automatic error recovery
+/// Supports multiple formats (m3u8, aac, mp3, streamtheworld) with automatic error recovery
 class AudioManager extends ChangeNotifier {
   static final AudioManager _instance = AudioManager._internal();
   factory AudioManager() => _instance;
@@ -21,11 +21,12 @@ class AudioManager extends ChangeNotifier {
   // Reconnection state
   int _currentUrlIndex = 0;
   int _retryCount = 0;
-  static const int _maxRetries = 5;
+  static const int _maxRetries = 3;
   static const Duration _initialRetryDelay = Duration(seconds: 2);
   Timer? _reconnectionTimer;
   bool _isReconnecting = false;
   StreamSubscription<PlayerState>? _playerStateSubscription;
+  StreamSubscription<PlaybackEvent>? _playbackEventSubscription;
 
   // Streams for UI consumption
   Stream<PlayerState> get playerStateStream => _player.playerStateStream;
@@ -83,8 +84,7 @@ class AudioManager extends ChangeNotifier {
       session.becomingNoisyEventStream.listen((_) => pause());
 
       _isInit = true;
-      debugPrint(
-          '✅ AudioManager initialized with background and session support');
+      debugPrint('✅ AudioManager initialized with background and session support');
     } catch (e) {
       debugPrint('❌ Error initializing JustAudio: $e');
     }
@@ -92,6 +92,7 @@ class AudioManager extends ChangeNotifier {
 
   /// Setup error handling and automatic recovery
   void _setupErrorHandling() {
+    // Monitor player state for unexpected stops
     _playerStateSubscription = _player.playerStateStream.listen(
       (state) {
         // Detect errors and trigger recovery
@@ -109,14 +110,40 @@ class AudioManager extends ChangeNotifier {
         _attemptReconnection();
       },
     );
+
+    // Monitor playback events for errors
+    _playbackEventSubscription = _player.playbackEventStream.listen(
+      (event) {
+        // Check for errors in playback event
+        if (event.processingState == ProcessingState.idle && 
+            _currentStation != null && 
+            !_isReconnecting) {
+          debugPrint('⚠️ Playback stopped unexpectedly');
+        }
+      },
+      onError: (error) {
+        debugPrint('❌ Playback event error: $error');
+        _attemptReconnection();
+      },
+    );
   }
 
   /// Play a specific radio station with multi-URL fallback
   Future<void> play(model.Radio station) async {
-    if (_currentStation?.id == station.id && _player.playing) return;
+    if (_currentStation?.id == station.id && _player.playing) {
+      debugPrint('🔵 Station already playing: ${station.name}');
+      return;
+    }
 
     // Cancel any ongoing reconnection
     _cancelReconnection();
+
+    // Stop current playback first
+    try {
+      await _player.stop();
+    } catch (e) {
+      debugPrint('⚠️ Error stopping previous playback: $e');
+    }
 
     _currentStation = station;
     _currentUrlIndex = 0;
@@ -141,23 +168,23 @@ class AudioManager extends ChangeNotifier {
         throw Exception('Empty stream URL at index $urlIndex');
       }
 
-      debugPrint(
-          '🎧 Attempting to play: ${station.name} from $url (URL ${urlIndex + 1}/${station.streamUrl.length})');
+      debugPrint('🎧 Attempting to play: ${station.name}');
+      debugPrint('   URL ${urlIndex + 1}/${station.streamUrl.length}: $url');
 
-      // Configure player for live streaming
-      await _configurePlayerForLiveStream();
-
-      // Headers to avoid being blocked by some servers
+      // Headers to avoid being blocked by servers
       final headers = {
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebkit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': '*/*',
         'Connection': 'keep-alive',
+        'Icy-MetaData': '1', // Request stream metadata
       };
 
-      // Improved stream source detection
+      // Detect stream type and create appropriate source
       AudioSource source;
-      if (url.contains('.m3u8')) {
+      
+      if (url.contains('.m3u8') || url.contains('m3u8')) {
+        // HLS stream
+        debugPrint('   Format: HLS (m3u8)');
         source = HlsAudioSource(
           Uri.parse(url),
           headers: headers,
@@ -169,7 +196,23 @@ class AudioManager extends ChangeNotifier {
             artUri: Uri.tryParse(station.logoUrl),
           ),
         );
+      } else if (url.contains('streamtheworld') || url.contains('.pls')) {
+        // StreamTheWorld or PLS streams - often need special handling
+        debugPrint('   Format: StreamTheWorld/PLS');
+        source = AudioSource.uri(
+          Uri.parse(url),
+          headers: headers,
+          tag: MediaItem(
+            id: station.id,
+            title: station.name,
+            album: 'Pivote Radio',
+            artist: station.frequency,
+            artUri: Uri.tryParse(station.logoUrl),
+          ),
+        );
       } else {
+        // Standard MP3/AAC stream
+        debugPrint('   Format: Standard (MP3/AAC)');
         source = AudioSource.uri(
           Uri.parse(url),
           headers: headers,
@@ -185,50 +228,46 @@ class AudioManager extends ChangeNotifier {
 
       // Set audio source with timeout
       await _player.setAudioSource(source, preload: false).timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 20),
         onTimeout: () {
-          throw TimeoutException('Stream connection timeout');
+          throw TimeoutException('Stream connection timeout after 20s');
         },
       );
 
+      // Configure for live streaming
+      await _player.setVolume(1.0);
+
       // Start playback
       await _player.play();
+      
       _retryCount = 0; // Reset retry count on success
-      debugPrint('✅ Now playing: ${station.name}');
+      _currentUrlIndex = urlIndex; // Save successful URL index
+      
+      debugPrint('✅ Successfully playing: ${station.name}');
       notifyListeners();
     } catch (e) {
-      debugPrint(
-          '❌ Error playing station ${station.name} with URL $urlIndex: $e');
+      debugPrint('❌ Error playing ${station.name} with URL $urlIndex: $e');
 
       // Try next URL if available
       if (urlIndex + 1 < station.streamUrl.length) {
-        debugPrint('🔄 Trying next URL...');
-        _currentUrlIndex = urlIndex + 1;
-        await _playWithUrl(station, _currentUrlIndex);
+        debugPrint('🔄 Trying next URL (${urlIndex + 2}/${station.streamUrl.length})...');
+        await Future.delayed(const Duration(milliseconds: 500));
+        await _playWithUrl(station, urlIndex + 1);
       } else {
         // All URLs failed, attempt reconnection with first URL
+        debugPrint('⚠️ All URLs failed, starting reconnection attempts...');
+        _currentUrlIndex = 0;
         _attemptReconnection();
       }
-    }
-  }
-
-  /// Configure player settings optimized for live streaming
-  Future<void> _configurePlayerForLiveStream() async {
-    try {
-      // Set audio session for media playback
-      await _player.setVolume(1.0);
-      // Note: just_audio handles buffering automatically for live streams
-      // Additional configuration can be added here if needed
-    } catch (e) {
-      debugPrint('⚠️ Error configuring player: $e');
     }
   }
 
   /// Attempt automatic reconnection with exponential backoff
   void _attemptReconnection() {
     if (_currentStation == null || _isReconnecting) return;
+    
     if (_retryCount >= _maxRetries) {
-      debugPrint('❌ Max reconnection attempts reached');
+      debugPrint('❌ Max reconnection attempts reached ($_maxRetries)');
       _currentStation = null;
       _isReconnecting = false;
       notifyListeners();
@@ -238,17 +277,17 @@ class AudioManager extends ChangeNotifier {
     _isReconnecting = true;
     notifyListeners();
 
-    // Calculate delay with exponential backoff
-    final delay = _initialRetryDelay * (1 << _retryCount); // 2^retryCount
+    // Calculate delay with exponential backoff: 2s, 4s, 8s
+    final delay = _initialRetryDelay * (1 << _retryCount);
     _retryCount++;
 
-    debugPrint(
-        '🔄 Reconnection attempt $_retryCount/$_maxRetries in ${delay.inSeconds}s...');
+    debugPrint('🔄 Reconnection attempt $_retryCount/$_maxRetries in ${delay.inSeconds}s...');
 
     _reconnectionTimer = Timer(delay, () async {
       if (_currentStation != null) {
-        debugPrint('🔄 Attempting to reconnect to ${_currentStation!.name}...');
+        debugPrint('🔄 Reconnecting to ${_currentStation!.name}...');
         try {
+          // Try current URL index first, then fallback to others
           await _playWithUrl(_currentStation!, _currentUrlIndex);
           _isReconnecting = false;
           notifyListeners();
@@ -256,6 +295,9 @@ class AudioManager extends ChangeNotifier {
           debugPrint('❌ Reconnection failed: $e');
           _attemptReconnection(); // Try again
         }
+      } else {
+        _isReconnecting = false;
+        notifyListeners();
       }
     });
   }
@@ -268,26 +310,42 @@ class AudioManager extends ChangeNotifier {
     _retryCount = 0;
   }
 
-  /// Stop playback and cleanup
+  /// Stop playback and cleanup - CRITICAL FOR YOUR REQUEST
+  /// This MUST be called when exiting the player screen
   Future<void> stop() async {
+    debugPrint('🛑 Stopping playback...');
     _cancelReconnection();
-    await _player.stop();
+    
+    try {
+      await _player.stop();
+      await _player.seek(Duration.zero);
+    } catch (e) {
+      debugPrint('⚠️ Error stopping player: $e');
+    }
+    
     _currentStation = null;
     _currentUrlIndex = 0;
     _retryCount = 0;
     notifyListeners();
+    debugPrint('✅ Playback stopped and cleaned up');
   }
 
   /// Pause playback
   Future<void> pause() async {
     _cancelReconnection();
-    await _player.pause();
+    try {
+      await _player.pause();
+      debugPrint('⏸️ Playback paused');
+    } catch (e) {
+      debugPrint('❌ Error pausing: $e');
+    }
   }
 
   /// Resume playback
   Future<void> resume() async {
     try {
       await _player.play();
+      debugPrint('▶️ Playback resumed');
     } catch (e) {
       debugPrint('❌ Error resuming playback: $e');
       // If resume fails, attempt reconnection
@@ -297,8 +355,10 @@ class AudioManager extends ChangeNotifier {
 
   @override
   void dispose() {
+    debugPrint('🗑️ Disposing AudioManager');
     _cancelReconnection();
     _playerStateSubscription?.cancel();
+    _playbackEventSubscription?.cancel();
     _player.dispose();
     super.dispose();
   }

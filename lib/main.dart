@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/channel_provider.dart';
@@ -24,6 +25,10 @@ void main() async {
   // Initialize Firebase
   await FirebaseService.initialize();
 
+  // ⚡ IMPORTANTE: Inicializar AudioManager ANTES de runApp para soporte de background
+  final audioManager = AudioManager();
+  await audioManager.initialize();
+
   // IMPORTANTE: NO restringir orientaciones aquí
   // Las pantallas individuales manejarán sus propias orientaciones
   // Esto permite que PlayerScreen pueda rotar a landscape
@@ -34,11 +39,13 @@ void main() async {
     DeviceOrientation.landscapeRight,
   ]);
 
-  runApp(const PivoteApp());
+  runApp(PivoteApp(audioManager: audioManager));
 }
 
 class PivoteApp extends StatelessWidget {
-  const PivoteApp({super.key});
+  final AudioManager audioManager;
+  
+  const PivoteApp({super.key, required this.audioManager});
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +62,8 @@ class PivoteApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MatchProvider()),
         ChangeNotifierProvider(create: (_) => SoccerProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => AudioManager()..initialize()),
+        // ⚡ CRÍTICO: Usar .value para pasar el AudioManager ya inicializado
+        ChangeNotifierProvider.value(value: audioManager),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -94,30 +102,26 @@ class _AuthenticationWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: _checkAuthStatus(),
+    return StreamBuilder<User?>(
+      stream: AuthService.authStateChanges,
       builder: (context, snapshot) {
-        // While checking authentication, show nothing (splash screen is still visible)
+        // Mientras esperamos el primer valor del stream
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox.shrink();
         }
 
-        // Remove splash screen once we know the auth status
-        FlutterNativeSplash.remove();
+        // Una vez que tenemos el estado, quitamos el splash screen
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          FlutterNativeSplash.remove();
+        });
 
-        // Navigate based on authentication status
-        if (snapshot.data == true) {
+        // Navegación basada en el estado de autenticación
+        if (snapshot.hasData && snapshot.data != null) {
           return const MainScreen();
         } else {
           return const LoginScreen();
         }
       },
     );
-  }
-
-  Future<bool> _checkAuthStatus() async {
-    // Add a small delay to ensure smooth transition
-    await Future.delayed(const Duration(milliseconds: 300));
-    return await AuthService.isLoggedIn();
   }
 }

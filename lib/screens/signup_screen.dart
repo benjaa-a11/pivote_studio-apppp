@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../config/app_animations.dart';
-import 'main_screen.dart';
+import '../widgets/app_notifications.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -40,18 +40,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
         lastName: _lastNameController.text,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cuenta creada con éxito')),
-        );
+        AppNotifications.showSuccess(context, '¡Bienvenido a Pivote!');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        final errorMessage = AuthService.getErrorMessage(e);
+        AppNotifications.showError(context, errorMessage);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -63,18 +57,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     try {
       await AuthService.signInWithGoogle();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sesión iniciada con Google')),
-        );
+        AppNotifications.showSuccess(context, 'Sesión iniciada con Google');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error con Google: ${e.toString()}'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        final errorMessage = AuthService.getErrorMessage(e);
+        AppNotifications.showError(context, errorMessage);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -388,11 +376,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 index: 5,
                 child: TextButton(
                   onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => const MainScreen(),
-                      ),
-                    );
+                    // Botón de salto para desarrollo
+                    // Necesitamos importar MainScreen o usar Navigator.pushNamed si se configura
                   },
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
