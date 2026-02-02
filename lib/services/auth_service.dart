@@ -8,7 +8,10 @@ import '../models/user_model.dart';
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final GoogleSignIn _googleSignIn = GoogleSignIn();
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId:
+        '451817571128-ch6b02prjtv8njpek34v233bv3itfpjn.apps.googleusercontent.com',
+  );
   static const String _usersCollection = 'usuarios-pivote';
 
   /// Stream of auth state changes

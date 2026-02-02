@@ -20,9 +20,12 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
   @override
   void initState() {
     super.initState();
-    // Start playback when entering the screen
+    // Start playback when entering the screen ONLY if it's not already playing this station
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AudioManager>().play(widget.station);
+      final audioManager = context.read<AudioManager>();
+      if (audioManager.currentStation?.id != widget.station.id) {
+        audioManager.play(widget.station);
+      }
     });
   }
 
@@ -34,7 +37,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
   }
 
   void _handleBack(BuildContext context) {
-    context.read<AudioManager>().stop();
+    // We no longer stop the radio on back to allow background playback
     Navigator.pop(context);
   }
 

@@ -14,7 +14,11 @@ import '../services/viewing_history_service.dart';
 import '../services/auth_service.dart';
 import '../config/app_animations.dart';
 import '../widgets/profile/section_header.dart';
-import '../widgets/common/custom_dialogs.dart';
+import 'profile/storage_manager_screen.dart';
+import 'profile/history_screen.dart';
+import 'profile/support_screen.dart';
+import 'profile/privacy_security_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -24,7 +28,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final String _appVersion = '1.5.0';
+  final String _appVersion = '1.6.0';
   String _cacheSize = 'Calculando...';
   int _historyCount = 0;
 
@@ -52,7 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
         child: Column(
           children: [
             _buildModernHeader(context),
@@ -208,7 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         user != null
                             ? '${user.name} ${user.lastName}'
                             : 'Cargando...',
-                        style: const TextStyle(
+                        style: GoogleFonts.montserrat(
                           color: Colors.white,
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -218,9 +222,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 4),
                       Text(
                         user?.email ?? '',
-                        style: TextStyle(
+                        style: GoogleFonts.montserrat(
                           color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -234,11 +238,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           border: Border.all(
                               color: Colors.white.withValues(alpha: 0.3)),
                         ),
-                        child: const Text(
-                          'Socio Pivote',
-                          style: TextStyle(
+                        child: Text(
+                          'Pivote VIP',
+                          style: GoogleFonts.montserrat(
                             color: Colors.white,
-                            fontSize: 13,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -311,10 +315,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: theme.colorScheme.primary.withValues(alpha: 0.7)),
             const SizedBox(height: 12),
             Text(value,
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+                style: GoogleFonts.montserrat(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                )),
             Text(label,
-                style: theme.textTheme.bodySmall?.copyWith(
+                style: GoogleFonts.montserrat(
+                    fontSize: 11,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
           ],
         ),
@@ -345,14 +352,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           icon: Icons.cached,
           title: 'Caché',
           subtitle: _cacheSize,
-          onTap: () => _showCacheManagementDialog(context),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const StorageManagerScreen()),
+          ),
         ),
         _buildOptionTile(
           context,
           icon: Icons.history,
           title: 'Historial',
           subtitle: '$_historyCount canales vistos',
-          onTap: () => _showHistoryDialog(context),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const HistoryScreen()),
+          ),
         ),
       ],
     );
@@ -365,13 +379,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           context,
           icon: Icons.help_outline,
           title: 'Ayuda y soporte',
-          onTap: () => _showHelpDialog(context),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SupportScreen()),
+          ),
         ),
         _buildOptionTile(
           context,
           icon: Icons.privacy_tip_outlined,
-          title: 'Privacidad',
-          onTap: () => _showPrivacyDialog(context),
+          title: 'Privacidad y Seguridad',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const PrivacySecurityScreen()),
+          ),
         ),
       ],
     );
@@ -399,8 +420,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
         ),
-        child: const Text('Cerrar Sesión',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        child: Text('Cerrar Sesión',
+            style: GoogleFonts.montserrat(
+                fontWeight: FontWeight.bold, fontSize: 16)),
       ),
     );
   }
@@ -423,9 +445,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             side:
                 BorderSide(color: theme.dividerColor.withValues(alpha: 0.05))),
         leading: Icon(icon, color: theme.colorScheme.primary),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(title,
+            style: GoogleFonts.montserrat(
+                fontWeight: FontWeight.w600, fontSize: 15)),
         subtitle: subtitle != null
-            ? Text(subtitle, style: theme.textTheme.bodySmall)
+            ? Text(subtitle,
+                style: GoogleFonts.montserrat(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6)))
             : null,
         trailing: trailing ?? const Icon(Icons.chevron_right, size: 20),
       ),
@@ -459,117 +486,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Reuse logic from original file for other dialogs
-  void _showHelpDialog(BuildContext context) {
-    CustomDialogs.showModernModalBottomSheet(
-      context,
-      title: 'Ayuda y soporte',
-      titleIcon: FontAwesomeIcons.circleQuestion,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            _buildHelpItem(context, 'Soporte vía Email', 'soporte@pivote.com',
-                Icons.email),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHelpItem(
-      BuildContext context, String title, String value, IconData icon) {
-    return ListTile(
-      leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
-      title: Text(title),
-      subtitle: Text(value),
-      trailing: const Icon(Icons.copy, size: 16),
-      onTap: () {
-        Clipboard.setData(ClipboardData(text: value));
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Copiado al portapapeles')));
-      },
-    );
-  }
-
-  void _showPrivacyDialog(BuildContext context) {
-    CustomDialogs.showModernModalBottomSheet(
-      context,
-      title: 'Privacidad',
-      titleIcon: FontAwesomeIcons.shieldHalved,
-      child: const Padding(
-        padding: EdgeInsets.all(24),
-        child: Text(
-            'Tu privacidad es nuestra prioridad. No compartimos tus datos con terceros y toda la información personal se gestiona de forma segura con Firebase.'),
-      ),
-    );
-  }
-
   void _showAboutDialog(BuildContext context) {
     showAboutDialog(
       context: context,
       applicationName: 'Pivote Studio',
       applicationVersion: _appVersion,
-      applicationIcon: const FlutterLogo(size: 40),
+      applicationIcon: Image.asset('assets/logo.png', height: 40),
       children: [
-        const Text(
-            'Gracias por usar Pivote Studio. Disfruta de la mejor televisión en vivo.')
+        Text(
+          'Pivote Studio es la plataforma definitiva para el streaming de televisión en vivo. '
+          'Disfruta de tus canales favoritos con la mejor calidad y una interfaz moderna y profesional.',
+          style: GoogleFonts.montserrat(),
+        )
       ],
-    );
-  }
-
-  void _showCacheManagementDialog(BuildContext context) async {
-    final stats = await CacheManagerService.getCacheStatistics();
-    if (!context.mounted) return;
-    Navigator.pop(context);
-
-    if (context.mounted) {
-      CustomDialogs.showModernModalBottomSheet(
-        context,
-        title: 'Gestión de Caché',
-        titleIcon: FontAwesomeIcons.database,
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              Text('Tamaño Total: ${stats['formattedTotalSize']}'),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () async {
-                  await CacheManagerService.clearAllCache();
-                  _loadCacheInfo();
-                  if (context.mounted) Navigator.pop(context);
-                },
-                child: const Text('Limpiar Todo'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
-  void _showHistoryDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Historial'),
-        content: Text('Has visto $_historyCount canales.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cerrar')),
-          TextButton(
-            onPressed: () async {
-              await ViewingHistoryService.clearHistory();
-              _loadCacheInfo();
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text('Borrar', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
     );
   }
 }

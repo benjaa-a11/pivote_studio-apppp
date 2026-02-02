@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:google_fonts/google_fonts.dart';
+
 /// Modern section header for profile groups
 class SectionHeader extends StatelessWidget {
   final IconData icon;
@@ -39,10 +41,11 @@ class SectionHeader extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.grey[300] : Colors.grey[800],
-                ),
+            style: GoogleFonts.montserrat(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.grey[300] : Colors.grey[800],
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

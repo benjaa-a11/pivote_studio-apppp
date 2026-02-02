@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:audio_session/audio_session.dart';
 import 'dart:async';
 import '../models/radio.dart' as model;
 
@@ -36,19 +37,56 @@ class AudioManager extends ChangeNotifier {
   bool get isPlaying => _player.playing;
   bool get isReconnecting => _isReconnecting;
 
-  /// Initialize background audio support
+  /// Initialize background audio support and audio session
   Future<void> initialize() async {
     if (_isInit) return;
     try {
+      // 1. Initialize Background Service
       await JustAudioBackground.init(
         androidNotificationChannelId: 'com.pivote.radio_playback',
         androidNotificationChannelName: 'Radio Playback',
         androidNotificationOngoing: true,
+        androidResumeOnClick: true,
       );
+
+      // 2. Configure Audio Session (Handling calls, other apps, etc.)
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.music());
+
+      // Handle audio focus loss
+      session.interruptionEventStream.listen((event) {
+        if (event.begin) {
+          switch (event.type) {
+            case AudioInterruptionType.duck:
+              _player.setVolume(0.5);
+              break;
+            case AudioInterruptionType.pause:
+            case AudioInterruptionType.unknown:
+              pause();
+              break;
+          }
+        } else {
+          switch (event.type) {
+            case AudioInterruptionType.duck:
+              _player.setVolume(1.0);
+              break;
+            case AudioInterruptionType.pause:
+              resume();
+              break;
+            case AudioInterruptionType.unknown:
+              break;
+          }
+        }
+      });
+
+      // Handle unplugging headphones
+      session.becomingNoisyEventStream.listen((_) => pause());
+
       _isInit = true;
-      debugPrint('✅ AudioManager initialized with background support');
+      debugPrint(
+          '✅ AudioManager initialized with background and session support');
     } catch (e) {
-      debugPrint('❌ Error initializing JustAudioBackground: $e');
+      debugPrint('❌ Error initializing JustAudio: $e');
     }
   }
 
@@ -109,20 +147,44 @@ class AudioManager extends ChangeNotifier {
       // Configure player for live streaming
       await _configurePlayerForLiveStream();
 
-      // Create AudioSource with background info
-      final source = AudioSource.uri(
-        Uri.parse(url),
-        tag: MediaItem(
-          id: station.id,
-          title: station.name,
-          album: 'Pivote Radio',
-          artist: station.frequency,
-          artUri: Uri.tryParse(station.logoUrl),
-        ),
-      );
+      // Headers to avoid being blocked by some servers
+      final headers = {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebkit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Connection': 'keep-alive',
+      };
+
+      // Improved stream source detection
+      AudioSource source;
+      if (url.contains('.m3u8')) {
+        source = HlsAudioSource(
+          Uri.parse(url),
+          headers: headers,
+          tag: MediaItem(
+            id: station.id,
+            title: station.name,
+            album: 'Pivote Radio',
+            artist: station.frequency,
+            artUri: Uri.tryParse(station.logoUrl),
+          ),
+        );
+      } else {
+        source = AudioSource.uri(
+          Uri.parse(url),
+          headers: headers,
+          tag: MediaItem(
+            id: station.id,
+            title: station.name,
+            album: 'Pivote Radio',
+            artist: station.frequency,
+            artUri: Uri.tryParse(station.logoUrl),
+          ),
+        );
+      }
 
       // Set audio source with timeout
-      await _player.setAudioSource(source).timeout(
+      await _player.setAudioSource(source, preload: false).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
           throw TimeoutException('Stream connection timeout');
