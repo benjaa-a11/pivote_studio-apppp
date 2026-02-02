@@ -1,12 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
 
 /// Service to manage user authentication and session using Firebase Auth
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final GoogleSignIn _googleSignIn = GoogleSignIn();
   static const String _usersCollection = 'usuarios-pivote';
 
   /// Stream of auth state changes
@@ -21,6 +23,48 @@ class AuthService {
       email: email.trim(),
       password: password,
     );
+  }
+
+  /// Sign in with Google
+  static Future<void> signInWithGoogle() async {
+    try {
+      // Trigger the authentication flow
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return; // User canceled
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Create a new credential
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Once signed in, return the UserCredential
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
+
+      if (userCredential.user != null) {
+        final user = userCredential.user!;
+        final nameParts = user.displayName?.split(' ') ?? ['Usuario', ''];
+        final firstName = nameParts.first;
+        final lastName =
+            nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+        // Check/Create user in Firestore
+        await _createTextUserDocument(
+          uid: user.uid,
+          email: user.email ?? '',
+          name: firstName,
+          lastName: lastName,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error in Google Sign-In: $e');
+      rethrow;
+    }
   }
 
   /// Sign up with email, password, name and lastName
@@ -103,7 +147,10 @@ class AuthService {
 
   /// Logout user
   static Future<void> logout() async {
-    await _auth.signOut();
+    await Future.wait([
+      _auth.signOut(),
+      _googleSignIn.signOut(),
+    ]);
   }
 
   /// Update user information in Firestore

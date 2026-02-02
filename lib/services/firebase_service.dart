@@ -1,15 +1,26 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import '../firebase_options.dart';
 
 class FirebaseService {
   static FirebaseFirestore? _firestore;
+  static bool _isInitialized = false;
 
   static Future<void> initialize() async {
     try {
-      // Initialize Firebase
-      await Firebase.initializeApp();
+      // Avoid re-initialization
+      if (Firebase.apps.isNotEmpty) {
+        _isInitialized = true;
+        return;
+      }
+
+      // Initialize Firebase with proper options
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
       _firestore = FirebaseFirestore.instance;
+      _isInitialized = true;
 
       if (kDebugMode) {
         debugPrint('Firebase initialized successfully');
@@ -17,9 +28,14 @@ class FirebaseService {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error initializing Firebase: $e');
+        debugPrint('App will continue with limited functionality');
       }
+      // Don't throw - allow app to continue without Firebase
+      _isInitialized = false;
     }
   }
+
+  static bool get isInitialized => _isInitialized;
 
   static FirebaseFirestore get firestore {
     if (_firestore == null) {

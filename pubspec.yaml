@@ -57,6 +57,7 @@ dependencies:
   firebase_auth: ^4.16.0
   image_picker: ^1.2.1
   path: ^1.9.1
+  google_sign_in: ^6.2.1
 
 # Flutter Native Splash configuration
 flutter_native_splash:
@@ -78,25 +79,8 @@ flutter:
     - assets/logo.svg
     - assets/logo.png
     - assets/icons/
-    - assets/icons/home_16.svg
-    - assets/icons/home_active_16.svg
-    - assets/icons/favorite_16.svg
-    - assets/icons/favorite_active_16.svg
-    - assets/icons/user_16.svg
-    - assets/icons/user_active_16.svg
-    - assets/icons/filter_16.svg
-    - assets/icons/filter_active_16.svg
-    - assets/icons/volume_16.svg
-    - assets/icons/volume_off_16.svg
     
     - assets/icons/player/
-    - assets/icons/player/caido.svg
-    - assets/icons/player/pantalla-completa.svg
-    - assets/icons/player/pause.svg
-    - assets/icons/player/play.svg
-    - assets/icons/player/salir-pantalla-completa.svg
-    - assets/icons/player/transmitir.svg
-    - assets/icons/player/hd.svg
     - assets/FWC-26/
 
     
