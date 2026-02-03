@@ -12,59 +12,48 @@ class ConnectivityWrapper extends StatefulWidget {
 }
 
 class _ConnectivityWrapperState extends State<ConnectivityWrapper> {
-  late Future<ConnectivityResult> _initialConnectivity;
-
   @override
   void initState() {
     super.initState();
-    // Check initial connectivity state immediately
-    _initialConnectivity = Connectivity().checkConnectivity();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<ConnectivityResult>(
-      future: _initialConnectivity,
-      builder: (context, initialSnapshot) {
-        // Show loading while checking initial connection
-        if (!initialSnapshot.hasData) {
-          return Container(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            child: Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
+    return StreamBuilder<ConnectivityResult>(
+      stream: Connectivity().onConnectivityChanged,
+      builder: (context, snapshot) {
+        final result = snapshot.data;
+
+        // While we don't have the first result, we check it manually
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return FutureBuilder<ConnectivityResult>(
+            future: Connectivity().checkConnectivity(),
+            builder: (context, initialSnapshot) {
+              if (!initialSnapshot.hasData) {
+                return const Scaffold(body: SizedBox.shrink());
+              }
+              return _buildContent(context, initialSnapshot.data!);
+            },
           );
         }
 
-        // Once we have initial state, listen to changes
-        return StreamBuilder<ConnectivityResult>(
-          stream: Connectivity().onConnectivityChanged,
-          initialData: initialSnapshot.data,
-          builder: (context, streamSnapshot) {
-            final result = streamSnapshot.data;
-            final isOffline = result == ConnectivityResult.none;
-
-            if (isOffline) {
-              return NoInternetScreen(
-                onRetry: () async {
-                  // Force a refresh by checking connectivity
-                  final newResult = await Connectivity().checkConnectivity();
-                  if (newResult != ConnectivityResult.none) {
-                    // Trigger rebuild by updating state
-                    setState(() {
-                      _initialConnectivity = Future.value(newResult);
-                    });
-                  }
-                },
-              );
-            }
-
-            return widget.child;
-          },
-        );
+        return _buildContent(context, result ?? ConnectivityResult.none);
       },
     );
+  }
+
+  Widget _buildContent(BuildContext context, ConnectivityResult result) {
+    final isOffline = result == ConnectivityResult.none;
+
+    if (isOffline) {
+      return NoInternetScreen(
+        onRetry: () async {
+          await Connectivity().checkConnectivity();
+          // The stream will notify us if it changes
+        },
+      );
+    }
+
+    return widget.child;
   }
 }

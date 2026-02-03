@@ -15,14 +15,10 @@ class AppTheme {
   static const Color darkSecondaryForeground = Color(0xFFE2E8F0); // Slate 200
   static const Color darkMutedForeground = Color(0xFF94A3B8); // Slate 400
   static const Color darkBorder = Color(0xFF334155); // Slate 700
-  static const Color darkInput = Color(0xFF1E293B); // Slate 800
   static const Color darkRing = Color(0xFF6366F1); // Indigo 500 (Primary)
 
   static const Color chart1 = Color(0xFF6366F1);
   static const Color chart2 = Color(0xFF10B981);
-  static const Color chart3 = Color(0xFFF59E0B);
-  static const Color chart4 = Color(0xFFEC4899);
-  static const Color chart5 = Color(0xFF8B5CF6);
 
   // ==================== TEMA CLARO ====================
   // Inspirado en Apple, Google, interfaces modernas
