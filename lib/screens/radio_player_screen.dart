@@ -31,12 +31,8 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
 
   @override
   void dispose() {
-    // ⚠️ CRÍTICO: Detener la radio al salir del player
-    // Esto es lo que solicitaste específicamente
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final audioManager = context.read<AudioManager>();
-      audioManager.stop();
-    });
+    // Don't stop playback - allow background audio to continue
+    // The AudioManager will handle its own lifecycle
     super.dispose();
   }
 

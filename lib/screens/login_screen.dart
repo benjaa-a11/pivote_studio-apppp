@@ -36,15 +36,22 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
       if (mounted) {
+        // Show success message
         AppNotifications.showSuccess(context, '¡Bienvenido de nuevo!');
+
+        // Navigate to MainScreen and remove login screen from stack
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const MainScreen(),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         final errorMessage = AuthService.getErrorMessage(e);
         AppNotifications.showError(context, errorMessage);
+        setState(() => _isLoading = false);
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -53,15 +60,25 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await AuthService.signInWithGoogle();
       if (mounted) {
+        // Show success message
         AppNotifications.showSuccess(context, 'Sesión iniciada con Google');
+
+        // Navigate to MainScreen and remove login screen from stack
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const MainScreen(),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         final errorMessage = AuthService.getErrorMessage(e);
-        AppNotifications.showError(context, errorMessage);
+        // Only show error if it's not a cancellation
+        if (!errorMessage.toLowerCase().contains('cancelado')) {
+          AppNotifications.showError(context, errorMessage);
+        }
+        setState(() => _isLoading = false);
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 

@@ -31,13 +31,27 @@ class AuthService {
   /// Sign in with Google
   static Future<void> signInWithGoogle() async {
     try {
+      // Sign out first to ensure fresh authentication and account selection
+      // This fixes re-authentication issues
+      await _googleSignIn.signOut();
+
       // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return; // User canceled
+
+      // User canceled the sign-in
+      if (googleUser == null) {
+        debugPrint('Google Sign-In canceled by user');
+        return;
+      }
 
       // Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+
+      // Verify we have the required tokens
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        throw Exception('Failed to obtain Google authentication tokens');
+      }
 
       // Create a new credential
       final AuthCredential credential = GoogleAuthProvider.credential(
@@ -45,7 +59,7 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      // Once signed in, return the UserCredential
+      // Sign in to Firebase with the Google credential
       final UserCredential userCredential =
           await _auth.signInWithCredential(credential);
 
@@ -175,6 +189,11 @@ class AuthService {
   /// Map Firebase Auth error codes to professional Spanish messages
   static String getErrorMessage(dynamic error) {
     if (error is! FirebaseAuthException) {
+      // Handle generic errors
+      final errorString = error.toString().toLowerCase();
+      if (errorString.contains('cancel')) {
+        return 'Inicio de sesión cancelado.';
+      }
       return 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.';
     }
 
@@ -197,6 +216,13 @@ class AuthService {
         return 'Error de conexión. Revisa tu internet e inténtalo de nuevo.';
       case 'too-many-requests':
         return 'Demasiados intentos. Por favor, inténtalo más tarde.';
+      case 'account-exists-with-different-credential':
+        return 'Ya existe una cuenta con este correo usando otro método de inicio de sesión.';
+      case 'invalid-credential':
+        return 'Las credenciales proporcionadas son inválidas o han expirado.';
+      case 'popup-closed-by-user':
+      case 'cancelled-popup-request':
+        return 'Inicio de sesión cancelado.';
       default:
         return 'Algo salió mal: ${error.message ?? "Error desconocido"}';
     }

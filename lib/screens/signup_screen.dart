@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../config/app_animations.dart';
 import '../widgets/app_notifications.dart';
+import 'main_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -40,15 +41,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
         lastName: _lastNameController.text,
       );
       if (mounted) {
+        // Show success message
         AppNotifications.showSuccess(context, '¡Bienvenido a Pivote!');
+
+        // Navigate to MainScreen and remove signup screen from stack
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const MainScreen(),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         final errorMessage = AuthService.getErrorMessage(e);
         AppNotifications.showError(context, errorMessage);
+        setState(() => _isLoading = false);
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -57,15 +65,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
     try {
       await AuthService.signInWithGoogle();
       if (mounted) {
+        // Show success message
         AppNotifications.showSuccess(context, 'Sesión iniciada con Google');
+
+        // Navigate to MainScreen and remove signup screen from stack
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const MainScreen(),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         final errorMessage = AuthService.getErrorMessage(e);
-        AppNotifications.showError(context, errorMessage);
+        // Only show error if it's not a cancellation
+        if (!errorMessage.toLowerCase().contains('cancelado')) {
+          AppNotifications.showError(context, errorMessage);
+        }
+        setState(() => _isLoading = false);
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -376,8 +394,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 index: 5,
                 child: TextButton(
                   onPressed: () {
-                    // Botón de salto para desarrollo
-                    // Necesitamos importar MainScreen o usar Navigator.pushNamed si se configura
+                    // Este botón es solo para desarrollo, permite entrar sin registro
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const MainScreen(),
+                      ),
+                    );
                   },
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
