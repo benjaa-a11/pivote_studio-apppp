@@ -6,10 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:video_player/video_player.dart';
+import 'package:better_player_plus/better_player_plus.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../models/channel.dart';
 import 'custom_video_controls.dart';
+import 'unified_video_controller.dart';
 
 enum AspectRatioType {
   auto,
@@ -32,7 +34,15 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  // HLS Player (existing)
   VideoPlayerController? _videoPlayerController;
+
+  // DASH Player (new)
+  BetterPlayerController? _betterPlayerController;
+
+  // Stream type detection
+  StreamType? _streamType;
+
   bool _isLoading = true;
   String? _error;
   bool _isFullScreen = false;
@@ -113,6 +123,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     });
 
     try {
+      // Detect stream type from first URL
+      if (widget.channel.streamUrl.isNotEmpty) {
+        _streamType = widget.channel.getStreamType(widget.channel.streamUrl[0]);
+        debugPrint('🎬 Stream type detected: $_streamType');
+      }
+
       await _tryCurrentServer();
     } catch (e, st) {
       debugPrint('❌ Error en initializePlayer: $e\n$st');
@@ -147,9 +163,17 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     }
 
-    if (url.isEmpty || (!url.contains('.m3u8') && !url.contains('.mp4'))) {
-      debugPrint('⚠️ URL inválida: $url');
-      throw Exception('URL inválida');
+    // Validación de URL según tipo de stream
+    if (_streamType == StreamType.dash) {
+      if (url.isEmpty || !url.contains('.mpd')) {
+        debugPrint('⚠️ URL DASH inválida: $url');
+        throw Exception('URL DASH inválida');
+      }
+    } else {
+      if (url.isEmpty || (!url.contains('.m3u8') && !url.contains('.mp4'))) {
+        debugPrint('⚠️ URL HLS inválida: $url');
+        throw Exception('URL inválida');
+      }
     }
 
     // Timeout ultra-corto (5s) para cambiar de servidor más rápido
@@ -165,7 +189,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     });
 
-    await _initializeVideoPlayer(url);
+    // Inicializar reproductor según tipo de stream
+    if (_streamType == StreamType.dash) {
+      await _initializeBetterPlayer(url);
+    } else {
+      await _initializeVideoPlayer(url);
+    }
   }
 
   Future<String?> _resolveDynamicM3u8Url(String url) async {
@@ -358,7 +387,145 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         if (mounted && !_isDisposed) {
           _safeSetState(() {
             _isLoading = false;
-            _error = 'No se pudo conectar a ningún servidor';
+            _error = 'No se pudo conectar a ningún servidor DASH';
+            _isInitializing = false;
+          });
+        }
+      }
+    }
+  }
+
+  /// Initialize Better Player for DASH streams with DRM ClearKey
+  Future<void> _initializeBetterPlayer(String url) async {
+    if (_isDisposed) return;
+
+    try {
+      // Dispose existing controllers
+      if (_betterPlayerController != null) {
+        await _betterPlayerController!.pause();
+        _betterPlayerController!.dispose();
+        _betterPlayerController = null;
+      }
+      if (_videoPlayerController != null) {
+        if (_listenerAttached) {
+          _videoPlayerController!.removeListener(_videoListener);
+          _listenerAttached = false;
+        }
+        await _videoPlayerController!.pause();
+        await _videoPlayerController!.dispose();
+        _videoPlayerController = null;
+      }
+
+      debugPrint('🎬 DASH Servidor ${_currentServerIndex + 1}: $url');
+
+      // Configure DRM if keys are provided
+      BetterPlayerDrmConfiguration? drmConfiguration;
+      if (widget.channel.k1 != null && widget.channel.k2 != null) {
+        debugPrint('🔐 Configurando DRM ClearKey');
+        drmConfiguration = BetterPlayerDrmConfiguration(
+          drmType: BetterPlayerDrmType.clearKey,
+          clearKey: BetterPlayerClearKeyUtils.generateKey({
+            widget.channel.k1!: widget.channel.k2!,
+          }),
+        );
+      }
+
+      // Create data source
+      final dataSource = BetterPlayerDataSource(
+        BetterPlayerDataSourceType.network,
+        url,
+        videoFormat: BetterPlayerVideoFormat.dash,
+        drmConfiguration: drmConfiguration,
+        notificationConfiguration: const BetterPlayerNotificationConfiguration(
+          showNotification: false,
+        ),
+      );
+
+      // Create configuration
+      final configuration = BetterPlayerConfiguration(
+        autoPlay: true,
+        looping: false,
+        fullScreenByDefault: false,
+        fit: BoxFit.contain,
+        aspectRatio: _getAspectRatio(),
+        controlsConfiguration: const BetterPlayerControlsConfiguration(
+          showControls: false, // Use custom controls
+        ),
+        eventListener: (BetterPlayerEvent event) {
+          if (_isDisposed) return;
+
+          if (event.betterPlayerEventType ==
+              BetterPlayerEventType.initialized) {
+            debugPrint('✅ Better Player initialized');
+            _lastSuccessfulPlayTime = DateTime.now();
+          } else if (event.betterPlayerEventType ==
+              BetterPlayerEventType.play) {
+            _lastSuccessfulPlayTime = DateTime.now();
+          } else if (event.betterPlayerEventType ==
+              BetterPlayerEventType.exception) {
+            debugPrint('❌ Better Player exception');
+          }
+
+          _safeSetState(() {});
+        },
+      );
+
+      // Create controller
+      _betterPlayerController = BetterPlayerController(configuration);
+      await _betterPlayerController!.setupDataSource(dataSource);
+
+      if (_isDisposed || !mounted) return;
+
+      _serverTimeoutTimer?.cancel();
+
+      // Set volume
+      await _betterPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
+
+      // Wait for initialization
+      debugPrint('📦 Esperando inicialización DASH...');
+      final startWait = DateTime.now();
+      const maxWait = Duration(seconds: 3);
+      bool initialized = false;
+
+      while (DateTime.now().difference(startWait) < maxWait &&
+          !_isDisposed &&
+          mounted) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (_betterPlayerController!.isVideoInitialized() ?? false) {
+          initialized = true;
+          break;
+        }
+      }
+
+      if (!initialized) {
+        debugPrint('⚠️ Inicialización DASH lenta, continuando...');
+      }
+
+      // Fade in animation
+      _fadeController.forward();
+
+      _safeSetState(() {
+        _isLoading = false;
+        _isInitializing = false;
+        _retryCount = 0;
+      });
+
+      debugPrint('✅ DASH Servidor ${_currentServerIndex + 1} OK');
+    } catch (e, st) {
+      debugPrint('❌ Error DASH servidor ${_currentServerIndex + 1}: $e\n$st');
+
+      if (_isDisposed) return;
+
+      if (_currentServerIndex < widget.channel.streamUrl.length - 1) {
+        _currentServerIndex++;
+        await Future.delayed(_backoffDurationForAttempt(_serverAttempt));
+        _serverAttempt++;
+        await _tryCurrentServer();
+      } else {
+        if (mounted && !_isDisposed) {
+          _safeSetState(() {
+            _isLoading = false;
+            _error = 'No se pudo conectar a ningún servidor DASH';
             _isInitializing = false;
           });
         }
@@ -648,6 +815,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _watchdogTimer?.cancel();
     _fadeController.dispose();
 
+    // Dispose HLS player
     if (_videoPlayerController != null) {
       if (_listenerAttached) {
         _videoPlayerController!.removeListener(_videoListener);
@@ -660,6 +828,17 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _videoPlayerController!.dispose();
       } catch (_) {}
       _videoPlayerController = null;
+    }
+
+    // Dispose DASH player
+    if (_betterPlayerController != null) {
+      try {
+        _betterPlayerController!.pause();
+      } catch (_) {}
+      try {
+        _betterPlayerController!.dispose();
+      } catch (_) {}
+      _betterPlayerController = null;
     }
 
     WakelockPlus.disable();
@@ -841,66 +1020,116 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Widget _buildNativePlayer() {
-    if (_videoPlayerController == null ||
-        !_videoPlayerController!.value.isInitialized) {
-      return _buildLoadingWidget();
-    }
+    // Check which player is active
+    final bool isHLS = _streamType != StreamType.dash;
 
-    final aspectRatio = _getAspectRatio();
+    if (isHLS) {
+      // HLS Player - EXISTING CODE UNCHANGED
+      if (_videoPlayerController == null ||
+          !_videoPlayerController!.value.isInitialized) {
+        return _buildLoadingWidget();
+      }
 
-    Widget videoContent = Center(
-      child: _aspectRatioType == AspectRatioType.stretch
-          ? SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _videoPlayerController!.value.size.width,
-                  height: _videoPlayerController!.value.size.height,
-                  child: VideoPlayer(_videoPlayerController!),
+      final aspectRatio = _getAspectRatio();
+
+      Widget videoContent = Center(
+        child: _aspectRatioType == AspectRatioType.stretch
+            ? SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _videoPlayerController!.value.size.width,
+                    height: _videoPlayerController!.value.size.height,
+                    child: VideoPlayer(_videoPlayerController!),
+                  ),
                 ),
+              )
+            : AspectRatio(
+                aspectRatio: aspectRatio,
+                child: VideoPlayer(_videoPlayerController!),
               ),
+      );
+
+      // Fade in suave al mostrar video
+      Widget playerWidget = Container(
+        color: Colors.black,
+        child: Stack(
+          children: [
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: videoContent,
+            ),
+            Positioned.fill(
+              child: CustomVideoControls(
+                controller: HLSControllerAdapter(_videoPlayerController!),
+                channelName: widget.channel.name,
+                isFullScreen: _isFullScreen,
+                onFullScreenToggle: _toggleFullScreen,
+                aspectRatioLabel: _getAspectRatioLabel(),
+                onAspectRatioChange: _changeAspectRatio,
+                isMuted: _isMuted,
+                onMuteToggle: _toggleMute,
+                currentServer: _currentServerIndex + 1,
+                totalServers: widget.channel.streamUrl.length,
+              ),
+            ),
+          ],
+        ),
+      );
+
+      return _isFullScreen
+          ? MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              removeBottom: true,
+              child: playerWidget,
             )
-          : AspectRatio(
-              aspectRatio: aspectRatio,
-              child: VideoPlayer(_videoPlayerController!),
-            ),
-    );
+          : playerWidget;
+    } else {
+      // DASH Player - NEW CODE
+      if (_betterPlayerController == null ||
+          !(_betterPlayerController!.isVideoInitialized() ?? false)) {
+        return _buildLoadingWidget();
+      }
 
-    // Fade in suave al mostrar video
-    Widget playerWidget = Container(
-      color: Colors.black,
-      child: Stack(
-        children: [
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: videoContent,
-          ),
-          Positioned.fill(
-            child: CustomVideoControls(
-              controller: _videoPlayerController!,
-              channelName: widget.channel.name,
-              isFullScreen: _isFullScreen,
-              onFullScreenToggle: _toggleFullScreen,
-              aspectRatioLabel: _getAspectRatioLabel(),
-              onAspectRatioChange: _changeAspectRatio,
-              isMuted: _isMuted,
-              onMuteToggle: _toggleMute,
-              currentServer: _currentServerIndex + 1,
-              totalServers: widget.channel.streamUrl.length,
+      Widget playerWidget = Container(
+        color: Colors.black,
+        child: Stack(
+          children: [
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: AspectRatio(
+                aspectRatio: _getAspectRatio(),
+                child: BetterPlayer(controller: _betterPlayerController!),
+              ),
             ),
-          ),
-        ],
-      ),
-    );
+            Positioned.fill(
+              child: CustomVideoControls(
+                controller: DASHControllerAdapter(_betterPlayerController!),
+                channelName: widget.channel.name,
+                isFullScreen: _isFullScreen,
+                onFullScreenToggle: _toggleFullScreen,
+                aspectRatioLabel: _getAspectRatioLabel(),
+                onAspectRatioChange: _changeAspectRatio,
+                isMuted: _isMuted,
+                onMuteToggle: _toggleMute,
+                currentServer: _currentServerIndex + 1,
+                totalServers: widget.channel.streamUrl.length,
+              ),
+            ),
+          ],
+        ),
+      );
 
-    return _isFullScreen
-        ? MediaQuery.removePadding(
-            context: context,
-            removeTop: true,
-            removeBottom: true,
-            child: playerWidget,
-          )
-        : playerWidget;
+      return _isFullScreen
+          ? MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              removeBottom: true,
+              child: playerWidget,
+            )
+          : playerWidget;
+    }
   }
 
   void _safeSetState(VoidCallback fn) {

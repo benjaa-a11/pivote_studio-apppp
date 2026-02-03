@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
+import 'unified_video_controller.dart';
 
 class CustomVideoControls extends StatefulWidget {
-  final VideoPlayerController controller;
+  final UnifiedVideoController controller;
   final String channelName;
   final VoidCallback? onFullScreenToggle;
   final bool isFullScreen;
@@ -107,7 +107,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   void _startHideTimer() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && widget.controller.value.isPlaying) {
+      if (mounted && widget.controller.isPlaying) {
         setState(() {
           _showControls = false;
           _fadeController.reverse();
@@ -146,7 +146,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         child: Stack(
           children: [
             // Indicador de buffering mejorado
-            if (widget.controller.value.isBuffering) _buildBufferingIndicator(),
+            if (widget.controller.isBuffering) _buildBufferingIndicator(),
 
             // Toast de aspect ratio con animación
             if (_showAspectRatioToast) _buildAspectRatioToast(),

@@ -11,6 +11,11 @@ class Channel {
   final int order; // Default display order (lower = higher priority)
   bool isFavorite;
 
+  // DASH DRM Support
+  final String? type; // 'hls' or 'dash' - optional for backward compatibility
+  final String? k1; // DRM ClearKey key 1
+  final String? k2; // DRM ClearKey key 2
+
   Channel({
     required this.id,
     required this.name,
@@ -22,6 +27,9 @@ class Channel {
     this.isHidden = false,
     this.order = 999, // Default to end if not specified
     this.isFavorite = false,
+    this.type, // Optional: 'hls' or 'dash'
+    this.k1, // Optional: DRM key 1
+    this.k2, // Optional: DRM key 2
   });
 
   factory Channel.fromJson(Map<String, dynamic> json) {
@@ -50,6 +58,9 @@ class Channel {
       isHidden: json['isHidden'] ?? false,
       order: json['order'] ?? 999, // Add order field with default
       isFavorite: json['isFavorite'] ?? false,
+      type: json['type'], // Optional: stream type
+      k1: json['k1'], // Optional: DRM key 1
+      k2: json['k2'], // Optional: DRM key 2
     );
   }
 
@@ -65,19 +76,32 @@ class Channel {
       'isHidden': isHidden,
       'order': order, // Add order field
       'isFavorite': isFavorite,
+      'type': type, // Stream type
+      'k1': k1, // DRM key 1
+      'k2': k2, // DRM key 2
     };
   }
 
   StreamType getStreamType(String url) {
-    // Improved detection for different stream types
-    if (url.contains('.m3u8') || url.contains('m3u')) {
+    // Priority 1: Use explicit type field if available
+    if (type != null) {
+      if (type!.toLowerCase() == 'dash') return StreamType.dash;
+      if (type!.toLowerCase() == 'hls') return StreamType.m3u8;
+    }
+
+    // Priority 2: Detect from URL extension
+    if (url.contains('.mpd')) {
+      return StreamType.dash;
+    } else if (url.contains('.m3u8') || url.contains('m3u')) {
       return StreamType.m3u8;
     } else if (url.contains('.mp4') || url.contains('.mkv')) {
       return StreamType.mp4;
     } else if (url.contains('iframe') ||
         url.contains('embed') ||
         url.contains('pivopro.vercel.app') ||
-        (!url.contains('.m3u8') && !url.contains('.mp4'))) {
+        (!url.contains('.m3u8') &&
+            !url.contains('.mp4') &&
+            !url.contains('.mpd'))) {
       // If it doesn't contain typical video extensions but has a URL, treat as iframe
       return StreamType.iframe;
     }
@@ -96,6 +120,9 @@ class Channel {
     bool? isHidden,
     int? order, // Add order parameter
     bool? isFavorite,
+    String? type, // Add type parameter
+    String? k1, // Add k1 parameter
+    String? k2, // Add k2 parameter
   }) {
     return Channel(
       id: id ?? this.id,
@@ -108,6 +135,9 @@ class Channel {
       isHidden: isHidden ?? this.isHidden,
       order: order ?? this.order, // Add order parameter
       isFavorite: isFavorite ?? this.isFavorite,
+      type: type ?? this.type, // Add type parameter
+      k1: k1 ?? this.k1, // Add k1 parameter
+      k2: k2 ?? this.k2, // Add k2 parameter
     );
   }
 
@@ -124,4 +154,5 @@ enum StreamType {
   m3u8,
   mp4,
   iframe,
+  dash, // DASH with DRM support
 }
