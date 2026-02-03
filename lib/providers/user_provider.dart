@@ -2,8 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
@@ -57,23 +55,38 @@ class UserProvider with ChangeNotifier {
     );
 
     if (pickedFile != null) {
-      final appDir = await getApplicationDocumentsDirectory();
-      final fileName =
-          'profile_${DateTime.now().millisecondsSinceEpoch}${path.extension(pickedFile.path)}';
-      final savedImage =
-          await File(pickedFile.path).copy('${appDir.path}/$fileName');
+      _profileImagePath = pickedFile.path;
+      notifyListeners();
 
-      // Delete old image if exists
-      if (_profileImagePath != null) {
-        final oldFile = File(_profileImagePath!);
-        if (oldFile.existsSync()) {
-          await oldFile.delete();
+      try {
+        final downloadUrl =
+            await AuthService.uploadProfileImage(File(pickedFile.path));
+
+        // Update user model with new photo URL
+        if (_user != null) {
+          final updatedUser = _user!.copyWith(photoUrl: downloadUrl);
+          await AuthService.updateUser(updatedUser);
+          _user = updatedUser;
+
+          // Also save path locally as cache
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('profile_image_path', pickedFile.path);
         }
+      } catch (e) {
+        debugPrint('Error uploading profile image: $e');
+        // Revert or show error handled by UI
       }
+      notifyListeners();
+    }
+  }
 
-      _profileImagePath = savedImage.path;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('profile_image_path', _profileImagePath!);
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      await AuthService.updatePassword(newPassword);
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }

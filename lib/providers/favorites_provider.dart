@@ -16,6 +16,20 @@ class FavoritesProvider extends ChangeNotifier {
 
   FavoritesProvider() {
     _loadFavorites();
+    _initAuthListener();
+  }
+
+  void _initAuthListener() {
+    AuthService.authStateChanges.listen((user) {
+      if (user != null) {
+        // User logged in, sync from firestore
+        _syncFromFirestore();
+      } else {
+        // User logged out
+        // Optional: clear favorites or keep local?
+        // Let's keep local for guest experience but stop syncing
+      }
+    });
   }
 
   List<String> get favoriteIds => _favoriteIds.toList();

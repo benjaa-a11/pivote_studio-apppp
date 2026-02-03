@@ -47,57 +47,48 @@ class SoccerMatchCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
-          child: Column(
-            children: [
-              // Header: Stage and Status
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      match.stage.toUpperCase(),
-                      style: GoogleFonts.inter(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.4),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 9,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    _buildStatusBadge(theme),
-                  ],
+      child: Column(
+        children: [
+          // Header: Stage and Status
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  match.stage.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 9,
+                    letterSpacing: 0.8,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-
-              // Main content: Teams and Score/Time
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    _buildTeamCol(homeTeam, theme),
-                    Expanded(
-                      child: _buildCenterSection(theme, isLive),
-                    ),
-                    _buildTeamCol(awayTeam, theme),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Footer: TV Channels
-              if (match.tvChannels.isNotEmpty)
-                _buildChannelsFooter(theme, isDark),
-            ],
+                _buildStatusBadge(theme),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(height: 12),
+
+          // Main content: Teams and Score/Time
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                _buildTeamCol(homeTeam, theme),
+                Expanded(
+                  child: _buildCenterSection(theme, isLive),
+                ),
+                _buildTeamCol(awayTeam, theme),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Footer: TV Channels
+          if (match.tvChannels.isNotEmpty) _buildChannelsFooter(theme, isDark),
+        ],
       ),
     );
   }
@@ -247,40 +238,33 @@ class SoccerMatchCard extends StatelessWidget {
     return Expanded(
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.03),
-              shape: BoxShape.circle,
-            ),
-            child: team.logoUrl != null
-                ? Hero(
-                    tag: 'team_${team.id}_${match.id}',
-                    child: CachedNetworkImage(
-                      imageUrl: team.logoUrl!,
-                      height: 44,
-                      width: 44,
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) =>
-                          const SizedBox(width: 44, height: 44),
-                      errorWidget: (context, url, error) => Icon(
-                          Icons.sports_soccer_outlined,
-                          size: 30,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.2)),
-                    ),
-                  )
-                : Icon(Icons.sports_soccer_outlined,
-                    size: 30,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
-          ),
+          team.logoUrl != null
+              ? Hero(
+                  tag: 'team_${team.id}_${match.id}',
+                  child: CachedNetworkImage(
+                    imageUrl: team.logoUrl!,
+                    height: 52,
+                    width: 52,
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) =>
+                        const SizedBox(width: 52, height: 52),
+                    errorWidget: (context, url, error) => Icon(
+                        Icons.sports_soccer_outlined,
+                        size: 36,
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.2)),
+                  ),
+                )
+              : Icon(Icons.sports_soccer_outlined,
+                  size: 36,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.2)),
           const SizedBox(height: 10),
           Text(
             team.shortName,
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+            style: GoogleFonts.montserrat(
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
             ),
             textAlign: TextAlign.center,
             maxLines: 1,

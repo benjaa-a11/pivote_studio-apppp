@@ -250,7 +250,8 @@ class FavoritesScreen extends StatelessWidget {
       confirmLabel: 'ELIMINAR TODO',
       cancelLabel: 'CANCELAR',
       isDestructive: true,
-      icon: Icons.delete_sweep_rounded,
+      icon: Icons.favorite_border_rounded,
+      iconColor: Colors.redAccent,
     );
 
     if (confirmed == true) {

@@ -5,11 +5,13 @@ class UserModel {
   final String name;
   final String lastName;
   final String email;
+  final String? photoUrl;
 
   UserModel({
     required this.name,
     required this.lastName,
     required this.email,
+    this.photoUrl,
   });
 
   /// Create UserModel from JSON
@@ -18,6 +20,7 @@ class UserModel {
       name: json['name'] as String? ?? '',
       lastName: json['lastName'] as String? ?? '',
       email: json['email'] as String? ?? '',
+      photoUrl: json['photoUrl'] as String?,
     );
   }
 
@@ -27,6 +30,7 @@ class UserModel {
       'name': name,
       'lastName': lastName,
       'email': email,
+      'photoUrl': photoUrl,
     };
   }
 
@@ -58,17 +62,19 @@ class UserModel {
     String? name,
     String? lastName,
     String? email,
+    String? photoUrl,
   }) {
     return UserModel(
       name: name ?? this.name,
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 
   @override
   String toString() =>
-      'UserModel(name: $name, lastName: $lastName, email: $email)';
+      'UserModel(name: $name, lastName: $lastName, email: $email, photoUrl: $photoUrl)';
 
   @override
   bool operator ==(Object other) {
@@ -76,9 +82,11 @@ class UserModel {
     return other is UserModel &&
         other.name == name &&
         other.lastName == lastName &&
-        other.email == email;
+        other.email == email &&
+        other.photoUrl == photoUrl;
   }
 
   @override
-  int get hashCode => name.hashCode ^ lastName.hashCode ^ email.hashCode;
+  int get hashCode =>
+      name.hashCode ^ lastName.hashCode ^ email.hashCode ^ photoUrl.hashCode;
 }

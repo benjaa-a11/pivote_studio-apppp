@@ -15,12 +15,13 @@ import '../services/auth_service.dart';
 import '../config/app_animations.dart';
 import '../widgets/app_notifications.dart';
 import '../widgets/profile/section_header.dart';
-import 'dart:ui';
 import 'profile/storage_manager_screen.dart';
 import 'profile/history_screen.dart';
 import 'profile/support_screen.dart';
 import 'profile/privacy_security_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/common/custom_dialogs.dart';
+import 'profile/edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -253,11 +254,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           border: Border.all(
                               color: Colors.white.withValues(alpha: 0.3)),
                         ),
-                        child: Text(
-                          'Pivote VIP',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const EditProfileScreen()));
+                          },
+                          borderRadius: BorderRadius.circular(100),
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.edit_rounded,
+                                    color: Colors.white, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Editar Perfil',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -519,160 +542,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // --- Dialogs (Simplified for brevity but keeping original logic) ---
 
-  void _showLogoutDialog(BuildContext context) {
-    final theme = Theme.of(context);
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.black.withValues(alpha: 0.6),
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (context, a1, a2) => Container(),
-      transitionBuilder: (context, a1, a2, child) {
-        return Transform.scale(
-          scale: a1.value,
-          child: Opacity(
-            opacity: a1.value,
-            child: AlertDialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              contentPadding: EdgeInsets.zero,
-              content: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                  child: Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color:
-                                const Color(0xFFE7714D).withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.logout_rounded,
-                            color: Color(0xFFE7714D),
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          '¿Cerrar Sesión?',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '¿Estás seguro de que deseas salir de tu cuenta?',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.montserrat(
-                            fontSize: 15,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: TextButton.styleFrom(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Cancelar',
-                                  style: GoogleFonts.montserrat(
-                                    fontWeight: FontWeight.w600,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFFE7714D),
-                                      Color(0xFFE57C5D)
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFFE7714D)
-                                          .withValues(alpha: 0.3),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: () async {
-                                    Navigator.pop(context); // Cerrar diálogo
-                                    await AuthService.logout();
-                                    if (context.mounted) {
-                                      Provider.of<UserProvider>(context,
-                                              listen: false)
-                                          .clearUser();
-                                      AppNotifications.showInfo(context,
-                                          'Has cerrado sesión correctamente');
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Salir',
-                                    style: GoogleFonts.montserrat(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+  void _showLogoutDialog(BuildContext context) async {
+    final confirmed = await CustomDialogs.showConfirmDialog(
+      context,
+      title: '¿Cerrar Sesión?',
+      message: '¿Estás seguro de que deseas salir de tu cuenta?',
+      confirmLabel: 'SALIR',
+      cancelLabel: 'CANCELAR',
+      isDestructive: true,
+      icon: Icons.logout_rounded,
+      iconColor: const Color(0xFFE7714D),
     );
+
+    if (confirmed == true) {
+      await AuthService.logout();
+      if (context.mounted) {
+        Provider.of<UserProvider>(context, listen: false).clearUser();
+        AppNotifications.showInfo(context, 'Has cerrado sesión correctamente');
+      }
+    }
   }
 
   void _showAboutDialog(BuildContext context) {

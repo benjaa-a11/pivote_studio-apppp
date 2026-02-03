@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/match.dart';
 import '../providers/match_provider.dart';
 import '../providers/channel_provider.dart';
@@ -176,9 +177,9 @@ class MatchCard extends StatelessWidget {
               children: [
                 Text(
                   tournament?.name ?? 'Liga Profesional Argentina',
-                  style: TextStyle(
+                  style: GoogleFonts.montserrat(
                     fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w900,
                     color: textPrimary,
                     letterSpacing: -0.2,
                     height: 1.2,
@@ -259,49 +260,45 @@ class MatchCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         // Logo del equipo
-        SizedBox(
-          width: 70,
-          height: 70,
-          child: logoUrl.isNotEmpty
-              ? CachedNetworkImage(
-                  imageUrl: logoUrl,
-                  fit: BoxFit.contain,
-                  memCacheWidth: 200,
-                  memCacheHeight: 200,
-                  maxWidthDiskCache: 200,
-                  maxHeightDiskCache: 200,
-                  fadeInDuration: const Duration(milliseconds: 100),
-                  fadeOutDuration: const Duration(milliseconds: 50),
-                  placeholder: (context, url) => const Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white24,
-                      ),
+        logoUrl.isNotEmpty
+            ? CachedNetworkImage(
+                imageUrl: logoUrl,
+                fit: BoxFit.contain,
+                memCacheWidth: 200,
+                memCacheHeight: 200,
+                maxWidthDiskCache: 200,
+                maxHeightDiskCache: 200,
+                fadeInDuration: const Duration(milliseconds: 100),
+                fadeOutDuration: const Duration(milliseconds: 50),
+                placeholder: (context, url) => const Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white24,
                     ),
                   ),
-                  errorWidget: (context, error, stackTrace) {
-                    return FaIcon(
-                      FontAwesomeIcons.shield,
-                      size: 36,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withValues(alpha: 0.4),
-                    );
-                  },
-                )
-              : FaIcon(
-                  FontAwesomeIcons.shield,
-                  size: 40,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.4),
                 ),
-        ),
+                errorWidget: (context, error, stackTrace) {
+                  return FaIcon(
+                    FontAwesomeIcons.shield,
+                    size: 44,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.4),
+                  );
+                },
+              )
+            : FaIcon(
+                FontAwesomeIcons.shield,
+                size: 44,
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withValues(alpha: 0.4),
+              ),
 
         const SizedBox(height: 10),
 
@@ -311,9 +308,9 @@ class MatchCard extends StatelessWidget {
           child: Center(
             child: Text(
               teamName,
-              style: TextStyle(
+              style: GoogleFonts.montserrat(
                 fontSize: 13,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w900,
                 color: textColor,
                 height: 1.3,
                 letterSpacing: -0.2,

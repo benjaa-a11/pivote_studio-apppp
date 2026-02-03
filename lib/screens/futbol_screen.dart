@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/soccer_models.dart';
 import '../providers/soccer_provider.dart';
-import '../widgets/match_details_sheet.dart';
 import '../widgets/world_cup_countdown.dart';
 import '../widgets/soccer_match_card.dart';
 
@@ -46,26 +45,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Fútbol',
-                style: theme.textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1,
-                ),
-              ),
-              // Filter or Settings icon could go here if needed
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Center(child: WorldCupCountdown()),
-        ],
-      ),
+      child: const Center(child: WorldCupCountdown()),
     );
   }
 
@@ -300,16 +280,11 @@ class _FutbolScreenState extends State<FutbolScreen> {
                   child: Text(
                     league.name,
                     style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w900,
                       letterSpacing: 0.1,
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 12,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                 ),
               ],
             ),
@@ -324,7 +299,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
               itemBuilder: (context, index) => SoccerMatchCard(
                 match: matches[index],
                 data: data,
-                onTap: () => _showMatchDetails(matches[index], data),
+                onTap: () {},
               ),
             ),
           ),
@@ -456,17 +431,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showMatchDetails(SoccerMatch match, SoccerData data) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => MatchDetailsSheet(
-        matchId: match.id,
       ),
     );
   }

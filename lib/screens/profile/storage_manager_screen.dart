@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../services/cache_manager_service.dart';
 import '../../config/app_animations.dart';
+import '../../widgets/common/custom_dialogs.dart';
 
 class StorageManagerScreen extends StatefulWidget {
   const StorageManagerScreen({super.key});
@@ -34,6 +35,33 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
   }
 
   Future<void> _handleClearCache(String type) async {
+    String title = '¿Limpiar cache?';
+    String message = 'Esta acción liberará espacio en tu dispositivo.';
+
+    if (type == 'all') {
+      title = '¿Limpiar todo?';
+      message =
+          'Se eliminarán todos los datos almacenados en cache, incluyendo imágenes y preferencias temporales.';
+    } else if (type == 'images') {
+      title = '¿Limpiar imágenes?';
+      message = 'Se eliminarán las miniaturas y portadas descargadas.';
+    } else if (type == 'app') {
+      title = '¿Limpiar datos?';
+      message = 'Se restablecerán los datos temporales de la aplicación.';
+    }
+
+    final confirmed = await CustomDialogs.showConfirmDialog(
+      context,
+      title: title,
+      message: message,
+      confirmLabel: 'LIMPIAR AHORA',
+      cancelLabel: 'CANCELAR',
+      isDestructive: true,
+      icon: Icons.delete_sweep_rounded,
+    );
+
+    if (confirmed != true) return;
+
     setState(() => _isCleaning = true);
 
     // Simulate some work for better UX
@@ -51,9 +79,15 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
     if (mounted) {
       setState(() => _isCleaning = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Limpieza completada correctamente'),
+        SnackBar(
+          content: Text(
+            'Limpieza completada correctamente',
+            style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+          ),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }

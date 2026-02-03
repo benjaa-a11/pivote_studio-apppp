@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_model.dart';
@@ -8,10 +10,7 @@ import '../models/user_model.dart';
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId:
-        '451817571128-ch6b02prjtv8njpek34v233bv3itfpjn.apps.googleusercontent.com',
-  );
+  static final GoogleSignIn _googleSignIn = GoogleSignIn();
   static const String _usersCollection = 'usuarios-pivote';
 
   /// Stream of auth state changes
@@ -178,12 +177,39 @@ class AuthService {
     await _firestore.collection(_usersCollection).doc(currentUser.uid).update({
       'name': user.name,
       'email': user.email,
+      if (user.photoUrl != null) 'photoUrl': user.photoUrl,
     });
 
     // Also update Auth profile
-    if (user.name != currentUser.displayName) {
+    if (user.name != currentUser.displayName ||
+        user.photoUrl != currentUser.photoURL) {
       await currentUser.updateDisplayName(user.name);
+      if (user.photoUrl != null) {
+        await currentUser.updatePhotoURL(user.photoUrl);
+      }
     }
+  }
+
+  /// Update password (requires recent login)
+  static Future<void> updatePassword(String newPassword) async {
+    final user = _auth.currentUser;
+    if (user == null) throw FirebaseAuthException(code: 'no-current-user');
+
+    await user.updatePassword(newPassword);
+  }
+
+  /// Upload profile image to Firebase Storage and return URL
+  static Future<String> uploadProfileImage(File imageFile) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user logged in');
+
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child('user_profiles')
+        .child('${user.uid}.jpg');
+
+    await ref.putFile(imageFile);
+    return await ref.getDownloadURL();
   }
 
   /// Map Firebase Auth error codes to professional Spanish messages
