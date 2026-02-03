@@ -160,12 +160,22 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              totalSize,
-              style: GoogleFonts.montserrat(
-                color: Colors.white,
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(scale: animation, child: child),
+                );
+              },
+              child: Text(
+                totalSize,
+                key: ValueKey(totalSize),
+                style: GoogleFonts.montserrat(
+                  color: Colors.white,
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -224,11 +234,16 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                       fontSize: 15,
                     ),
                   ),
-                  Text(
-                    size,
-                    style: GoogleFonts.montserrat(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                      fontSize: 13,
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Text(
+                      size,
+                      key: ValueKey(size),
+                      style: GoogleFonts.montserrat(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ],

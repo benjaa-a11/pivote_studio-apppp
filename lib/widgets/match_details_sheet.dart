@@ -60,17 +60,18 @@ class MatchDetailsSheet extends StatelessWidget {
                 name: currentMatch.awayTeam,
                 shortName: currentMatch.awayTeam));
 
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isLargeScreen = screenWidth > 600;
+
         return Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF121418) : theme.colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-            border: Border.all(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
+            color: isDark ? const Color(0xFF0D1117) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 30,
-                offset: const Offset(0, -5),
+                color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.1),
+                blurRadius: 40,
+                offset: const Offset(0, -10),
               ),
             ],
           ),
@@ -79,28 +80,35 @@ class MatchDetailsSheet extends StatelessWidget {
             children: [
               const SizedBox(height: 12),
               Container(
-                width: 40,
+                width: 36,
                 height: 4,
                 decoration: BoxDecoration(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 20),
 
               // Scoreboard Card
-              _buildModernScoreboard(
-                  context, currentMatch, league, homeTeam, awayTeam),
+              _buildModernScoreboard(context, currentMatch, league, homeTeam,
+                  awayTeam, isLargeScreen),
 
               // Events Timeline
               Flexible(
                 child: Container(
                   width: double.infinity,
-                  color: isDark
-                      ? const Color(0xFF0A0C10).withValues(alpha: 0.5)
-                      : theme.colorScheme.surfaceContainerHighest
-                          .withValues(alpha: 0.1),
-                  child: _buildTimeline(context, currentMatch),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF161B22).withValues(alpha: 0.5)
+                        : const Color(0xFFF8FAFC),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(32)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(32)),
+                    child: _buildTimeline(context, currentMatch, isLargeScreen),
+                  ),
                 ),
               ),
             ],
@@ -110,8 +118,13 @@ class MatchDetailsSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildModernScoreboard(BuildContext context, SoccerMatch match,
-      SoccerLeague league, SoccerTeam home, SoccerTeam away) {
+  Widget _buildModernScoreboard(
+      BuildContext context,
+      SoccerMatch match,
+      SoccerLeague league,
+      SoccerTeam home,
+      SoccerTeam away,
+      bool isLargeScreen) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -120,24 +133,23 @@ class MatchDetailsSheet extends StatelessWidget {
         match.score.isNotEmpty && match.score.length > 1 ? match.score[1] : 0;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(24),
+      margin: EdgeInsets.symmetric(
+          horizontal: isLargeScreen ? 32 : 16, vertical: 16),
+      padding: EdgeInsets.all(isLargeScreen ? 32 : 24),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E2229) : theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(30),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [const Color(0xFF1E2229), const Color(0xFF121418)]
+              : [Colors.white, const Color(0xFFF1F5F9)],
+        ),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
             color:
                 (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05)),
         boxShadow: [
-          isDark
-              ? BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 25,
-                  offset: const Offset(0, 8))
-              : BoxShadow(
-                  color: theme.colorScheme.shadow.withValues(alpha: 0.1),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5)),
+          boxShadow(isDark, theme),
         ],
       ),
       child: Column(
@@ -174,7 +186,7 @@ class MatchDetailsSheet extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
-                    _buildTeamBadge(home.logoUrl, theme),
+                    _buildTeamBadge(home.logoUrl, theme, isLargeScreen),
                     const SizedBox(height: 12),
                     Text(
                       home.name,
@@ -229,17 +241,17 @@ class MatchDetailsSheet extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
-                    _buildTeamBadge(away.logoUrl, theme),
+                    _buildTeamBadge(away.logoUrl, theme, isLargeScreen),
                     const SizedBox(height: 12),
                     Text(
                       away.name,
                       style: GoogleFonts.inter(
-                        fontSize: 14,
+                        fontSize: isLargeScreen ? 16 : 14,
                         fontWeight: FontWeight.w800,
                         color: theme.colorScheme.onSurface,
                       ),
                       textAlign: TextAlign.center,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -252,10 +264,23 @@ class MatchDetailsSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildTeamBadge(String? url, ThemeData theme) {
+  BoxShadow boxShadow(bool isDark, ThemeData theme) {
+    return isDark
+        ? BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 30,
+            offset: const Offset(0, 10))
+        : BoxShadow(
+            color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 8));
+  }
+
+  Widget _buildTeamBadge(String? url, ThemeData theme, bool isLargeScreen) {
+    final size = isLargeScreen ? 80.0 : 65.0;
     return Container(
-      width: 65,
-      height: 65,
+      width: size,
+      height: size,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: theme.colorScheme.onSurface.withValues(alpha: 0.03),
@@ -269,11 +294,11 @@ class MatchDetailsSheet extends StatelessWidget {
               fit: BoxFit.contain,
               errorWidget: (c, e, s) => Icon(Icons.shield_rounded,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
-                  size: 30),
+                  size: size * 0.4),
             )
           : Icon(Icons.shield_rounded,
               color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
-              size: 30),
+              size: size * 0.4),
     );
   }
 
@@ -331,7 +356,8 @@ class MatchDetailsSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildTimeline(BuildContext context, SoccerMatch match) {
+  Widget _buildTimeline(
+      BuildContext context, SoccerMatch match, bool isLargeScreen) {
     final theme = Theme.of(context);
     final events = _getSortedEvents(match);
 
@@ -366,16 +392,16 @@ class MatchDetailsSheet extends StatelessWidget {
       itemCount: events.length + 2, // Start, End, and events
       itemBuilder: (context, index) {
         if (index == 0) {
-          return _buildTimelinePoint(
-              context, 'Inicio del partido', '0\'', Icons.sports_score_rounded);
-        }
-        if (index == events.length + 1) {
           String endLabel = match.isFinished ? 'Final del partido' : 'En juego';
           return _buildTimelinePoint(
               context,
               endLabel,
               match.time.isEmpty ? '?' : match.time,
               Icons.sports_score_rounded);
+        }
+        if (index == events.length + 1) {
+          return _buildTimelinePoint(
+              context, 'Inicio del partido', '0\'', Icons.sports_score_rounded);
         }
 
         final event = events[index - 1];
@@ -390,36 +416,48 @@ class MatchDetailsSheet extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
         color: isDark
-            ? const Color(0xFF121418).withValues(alpha: 0.5)
-            : theme.colorScheme.onSurface.withValues(alpha: 0.05),
+            ? const Color(0xFF1E2229).withValues(alpha: 0.3)
+            : theme.colorScheme.onSurface.withValues(alpha: 0.02),
+        border: Border.symmetric(
+            horizontal: BorderSide(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.02))),
       ),
       child: Row(
         children: [
           Expanded(
-              child: Text(title,
+              child: Text(title.toUpperCase(),
                   textAlign: TextAlign.right,
                   style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.0,
                       color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.5)))),
-          const SizedBox(width: 16),
+                          theme.colorScheme.onSurface.withValues(alpha: 0.4)))),
+          const SizedBox(width: 24),
           Column(
             children: [
-              Icon(icon, size: 16, color: Colors.blue.shade400),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 16, color: Colors.blue.shade400),
+              ),
               const SizedBox(height: 4),
               Text(time,
                   style: GoogleFonts.inter(
                       fontSize: 10,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w900,
                       color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.4))),
+                          theme.colorScheme.onSurface.withValues(alpha: 0.3))),
             ],
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 24),
           const Expanded(child: SizedBox()),
         ],
       ),
@@ -432,7 +470,7 @@ class MatchDetailsSheet extends StatelessWidget {
     final isHome = event.teamId == homeTeamId;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
         border: Border(
             bottom: BorderSide(
@@ -448,8 +486,8 @@ class MatchDetailsSheet extends StatelessWidget {
                     children: [
                       Text(event.playerName,
                           style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
                               color: theme.colorScheme.onSurface)),
                     ],
                   )
@@ -457,20 +495,29 @@ class MatchDetailsSheet extends StatelessWidget {
           ),
 
           // Center Icon & Time
-          const SizedBox(width: 16),
-          Column(
-            children: [
-              _buildEventIcon(event),
-              const SizedBox(height: 4),
-              Text('${event.time}\'',
-                  style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.5))),
-            ],
+          SizedBox(
+            width: 80,
+            child: Column(
+              children: [
+                _buildEventIcon(event),
+                const SizedBox(height: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text('${event.time}\'',
+                      style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.5))),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 16),
 
           // Right Side (Away)
           Expanded(
@@ -480,8 +527,8 @@ class MatchDetailsSheet extends StatelessWidget {
                     children: [
                       Text(event.playerName,
                           style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
                               color: theme.colorScheme.onSurface)),
                     ],
                   )
@@ -550,7 +597,7 @@ class MatchDetailsSheet extends StatelessWidget {
     // Note: Substitutions are not currently in the model,
     // but the structure allows adding them later easily.
 
-    events.sort((a, b) => a.time.compareTo(b.time));
+    events.sort((a, b) => b.time.compareTo(a.time));
     return events;
   }
 }

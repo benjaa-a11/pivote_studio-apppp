@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
@@ -102,6 +102,9 @@ class CacheManagerService {
       final cacheManager = DefaultCacheManager();
       await cacheManager.emptyCache();
 
+      // Clear memory cache so UI reflects change immediately
+      PaintingBinding.instance.imageCache.clear();
+
       debugPrint('✅ Image cache cleared successfully');
       return true;
     } catch (e) {
@@ -120,6 +123,9 @@ class CacheManagerService {
       if (await cacheDir.exists()) {
         await cacheDir.delete(recursive: true);
         await cacheDir.create();
+
+        // Brief delay to allow OS to sync file deletion
+        await Future.delayed(const Duration(milliseconds: 100));
       }
 
       debugPrint('✅ App cache cleared successfully');

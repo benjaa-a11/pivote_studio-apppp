@@ -48,6 +48,7 @@ class AppTheme {
       inverseSurface: darkSurface,
       outline: darkBorder,
     ),
+    splashFactory: InkRipple.splashFactory,
     primaryColor: darkPrimary,
     scaffoldBackgroundColor: darkBackground,
     canvasColor: darkBackground,
@@ -218,6 +219,7 @@ class AppTheme {
       ).copyWith(
         overlayColor:
             WidgetStateProperty.all(Colors.white.withValues(alpha: 0.1)),
+        splashFactory: InkRipple.splashFactory,
       ),
     ),
 
@@ -275,6 +277,7 @@ class AppTheme {
       error: lightError,
       tertiary: lightAccent,
     ),
+    splashFactory: InkRipple.splashFactory,
     primaryColor: lightPrimary,
     scaffoldBackgroundColor: lightBackground,
     canvasColor: lightBackground,
