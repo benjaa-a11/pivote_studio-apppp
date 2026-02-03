@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class WorldCupCountdown extends StatefulWidget {
   const WorldCupCountdown({super.key});
@@ -59,9 +58,9 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
-    final accentColor = theme.colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = theme.colorScheme.primary;
 
     final days = _timeLeft.inDays;
     final hours = _timeLeft.inHours % 24;
@@ -69,47 +68,76 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     final seconds = _timeLeft.inSeconds % 60;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: accentColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
+        color: theme.cardColor.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: accentColor.withValues(alpha: 0.1),
+          color: primaryColor.withValues(alpha: 0.1),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // FIFA 2026 Logo
-          Image.asset(
-            isDark
-                ? 'assets/FWC-26/2026-FIFA-World-Cup256x-white.png'
-                : 'assets/FWC-26/2026-FIFA-World-Cup256x-black.png',
-            height: 42,
-            fit: BoxFit.contain,
+          // FIFA 2026 Logo with subtle glow
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: primaryColor.withValues(alpha: 0.05),
+                ),
+              ),
+              Image.asset(
+                isDark
+                    ? 'assets/FWC-26/2026-FIFA-World-Cup256x-white.png'
+                    : 'assets/FWC-26/2026-FIFA-World-Cup256x-black.png',
+                height: 38,
+                fit: BoxFit.contain,
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           // Vertical Divider
           Container(
-            width: 1,
-            height: 30,
-            color: accentColor.withValues(alpha: 0.2),
+            width: 1.5,
+            height: 32,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  primaryColor.withValues(alpha: 0.0),
+                  primaryColor.withValues(alpha: 0.3),
+                  primaryColor.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           // Countdown UI
           Row(
             children: [
-              _buildTimeUnit(days.toString(), 'DÍAS', accentColor),
-              _buildSeparator(accentColor),
+              _buildTimeUnit(context, days.toString(), 'DÍAS'),
+              _buildSeparator(context),
+              _buildTimeUnit(context, hours.toString().padLeft(2, '0'), 'HS'),
+              _buildSeparator(context),
               _buildTimeUnit(
-                  hours.toString().padLeft(2, '0'), 'HS', accentColor),
-              _buildSeparator(accentColor),
+                  context, minutes.toString().padLeft(2, '0'), 'MIN'),
+              _buildSeparator(context),
               _buildTimeUnit(
-                  minutes.toString().padLeft(2, '0'), 'MIN', accentColor),
-              _buildSeparator(accentColor),
-              _buildTimeUnit(
-                  seconds.toString().padLeft(2, '0'), 'SEG', accentColor),
+                  context, seconds.toString().padLeft(2, '0'), 'SEG'),
             ],
           ),
         ],
@@ -117,7 +145,10 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     );
   }
 
-  Widget _buildTimeUnit(String value, String label, Color color) {
+  Widget _buildTimeUnit(BuildContext context, String value, String label) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -125,36 +156,37 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
           scale: _pulseAnimation,
           child: Text(
             value,
-            style: GoogleFonts.outfit(
-              fontSize: 16,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontSize: 18,
               fontWeight: FontWeight.w900,
-              color: color,
+              color: primaryColor,
               letterSpacing: -0.5,
             ),
           ),
         ),
         Text(
           label,
-          style: GoogleFonts.montserrat(
-            fontSize: 7,
+          style: theme.textTheme.labelSmall?.copyWith(
+            fontSize: 8,
             fontWeight: FontWeight.w800,
-            color: Colors.grey.withValues(alpha: 0.6),
-            letterSpacing: 0.5,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+            letterSpacing: 0.8,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSeparator(Color color) {
+  Widget _buildSeparator(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Text(
         ':',
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: color.withValues(alpha: 0.3),
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+          color: theme.colorScheme.primary.withValues(alpha: 0.3),
         ),
       ),
     );

@@ -42,21 +42,28 @@ class _FutbolScreenState extends State<FutbolScreen> {
 
   Widget _buildHeader(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(
-            color: theme.dividerTheme.color ??
-                theme.dividerColor.withValues(alpha: 0.1),
-            width: 1,
-          ),
-        ),
       ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          WorldCupCountdown(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Fútbol',
+                style: theme.textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1,
+                ),
+              ),
+              // Filter or Settings icon could go here if needed
+            ],
+          ),
+          const SizedBox(height: 24),
+          const Center(child: WorldCupCountdown()),
         ],
       ),
     );

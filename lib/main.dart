@@ -44,7 +44,7 @@ void main() async {
 
 class PivoteApp extends StatelessWidget {
   final AudioManager audioManager;
-  
+
   const PivoteApp({super.key, required this.audioManager});
 
   @override
@@ -104,23 +104,45 @@ class _AuthenticationWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: AuthService.authStateChanges,
-      builder: (context, snapshot) {
-        // Mientras esperamos el primer valor del stream
-        if (snapshot.connectionState == ConnectionState.waiting) {
+      builder: (context, authSnapshot) {
+        // Mientras esperamos el primer valor del stream de autenticación
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox.shrink();
         }
 
-        // Una vez que tenemos el estado, quitamos el splash screen
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          FlutterNativeSplash.remove();
-        });
+        final user = authSnapshot.data;
 
-        // Navegación basada en el estado de autenticación
-        if (snapshot.hasData && snapshot.data != null) {
-          return const MainScreen();
-        } else {
+        // Si el usuario no está autenticado, ir login
+        if (user == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            FlutterNativeSplash.remove();
+          });
           return const LoginScreen();
         }
+
+        // Si está autenticado, esperamos a que los datos estén listos
+        return Consumer3<ChannelProvider, MatchProvider, SoccerProvider>(
+          builder:
+              (context, channelProvider, matchProvider, soccerProvider, child) {
+            final isDataReady = channelProvider.isInitialized &&
+                matchProvider.isInitialized &&
+                soccerProvider.soccerData != null;
+
+            if (isDataReady) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                FlutterNativeSplash.remove();
+              });
+              return const MainScreen();
+            }
+
+            // Keep showing nothing (splash screen handles the visual part)
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          },
+        );
       },
     );
   }

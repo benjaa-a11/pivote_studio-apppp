@@ -105,6 +105,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildModernHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final userProvider = Provider.of<UserProvider>(context);
     final user = userProvider.user;
     final imagePath = userProvider.profileImagePath;
@@ -112,17 +114,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       height: 380,
       width: double.infinity,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFE7714D), Color(0xFFE57C5D)],
+          colors: isDark
+              ? [
+                  theme.colorScheme.primary,
+                  theme.colorScheme.primary.withValues(alpha: 0.8)
+                ]
+              : [theme.colorScheme.primary, theme.colorScheme.secondary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(50)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(50)),
       ),
       child: Stack(
         children: [
-          // Decorative Blobs (Same as Auth)
+          // Decorative Blobs
           Positioned(
             top: -30,
             right: -30,
@@ -130,7 +137,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: 160,
               height: 160,
               decoration: BoxDecoration(
-                color: const Color(0xFFD4B455).withValues(alpha: 0.6),
+                color: (isDark
+                        ? theme.colorScheme.tertiary
+                        : theme.colorScheme.secondary)
+                    .withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
             ),
@@ -142,7 +152,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: 200,
               height: 200,
               decoration: BoxDecoration(
-                color: const Color(0xFF5BB389).withValues(alpha: 0.5),
+                color: (isDark
+                        ? theme.colorScheme.secondary
+                        : theme.colorScheme.tertiary)
+                    .withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
             ),
@@ -193,8 +206,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           },
                           child: Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: const BoxDecoration(
-                              color: Colors.black,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? theme.colorScheme.surface
+                                  : Colors.black,
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.camera_alt,
@@ -214,9 +229,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         user != null
                             ? '${user.name} ${user.lastName}'
                             : 'Cargando...',
-                        style: GoogleFonts.montserrat(
+                        style: theme.textTheme.headlineMedium?.copyWith(
                           color: Colors.white,
-                          fontSize: 28,
                           fontWeight: FontWeight.bold,
                           letterSpacing: -0.5,
                         ),
@@ -224,9 +238,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 4),
                       Text(
                         user?.email ?? '',
-                        style: GoogleFonts.montserrat(
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -242,9 +255,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         child: Text(
                           'Pivote VIP',
-                          style: GoogleFonts.montserrat(
+                          style: theme.textTheme.labelSmall?.copyWith(
                             color: Colors.white,
-                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -411,21 +423,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildLogoutButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
         width: double.infinity,
         height: 65,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE7714D), Color(0xFFE57C5D)],
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    theme.colorScheme.error,
+                    theme.colorScheme.error.withValues(alpha: 0.8)
+                  ]
+                : [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primary.withValues(alpha: 0.9)
+                  ],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE7714D).withValues(alpha: 0.3),
+              color:
+                  (isDark ? theme.colorScheme.error : theme.colorScheme.primary)
+                      .withValues(alpha: 0.3),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -445,9 +470,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(width: 12),
                   Text(
                     'Cerrar Sesión',
-                    style: GoogleFonts.montserrat(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       color: Colors.white,
-                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
                     ),

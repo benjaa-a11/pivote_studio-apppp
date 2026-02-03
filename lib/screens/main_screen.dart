@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 import '../config/app_animations.dart';
 import 'home_screen.dart';
 import 'futbol_screen.dart';
@@ -30,7 +29,6 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    FlutterNativeSplash.remove();
   }
 
   @override

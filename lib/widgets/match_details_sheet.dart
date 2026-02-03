@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import '../models/soccer_models.dart';
 import '../providers/soccer_provider.dart';
 
@@ -34,8 +34,7 @@ class MatchDetailsSheet extends StatelessWidget {
               height: 200,
               child: Center(
                   child: Text('Partido no encontrado',
-                      style: GoogleFonts.inter(
-                          color: theme.colorScheme.onSurface))));
+                      style: theme.textTheme.bodyLarge)));
         }
         final currentMatch = match;
 
@@ -63,56 +62,62 @@ class MatchDetailsSheet extends StatelessWidget {
         final screenWidth = MediaQuery.of(context).size.width;
         final isLargeScreen = screenWidth > 600;
 
-        return Container(
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF0D1117) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.1),
-                blurRadius: 40,
-                offset: const Offset(0, -10),
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.05),
+                    blurRadius: 40,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(2),
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 40,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(2.5),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Scoreboard Card
+                    _buildModernScoreboard(context, currentMatch, league,
+                        homeTeam, awayTeam, isLargeScreen),
+
+                    // Events Timeline Container
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: theme.cardColor.withValues(alpha: 0.3),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(32)),
+                      ),
+                      child:
+                          _buildTimeline(context, currentMatch, isLargeScreen),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
-
-              // Scoreboard Card
-              _buildModernScoreboard(context, currentMatch, league, homeTeam,
-                  awayTeam, isLargeScreen),
-
-              // Events Timeline
-              Flexible(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF161B22).withValues(alpha: 0.5)
-                        : const Color(0xFFF8FAFC),
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(32)),
-                  ),
-                  child: ClipRRect(
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(32)),
-                    child: _buildTimeline(context, currentMatch, isLargeScreen),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -137,42 +142,49 @@ class MatchDetailsSheet extends StatelessWidget {
           horizontal: isLargeScreen ? 32 : 16, vertical: 16),
       padding: EdgeInsets.all(isLargeScreen ? 32 : 24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF1E2229), const Color(0xFF121418)]
-              : [Colors.white, const Color(0xFFF1F5F9)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-            color:
-                (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05)),
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.05)),
         boxShadow: [
           boxShadow(isDark, theme),
         ],
       ),
       child: Column(
         children: [
-          // Tournament Info
+          // Tournament Info with Logo
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.sports_soccer_rounded,
-                  size: 16,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-              const SizedBox(width: 8),
-              Text(
-                league.name.toUpperCase(),
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.0,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+              if (league.logoUrl != null) ...[
+                CachedNetworkImage(
+                  imageUrl: league.logoUrl!,
+                  height: 20,
+                  width: 20,
+                  fit: BoxFit.contain,
+                  errorWidget: (c, e, s) => Icon(Icons.sports_soccer_rounded,
+                      size: 18,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.6)),
+                ),
+                const SizedBox(width: 8),
+              ] else ...[
+                Icon(Icons.sports_soccer_rounded,
+                    size: 18,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.6)),
+                const SizedBox(width: 8),
+              ],
+              Flexible(
+                child: Text(
+                  league.name.toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               if (match.isLive) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 _buildLivePulse(),
               ],
             ],
@@ -190,20 +202,18 @@ class MatchDetailsSheet extends StatelessWidget {
                     const SizedBox(height: 12),
                     Text(
                       home.name,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
+                      style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: theme.colorScheme.onSurface,
                       ),
                       textAlign: TextAlign.center,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
 
-              // Score
+              // Score Area
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Column(
@@ -212,26 +222,27 @@ class MatchDetailsSheet extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text('$homeScore',
-                            style: GoogleFonts.inter(
-                                fontSize: 42,
-                                fontWeight: FontWeight.w900,
-                                color: theme.colorScheme.onSurface)),
+                            style: theme.textTheme.displayMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: theme.colorScheme.onSurface,
+                            )),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text('-',
-                              style: GoogleFonts.inter(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w200,
-                                  color: theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.3))),
+                          child: Text(':',
+                              style: theme.textTheme.displayMedium?.copyWith(
+                                fontWeight: FontWeight.w200,
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.2),
+                              )),
                         ),
                         Text('$awayScore',
-                            style: GoogleFonts.inter(
-                                fontSize: 42,
-                                fontWeight: FontWeight.w900,
-                                color: theme.colorScheme.onSurface)),
+                            style: theme.textTheme.displayMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: theme.colorScheme.onSurface,
+                            )),
                       ],
                     ),
+                    const SizedBox(height: 12),
                     _buildStatusIndicator(match, theme),
                   ],
                 ),
@@ -245,10 +256,8 @@ class MatchDetailsSheet extends StatelessWidget {
                     const SizedBox(height: 12),
                     Text(
                       away.name,
-                      style: GoogleFonts.inter(
-                        fontSize: isLargeScreen ? 16 : 14,
+                      style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: theme.colorScheme.onSurface,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 2,
@@ -277,11 +286,11 @@ class MatchDetailsSheet extends StatelessWidget {
   }
 
   Widget _buildTeamBadge(String? url, ThemeData theme, bool isLargeScreen) {
-    final size = isLargeScreen ? 80.0 : 65.0;
+    final size = isLargeScreen ? 85.0 : 70.0;
     return Container(
       width: size,
       height: size,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: theme.colorScheme.onSurface.withValues(alpha: 0.03),
         shape: BoxShape.circle,
@@ -294,11 +303,11 @@ class MatchDetailsSheet extends StatelessWidget {
               fit: BoxFit.contain,
               errorWidget: (c, e, s) => Icon(Icons.shield_rounded,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
-                  size: size * 0.4),
+                  size: size * 0.45),
             )
           : Icon(Icons.shield_rounded,
               color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
-              size: size * 0.4),
+              size: size * 0.45),
     );
   }
 
@@ -311,20 +320,19 @@ class MatchDetailsSheet extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: isLive
-            ? Colors.green.withValues(alpha: 0.1)
+            ? theme.colorScheme.secondary.withValues(alpha: 0.1)
             : theme.colorScheme.onSurface.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         isLive ? '$statusStr\'' : statusStr.toUpperCase(),
-        style: GoogleFonts.inter(
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
+        style: theme.textTheme.labelSmall?.copyWith(
+          fontWeight: FontWeight.w900,
           color: isLive
-              ? Colors.green
+              ? theme.colorScheme.secondary
               : theme.colorScheme.onSurface.withValues(alpha: 0.6),
           letterSpacing: 0.5,
         ),
@@ -337,15 +345,17 @@ class MatchDetailsSheet extends StatelessWidget {
       tween: Tween(begin: 0.4, end: 1.0),
       duration: const Duration(seconds: 1),
       builder: (context, value, child) {
+        final theme = Theme.of(context);
         return Container(
           width: 8,
           height: 8,
           decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: value),
+            color: theme.colorScheme.secondary.withValues(alpha: value),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: Colors.green.withValues(alpha: value * 0.5),
+                color:
+                    theme.colorScheme.secondary.withValues(alpha: value * 0.5),
                 blurRadius: 8,
                 spreadRadius: 2,
               ),
@@ -363,21 +373,28 @@ class MatchDetailsSheet extends StatelessWidget {
 
     if (events.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.all(60),
+        padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 40),
         child: Column(
           children: [
-            Icon(Icons.event_note_rounded,
-                size: 48,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
-            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.03),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.event_note_rounded,
+                  size: 56,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.1)),
+            ),
+            const SizedBox(height: 24),
             Text(
               match.isScheduled
                   ? 'El partido aún no ha comenzado'
                   : 'Sin eventos registrados',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                fontWeight: FontWeight.w500,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -387,7 +404,7 @@ class MatchDetailsSheet extends StatelessWidget {
 
     return ListView.builder(
       shrinkWrap: true,
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.symmetric(vertical: 32),
       physics: const NeverScrollableScrollPhysics(),
       itemCount: events.length + 2, // Start, End, and events
       itemBuilder: (context, index) {
@@ -413,45 +430,38 @@ class MatchDetailsSheet extends StatelessWidget {
   Widget _buildTimelinePoint(
       BuildContext context, String title, String time, IconData icon) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF1E2229).withValues(alpha: 0.3)
-            : theme.colorScheme.onSurface.withValues(alpha: 0.02),
         border: Border.symmetric(
-            horizontal: BorderSide(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.02))),
+            horizontal:
+                BorderSide(color: theme.dividerColor.withValues(alpha: 0.03))),
       ),
       child: Row(
         children: [
           Expanded(
               child: Text(title.toUpperCase(),
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.inter(
-                      fontSize: 11,
+                  style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
+                      letterSpacing: 1.2,
                       color:
                           theme.colorScheme.onSurface.withValues(alpha: 0.4)))),
           const SizedBox(width: 24),
           Column(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 16, color: Colors.blue.shade400),
+                child: Icon(icon, size: 18, color: theme.colorScheme.primary),
               ),
-              const SizedBox(height: 4),
-              Text(time,
-                  style: GoogleFonts.inter(
-                      fontSize: 10,
+              const SizedBox(height: 6),
+              Text(time.contains("'") ? time : "$time'",
+                  style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                       color:
                           theme.colorScheme.onSurface.withValues(alpha: 0.3))),
@@ -470,11 +480,11 @@ class MatchDetailsSheet extends StatelessWidget {
     final isHome = event.teamId == homeTeamId;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
       decoration: BoxDecoration(
         border: Border(
-            bottom: BorderSide(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.03))),
+            bottom:
+                BorderSide(color: theme.dividerColor.withValues(alpha: 0.03))),
       ),
       child: Row(
         children: [
@@ -485,9 +495,8 @@ class MatchDetailsSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(event.playerName,
-                          style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
                               color: theme.colorScheme.onSurface)),
                     ],
                   )
@@ -499,21 +508,20 @@ class MatchDetailsSheet extends StatelessWidget {
             width: 80,
             child: Column(
               children: [
-                _buildEventIcon(event),
-                const SizedBox(height: 6),
+                _buildEventIcon(event, theme),
+                const SizedBox(height: 10),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text('${event.time}\'',
-                      style: GoogleFonts.inter(
-                          fontSize: 11,
+                      style: theme.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w900,
                           color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.5))),
+                              .withValues(alpha: 0.4))),
                 ),
               ],
             ),
@@ -526,9 +534,8 @@ class MatchDetailsSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(event.playerName,
-                          style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
                               color: theme.colorScheme.onSurface)),
                     ],
                   )
@@ -539,28 +546,29 @@ class MatchDetailsSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildEventIcon(_MatchEvent event) {
+  Widget _buildEventIcon(_MatchEvent event, ThemeData theme) {
     switch (event.type) {
       case _EventType.goal:
-        return const Icon(Icons.sports_soccer_rounded,
-            size: 18, color: Colors.green);
+        return Icon(Icons.sports_soccer_rounded,
+            size: 22, color: theme.colorScheme.secondary);
       case _EventType.yellowCard:
         return Container(
-          width: 12,
-          height: 16,
+          width: 14,
+          height: 20,
           decoration: BoxDecoration(
-              color: Colors.amber, borderRadius: BorderRadius.circular(2)),
+              color: Colors.amber, borderRadius: BorderRadius.circular(4)),
         );
       case _EventType.redCard:
         return Container(
-          width: 12,
-          height: 16,
+          width: 14,
+          height: 20,
           decoration: BoxDecoration(
-              color: Colors.red, borderRadius: BorderRadius.circular(2)),
+              color: theme.colorScheme.error,
+              borderRadius: BorderRadius.circular(4)),
         );
       case _EventType.substitution:
-        return const Icon(Icons.swap_vert_rounded,
-            size: 18, color: Colors.blue);
+        return Icon(Icons.swap_vert_rounded,
+            size: 22, color: theme.colorScheme.tertiary);
     }
   }
 
@@ -593,9 +601,6 @@ class MatchDetailsSheet extends StatelessWidget {
         teamId: c.teamId,
       ));
     }
-
-    // Note: Substitutions are not currently in the model,
-    // but the structure allows adding them later easily.
 
     events.sort((a, b) => b.time.compareTo(a.time));
     return events;
