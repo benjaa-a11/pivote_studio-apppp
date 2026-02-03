@@ -267,7 +267,7 @@ class SoccerMatchCard extends StatelessWidget {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
             ),
             textAlign: TextAlign.center,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ],

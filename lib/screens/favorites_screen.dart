@@ -247,8 +247,8 @@ class FavoritesScreen extends StatelessWidget {
       title: '¿Limpiar favoritos?',
       message:
           'Esta acción eliminará todos los canales de tu lista de acceso rápido.',
-      confirmLabel: 'ELIMINAR TODO',
-      cancelLabel: 'CANCELAR',
+      confirmLabel: 'Eliminar',
+      cancelLabel: 'Cancelar',
       isDestructive: true,
       icon: Icons.favorite_border_rounded,
       iconColor: Colors.redAccent,

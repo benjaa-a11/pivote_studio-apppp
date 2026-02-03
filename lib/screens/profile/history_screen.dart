@@ -8,6 +8,7 @@ import '../../models/channel.dart';
 import '../../config/app_animations.dart';
 import '../../widgets/app_notifications.dart';
 import '../player_screen.dart';
+import '../../widgets/common/custom_dialogs.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -53,158 +54,26 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  void _showClearHistoryDialog(BuildContext context) {
-    final theme = Theme.of(context);
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.black.withValues(alpha: 0.6),
-      transitionDuration: const Duration(milliseconds: 300),
-      pageBuilder: (context, a1, a2) => Container(),
-      transitionBuilder: (context, a1, a2, child) {
-        return Transform.scale(
-          scale: a1.value,
-          child: Opacity(
-            opacity: a1.value,
-            child: AlertDialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              contentPadding: EdgeInsets.zero,
-              content: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                  child: Container(
-                    padding: const EdgeInsets.all(32),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color:
-                                const Color(0xFFE7714D).withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.delete_sweep_rounded,
-                            color: Color(0xFFE7714D),
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          '¿Limpiar Historial?',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Esta acción borrará todos los canales que has visto recientemente. ¿Deseas continuar?',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.montserrat(
-                            fontSize: 15,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
-                            height: 1.5,
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: TextButton.styleFrom(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Cancelar',
-                                  style: GoogleFonts.montserrat(
-                                    fontWeight: FontWeight.w600,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFFE7714D),
-                                      Color(0xFFE57C5D)
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFFE7714D)
-                                          .withValues(alpha: 0.3),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: () async {
-                                    Navigator.pop(context); // Cerrar diálogo
-                                    await ViewingHistoryService.clearHistory();
-                                    _loadHistory();
-                                    if (context.mounted) {
-                                      AppNotifications.showInfo(context,
-                                          'Historial limpiado correctamente');
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Borrar',
-                                    style: GoogleFonts.montserrat(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+  void _showClearHistoryDialog(BuildContext context) async {
+    final confirmed = await CustomDialogs.showConfirmDialog(
+      context,
+      title: '¿Limpiar Historial?',
+      message:
+          'Esta acción borrará todos los canales que has visto recientemente. ¿Deseas continuar?',
+      confirmLabel: 'Borrar',
+      cancelLabel: 'Cancelar',
+      isDestructive: true,
+      icon: Icons.delete_sweep_rounded,
+      iconColor: const Color(0xFFE7714D),
     );
+
+    if (confirmed == true) {
+      await ViewingHistoryService.clearHistory();
+      _loadHistory();
+      if (context.mounted) {
+        AppNotifications.showInfo(context, 'Historial limpiado correctamente');
+      }
+    }
   }
 
   @override

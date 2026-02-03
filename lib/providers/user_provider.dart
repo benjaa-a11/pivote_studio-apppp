@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
@@ -25,11 +27,57 @@ class UserProvider with ChangeNotifier {
 
     try {
       _user = await AuthService.getUser();
+      if (_user?.photoUrl != null) {
+        _downloadAndCacheProfileImage(_user!.photoUrl!);
+      }
     } catch (e) {
       debugPrint('Error loading user data: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _downloadAndCacheProfileImage(String url) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedUrl = prefs.getString('cached_photo_url');
+      final currentPath = prefs.getString('profile_image_path');
+
+      // If URL hasn't changed and file exists, we are good
+      if (cachedUrl == url &&
+          currentPath != null &&
+          File(currentPath).existsSync()) {
+        return;
+      }
+
+      // Download new image
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName =
+            'profile_cache_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final file = File('${appDir.path}/$fileName');
+
+        await file.writeAsBytes(response.bodyBytes);
+
+        // Delete old cache if exists
+        if (currentPath != null) {
+          final oldFile = File(currentPath);
+          if (oldFile.existsSync()) {
+            // check if it's the same file to avoid deletion (unlikely with timestamp)
+            if (oldFile.path != file.path) await oldFile.delete();
+          }
+        }
+
+        // Update state
+        _profileImagePath = file.path;
+        await prefs.setString('profile_image_path', file.path);
+        await prefs.setString('cached_photo_url', url);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error caching profile image: $e');
     }
   }
 

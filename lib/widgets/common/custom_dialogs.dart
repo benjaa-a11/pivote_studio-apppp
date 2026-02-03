@@ -197,77 +197,80 @@ class ElegantDialog extends StatelessWidget {
       child: Stack(
         alignment: Alignment.topCenter,
         children: [
-          Container(
-            margin: const EdgeInsets.only(top: 32),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.black.withValues(alpha: 0.8)
-                  : Colors.white.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: (isDark ? Colors.white : Colors.black)
-                    .withValues(alpha: 0.1),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Container(
+              margin: const EdgeInsets.only(top: 32),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.8)
+                    : Colors.white.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(
+                  color: (isDark ? Colors.white : Colors.black)
+                      .withValues(alpha: 0.1),
+                  width: 1.5,
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(32),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        title,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.montserrat(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        message,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.montserrat(
-                          fontSize: 15,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.7),
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _ElegantButton(
-                              label: cancelLabel,
-                              onPressed: onCancel,
-                              isPrimary: false,
-                            ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(32),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _ElegantButton(
-                              label: confirmLabel,
-                              onPressed: onConfirm,
-                              isPrimary: true,
-                              color: confirmColor ?? primaryColor,
-                            ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          message,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 15,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.7),
+                            height: 1.5,
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        const SizedBox(height: 32),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _ElegantButton(
+                                label: cancelLabel,
+                                onPressed: onCancel,
+                                isPrimary: false,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _ElegantButton(
+                                label: confirmLabel,
+                                onPressed: onConfirm,
+                                isPrimary: true,
+                                color: confirmColor ?? primaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
