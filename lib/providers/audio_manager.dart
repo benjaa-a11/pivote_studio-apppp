@@ -1,265 +1,171 @@
-import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
-import 'package:audio_session/audio_session.dart';
 import 'dart:async';
-import '../models/radio.dart' as model;
+import 'package:flutter/foundation.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:audio_service/audio_service.dart';
+import '../models/radio.dart' as radio_model;
+import '../services/background_audio_service.dart';
 
-/// Robust AudioManager for handling radio streams
-/// Implements "Nuclear Fix" strategy for maximum compatibility
+enum AudioManagerStatus { initial, loading, playing, paused, error }
+
 class AudioManager extends ChangeNotifier {
   static final AudioManager _instance = AudioManager._internal();
   factory AudioManager() => _instance;
   AudioManager._internal();
 
-  final AudioPlayer _player = AudioPlayer();
-  model.Radio? _currentStation;
-  bool _isInit = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   // State
-  bool _isReconnecting = false;
-  bool _isPlaying = false;
-  bool _isLoading = false;
-  int _retryCount = 0;
-  Timer? _reconnectionTimer;
+  AudioManagerStatus _status = AudioManagerStatus.initial;
+  radio_model.Radio? _currentRadio;
+  String? _errorMessage;
 
-  // Constants
-  static const int _maxRetries = 5;
+  // Getters
+  AudioManagerStatus get status => _status;
+  radio_model.Radio? get currentRadio => _currentRadio;
+  String? get errorMessage => _errorMessage;
+  bool get isPlaying => _status == AudioManagerStatus.playing;
+  bool get isLoading => _status == AudioManagerStatus.loading;
 
-  // Public Getters
-  Stream<PlayerState> get playerStateStream => _player.playerStateStream;
-  model.Radio? get currentStation => _currentStation;
-  bool get isPlaying => _isPlaying;
-  bool get isReconnecting => _isReconnecting;
-  bool get isLoading => _isLoading;
+  // Streams for UI consumption
+  Stream<Duration> get positionStream => _audioPlayer.positionStream;
+  Stream<Duration> get bufferedPositionStream =>
+      _audioPlayer.bufferedPositionStream;
 
-  /// Initialize Audio Service & Session
   Future<void> initialize() async {
-    if (_isInit) return;
+    await AudioServiceHelper.init();
 
-    try {
-      // 1. Setup JustAudioBackground
-      await JustAudioBackground.init(
-        androidNotificationChannelId: 'com.pivote.radio_playback',
-        androidNotificationChannelName: 'Radio Playback',
-        androidNotificationOngoing: true,
-        androidResumeOnClick: true,
-      );
+    // Listen to player state changes
+    // Listen to player state changes
+    _audioPlayer.playerStateStream.listen((playerState) {
+      final processingState = playerState.processingState;
+      final playing = playerState.playing;
 
-      // 2. Setup AudioSession
-      final session = await AudioSession.instance;
-      await session.configure(const AudioSessionConfiguration.music());
-
-      // Handle interruptions (calls, etc)
-      session.interruptionEventStream.listen((event) {
-        if (event.begin) {
-          if (event.type == AudioInterruptionType.duck) {
-            _player.setVolume(0.5);
-          } else {
-            _player.pause();
-          }
+      if (processingState == ProcessingState.loading ||
+          processingState == ProcessingState.buffering) {
+        // If we are already playing (user hit play), keep showing playing state (Pause btn)
+        // unless it's the initial load.
+        if (playing && _status == AudioManagerStatus.playing) {
+          // Do nothing, keep status as playing so UI shows Pause button
         } else {
-          if (event.type == AudioInterruptionType.duck) {
-            _player.setVolume(1.0);
-          } else {
-            _player.play();
-          }
+          _status = AudioManagerStatus.loading;
         }
-      });
+      } else if (!playing) {
+        // Only set to paused if we are not in initial or error state mostly
+        if (_status != AudioManagerStatus.error) {
+          _status = AudioManagerStatus.paused;
+        }
+      } else if (processingState == ProcessingState.ready) {
+        _status = AudioManagerStatus.playing;
+      } else if (processingState == ProcessingState.completed) {
+        _status = AudioManagerStatus.paused;
+        _audioPlayer.seek(Duration.zero);
+        _audioPlayer.pause();
+      }
 
-      // Handle unplugging
-      session.becomingNoisyEventStream.listen((_) => _player.pause());
-
-      // 3. Setup Player Listeners
-      _setupPlayerListeners();
-
-      _isInit = true;
-      debugPrint('✅ AudioManager initialized successfully');
-    } catch (e) {
-      debugPrint('❌ Error initializing AudioManager: $e');
-    }
-  }
-
-  void _setupPlayerListeners() {
-    // Monitor Player State
-    _player.playerStateStream.listen((state) {
-      _isPlaying = state.playing;
-      _isLoading = state.processingState == ProcessingState.loading ||
-          state.processingState == ProcessingState.buffering;
-
-      // Error Detection: Not playing but supposed to be?
-      if (state.processingState == ProcessingState.completed) {
-        _attemptReconnection(force: true);
+      // Override: If playing is true and we are ready/buffering, let's just say playing
+      // so the user sees the Pause button.
+      if (playing &&
+          (processingState == ProcessingState.ready ||
+              processingState == ProcessingState.buffering)) {
+        _status = AudioManagerStatus.playing;
       }
 
       notifyListeners();
     });
 
-    // Monitor Errors
-    _player.playbackEventStream.listen(
+    // Listen to playback errors
+    _audioPlayer.playbackEventStream.listen(
       (event) {},
-      onError: (Object e, StackTrace st) {
-        debugPrint('❌ Playback Error: $e');
-        if (e is PlayerException) {
-          debugPrint('Error code: ${e.code}');
-          debugPrint('Error message: ${e.message}');
-        }
-        _attemptReconnection();
+      onError: (Object e, StackTrace stackTrace) {
+        debugPrint('A stream error occurred: $e');
+        _status = AudioManagerStatus.error;
+        _errorMessage = e.toString();
+        notifyListeners();
       },
     );
   }
 
-  /// Play a station with robust strategy
-  Future<void> play(model.Radio station) async {
-    if (_currentStation?.id == station.id && _isPlaying) return;
-
-    // cleanup
-    _cancelReconnection();
-
-    _currentStation = station;
-    _retryCount = 0;
-    notifyListeners();
-
-    await _playInternal(station);
-  }
-
-  Future<void> _playInternal(model.Radio station) async {
-    // Always try the first URL first, then others if available
-    // But for each URL, we try varying headers
-
-    for (int i = 0; i < station.streamUrl.length; i++) {
-      final url = station.streamUrl[i];
-      if (await _tryPlayUrl(url, station)) {
-        return; // Success!
+  Future<void> playRadio(radio_model.Radio radio) async {
+    // If selecting the same radio that is already loaded
+    if (_currentRadio?.id == radio.id) {
+      if (_status == AudioManagerStatus.playing) {
+        pause();
+      } else {
+        resume();
       }
-    }
-
-    // If all URLs fail
-    debugPrint('❌ Failed to play station on all URLs');
-    _attemptReconnection();
-  }
-
-  /// Try to play a specific URL with different Header strategies
-  Future<bool> _tryPlayUrl(String url, model.Radio station) async {
-    // Strategy 1: Standard Headers (Chrome/Android)
-    if (await _configureAndPlay(url, station, _getStandardHeaders())) {
-      return true;
-    }
-
-    // Strategy 2: Empty Headers (Sometimes safer)
-    if (await _configureAndPlay(url, station, {})) return true;
-
-    // Strategy 3: ICY / VLC Agent
-    if (await _configureAndPlay(url, station, _getICYHeaders())) return true;
-
-    return false;
-  }
-
-  Future<bool> _configureAndPlay(
-      String url, model.Radio station, Map<String, String> headers) async {
-    try {
-      debugPrint('🎧 Trying to play: $url');
-      debugPrint('   Headers: ${headers.keys.toList()}');
-
-      // Force URI source - most robust for live streams
-      final source = AudioSource.uri(
-        Uri.parse(url),
-        headers: headers,
-        tag: MediaItem(
-          id: station.id,
-          title: station.name,
-          artist: station.frequency,
-          artUri: Uri.tryParse(station.logoUrl),
-        ),
-      );
-
-      await _player.setAudioSource(source, preload: true);
-
-      // Critical: Activate session before play
-      final session = await AudioSession.instance;
-      await session.setActive(true);
-
-      await _player.play();
-
-      // Verify we are actually playing
-      if (_player.playing) {
-        debugPrint('✅ SUCCESS: Playing $url');
-        return true;
-      }
-    } catch (e) {
-      debugPrint('⚠️ Method failed: $e');
-    }
-    return false;
-  }
-
-  Map<String, String> _getStandardHeaders() {
-    return {
-      'User-Agent':
-          'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-      'Accept': '*/*',
-      'Icy-MetaData': '1',
-    };
-  }
-
-  Map<String, String> _getICYHeaders() {
-    return {
-      'User-Agent':
-          'VLC/3.0.18 LibVLC/3.0.18', // Often bypassed restrictive firewalls
-      'Icy-MetaData': '1',
-    };
-  }
-
-  void _attemptReconnection({bool force = false}) {
-    if (_isReconnecting && !force) return;
-    if (_currentStation == null) return;
-    if (_retryCount > _maxRetries) {
-      debugPrint('❌ Max retries reached, giving up.');
-      _isReconnecting = false;
-      notifyListeners();
       return;
     }
 
-    _isReconnecting = true;
-    _retryCount++;
-    notifyListeners();
+    try {
+      _currentRadio = radio;
+      _status = AudioManagerStatus.loading;
+      _errorMessage = null;
+      notifyListeners();
 
-    debugPrint('🔄 Reconnecting in 3 seconds... (Attempt $_retryCount)');
-    _reconnectionTimer?.cancel();
-    _reconnectionTimer = Timer(const Duration(seconds: 3), () async {
-      if (_currentStation != null) {
-        await _playInternal(_currentStation!);
-        // If successful, _isReconnecting will be set to false by a successful play check or state update?
-        // Actually _playInternal calls _tryPlayUrl which calls _player.play().
-        // If successful, the logic naturally continues.
-        // We should ensure flag reset if success.
-        if (_player.playing) {
-          _isReconnecting = false;
-          _retryCount = 0;
-          notifyListeners();
-        }
+      // Setup Background Audio Service MediaItem
+      final mediaItem = MediaItem(
+        id: radio.id,
+        album: "Radio en Vivo",
+        title: radio.name,
+        artist: radio.frequency,
+        artUri: Uri.parse(radio.logoUrl),
+      );
+
+      // Pass media item to existing service if we needed to,
+      // but here we are using just_audio directly for simplicity in manager
+      // and letting background service hooks handle the notification updates ideally.
+      // However, looking at the existing background_audio_service, it sets the player source.
+      // Let's integrate with the existing connection pattern.
+
+      final headers = {
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': '*/*',
+        'Connection': 'keep-alive',
+        'Icy-MetaData': '1',
+      };
+
+      if (_audioPlayer.playing) {
+        await _audioPlayer.stop();
       }
-    });
-  }
 
-  void _cancelReconnection() {
-    _reconnectionTimer?.cancel();
-    _isReconnecting = false;
-    _retryCount = 0;
+      // Update AudioService
+      if (AudioServiceHelper.handler != null) {
+        AudioServiceHelper.handler!.mediaItem.add(mediaItem);
+      }
+
+      await _audioPlayer.setUrl(
+        radio.streamUrl.first,
+        headers: headers,
+      );
+
+      await _audioPlayer.play();
+    } catch (e) {
+      _status = AudioManagerStatus.error;
+      _errorMessage = "No se pudo conectar a la emisora.";
+      debugPrint("Error playing radio: $e");
+      notifyListeners();
+    }
   }
 
   Future<void> pause() async {
-    _cancelReconnection();
-    await _player.pause();
+    await _audioPlayer.pause();
   }
 
   Future<void> resume() async {
-    await _player.play();
+    await _audioPlayer.play();
   }
 
   Future<void> stop() async {
-    _cancelReconnection();
-    _currentStation = null;
-    await _player.stop();
+    await _audioPlayer.stop();
+    _currentRadio = null;
+    _status = AudioManagerStatus.initial;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 }

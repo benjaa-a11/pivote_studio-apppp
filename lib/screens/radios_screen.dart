@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shimmer/shimmer.dart';
-import '../models/radio.dart' as model;
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:skeletonizer/skeletonizer.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../providers/radio_provider.dart';
 import '../providers/audio_manager.dart';
-import '../config/app_animations.dart';
+import '../models/radio.dart' as radio_model;
 import 'radio_player_screen.dart';
-import 'package:just_audio/just_audio.dart';
 
 class RadiosScreen extends StatefulWidget {
   const RadiosScreen({super.key});
@@ -16,424 +16,317 @@ class RadiosScreen extends StatefulWidget {
   State<RadiosScreen> createState() => _RadiosScreenState();
 }
 
-class _RadiosScreenState extends State<RadiosScreen> {
-  final TextEditingController _searchController = TextEditingController();
-  bool _isSearching = false;
+class _RadiosScreenState extends State<RadiosScreen>
+    with SingleTickerProviderStateMixin {
+  final ScrollController _scrollController = ScrollController();
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _animationController.forward();
+  }
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _scrollController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            _buildFilters(context),
-            Expanded(
-              child: _buildStationList(context),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-                  ),
-                  image: const DecorationImage(
-                    image: CachedNetworkImageProvider(
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuBeZBVApXA4Kn_nPhRbesiswLugllFqjCiSNCE2rgAhnhLSB7_PBBO4c2RMxP5vktIAm3hJr-8swvSv0FAe33wZxm3StSXsyPrBXtW3PTReju-hN50ydr0_IZNuwOZIZnFAeUBdCYrzfWkO1tzL78aL6ssmKhPcr1e2tYoWnAdWSSPQ7GdHeXLoz_ZPcHl0wOo5Bu3ZOINYpaJJjKZaIewAFx0sVvw6OcJpPhhsv45rxVzpOPYNIPSpAXsIaDHyKl9II_h59cWjXvHB',
-                    ),
-                    fit: BoxFit.cover,
-                  ),
+          // Background Gradient
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: isDark
+                      ? [
+                          const Color(0xFF0F172A),
+                          const Color(0xFF030712),
+                        ]
+                      : [
+                          theme.colorScheme.primary.withValues(alpha: 0.05),
+                          theme.scaffoldBackgroundColor,
+                        ],
+                  stops: const [0.0, 0.4],
                 ),
               ),
-              IconButton(
-                onPressed: () {
-                  setState(() => _isSearching = !_isSearching);
-                  if (!_isSearching) {
-                    _searchController.clear();
-                    context.read<RadioProvider>().searchStations('');
-                  }
-                },
-                icon: Icon(
-                  _isSearching ? Icons.close : Icons.search,
-                  color: theme.colorScheme.onSurface,
-                  size: 28,
-                ),
-              ),
+            ),
+          ),
+
+          CustomScrollView(
+            controller: _scrollController,
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              _buildAppBar(context, isDark),
+              _buildRadioList(context),
+              const SliverToBoxAdapter(child: SizedBox(height: 40)),
             ],
           ),
-          const SizedBox(height: 24),
-          if (_isSearching)
-            AppAnimations.smoothFadeIn(
-              child: TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: theme.textTheme.bodyLarge,
-                decoration: InputDecoration(
-                  hintText: 'Buscar emisora...',
-                  hintStyle: theme.textTheme.bodyMedium,
-                  filled: true,
-                  fillColor:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-                onChanged: (value) =>
-                    context.read<RadioProvider>().searchStations(value),
-              ),
-            )
-          else
-            Text(
-              'Emisoras',
-              style: theme.textTheme.displayLarge,
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildFilters(BuildContext context) {
-    final radioProvider = context.watch<RadioProvider>();
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      height: 45,
-      margin: const EdgeInsets.only(bottom: 24),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        itemCount: radioProvider.categories.length,
-        itemBuilder: (context, index) {
-          final category = radioProvider.categories[index];
-          final isSelected = radioProvider.selectedCategory == category;
-
-          return AnimatedContainer(
-            duration: AppAnimations.fast,
-            margin: const EdgeInsets.only(right: 12),
-            child: InkWell(
-              onTap: () => radioProvider.setCategory(category),
-              borderRadius: BorderRadius.circular(25),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : theme.colorScheme.onSurface.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(25),
-                  border: Border.all(
-                    color: isSelected
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurface.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    category.toUpperCase(),
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: isSelected
-                          ? (isDark ? Colors.white : Colors.white)
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontSize: 10,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
+  Widget _buildAppBar(BuildContext context, bool isDark) {
+    return SliverAppBar(
+      expandedHeight: 140.0,
+      floating: false,
+      pinned: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      stretch: true,
+      flexibleSpace: FlexibleSpaceBar(
+        stretchModes: const [
+          StretchMode.blurBackground,
+          StretchMode.zoomBackground
+        ],
+        centerTitle: false,
+        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+        title: Text(
+          'Radio en Vivo',
+          style: GoogleFonts.montserrat(
+            fontWeight: FontWeight.w900,
+            color: isDark ? Colors.white : Colors.black87,
+            fontSize: 24,
+            letterSpacing: -1,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildStationList(BuildContext context) {
-    final radioProvider = context.watch<RadioProvider>();
-    final theme = Theme.of(context);
+  Widget _buildRadioList(BuildContext context) {
+    return Consumer2<RadioProvider, AudioManager>(
+      builder: (context, radioProvider, audioManager, child) {
+        final isLoading = radioProvider.isLoading;
+        final radios = isLoading
+            ? List.generate(
+                8,
+                (_) => radio_model.Radio(
+                    id: 'dummy',
+                    name: 'Cargando emisora...',
+                    frequency: '000.0 FM',
+                    logoUrl: '',
+                    streamUrl: []))
+            : radioProvider.radios;
 
-    if (radioProvider.isLoading) {
-      return _buildSkeletonList();
-    }
-
-    if (radioProvider.error != null) {
-      return Center(
-        child: Text(
-          radioProvider.error!,
-          style: theme.textTheme.bodyMedium,
-        ),
-      );
-    }
-
-    if (radioProvider.stations.isEmpty) {
-      return Center(
-        child: Text(
-          'No se encontraron emisoras',
-          style: theme.textTheme.bodyMedium,
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
-      itemCount: radioProvider.stations.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 24),
-      itemBuilder: (context, index) {
-        final station = radioProvider.stations[index];
-        return AppAnimations.staggeredListItem(
-          index: index,
-          child: _StationRow(station: station),
-        );
-      },
-    );
-  }
-
-  Widget _buildSkeletonList() {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      itemCount: 5,
-      separatorBuilder: (context, index) => const SizedBox(height: 24),
-      itemBuilder: (context, index) => Shimmer.fromColors(
-        baseColor: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.black.withValues(alpha: 0.05),
-        highlightColor: isDark
-            ? Colors.white.withValues(alpha: 0.1)
-            : Colors.black.withValues(alpha: 0.1),
-        child: Row(
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
+        if (!isLoading && radios.isEmpty) {
+          return SliverFillRemaining(
+            child: Center(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 150,
-                    height: 16,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                  FaIcon(
+                    FontAwesomeIcons.radio,
+                    size: 64,
+                    color: Colors.grey.withValues(alpha: 0.3),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: 100,
-                    height: 12,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                  const SizedBox(height: 24),
+                  Text(
+                    'No se encontraron radios',
+                    style: GoogleFonts.montserrat(
+                      color: Colors.grey,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StationRow extends StatelessWidget {
-  final model.Radio station;
-
-  const _StationRow({required this.station});
-
-  @override
-  Widget build(BuildContext context) {
-    final audioManager = context.watch<AudioManager>();
-    final isPlaying = audioManager.currentStation?.id == station.id;
-
-    return StreamBuilder<PlayerState>(
-      stream: audioManager.playerStateStream,
-      builder: (context, snapshot) {
-        final actualPlaying = isPlaying && (snapshot.data?.playing ?? false);
-        final isLoading = isPlaying &&
-            snapshot.data?.processingState == ProcessingState.loading;
-
-        return InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => RadioPlayerScreen(station: station),
-              ),
-            );
-          },
-          child: Row(
-            children: [
-              _buildLogo(),
-              const SizedBox(width: 20),
-              _buildInfo(),
-              _buildActions(context, actualPlaying, isLoading),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLogo() {
-    return Builder(
-      builder: (context) {
-        final theme = Theme.of(context);
-        final isDark = theme.brightness == Brightness.dark;
-
-        return Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1a1a1a) : theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: isDark
-                    ? Colors.black.withValues(alpha: 0.3)
-                    : Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: CachedNetworkImage(
-              imageUrl: station.logoUrl,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-              ),
-              errorWidget: (context, url, error) => Icon(
-                Icons.radio,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildInfo() {
-    return Expanded(
-      child: Builder(
-        builder: (context) {
-          final theme = Theme.of(context);
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                station.name,
-                style: theme.textTheme.titleLarge,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                station.frequency,
-                style: theme.textTheme.bodyMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
           );
-        },
-      ),
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final radio = radios[index];
+                return Skeletonizer(
+                  enabled: isLoading,
+                  child: FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: _animationController,
+                      curve: Interval(
+                        (index / (radios.length + 1)).clamp(0, 1),
+                        1.0,
+                        curve: Curves.easeOut,
+                      ),
+                    ),
+                    child: _buildRadioTile(
+                        context, radio, audioManager, isLoading),
+                  ),
+                );
+              },
+              childCount: radios.length,
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildActions(BuildContext context, bool isPlaying, bool isLoading) {
-    final audioManager = context.read<AudioManager>();
-    final theme = Theme.of(context);
+  Widget _buildRadioTile(BuildContext context, radio_model.Radio radio,
+      AudioManager audioManager, bool isLoading) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isCurrent = !isLoading && audioManager.currentRadio?.id == radio.id;
+    final isPlaying = isCurrent && audioManager.isPlaying;
 
-    return Row(
-      children: [
-        IconButton(
-          onPressed: () {
-            // Favoritos logic (placeholder for now as per user request to keep filters)
-            // But we can integrate it with a simple notification
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Función de favoritos próximamente')),
-            );
-          },
-          icon: Icon(
-            Icons.favorite_border,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-            size: 20,
-          ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isCurrent
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.grey.withValues(alpha: 0.1)),
+          width: 1.5,
         ),
-        const SizedBox(width: 8),
-        InkWell(
-          onTap: () =>
-              isPlaying ? audioManager.pause() : audioManager.play(station),
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: isLoading
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: theme.colorScheme.onSurface,
+        boxShadow: isDark
+            ? []
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              if (isLoading) return;
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      RadioPlayerScreen(radio: radio),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(0.0, 1.0);
+                    const end = Offset.zero;
+                    const curve = Curves.easeOutCubic;
+                    var tween = Tween(begin: begin, end: end)
+                        .chain(CurveTween(curve: curve));
+                    return SlideTransition(
+                        position: animation.drive(tween), child: child);
+                  },
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  // Logo
+                  Hero(
+                    tag: 'radio_tile_logo_${radio.id}',
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    )
-                  : Icon(
-                      isPlaying ? Icons.pause : Icons.play_arrow,
-                      color: theme.colorScheme.onSurface,
-                      size: 24,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: CachedNetworkImage(
+                          imageUrl: radio.logoUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (context, _) =>
+                              Container(color: Colors.grey[isDark ? 900 : 200]),
+                          errorWidget: (context, _, __) => Container(
+                            color: Colors.grey[isDark ? 900 : 200],
+                            child: const Icon(Icons.radio, color: Colors.grey),
+                          ),
+                        ),
+                      ),
                     ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          radio.name,
+                          style: GoogleFonts.montserrat(
+                            color: isDark ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          radio.frequency,
+                          style: GoogleFonts.montserrat(
+                            color: Colors.grey,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Status Icon
+                  if (isCurrent)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: isPlaying
+                          ? Icon(Icons.equalizer_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20)
+                          : Icon(Icons.play_arrow_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20),
+                    )
+                  else
+                    Icon(Icons.chevron_right_rounded,
+                        color: Colors.grey.withValues(alpha: 0.5)),
+                ],
+              ),
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
