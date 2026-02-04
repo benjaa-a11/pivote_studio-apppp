@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/radio_provider.dart';
@@ -41,290 +40,278 @@ class _RadiosScreenState extends State<RadiosScreen>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          // Background Gradient
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: isDark
-                      ? [
-                          const Color(0xFF0F172A),
-                          const Color(0xFF030712),
-                        ]
-                      : [
-                          theme.colorScheme.primary.withValues(alpha: 0.05),
-                          theme.scaffoldBackgroundColor,
-                        ],
-                  stops: const [0.0, 0.4],
-                ),
-              ),
+      backgroundColor: isDark ? const Color(0xFF0F0E13) : Colors.white,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _buildHeader(context, isDark),
+            _buildCategoryFilters(context, isDark),
+            Expanded(
+              child: _buildRadioList(context, isDark),
             ),
-          ),
-
-          CustomScrollView(
-            controller: _scrollController,
-            physics: const ClampingScrollPhysics(),
-            slivers: [
-              _buildAppBar(context, isDark),
-              _buildRadioList(context),
-              const SliverToBoxAdapter(child: SizedBox(height: 40)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAppBar(BuildContext context, bool isDark) {
-    return SliverAppBar(
-      expandedHeight: 140.0,
-      floating: false,
-      pinned: true,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      stretch: true,
-      flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [
-          StretchMode.blurBackground,
-          StretchMode.zoomBackground
-        ],
-        centerTitle: false,
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
-        title: Text(
-          'Radio en Vivo',
-          style: GoogleFonts.montserrat(
-            fontWeight: FontWeight.w900,
-            color: isDark ? Colors.white : Colors.black87,
-            fontSize: 24,
-            letterSpacing: -1,
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildRadioList(BuildContext context) {
-    return Consumer2<RadioProvider, AudioManager>(
-      builder: (context, radioProvider, audioManager, child) {
-        final isLoading = radioProvider.isLoading;
-        final radios = isLoading
-            ? List.generate(
-                8,
-                (_) => radio_model.Radio(
-                    id: 'dummy',
-                    name: 'Cargando emisora...',
-                    frequency: '000.0 FM',
-                    logoUrl: '',
-                    streamUrl: []))
-            : radioProvider.radios;
+  Widget _buildHeader(BuildContext context, bool isDark) {
+    final textColor = isDark ? Colors.white : Colors.black;
 
-        if (!isLoading && radios.isEmpty) {
-          return SliverFillRemaining(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  FaIcon(
-                    FontAwesomeIcons.radio,
-                    size: 64,
-                    color: Colors.grey.withValues(alpha: 0.3),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'No se encontraron radios',
-                    style: GoogleFonts.montserrat(
-                      color: Colors.grey,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 12, 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Radio',
+            style: GoogleFonts.splineSans(
+              fontSize: 32,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+              letterSpacing: -0.5,
             ),
-          );
-        }
+          ),
+          IconButton(
+            onPressed: () {
+              // Open search overlay or navigate to search screen
+            },
+            icon: Icon(
+              Icons.search_rounded,
+              color: textColor.withValues(alpha: 0.7),
+              size: 28,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-        return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final radio = radios[index];
-                return Skeletonizer(
-                  enabled: isLoading,
-                  child: FadeTransition(
-                    opacity: CurvedAnimation(
-                      parent: _animationController,
-                      curve: Interval(
-                        (index / (radios.length + 1)).clamp(0, 1),
-                        1.0,
-                        curve: Curves.easeOut,
+  Widget _buildCategoryFilters(BuildContext context, bool isDark) {
+    return Consumer<RadioProvider>(
+      builder: (context, provider, _) {
+        final categories = provider.categories;
+
+        return Container(
+          height: 44,
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              final isSelected = provider.activeCategory == category;
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () => provider.setActiveCategory(category),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? (isDark ? Colors.white : Colors.black)
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.black.withValues(alpha: 0.05)),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? Colors.transparent
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.1)
+                                : Colors.black.withValues(alpha: 0.1)),
+                        width: 1,
                       ),
                     ),
-                    child: _buildRadioTile(
-                        context, radio, audioManager, isLoading),
+                    alignment: Alignment.center,
+                    child: Text(
+                      category.toUpperCase(),
+                      style: GoogleFonts.splineSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected
+                            ? (isDark ? Colors.black : Colors.white)
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.6)
+                                : Colors.black.withValues(alpha: 0.6)),
+                        letterSpacing: 1.2,
+                      ),
+                    ),
                   ),
-                );
-              },
-              childCount: radios.length,
-            ),
+                ),
+              );
+            },
           ),
         );
       },
     );
   }
 
-  Widget _buildRadioTile(BuildContext context, radio_model.Radio radio,
-      AudioManager audioManager, bool isLoading) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isCurrent = !isLoading && audioManager.currentRadio?.id == radio.id;
-    final isPlaying = isCurrent && audioManager.isPlaying;
+  Widget _buildRadioList(BuildContext context, bool isDark) {
+    return Consumer2<RadioProvider, AudioManager>(
+      builder: (context, radioProvider, audioManager, child) {
+        final isLoading = radioProvider.isLoading;
+        final radios = isLoading
+            ? List.generate(
+                8,
+                (i) => radio_model.Radio(
+                    id: 'dummy_$i',
+                    name: 'Cargando emisora...',
+                    frequency: 'Cargando...',
+                    logoUrl: '',
+                    streamUrl: []))
+            : radioProvider.radios;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isCurrent
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
-              : (isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.grey.withValues(alpha: 0.1)),
-          width: 1.5,
-        ),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+        if (!isLoading && radios.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.radio_rounded,
+                  size: 64,
+                  color: isDark ? Colors.white10 : Colors.black12,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No se encontraron radios',
+                  style: GoogleFonts.splineSans(
+                    color: isDark ? Colors.white38 : Colors.black38,
+                    fontSize: 16,
+                  ),
                 ),
               ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              if (isLoading) return;
-              Navigator.push(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                      RadioPlayerScreen(radio: radio),
-                  transitionsBuilder:
-                      (context, animation, secondaryAnimation, child) {
-                    const begin = Offset(0.0, 1.0);
-                    const end = Offset.zero;
-                    const curve = Curves.easeOutCubic;
-                    var tween = Tween(begin: begin, end: end)
-                        .chain(CurveTween(curve: curve));
-                    return SlideTransition(
-                        position: animation.drive(tween), child: child);
-                  },
-                ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          itemCount: radios.length,
+          itemBuilder: (context, index) {
+            final radio = radios[index];
+            return Skeletonizer(
+              enabled: isLoading,
+              child: _buildRadioItem(context, radio, audioManager, isDark),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildRadioItem(BuildContext context, radio_model.Radio radio,
+      AudioManager audioManager, bool isDark) {
+    final isCurrent = audioManager.currentRadio?.id == radio.id;
+    final textColor = isDark ? Colors.white : Colors.black;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                RadioPlayerScreen(radio: radio),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              return SlideTransition(
+                position: animation.drive(Tween(
+                  begin: const Offset(0.0, 1.0),
+                  end: Offset.zero,
+                ).chain(CurveTween(curve: Curves.easeOutCubic))),
+                child: child,
               );
             },
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        color: Colors.transparent, // For better hit testing
+        child: Row(
+          children: [
+            // Station Logo
+            Hero(
+              tag: 'radio_tile_logo_${radio.id}',
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: ShapeDecoration(
+                  color: isDark ? const Color(0xFF1A1A1A) : Colors.grey[200],
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  shadows: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: radio.logoUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (context, _) =>
+                        Container(color: Colors.transparent),
+                    errorWidget: (context, _, __) => Icon(
+                      Icons.radio_rounded,
+                      color: isDark
+                          ? Colors.white24
+                          : Colors.black12, // Fixed from black24
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 20),
+            // Station Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Logo
-                  Hero(
-                    tag: 'radio_tile_logo_${radio.id}',
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: CachedNetworkImage(
-                          imageUrl: radio.logoUrl,
-                          fit: BoxFit.cover,
-                          placeholder: (context, _) =>
-                              Container(color: Colors.grey[isDark ? 900 : 200]),
-                          errorWidget: (context, _, __) => Container(
-                            color: Colors.grey[isDark ? 900 : 200],
-                            child: const Icon(Icons.radio, color: Colors.grey),
-                          ),
-                        ),
-                      ),
+                  Text(
+                    radio.name,
+                    style: GoogleFonts.splineSans(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: isCurrent
+                          ? Theme.of(context).primaryColor
+                          : textColor,
+                      letterSpacing: -0.2,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(width: 16),
-                  // Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          radio.name,
-                          style: GoogleFonts.montserrat(
-                            color: isDark ? Colors.white : Colors.black87,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          radio.frequency,
-                          style: GoogleFonts.montserrat(
-                            color: Colors.grey,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 3),
+                  Text(
+                    radio.frequency,
+                    style: GoogleFonts.splineSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w300,
+                      color: textColor.withValues(alpha: 0.5),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  // Status Icon
-                  if (isCurrent)
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: isPlaying
-                          ? Icon(Icons.equalizer_rounded,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 20)
-                          : Icon(Icons.play_arrow_rounded,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 20),
-                    )
-                  else
-                    Icon(Icons.chevron_right_rounded,
-                        color: Colors.grey.withValues(alpha: 0.5)),
                 ],
               ),
             ),
-          ),
+            // Play/Chevron Icon
+            Icon(
+              Icons.chevron_right_rounded,
+              color: textColor.withValues(alpha: 0.3),
+              size: 28,
+            ),
+          ],
         ),
       ),
     );

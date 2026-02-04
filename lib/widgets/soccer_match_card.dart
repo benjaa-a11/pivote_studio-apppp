@@ -108,7 +108,7 @@ class SoccerMatchCard extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(':',
+                child: Text('-',
                     style: GoogleFonts.inter(
                         color:
                             theme.colorScheme.onSurface.withValues(alpha: 0.2),

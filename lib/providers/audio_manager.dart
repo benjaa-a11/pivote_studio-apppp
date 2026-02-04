@@ -149,7 +149,7 @@ class AudioManager extends ChangeNotifier {
       await _audioPlayer.play();
     } catch (e) {
       _status = AudioManagerStatus.error;
-      _errorMessage = "No se pudo conectar a la emisora.";
+      _errorMessage = "No se pudo conectar a la emisora. Revisa tu conexión.";
       debugPrint("Error playing radio: $e");
       notifyListeners();
     }

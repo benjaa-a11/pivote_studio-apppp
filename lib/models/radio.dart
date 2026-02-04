@@ -4,6 +4,7 @@ class Radio {
   final String frequency; // This will be mapped to "emisora" from Firestore
   final String logoUrl;
   final List<String> streamUrl;
+  final String? category;
   bool isFavorite;
 
   Radio({
@@ -12,6 +13,7 @@ class Radio {
     required this.frequency,
     required this.logoUrl,
     required this.streamUrl,
+    this.category,
     this.isFavorite = false,
   });
 
@@ -26,9 +28,11 @@ class Radio {
     return Radio(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
-      frequency: json['emisora'] ?? '', // Map "emisora" from Firestore to "frequency"
+      frequency:
+          json['emisora'] ?? '', // Map "emisora" from Firestore to "frequency"
       logoUrl: json['logoUrl'] ?? '',
       streamUrl: streams,
+      category: json['category'],
       isFavorite: json['isFavorite'] ?? false,
     );
   }
@@ -40,6 +44,7 @@ class Radio {
       'emisora': frequency, // Map "frequency" to "emisora" for Firestore
       'logoUrl': logoUrl,
       'streamUrl': streamUrl,
+      'category': category,
       'isFavorite': isFavorite,
     };
   }
@@ -50,6 +55,7 @@ class Radio {
     String? frequency,
     String? logoUrl,
     List<String>? streamUrl,
+    String? category,
     bool? isFavorite,
   }) {
     return Radio(
@@ -58,6 +64,7 @@ class Radio {
       frequency: frequency ?? this.frequency,
       logoUrl: logoUrl ?? this.logoUrl,
       streamUrl: streamUrl ?? this.streamUrl,
+      category: category ?? this.category,
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }

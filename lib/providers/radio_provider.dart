@@ -8,6 +8,7 @@ class RadioProvider extends ChangeNotifier {
   List<radio_model.Radio> _radios = [];
   List<radio_model.Radio> _filteredRadios = [];
   String _searchQuery = '';
+  String _activeCategory = 'Todas';
   bool _isLoading = false;
   bool _isInitialized = false;
 
@@ -16,16 +17,35 @@ class RadioProvider extends ChangeNotifier {
     _loadFavorites();
   }
 
-  List<radio_model.Radio> get radios =>
-      _filteredRadios.isEmpty && _searchQuery.isEmpty
-          ? _radios
-          : _filteredRadios;
+  List<radio_model.Radio> get radios => (_filteredRadios.isEmpty &&
+          _searchQuery.isEmpty &&
+          _activeCategory == 'Todas')
+      ? _radios
+      : _filteredRadios;
 
   bool get isLoading => _isLoading;
 
   bool get isInitialized => _isInitialized;
 
   String get searchQuery => _searchQuery;
+
+  String get activeCategory => _activeCategory;
+
+  List<String> get categories {
+    final cats = _radios
+        .map((r) => r.category ?? 'Otras')
+        .where((c) => c.isNotEmpty)
+        .toSet()
+        .toList();
+    cats.sort();
+    return ['Todas', ...cats];
+  }
+
+  void setActiveCategory(String category) {
+    _activeCategory = category;
+    _applyFilters();
+    notifyListeners();
+  }
 
   Future<void> loadRadiosFromFirestore() async {
     _isLoading = true;
@@ -36,7 +56,8 @@ class RadioProvider extends ChangeNotifier {
       final snapshot = await FirebaseService.radiosCollection.get();
       _radios = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
-        return radio_model.Radio.fromJson(data);
+        // Ensure the ID is set from doc if not in data
+        return radio_model.Radio.fromJson({...data, 'id': doc.id});
       }).toList();
 
       _applyFilters();
@@ -90,22 +111,21 @@ class RadioProvider extends ChangeNotifier {
   }
 
   void _applyFilters() {
-    if (_searchQuery.isEmpty) {
-      _filteredRadios = [];
-      return;
-    }
-
     _filteredRadios = _radios.where((radio) {
       final matchesSearch = _searchQuery.isEmpty ||
           radio.name.toLowerCase().contains(_searchQuery);
 
-      return matchesSearch;
+      final matchesCategory = _activeCategory == 'Todas' ||
+          (radio.category ?? 'Otras') == _activeCategory;
+
+      return matchesSearch && matchesCategory;
     }).toList();
   }
 
   void clearFilters() {
     _searchQuery = '';
-    _filteredRadios = [];
+    _activeCategory = 'Todas';
+    _applyFilters();
     notifyListeners();
   }
 

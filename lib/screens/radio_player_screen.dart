@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/app_notifications.dart';
 import '../models/radio.dart' as radio_model;
 import '../providers/audio_manager.dart';
 import '../providers/radio_provider.dart';
@@ -74,6 +75,23 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
     ));
+
+    // Listen to errors from AudioManager
+    _setupErrorListener();
+  }
+
+  void _setupErrorListener() {
+    final audioManager = context.read<AudioManager>();
+    audioManager.addListener(_onAudioManagerChanged);
+  }
+
+  void _onAudioManagerChanged() {
+    if (!mounted) return;
+    final audioManager = context.read<AudioManager>();
+    if (audioManager.status == AudioManagerStatus.error &&
+        audioManager.errorMessage != null) {
+      AppNotifications.showError(context, audioManager.errorMessage!);
+    }
   }
 
   void _handleDragStart(DragStartDetails details) {
@@ -117,6 +135,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
 
   @override
   void dispose() {
+    context.read<AudioManager>().removeListener(_onAudioManagerChanged);
     _slideAnimationController.dispose();
     _pulseController.dispose();
     _rotateController.dispose();
@@ -126,17 +145,17 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return PopScope(
       canPop: true,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) {
-          // Stop radio playback when the player is dismissed
           context.read<AudioManager>().stop();
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: isDark ? const Color(0xFF0A0A0A) : Colors.white,
         body: GestureDetector(
           onVerticalDragStart: _handleDragStart,
           onVerticalDragUpdate: _handleDragUpdate,
@@ -156,37 +175,27 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // 1. Background Image with Blur
-                _buildBlurBackground(widget.radio.logoUrl),
+                // Background Gradient/Glow (Subtle)
+                _buildDynamicBackground(context, isDark),
 
-                // 2. Animated Glow Backdrop (centered behind logo)
-                _buildAnimatedGlow(context),
-
-                // 3. Main Content
                 SafeArea(
                   child: Column(
                     children: [
-                      _buildTopBar(context),
+                      _buildHeader(context, isDark),
                       Expanded(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              bool isTall = constraints.maxHeight > 500;
-                              return Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  if (isTall) const Spacer(flex: 2),
-                                  _buildMainArt(context, size),
-                                  if (isTall) const Spacer(flex: 2),
-                                  _buildRadioMeta(context),
-                                  if (isTall) const Spacer(flex: 2),
-                                  _buildMainControls(context),
-                                  if (isTall) const Spacer(flex: 3),
-                                ],
-                              );
-                            },
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Spacer(flex: 2),
+                              _buildPlayerArt(context, size),
+                              const Spacer(flex: 2),
+                              _buildPlayerInfo(context, isDark),
+                              const Spacer(flex: 2),
+                              _buildPlayerControls(context, isDark),
+                              const Spacer(flex: 3),
+                            ],
                           ),
                         ),
                       ),
@@ -201,174 +210,157 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     );
   }
 
-  Widget _buildBlurBackground(String imageUrl) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        CachedNetworkImage(
-          imageUrl: imageUrl,
-          fit: BoxFit.cover,
-          errorWidget: (context, url, e) => Container(color: Colors.black),
-        ),
-        BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.3),
-                  Colors.black.withValues(alpha: 0.6),
-                  Colors.black.withValues(alpha: 0.9),
+  Widget _buildDynamicBackground(BuildContext context, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [
+                  const Color(0xFF0A0A0A),
+                  const Color(0xFF161618),
+                ]
+              : [
+                  Colors.white,
+                  const Color(0xFFF5F5F7),
                 ],
-              ),
-            ),
-          ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildAnimatedGlow(BuildContext context) {
-    // Generate a soft glow based on a secondary color or just Indigo/Emerald from theme
-    return Center(
-      child: AnimatedBuilder(
-        animation: _pulseController,
-        builder: (context, child) {
-          return Container(
-            width: 300,
-            height: 300,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.indigo
-                      .withValues(alpha: 0.15 * _pulseController.value),
-                  blurRadius: 100 + (50 * _pulseController.value),
-                  spreadRadius: 20 + (30 * _pulseController.value),
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool isDark) {
+    final textColor = isDark ? Colors.white : Colors.black;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            onPressed: _dismissPlayer,
-            icon: const Icon(Icons.expand_more_rounded,
-                color: Colors.white, size: 36),
-          ),
-          const Spacer(),
-          Text(
-            'EN VIVO',
-            style: GoogleFonts.montserrat(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2,
-            ),
-          ),
-          const SizedBox(width: 8),
-          ScaleTransition(
-            scale: Tween(begin: 0.8, end: 1.2).animate(_pulseController),
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(
-                color: Colors.redAccent,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.redAccent, blurRadius: 4, spreadRadius: 1),
-                ],
-              ),
-            ),
-          ),
-          const Spacer(),
-          Consumer<RadioProvider>(
-            builder: (context, provider, _) {
-              final isFav =
-                  provider.getRadioById(widget.radio.id)?.isFavorite ?? false;
-              return IconButton(
-                onPressed: () => provider.toggleFavorite(widget.radio),
-                icon: Icon(
-                  isFav
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  color: isFav ? Colors.redAccent : Colors.white70,
-                ),
-              );
+            onPressed: () {
+              context.read<AudioManager>().stop();
+              Navigator.pop(context);
             },
+            icon: Icon(
+              Icons.chevron_left_rounded,
+              color: textColor.withValues(alpha: 0.5),
+              size: 32,
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'RADIO EN VIVO',
+                style: GoogleFonts.inter(
+                  color: textColor.withValues(alpha: 0.4),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _buildStatusIndicator(),
+            ],
+          ),
+          IconButton(
+            onPressed: () {
+              // Show more options (e.g. share / info)
+            },
+            icon: Icon(
+              Icons.more_horiz_rounded,
+              color: textColor.withValues(alpha: 0.5),
+              size: 32,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMainArt(BuildContext context, Size size) {
-    final artSize = size.width * 0.75;
+  Widget _buildStatusIndicator() {
+    return Consumer<AudioManager>(
+      builder: (context, audioManager, _) {
+        final isLoading = audioManager.isLoading;
+        final isError = audioManager.status == AudioManagerStatus.error;
+
+        if (isError) {
+          return Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEF4444),
+              shape: BoxShape.circle,
+            ),
+          );
+        }
+
+        return ScaleTransition(
+          scale: Tween(begin: 0.8, end: 1.2).animate(_pulseController),
+          child: Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: isLoading ? Colors.amber : const Color(0xFF10B981),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: (isLoading ? Colors.amber : const Color(0xFF10B981))
+                      .withValues(alpha: 0.4),
+                  blurRadius: 4,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPlayerArt(BuildContext context, Size size) {
+    final artSize = size.width * 0.8;
     return Center(
       child: Hero(
         tag: 'radio_tile_logo_${widget.radio.id}',
         child: Container(
           width: artSize,
           height: artSize,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(32),
-            gradient: LinearGradient(
-              colors: [
-                Colors.white.withValues(alpha: 0.2),
-                Colors.white.withValues(alpha: 0.05),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+          decoration: ShapeDecoration(
+            shape: ContinuousRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                  96), // Higher value for Continuous gives better squircle
             ),
-            border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1), width: 1),
-            boxShadow: [
+            shadows: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 20,
-                spreadRadius: 5,
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 40,
+                offset: const Offset(0, 20),
+                spreadRadius: -10,
               ),
             ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: Stack(
-              children: [
-                CachedNetworkImage(
-                  imageUrl: widget.radio.logoUrl,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: double.infinity,
-                  placeholder: (context, _) =>
-                      Container(color: Colors.grey[900]),
+          child: ClipPath(
+            clipper: ShapeBorderClipper(
+              shape: ContinuousRectangleBorder(
+                borderRadius: BorderRadius.circular(96),
+              ),
+            ),
+            child: CachedNetworkImage(
+              imageUrl: widget.radio.logoUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: Colors.grey[900],
+                child: const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-                // Glass overlay on the image
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withValues(alpha: 0.1),
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.1),
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
-                ),
-              ],
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.grey[900],
+                child: const Icon(Icons.radio, color: Colors.white24, size: 64),
+              ),
             ),
           ),
         ),
@@ -376,110 +368,111 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     );
   }
 
-  Widget _buildRadioMeta(BuildContext context) {
+  Widget _buildPlayerInfo(BuildContext context, bool isDark) {
+    final textColor = isDark ? Colors.white : Colors.black;
+
     return Column(
       children: [
         Text(
           widget.radio.name,
           textAlign: TextAlign.center,
-          style: GoogleFonts.montserrat(
-            color: Colors.white,
+          style: GoogleFonts.inter(
+            color: textColor,
             fontSize: 28,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w700,
             letterSpacing: -0.5,
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-          ),
-          child: Text(
-            widget.radio.frequency,
-            style: GoogleFonts.montserrat(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+        Text(
+          widget.radio.frequency,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            color: isDark
+                ? const Color(0xFF86868B)
+                : Colors.black.withValues(alpha: 0.5),
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildMainControls(BuildContext context) {
+  Widget _buildPlayerControls(BuildContext context, bool isDark) {
+    final textColor = isDark ? Colors.white : Colors.black;
+
     return Consumer<AudioManager>(
       builder: (context, audioManager, _) {
-        final isCorrect = audioManager.currentRadio?.id == widget.radio.id;
-        final isPlaying = isCorrect && audioManager.isPlaying;
-        final isLoading = isCorrect && audioManager.isLoading;
+        final isPlaying = audioManager.isPlaying;
+        final isLoading = audioManager.isLoading;
 
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildSmallControl(
-              icon: Icons.skip_previous_rounded,
-              onTap: () => _navigateRadio(context, -1),
+            IconButton(
+              onPressed: () => _navigateRadio(context, -1),
+              icon: Icon(
+                Icons.skip_previous_rounded,
+                color: textColor,
+                size: 44,
+              ),
             ),
-
-            // Play/Pause Big Button
             GestureDetector(
               onTap: () {
                 if (isPlaying) {
                   audioManager.pause();
-                } else if (isCorrect) {
-                  audioManager.resume();
                 } else {
                   audioManager.playRadio(widget.radio);
                 }
               },
-              child: Container(
-                width: 80,
-                height: 80,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 84,
+                height: 84,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white,
+                  color: isDark ? Colors.white : Colors.black,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.3),
+                      color: (isDark ? Colors.white : Colors.black)
+                          .withValues(alpha: 0.2),
                       blurRadius: 20,
-                      spreadRadius: 2,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
                 child: Center(
                   child: isLoading
-                      ? const CircularProgressIndicator(
-                          color: Colors.black, strokeWidth: 3)
+                      ? SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: CircularProgressIndicator(
+                            color: isDark ? Colors.black : Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        )
                       : Icon(
                           isPlaying
                               ? Icons.pause_rounded
                               : Icons.play_arrow_rounded,
-                          color: Colors.black,
-                          size: 48,
+                          color: isDark ? Colors.black : Colors.white,
+                          size: 52,
                         ),
                 ),
               ),
             ),
-
-            _buildSmallControl(
-              icon: Icons.skip_next_rounded,
-              onTap: () => _navigateRadio(context, 1),
+            IconButton(
+              onPressed: () => _navigateRadio(context, 1),
+              icon: Icon(
+                Icons.skip_next_rounded,
+                color: textColor,
+                size: 44,
+              ),
             ),
           ],
         );
       },
-    );
-  }
-
-  Widget _buildSmallControl(
-      {required IconData icon, required VoidCallback onTap}) {
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(icon, color: Colors.white, size: 42),
     );
   }
 
@@ -497,9 +490,15 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
           context,
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => RadioPlayerScreen(radio: nextRadio),
-            transitionDuration: const Duration(milliseconds: 300),
+            transitionDuration: const Duration(milliseconds: 400),
             transitionsBuilder: (_, animation, __, child) {
-              return FadeTransition(opacity: animation, child: child);
+              return FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeInOut,
+                ),
+                child: child,
+              );
             },
           ),
         );
