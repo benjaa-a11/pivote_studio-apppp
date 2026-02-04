@@ -10,7 +10,11 @@ enum AudioManagerStatus { initial, loading, playing, paused, error }
 class AudioManager extends ChangeNotifier {
   static final AudioManager _instance = AudioManager._internal();
   factory AudioManager() => _instance;
-  AudioManager._internal();
+  AudioManager._internal() {
+    initialize();
+  }
+
+  bool _isInitialized = false;
 
   final AudioPlayer _audioPlayer = AudioPlayer();
 
@@ -32,6 +36,9 @@ class AudioManager extends ChangeNotifier {
       _audioPlayer.bufferedPositionStream;
 
   Future<void> initialize() async {
+    if (_isInitialized) return;
+    _isInitialized = true;
+
     await AudioServiceHelper.init();
 
     // Listen to player state changes

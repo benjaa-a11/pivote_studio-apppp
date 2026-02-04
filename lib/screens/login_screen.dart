@@ -100,19 +100,27 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       height: 320,
       width: double.infinity,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFE7714D), Color(0xFFE57C5D)],
+          colors: isDark
+              ? [
+                  theme.colorScheme.primary,
+                  theme.colorScheme.primary.withValues(alpha: 0.8)
+                ]
+              : [theme.colorScheme.primary, theme.colorScheme.secondary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
       child: Stack(
         children: [
-          // Blob 1 (Yellow)
+          // Blob 1
           Positioned(
             top: -40,
             left: -40,
@@ -120,12 +128,15 @@ class _LoginScreenState extends State<LoginScreen> {
               width: 180,
               height: 180,
               decoration: BoxDecoration(
-                color: const Color(0xFFD4B455).withValues(alpha: 0.8),
+                color: (isDark
+                        ? theme.colorScheme.tertiary
+                        : theme.colorScheme.secondary)
+                    .withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
             ),
           ),
-          // Blob 2 (Greenish)
+          // Blob 2
           Positioned(
             top: 40,
             right: -60,
@@ -133,32 +144,11 @@ class _LoginScreenState extends State<LoginScreen> {
               width: 200,
               height: 200,
               decoration: BoxDecoration(
-                color: const Color(0xFF5BB389).withValues(alpha: 0.7),
+                color: (isDark
+                        ? theme.colorScheme.secondary
+                        : theme.colorScheme.tertiary)
+                    .withValues(alpha: 0.2),
                 shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          // Blur effects for blobs
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ColorFilter.mode(
-                Colors.black.withValues(alpha: 0.05),
-                BlendMode.dstATop,
-              ),
-              child: const SizedBox(),
-            ),
-          ),
-          // Texture overlay
-          Opacity(
-            opacity: 0.15,
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: NetworkImage(
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuAxeOP_Q52z599Av7oc256ySH9s_MQEWVrZYoFRLi0tyUI1gl160aHqiTIFyeEiryN4QCKwDX9X_lZGQ0pOkqwpPisVkVbg0CYQ-AuuHVXV9NKlXphh9Yp99N65bBuaUlVFHi_bLAmaHrEfYwDOBeQ-MhpSIeXgsbg1mYkxMdfrQ58u6cqmgdnIIvdsZIKjU-_9bmrEz8iprH74WyTxl3Wqk5qQcTGCCkQvMWL6-BVRR1bJdpv6uA0fEj4QzEU8j89XS0PC9nwelbw',
-                  ),
-                  repeat: ImageRepeat.repeat,
-                ),
               ),
             ),
           ),

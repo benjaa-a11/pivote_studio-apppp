@@ -455,27 +455,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         width: double.infinity,
         height: 65,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? [
-                    theme.colorScheme.error,
-                    theme.colorScheme.error.withValues(alpha: 0.8)
-                  ]
-                : [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.primary.withValues(alpha: 0.9)
-                  ],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
+          color: isDark
+              ? theme.colorScheme.error.withValues(alpha: 0.1)
+              : Colors.white,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? theme.colorScheme.error.withValues(alpha: 0.5)
+                : theme.colorScheme.error.withValues(alpha: 0.2),
+            width: 1.5,
+          ),
           boxShadow: [
             BoxShadow(
-              color:
-                  (isDark ? theme.colorScheme.error : theme.colorScheme.primary)
-                      .withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -488,13 +482,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.logout_rounded,
-                      color: Colors.white, size: 22),
+                  Icon(Icons.logout_rounded,
+                      color: isDark
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.error,
+                      size: 22),
                   const SizedBox(width: 12),
                   Text(
                     'Cerrar Sesión',
                     style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
+                      color: isDark
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.error,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
                     ),

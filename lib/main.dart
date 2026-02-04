@@ -25,19 +25,8 @@ void main() async {
   // Initialize Firebase
   await FirebaseService.initialize();
 
-  // ⚡ IMPORTANTE: Inicializar AudioManager ANTES de runApp para soporte de background
-  // Pero con un timeout para evitar bloqueos infinitos en el arranque
+  // AudioManager will be initialized lazily or via the Provider
   final audioManager = AudioManager();
-  try {
-    await audioManager.initialize().timeout(
-      const Duration(seconds: 3),
-      onTimeout: () {
-        debugPrint('⚠️ AudioManager init timeout - continuing startup');
-      },
-    );
-  } catch (e) {
-    debugPrint('❌ Error al inicializar AudioManager: $e');
-  }
 
   // IMPORTANTE: NO restringir orientaciones aquí
   // Las pantallas individuales manejarán sus propias orientaciones

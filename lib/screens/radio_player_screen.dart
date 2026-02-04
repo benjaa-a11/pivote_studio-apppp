@@ -31,8 +31,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   late AnimationController _pulseController;
   late AnimationController _rotateController;
 
-  double _volume = 0.8;
-
   @override
   void initState() {
     super.initState();
@@ -129,66 +127,74 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: GestureDetector(
-        onVerticalDragStart: _handleDragStart,
-        onVerticalDragUpdate: _handleDragUpdate,
-        onVerticalDragEnd: _handleDragEnd,
-        child: AnimatedBuilder(
-          animation: _slideAnimation,
-          builder: (context, child) {
-            final slideValue = _slideAnimation.value;
-            return Transform.translate(
-              offset: Offset(0, slideValue * size.height),
-              child: Opacity(
-                opacity: (1.0 - slideValue).clamp(0.0, 1.0),
-                child: child,
-              ),
-            );
-          },
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // 1. Background Image with Blur
-              _buildBlurBackground(widget.radio.logoUrl),
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          // Stop radio playback when the player is dismissed
+          context.read<AudioManager>().stop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: GestureDetector(
+          onVerticalDragStart: _handleDragStart,
+          onVerticalDragUpdate: _handleDragUpdate,
+          onVerticalDragEnd: _handleDragEnd,
+          child: AnimatedBuilder(
+            animation: _slideAnimation,
+            builder: (context, child) {
+              final slideValue = _slideAnimation.value;
+              return Transform.translate(
+                offset: Offset(0, slideValue * size.height),
+                child: Opacity(
+                  opacity: (1.0 - slideValue).clamp(0.0, 1.0),
+                  child: child,
+                ),
+              );
+            },
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // 1. Background Image with Blur
+                _buildBlurBackground(widget.radio.logoUrl),
 
-              // 2. Animated Glow Backdrop (centered behind logo)
-              _buildAnimatedGlow(context),
+                // 2. Animated Glow Backdrop (centered behind logo)
+                _buildAnimatedGlow(context),
 
-              // 3. Main Content
-              SafeArea(
-                child: Column(
-                  children: [
-                    _buildTopBar(context),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            bool isTall = constraints.maxHeight > 500;
-                            return Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                if (isTall) const Spacer(flex: 2),
-                                _buildMainArt(context, size),
-                                if (isTall) const Spacer(flex: 2),
-                                _buildRadioMeta(context),
-                                if (isTall) const Spacer(flex: 1),
-                                _buildVolumeSlider(context),
-                                if (isTall) const Spacer(flex: 1),
-                                _buildMainControls(context),
-                                if (isTall) const Spacer(flex: 3),
-                              ],
-                            );
-                          },
+                // 3. Main Content
+                SafeArea(
+                  child: Column(
+                    children: [
+                      _buildTopBar(context),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              bool isTall = constraints.maxHeight > 500;
+                              return Column(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  if (isTall) const Spacer(flex: 2),
+                                  _buildMainArt(context, size),
+                                  if (isTall) const Spacer(flex: 2),
+                                  _buildRadioMeta(context),
+                                  if (isTall) const Spacer(flex: 2),
+                                  _buildMainControls(context),
+                                  if (isTall) const Spacer(flex: 3),
+                                ],
+                              );
+                            },
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -317,7 +323,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
           height: artSize,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(32),
             gradient: LinearGradient(
               colors: [
                 Colors.white.withValues(alpha: 0.2),
@@ -328,8 +334,16 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
             ),
             border: Border.all(
                 color: Colors.white.withValues(alpha: 0.1), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 20,
+                spreadRadius: 5,
+              ),
+            ],
           ),
-          child: ClipOval(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
             child: Stack(
               children: [
                 CachedNetworkImage(
@@ -393,45 +407,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildVolumeSlider(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.volume_mute_rounded,
-              color: Colors.white.withValues(alpha: 0.5), size: 20),
-          Expanded(
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 4,
-                activeTrackColor: Colors.white,
-                inactiveTrackColor: Colors.white.withValues(alpha: 0.1),
-                thumbColor: Colors.white,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-              ),
-              child: Slider(
-                value: _volume,
-                onChanged: (v) {
-                  setState(() => _volume = v);
-                  // Optional: audioManager.setVolume(v) if available
-                },
-              ),
-            ),
-          ),
-          Icon(Icons.volume_up_rounded,
-              color: Colors.white.withValues(alpha: 0.5), size: 20),
-        ],
-      ),
     );
   }
 

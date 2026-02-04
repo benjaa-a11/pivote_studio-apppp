@@ -71,7 +71,7 @@ class _RadiosScreenState extends State<RadiosScreen>
 
           CustomScrollView(
             controller: _scrollController,
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             slivers: [
               _buildAppBar(context, isDark),
               _buildRadioList(context),

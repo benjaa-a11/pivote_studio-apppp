@@ -105,19 +105,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       height: 280,
       width: double.infinity,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFE7714D), Color(0xFF4EB985)],
+          colors: isDark
+              ? [
+                  theme.colorScheme.primary,
+                  theme.colorScheme.primary.withValues(alpha: 0.8)
+                ]
+              : [theme.colorScheme.primary, theme.colorScheme.secondary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
       ),
       child: Stack(
         children: [
-          // Shape Yellow
+          // Blob 1
           Positioned(
             top: 20,
             left: -40,
@@ -125,20 +133,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
               width: 150,
               height: 150,
               decoration: BoxDecoration(
-                color: const Color(0xFFD4B455).withValues(alpha: 0.8),
+                color: (isDark
+                        ? theme.colorScheme.tertiary
+                        : theme.colorScheme.secondary)
+                    .withValues(alpha: 0.3),
                 shape: BoxShape.circle,
               ),
             ),
           ),
-          // Shape Green
+          // Blob 2
           Positioned(
             bottom: -30,
             right: -20,
             child: Container(
               width: 120,
               height: 120,
-              decoration: const BoxDecoration(
-                color: Color(0xFF4EB985),
+              decoration: BoxDecoration(
+                color: (isDark
+                        ? theme.colorScheme.secondary
+                        : theme.colorScheme.tertiary)
+                    .withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
             ),
