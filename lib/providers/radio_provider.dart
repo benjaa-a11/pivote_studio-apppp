@@ -16,9 +16,10 @@ class RadioProvider extends ChangeNotifier {
     _loadFavorites();
   }
 
-  List<radio_model.Radio> get radios => _filteredRadios.isEmpty && _searchQuery.isEmpty
-      ? _radios 
-      : _filteredRadios;
+  List<radio_model.Radio> get radios =>
+      _filteredRadios.isEmpty && _searchQuery.isEmpty
+          ? _radios
+          : _filteredRadios;
 
   bool get isLoading => _isLoading;
 
@@ -42,6 +43,7 @@ class RadioProvider extends ChangeNotifier {
       _isInitialized = true;
     } catch (e) {
       debugPrint('Error loading radios from Firestore: $e');
+      _isInitialized = true; // Still mark as initialized to not block app
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -67,7 +69,8 @@ class RadioProvider extends ChangeNotifier {
   Future<void> _saveFavorites() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final favoriteIds = _radios.where((r) => r.isFavorite).map((r) => r.id).toList();
+      final favoriteIds =
+          _radios.where((r) => r.isFavorite).map((r) => r.id).toList();
       await prefs.setString('favorite_radios', json.encode(favoriteIds));
     } catch (e) {
       debugPrint('Error saving favorite radios: $e');
@@ -93,9 +96,9 @@ class RadioProvider extends ChangeNotifier {
     }
 
     _filteredRadios = _radios.where((radio) {
-      final matchesSearch = _searchQuery.isEmpty || 
+      final matchesSearch = _searchQuery.isEmpty ||
           radio.name.toLowerCase().contains(_searchQuery);
-      
+
       return matchesSearch;
     }).toList();
   }
@@ -121,5 +124,4 @@ class RadioProvider extends ChangeNotifier {
   void searchRadios(String query) {
     setSearchQuery(query);
   }
-
 }

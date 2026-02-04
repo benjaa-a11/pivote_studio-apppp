@@ -34,15 +34,16 @@ class MatchProvider extends ChangeNotifier {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final tomorrow = today.add(const Duration(days: 1));
-    
+
     return matches.where((match) {
       // Check if match is today
-      final isToday = match.startTime.isAfter(today) && 
-                     match.startTime.isBefore(tomorrow);
-      
+      final isToday =
+          match.startTime.isAfter(today) && match.startTime.isBefore(tomorrow);
+
       // Matches should disappear 2 hours and 15 minutes after start time
-      final hideTime = match.startTime.add(const Duration(hours: 2, minutes: 15));
-      
+      final hideTime =
+          match.startTime.add(const Duration(hours: 2, minutes: 15));
+
       // Only include matches that are today and haven't passed the hide time
       return isToday && now.isBefore(hideTime);
     }).toList();
@@ -52,17 +53,18 @@ class MatchProvider extends ChangeNotifier {
   List<Match> get upcomingMatches {
     final now = DateTime.now();
     final twoDaysFromNow = now.add(const Duration(days: 2));
-    
+
     return matches.where((match) {
       // Matches should appear 30 minutes before start time
       final showTime = match.startTime.subtract(const Duration(minutes: 30));
-      
+
       // Matches should disappear 2 hours and 15 minutes after start time
-      final hideTime = match.startTime.add(const Duration(hours: 2, minutes: 15));
-      
-      return now.isAfter(showTime) && 
-             now.isBefore(hideTime) &&
-             match.startTime.isBefore(twoDaysFromNow);
+      final hideTime =
+          match.startTime.add(const Duration(hours: 2, minutes: 15));
+
+      return now.isAfter(showTime) &&
+          now.isBefore(hideTime) &&
+          match.startTime.isBefore(twoDaysFromNow);
     }).toList();
   }
 
@@ -78,13 +80,13 @@ class MatchProvider extends ChangeNotifier {
         final data = doc.data() as Map<String, dynamic>;
         return Match.fromJson(data);
       }).toList();
-      
+
       // Load related data (teams, tournaments)
       await _loadRelatedData();
       _isInitialized = true;
-      
     } catch (e) {
       debugPrint('Error loading matches from Firestore: $e');
+      _isInitialized = true; // Still mark as initialized to not block app
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -100,9 +102,10 @@ class MatchProvider extends ChangeNotifier {
         data['id'] = doc.id; // Add document ID to the data
         _teams[doc.id] = Team.fromJson(data);
       }
-      
+
       // Load tournaments
-      final tournamentsSnapshot = await FirebaseService.tournamentsCollection.get();
+      final tournamentsSnapshot =
+          await FirebaseService.tournamentsCollection.get();
       for (var doc in tournamentsSnapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
         data['id'] = doc.id; // Add document ID to the data

@@ -160,6 +160,7 @@ class ChannelProvider extends ChangeNotifier {
       await _loadViewCounts();
     } catch (e) {
       debugPrint('Error loading channels from Firestore: $e');
+      _isInitialized = true; // Still mark as initialized to not block app
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -103,28 +103,48 @@ class UserProvider with ChangeNotifier {
     );
 
     if (pickedFile != null) {
-      _profileImagePath = pickedFile.path;
-      notifyListeners();
-
       try {
-        final downloadUrl =
-            await AuthService.uploadProfileImage(File(pickedFile.path));
+        _isLoading = true;
+        notifyListeners();
 
-        // Update user model with new photo URL
+        // 1. Permanently save the image to the app's document directory
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName =
+            'profile_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final savedImage =
+            await File(pickedFile.path).copy('${appDir.path}/$fileName');
+
+        // 2. Clear old cached local image if exists
+        final prefs = await SharedPreferences.getInstance();
+        final oldPath = prefs.getString('profile_image_path');
+        if (oldPath != null && File(oldPath).existsSync()) {
+          try {
+            await File(oldPath).delete();
+          } catch (e) {
+            debugPrint('Error deleting old profile image: $e');
+          }
+        }
+
+        // 3. Update local state and prefs
+        _profileImagePath = savedImage.path;
+        await prefs.setString('profile_image_path', savedImage.path);
+        notifyListeners();
+
+        // 4. Upload to remote storage
+        final downloadUrl = await AuthService.uploadProfileImage(savedImage);
+
+        // 5. Update user model and Firestore
         if (_user != null) {
           final updatedUser = _user!.copyWith(photoUrl: downloadUrl);
           await AuthService.updateUser(updatedUser);
           _user = updatedUser;
-
-          // Also save path locally as cache
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('profile_image_path', pickedFile.path);
         }
       } catch (e) {
         debugPrint('Error uploading profile image: $e');
-        // Revert or show error handled by UI
+      } finally {
+        _isLoading = false;
+        notifyListeners();
       }
-      notifyListeners();
     }
   }
 

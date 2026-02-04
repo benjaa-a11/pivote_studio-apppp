@@ -124,9 +124,9 @@ class _AuthenticationWrapper extends StatelessWidget {
         return Consumer3<ChannelProvider, MatchProvider, SoccerProvider>(
           builder:
               (context, channelProvider, matchProvider, soccerProvider, child) {
-            final isDataReady = channelProvider.isInitialized &&
-                matchProvider.isInitialized &&
-                soccerProvider.soccerData != null;
+            // Relaxed check: Only depends on channelProvider for the core experience
+            // Soccer and Match data can load lazily
+            final isDataReady = channelProvider.isInitialized;
 
             if (isDataReady) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -135,11 +135,14 @@ class _AuthenticationWrapper extends StatelessWidget {
               return const MainScreen();
             }
 
-            // Keep showing nothing (splash screen handles the visual part)
+            // Show a themed loading state if it's taking too long
             return const Scaffold(
               body: Center(
-                child: CircularProgressIndicator(),
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                ),
               ),
+              backgroundColor: Color(0xFF0F172A), // Match splash/app background
             );
           },
         );
