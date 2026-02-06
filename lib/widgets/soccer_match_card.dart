@@ -52,11 +52,11 @@ class SoccerMatchCard extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _buildTeamInfo(homeTeam, theme, isDark, true),
                           _buildMatchScore(theme, isDark, isLive),
@@ -66,9 +66,6 @@ class SoccerMatchCard extends StatelessWidget {
                       // Goal events placeholder
                       if (match.isLive || match.isFinished)
                         _buildGoalEvents(theme, isDark),
-                      // TV Channels
-                      if (match.tvChannels.isNotEmpty)
-                        _buildChannelsRow(theme, isDark),
                     ],
                   ),
                 ),
@@ -80,46 +77,20 @@ class SoccerMatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildChannelsRow(ThemeData theme, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.live_tv_rounded,
-            size: 10,
-            color:
-                (isDark ? Colors.white : Colors.black).withValues(alpha: 0.3),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            match.tvChannels.join(' • ').toUpperCase(),
-            style: GoogleFonts.poppins(
-              fontSize: 8,
-              fontWeight: FontWeight.w700,
-              color:
-                  (isDark ? Colors.white : Colors.black).withValues(alpha: 0.3),
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTimeColumn(ThemeData theme, bool isDark) {
     final isLive = match.isLive;
-    final bgColor = isDark ? const Color(0xFF0E4536) : const Color(0xFFF9FAFB);
-    final borderColor = isDark ? const Color(0xFF0A3A2F) : Colors.grey[200];
+    final bgColor = isDark
+        ? theme.cardColor.withValues(alpha: 0.3)
+        : theme.colorScheme.surface;
+    final borderColor = theme.dividerColor.withValues(alpha: 0.1);
 
     return Container(
-      width: 60,
+      width: 70,
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         color: bgColor,
         border: Border(
-          right: BorderSide(color: borderColor!, width: 0.5),
+          right: BorderSide(color: borderColor, width: 1),
         ),
       ),
       child: Column(
@@ -129,20 +100,31 @@ class SoccerMatchCard extends StatelessWidget {
             Text(
               match.time,
               style: GoogleFonts.poppins(
-                color: Colors.redAccent,
+                color: theme.colorScheme.error,
                 fontWeight: FontWeight.w800,
                 fontSize: 12,
               ),
             ),
-            const SizedBox(height: 4),
-            _buildLivePulse(),
+            const SizedBox(height: 6),
+            _buildLivePulse(theme),
           ] else ...[
             Text(
               _formatStartTime(match.startTime),
               style: GoogleFonts.poppins(
-                color: isDark ? Colors.white70 : Colors.black54,
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'HOY',
+              style: GoogleFonts.poppins(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                 fontWeight: FontWeight.w700,
-                fontSize: 13,
+                fontSize: 9,
+                letterSpacing: 0.5,
               ),
             ),
           ],
@@ -151,20 +133,24 @@ class SoccerMatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildLivePulse() {
+  Widget _buildLivePulse(ThemeData theme) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.3, end: 1.0),
       duration: const Duration(seconds: 1),
       builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              color: Colors.redAccent,
-              shape: BoxShape.circle,
-            ),
+        return Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.error.withValues(alpha: value),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.error.withValues(alpha: value * 0.5),
+                blurRadius: 4,
+                spreadRadius: 2,
+              ),
+            ],
           ),
         );
       },
@@ -175,32 +161,24 @@ class SoccerMatchCard extends StatelessWidget {
   Widget _buildTeamInfo(
       SoccerTeam team, ThemeData theme, bool isDark, bool isHome) {
     return Expanded(
-      child: Row(
-        mainAxisAlignment:
-            isHome ? MainAxisAlignment.end : MainAxisAlignment.start,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (!isHome) ...[
-            _buildTeamLogo(team, isDark),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Text(
-              team.name,
-              textAlign: isHome ? TextAlign.right : TextAlign.left,
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.black87,
-                height: 1.1,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+          _buildTeamLogo(team, isDark),
+          const SizedBox(height: 8),
+          Text(
+            team.shortName.toUpperCase(),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: theme.colorScheme.onSurface,
+              height: 1.0,
+              letterSpacing: -0.2,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          if (isHome) ...[
-            const SizedBox(width: 8),
-            _buildTeamLogo(team, isDark),
-          ],
         ],
       ),
     );
@@ -234,34 +212,30 @@ class SoccerMatchCard extends StatelessWidget {
 
   Widget _buildMatchScore(ThemeData theme, bool isDark, bool isLive) {
     final scoreText =
-        match.score.isNotEmpty ? '${match.score[0]} - ${match.score[1]}' : '-';
-    final cardColor =
-        isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF3F4F6);
+        match.score.isNotEmpty ? '${match.score[0]} - ${match.score[1]}' : 'vs';
+    final boxColor =
+        isDark ? theme.scaffoldBackgroundColor : theme.colorScheme.surface;
 
     return Container(
-      width: 50,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      width: 54,
+      margin: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(4),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        color: boxColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
       ),
       alignment: Alignment.center,
       child: Text(
         scoreText,
         style: GoogleFonts.poppins(
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
-          color: isLive
-              ? Colors.redAccent
-              : (isDark ? Colors.white : Colors.black87),
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+          color: isLive ? theme.colorScheme.error : theme.colorScheme.onSurface,
+          letterSpacing: -0.5,
         ),
       ),
     );

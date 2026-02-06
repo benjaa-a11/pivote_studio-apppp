@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/match_provider.dart';
+import '../models/soccer_models.dart';
+import '../providers/soccer_provider.dart';
 import '../providers/channel_provider.dart';
-import '../models/match.dart';
 import '../screens/player_screen.dart';
 import 'match_card.dart';
 import 'package:skeletonizer/skeletonizer.dart';
@@ -28,25 +28,36 @@ class _MatchesHeroState extends State<MatchesHero> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<MatchProvider>(
-      builder: (context, matchProvider, child) {
-        final isLoading = matchProvider.isLoading;
+    return Consumer<SoccerProvider>(
+      builder: (context, soccerProvider, child) {
+        final isLoading = soccerProvider.isLoading;
+        final soccerData = soccerProvider.soccerData;
 
-        List<Match> matches = [];
-        if (isLoading) {
+        List<SoccerMatch> matches = [];
+        if (isLoading || soccerData == null) {
+          // Dummy matches for skeletonizer
           matches = List.generate(
               3,
-              (index) => Match(
+              (index) => SoccerMatch(
                     id: 'dummy',
-                    teamAId: 'team',
-                    teamBId: 'team',
-                    tournamentId: 'tournament',
-                    startTime: DateTime.now(),
-                    date: 'Today',
-                    channelIds: [],
+                    homeTeam: 'Team A',
+                    awayTeam: 'Team B',
+                    homeTeamId: 't1',
+                    awayTeamId: 't2',
+                    leagueId: 'l1',
+                    score: [0, 0],
+                    time: '',
+                    timeStatus: 'Prog.',
+                    status: 'Próximo',
+                    startTime: '06-02-2026 17:00',
+                    tvChannels: [],
+                    stage: 'Fecha 1',
+                    goals: [],
+                    yellowCards: [],
+                    redCards: [],
                   ));
         } else {
-          matches = _getActiveMatches(matchProvider.todayMatches);
+          matches = _getFeaturedMatches(soccerData.matches);
         }
 
         if (!isLoading && matches.isEmpty) {
@@ -68,6 +79,7 @@ class _MatchesHeroState extends State<MatchesHero> {
                   enabled: isLoading,
                   child: MatchCard(
                     match: match,
+                    soccerData: soccerData,
                     onWatchMatch: () => _navigateToChannel(context, match),
                   ),
                 );
@@ -79,22 +91,24 @@ class _MatchesHeroState extends State<MatchesHero> {
     );
   }
 
-  /// Filtra partidos activos (no finalizados)
-  List<Match> _getActiveMatches(List<Match> matches) {
-    final now = DateTime.now();
-
+  /// Filtra partidos destacados (en vivo o próximos hoy)
+  List<SoccerMatch> _getFeaturedMatches(List<SoccerMatch> matches) {
+    // Solo mostrar partidos que sean hoy y no hayan terminado hace mucho
+    // En este caso, el usuario quiere que los extraigamos de la API.
+    // Podríamos filtrar por los que tienen canales o simplemente por estado.
     return matches.where((match) {
-      final endTime =
-          match.startTime.add(const Duration(hours: 2, minutes: 30));
-      return now.isBefore(endTime);
+      return match.isLive || match.isScheduled;
     }).toList();
   }
 
-  void _navigateToChannel(BuildContext context, Match match) {
-    if (match.channelIds.isEmpty) {
+  void _navigateToChannel(BuildContext context, SoccerMatch match) {
+    final watchableChannels =
+        match.tvChannels.where((c) => c.id != null).toList();
+
+    if (watchableChannels.isEmpty) {
       _showErrorSnackBar(
         context,
-        'No hay canales disponibles para este partido',
+        'No hay señales disponibles para este partido',
       );
       return;
     }
@@ -103,12 +117,11 @@ class _MatchesHeroState extends State<MatchesHero> {
         Provider.of<ChannelProvider>(context, listen: false);
 
     debugPrint('🔍 Buscando canales para el partido: ${match.id}');
-    debugPrint('📺 IDs de canales en el partido: ${match.channelIds}');
 
-    // Navegar siempre al primer canal disponible
-    // Intentar encontrar el primer canal válido
-    for (var channelId in match.channelIds) {
-      debugPrint('🔎 Buscando canal: $channelId');
+    // Navegar siempre al primer canal con ID válido
+    for (var soccerChannel in watchableChannels) {
+      final channelId = soccerChannel.id!;
+      debugPrint('🔎 Buscando canal en DB: $channelId');
       final channel = channelProvider.getChannelById(channelId);
 
       if (channel != null) {
@@ -121,15 +134,15 @@ class _MatchesHeroState extends State<MatchesHero> {
         );
         return;
       } else {
-        debugPrint('❌ Canal no encontrado: $channelId');
+        debugPrint('❌ Canal no encontrado en nuestra DB: $channelId');
       }
     }
 
-    // Si no se encontró ningún canal
-    debugPrint('⚠️ No se encontró ningún canal disponible');
+    // Si no se encontró ningún canal en nuestra DB
+    debugPrint('⚠️ No se encontró ningún canal coincidente en nuestra DB');
     _showErrorSnackBar(
       context,
-      'Canal no disponible en este momento',
+      'Canal no disponible en nuestra grilla',
     );
   }
 

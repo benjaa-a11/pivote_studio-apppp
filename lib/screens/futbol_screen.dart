@@ -23,25 +23,24 @@ class _FutbolScreenState extends State<FutbolScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final soccerProvider = context.watch<SoccerProvider>();
 
-    // Define Jungle Green colors based on theme
-    final jungleBackground =
-        isDark ? const Color(0xFF062C24) : const Color(0xFFF3F4F6);
-    final jungleHeader =
-        isDark ? const Color(0xFF022C22) : const Color(0xFF0F4C3A);
-    final jungleSubHeader =
-        isDark ? const Color(0xFF063F33) : const Color(0xFF135D49);
+    // Use standard theme colors
+    final backgroundColor = theme.scaffoldBackgroundColor;
+    final headerColor =
+        isDark ? theme.colorScheme.surface : theme.colorScheme.primary;
+    final subHeaderColor =
+        isDark ? theme.cardColor : theme.colorScheme.secondary;
 
     return Scaffold(
-      backgroundColor: jungleBackground,
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(theme, jungleHeader, jungleSubHeader),
-            _buildTabs(theme, soccerProvider, jungleHeader),
+            _buildHeader(theme, headerColor, subHeaderColor),
+            _buildTabs(theme, soccerProvider, headerColor),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
-                child: _buildContent(soccerProvider, theme, jungleBackground),
+                child: _buildContent(soccerProvider, theme, backgroundColor),
               ),
             ),
           ],
@@ -145,7 +144,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
           ),
           Container(
             height: 3,
-            color: isSelected ? const Color(0xFF10B981) : Colors.transparent,
+            color:
+                isSelected ? theme.colorScheme.secondary : Colors.transparent,
           ),
         ],
       ),
@@ -155,8 +155,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
   Widget _buildContent(
       SoccerProvider provider, ThemeData theme, Color backgroundColor) {
     if (provider.isLoading && provider.soccerData == null) {
-      return const Center(
-          child: CircularProgressIndicator(color: Color(0xFF10B981)));
+      return Center(
+          child: CircularProgressIndicator(color: theme.colorScheme.secondary));
     }
 
     if (provider.error != null && provider.soccerData == null) {
@@ -169,7 +169,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
     }
 
     return RefreshIndicator(
-      color: const Color(0xFF10B981),
+      color: theme.colorScheme.secondary,
       onRefresh: () => provider.fetchData(),
       child: CustomScrollView(
         key: const ValueKey('soccer_scroll_view'),
@@ -179,7 +179,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
             child: _buildLeagueCarousel(soccerData, theme),
           ),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: _buildMatchesList(soccerData, theme, backgroundColor),
           ),
           SliverToBoxAdapter(child: _buildVersionFooter(theme)),
@@ -347,60 +347,78 @@ class _FutbolScreenState extends State<FutbolScreen> {
   Widget _buildLeagueSection(SoccerLeague league, List<SoccerMatch> matches,
       SoccerData data, ThemeData theme, Color backgroundColor) {
     final isDark = theme.brightness == Brightness.dark;
-    final surfaceColor = isDark ? const Color(0xFF0F4C3A) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF0A3A2F) : Colors.grey[300];
-    final headerColor =
-        isDark ? const Color(0xFF0B382B) : const Color(0xFFF3F4F6);
+    final surfaceColor = theme.cardColor;
+    final borderColor = theme.dividerColor.withValues(alpha: 0.1);
+    final headerColor = isDark
+        ? Colors.white.withValues(alpha: 0.03)
+        : Colors.black.withValues(alpha: 0.02);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: surfaceColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: borderColor ?? Colors.transparent,
-          width: 0.5,
+          color: borderColor,
+          width: 1,
         ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: headerColor,
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
+                  const BorderRadius.vertical(top: Radius.circular(20)),
               border: Border(
-                bottom: BorderSide(
-                    color: borderColor ?? Colors.transparent, width: 0.5),
+                bottom: BorderSide(color: borderColor, width: 1),
               ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.emoji_events_rounded,
-                    color: Colors.amber, size: 18),
-                const SizedBox(width: 8),
+                if (league.logoUrl != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: CachedNetworkImage(
+                      imageUrl: league.logoUrl!,
+                      width: 22,
+                      height: 22,
+                      fit: BoxFit.contain,
+                      errorWidget: (context, url, error) => const Icon(
+                          Icons.emoji_events_rounded,
+                          color: Colors.amber,
+                          size: 18),
+                    ),
+                  ),
+                ] else ...[
+                  const Icon(Icons.emoji_events_rounded,
+                      color: Colors.amber, size: 18),
+                ],
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    league.name.toUpperCase(),
+                    league.shortName.toUpperCase(),
                     style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       fontSize: 12,
                       letterSpacing: 0.5,
-                      color: isDark ? Colors.white : Colors.black87,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
                 Icon(Icons.expand_less_rounded,
-                    color: isDark ? Colors.white38 : Colors.black38, size: 20),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                    size: 20),
               ],
             ),
           ),
@@ -415,17 +433,16 @@ class _FutbolScreenState extends State<FutbolScreen> {
               onTap: () {},
             ),
           ),
-          // Footer Link as in HTML
+          // Footer Link
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             width: double.infinity,
             decoration: BoxDecoration(
               color: headerColor,
               borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(12)),
+                  const BorderRadius.vertical(bottom: Radius.circular(20)),
               border: Border(
-                top: BorderSide(
-                    color: borderColor ?? Colors.transparent, width: 0.5),
+                top: BorderSide(color: borderColor, width: 1),
               ),
             ),
             child: Row(
@@ -436,12 +453,12 @@ class _FutbolScreenState extends State<FutbolScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF10B981),
+                    color: theme.colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: 4),
-                const Icon(Icons.chevron_right_rounded,
-                    color: Color(0xFF10B981), size: 14),
+                Icon(Icons.chevron_right_rounded,
+                    color: theme.colorScheme.primary, size: 14),
               ],
             ),
           ),

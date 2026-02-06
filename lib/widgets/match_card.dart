@@ -1,42 +1,54 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../models/match.dart';
-import '../providers/match_provider.dart';
+import '../models/soccer_models.dart';
 import '../providers/channel_provider.dart';
 import '../screens/player_screen.dart';
 
 class MatchCard extends StatelessWidget {
-  final Match match;
+  final SoccerMatch match;
+  final SoccerData? soccerData;
   final VoidCallback onWatchMatch;
 
   const MatchCard({
     super.key,
     required this.match,
+    this.soccerData,
     required this.onWatchMatch,
   });
 
-  bool get isLive {
-    final now = DateTime.now();
-    final endTime = match.startTime.add(const Duration(hours: 2, minutes: 30));
-    return now.isAfter(match.startTime) && now.isBefore(endTime);
-  }
+  bool get isLive => match.isLive;
 
   @override
   Widget build(BuildContext context) {
-    final matchProvider = Provider.of<MatchProvider>(context);
+    if (soccerData == null) return const SizedBox.shrink();
+
     final screenWidth = MediaQuery.of(context).size.width;
     final cardWidth = screenWidth * 0.9;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final teamA = matchProvider.getTeamById(match.teamAId);
-    final teamB = matchProvider.getTeamById(match.teamBId);
-    final tournament = matchProvider.getTournamentById(match.tournamentId);
-    final tournamentLogoUrl =
-        matchProvider.getTournamentLogoUrl(match.tournamentId, true);
+    final teamA = soccerData!.teams.firstWhere(
+      (t) => t.id == match.homeTeamId,
+      orElse: () => SoccerTeam(
+          id: match.homeTeamId,
+          name: match.homeTeam,
+          shortName: match.homeTeam),
+    );
+    final teamB = soccerData!.teams.firstWhere(
+      (t) => t.id == match.awayTeamId,
+      orElse: () => SoccerTeam(
+          id: match.awayTeamId,
+          name: match.awayTeam,
+          shortName: match.awayTeam),
+    );
+    final league = soccerData!.leagues.firstWhere(
+      (t) => t.id == match.leagueId,
+      orElse: () => SoccerLeague(
+          id: match.leagueId, name: 'Liga', country: '', shortName: 'L'),
+    );
+    final tournamentLogoUrl = league.logoUrl ?? '';
 
     // Theme-aware colors
     final cardBg = isDark ? const Color(0xFF0D0F14) : Colors.white;
@@ -73,7 +85,7 @@ class MatchCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Header con torneo y fase
-          _buildHeader(context, tournament, tournamentLogoUrl, headerBg,
+          _buildHeader(context, league, tournamentLogoUrl, headerBg,
               textPrimary, textMuted),
 
           // Línea divisoria
@@ -103,7 +115,7 @@ class MatchCard extends StatelessWidget {
 
   Widget _buildHeader(
       BuildContext context,
-      dynamic tournament,
+      SoccerLeague league,
       String tournamentLogoUrl,
       Color headerBg,
       Color textPrimary,
@@ -176,7 +188,7 @@ class MatchCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  tournament?.name ?? 'Liga Profesional Argentina',
+                  league.name,
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -187,10 +199,10 @@ class MatchCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (match.date.isNotEmpty) ...[
+                if (match.stage.isNotEmpty) ...[
                   const SizedBox(height: 3),
                   Text(
-                    match.date,
+                    match.stage,
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w500,
@@ -228,8 +240,8 @@ class MatchCard extends StatelessWidget {
           Expanded(
             child: _buildTeam(
               context,
-              teamA?.name ?? 'Equipo A',
-              teamA?.logoUrl ?? '',
+              teamA.shortName.toUpperCase(),
+              teamA.logoUrl ?? '',
               textPrimary,
             ),
           ),
@@ -244,8 +256,8 @@ class MatchCard extends StatelessWidget {
           Expanded(
             child: _buildTeam(
               context,
-              teamB?.name ?? 'Equipo B',
-              teamB?.logoUrl ?? '',
+              teamB.shortName.toUpperCase(),
+              teamB.logoUrl ?? '',
               textPrimary,
             ),
           ),
@@ -330,8 +342,17 @@ class MatchCard extends StatelessWidget {
 
   Widget _buildCenterInfo(
       BuildContext context, Color primaryColor, Color textSecondary) {
-    final timeFormat = DateFormat('HH:mm');
-    final timeText = timeFormat.format(match.startTime);
+    String timeText = '';
+    try {
+      final parts = match.startTime.split(' ');
+      if (parts.length > 1) {
+        timeText = parts[1];
+      } else {
+        timeText = match.startTime;
+      }
+    } catch (e) {
+      timeText = match.startTime;
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -403,7 +424,8 @@ class MatchCard extends StatelessWidget {
 
   Widget _buildFooter(BuildContext context, Color primaryColor, bool isDark,
       Color borderColor) {
-    final hasMultipleChannels = match.channelIds.length > 1;
+    final hasMultipleChannels =
+        match.tvChannels.where((c) => c.id != null).length > 1;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
@@ -591,8 +613,9 @@ class MatchCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            ...match.channelIds.map((channelId) {
-              final channel = channelProvider.getChannelById(channelId);
+            ...match.tvChannels.map((soccerChannel) {
+              if (soccerChannel.id == null) return const SizedBox.shrink();
+              final channel = channelProvider.getChannelById(soccerChannel.id!);
 
               if (channel == null) return const SizedBox.shrink();
 

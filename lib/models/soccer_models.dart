@@ -59,7 +59,7 @@ class SoccerMatch {
   final String timeStatus;
   final String status;
   final String startTime;
-  final List<String> tvChannels;
+  final List<SoccerTVChannel> tvChannels;
   final String stage;
   final List<SoccerGoal> goals;
   final List<SoccerCard> yellowCards;
@@ -97,7 +97,10 @@ class SoccerMatch {
       timeStatus: json['timeStatus'] ?? '',
       status: json['status'] ?? '',
       startTime: json['startTime'] ?? '',
-      tvChannels: List<String>.from(json['tvChannels'] ?? []),
+      tvChannels: (json['tvChannels'] as List?)
+              ?.map((c) => SoccerTVChannel.fromJson(c))
+              .toList() ??
+          [],
       stage: json['stage'] ?? '',
       goals: (json['goals'] as List?)
               ?.map((g) => SoccerGoal.fromJson(g))
@@ -140,6 +143,27 @@ class SoccerMatch {
         ts.contains('programado') ||
         status.toLowerCase().contains('próximo') ||
         status.toLowerCase().contains('proximo');
+  }
+
+  bool get isWatchable {
+    return isLive || (isScheduled && tvChannels.any((c) => c.id != null));
+  }
+}
+
+class SoccerTVChannel {
+  final String name;
+  final String? id;
+
+  SoccerTVChannel({
+    required this.name,
+    this.id,
+  });
+
+  factory SoccerTVChannel.fromJson(Map<String, dynamic> json) {
+    return SoccerTVChannel(
+      name: json['name'] ?? '',
+      id: json['id'] as String?,
+    );
   }
 }
 

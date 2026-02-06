@@ -6,7 +6,6 @@ import 'providers/channel_provider.dart';
 import 'providers/favorites_provider.dart';
 import 'providers/radio_provider.dart';
 import 'providers/theme_provider.dart';
-import 'providers/match_provider.dart';
 import 'providers/soccer_provider.dart';
 import 'providers/audio_manager.dart';
 import 'providers/user_provider.dart';
@@ -58,7 +57,6 @@ class PivoteApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
         ChangeNotifierProvider(create: (_) => RadioProvider()),
-        ChangeNotifierProvider(create: (_) => MatchProvider()),
         ChangeNotifierProvider(create: (_) => SoccerProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         // ⚡ CRÍTICO: Usar .value para pasar el AudioManager ya inicializado
@@ -120,9 +118,8 @@ class _AuthenticationWrapper extends StatelessWidget {
         }
 
         // Si está autenticado, esperamos a que los datos estén listos
-        return Consumer3<ChannelProvider, MatchProvider, SoccerProvider>(
-          builder:
-              (context, channelProvider, matchProvider, soccerProvider, child) {
+        return Consumer2<ChannelProvider, SoccerProvider>(
+          builder: (context, channelProvider, soccerProvider, child) {
             // Relaxed check: Only depends on channelProvider for the core experience
             // Soccer and Match data can load lazily
             final isDataReady = channelProvider.isInitialized;
