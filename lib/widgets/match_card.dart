@@ -240,7 +240,7 @@ class MatchCard extends StatelessWidget {
           Expanded(
             child: _buildTeam(
               context,
-              teamA.shortName.toUpperCase(),
+              teamA.shortName,
               teamA.logoUrl ?? '',
               textPrimary,
             ),
@@ -256,7 +256,7 @@ class MatchCard extends StatelessWidget {
           Expanded(
             child: _buildTeam(
               context,
-              teamB.shortName.toUpperCase(),
+              teamB.shortName,
               teamB.logoUrl ?? '',
               textPrimary,
             ),

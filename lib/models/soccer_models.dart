@@ -145,8 +145,53 @@ class SoccerMatch {
         status.toLowerCase().contains('proximo');
   }
 
+  DateTime? get startDateTime {
+    try {
+      // Formato esperado: "dd-MM-yyyy HH:mm"
+      final parts = startTime.split(' ');
+      if (parts.length < 2) return null;
+
+      final dateParts = parts[0].split('-');
+      if (dateParts.length < 3) return null;
+
+      final timeParts = parts[1].split(':');
+      if (timeParts.length < 2) return null;
+
+      return DateTime(
+        int.parse(dateParts[2]), // year
+        int.parse(dateParts[1]), // month
+        int.parse(dateParts[0]), // day
+        int.parse(timeParts[0]), // hour
+        int.parse(timeParts[1]), // minute
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  bool get isAutoFinished {
+    final start = startDateTime;
+    if (start == null) return false;
+
+    final now = DateTime.now();
+    // 2 horas y 15 minutos (135 minutos)
+    return now.difference(start).inMinutes > 135;
+  }
+
   bool get isWatchable {
-    return isLive || (isScheduled && tvChannels.any((c) => c.id != null));
+    if (isLive) return true;
+
+    if (isScheduled) {
+      final now = DateTime.now();
+      final start = startDateTime;
+      if (start == null) return false;
+
+      // Habilitar 30 minutos antes del inicio
+      final diff = start.difference(now);
+      return diff.inMinutes <= 30;
+    }
+
+    return false;
   }
 }
 

@@ -91,13 +91,20 @@ class _MatchesHeroState extends State<MatchesHero> {
     );
   }
 
-  /// Filtra partidos destacados (en vivo o próximos hoy)
+  /// Filtra partidos destacados (en vivo o próximos hoy con señales válidas)
   List<SoccerMatch> _getFeaturedMatches(List<SoccerMatch> matches) {
-    // Solo mostrar partidos que sean hoy y no hayan terminado hace mucho
-    // En este caso, el usuario quiere que los extraigamos de la API.
-    // Podríamos filtrar por los que tienen canales o simplemente por estado.
     return matches.where((match) {
-      return match.isLive || match.isScheduled;
+      // Excluir si ya terminó (API) o si ya pasaron 2h 15m (Auto-Finish)
+      if (match.isFinished || match.isAutoFinished) return false;
+
+      // Solo mostrar si es en vivo o programado
+      final isFeatured = match.isLive || match.isScheduled;
+      if (!isFeatured) return false;
+
+      // Y solo si tiene al menos un canal con ID válido
+      final hasValidChannels = match.tvChannels.any((c) => c.id != null);
+
+      return hasValidChannels;
     }).toList();
   }
 
