@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/soccer_models.dart';
 import '../providers/soccer_provider.dart';
 import '../widgets/world_cup_countdown.dart';
@@ -19,18 +20,28 @@ class _FutbolScreenState extends State<FutbolScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final soccerProvider = context.watch<SoccerProvider>();
 
+    // Define Jungle Green colors based on theme
+    final jungleBackground =
+        isDark ? const Color(0xFF062C24) : const Color(0xFFF3F4F6);
+    final jungleHeader =
+        isDark ? const Color(0xFF022C22) : const Color(0xFF0F4C3A);
+    final jungleSubHeader =
+        isDark ? const Color(0xFF063F33) : const Color(0xFF135D49);
+
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: jungleBackground,
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(theme),
+            _buildHeader(theme, jungleHeader, jungleSubHeader),
+            _buildTabs(theme, soccerProvider, jungleHeader),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
-                child: _buildContent(soccerProvider, theme),
+                child: _buildContent(soccerProvider, theme, jungleBackground),
               ),
             ),
           ],
@@ -39,19 +50,113 @@ class _FutbolScreenState extends State<FutbolScreen> {
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-      ),
-      child: const Center(child: WorldCupCountdown()),
+  Widget _buildHeader(
+      ThemeData theme, Color headerColor, Color subHeaderColor) {
+    return Column(
+      children: [
+        // World Cup Countdown - Original but fits the theme
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          color: theme.scaffoldBackgroundColor, // Keep it on neutral background
+          child: const Center(child: WorldCupCountdown()),
+        ),
+        // Date Navigation Row
+        Container(
+          color: subHeaderColor,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                    size: 14, color: Colors.white),
+              ),
+              const SizedBox(width: 20),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'HOY',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down_rounded,
+                      color: Colors.white),
+                ],
+              ),
+              const SizedBox(width: 20),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.arrow_forward_ios_rounded,
+                    size: 14, color: Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildContent(SoccerProvider provider, ThemeData theme) {
+  Widget _buildTabs(
+      ThemeData theme, SoccerProvider provider, Color backgroundColor) {
+    final liveCount =
+        provider.soccerData?.matches.where((m) => m.isLive).length ?? 0;
+
+    return Container(
+      color: backgroundColor,
+      child: Row(
+        children: [
+          _buildTabItem('TODOS', true, theme),
+          _buildTabItem('VIVO ($liveCount)', false, theme, isLive: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabItem(String label, bool isSelected, ThemeData theme,
+      {bool isLive = false}) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            width: double.infinity,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.transparent,
+            ),
+            child: Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? Colors.white : Colors.white60,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ),
+          Container(
+            height: 3,
+            color: isSelected ? const Color(0xFF10B981) : Colors.transparent,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(
+      SoccerProvider provider, ThemeData theme, Color backgroundColor) {
     if (provider.isLoading && provider.soccerData == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+          child: CircularProgressIndicator(color: Color(0xFF10B981)));
     }
 
     if (provider.error != null && provider.soccerData == null) {
@@ -64,6 +169,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
     }
 
     return RefreshIndicator(
+      color: const Color(0xFF10B981),
       onRefresh: () => provider.fetchData(),
       child: CustomScrollView(
         key: const ValueKey('soccer_scroll_view'),
@@ -73,8 +179,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
             child: _buildLeagueCarousel(soccerData, theme),
           ),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: _buildMatchesList(soccerData, theme),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            sliver: _buildMatchesList(soccerData, theme, backgroundColor),
           ),
           SliverToBoxAdapter(child: _buildVersionFooter(theme)),
           const SliverToBoxAdapter(child: SizedBox(height: 120)),
@@ -193,7 +299,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
     );
   }
 
-  Widget _buildMatchesList(SoccerData data, ThemeData theme) {
+  Widget _buildMatchesList(
+      SoccerData data, ThemeData theme, Color backgroundColor) {
     final filteredMatches = _selectedLeagueId == 'all'
         ? data.matches
         : data.matches.where((m) => m.leagueId == _selectedLeagueId).toList();
@@ -229,7 +336,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
                   country: ''));
           final matches = grouped[leagueId]!;
 
-          return _buildLeagueSection(league, matches, data, theme);
+          return _buildLeagueSection(
+              league, matches, data, theme, backgroundColor);
         },
         childCount: leagueIds.length,
       ),
@@ -237,70 +345,104 @@ class _FutbolScreenState extends State<FutbolScreen> {
   }
 
   Widget _buildLeagueSection(SoccerLeague league, List<SoccerMatch> matches,
-      SoccerData data, ThemeData theme) {
+      SoccerData data, ThemeData theme, Color backgroundColor) {
+    final isDark = theme.brightness == Brightness.dark;
+    final surfaceColor = isDark ? const Color(0xFF0F4C3A) : Colors.white;
+    final borderColor = isDark ? const Color(0xFF0A3A2F) : Colors.grey[300];
+    final headerColor =
+        isDark ? const Color(0xFF0B382B) : const Color(0xFFF3F4F6);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: theme.cardColor.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(24),
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: (theme.dividerTheme.color ?? theme.dividerColor)
-              .withValues(alpha: 0.1),
-          width: 1,
+          color: borderColor ?? Colors.transparent,
+          width: 0.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.3),
+              color: headerColor,
               borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+              border: Border(
+                bottom: BorderSide(
+                    color: borderColor ?? Colors.transparent, width: 0.5),
+              ),
             ),
             child: Row(
               children: [
-                if (league.logoUrl != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: CachedNetworkImage(
-                      imageUrl: league.logoUrl!,
-                      width: 24,
-                      height: 24,
-                      fit: BoxFit.contain,
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.emoji_events, size: 20),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
+                const Icon(Icons.emoji_events_rounded,
+                    color: Colors.amber, size: 18),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    league.name,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.1,
-                      color: theme.colorScheme.onSurface,
+                    league.name.toUpperCase(),
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      letterSpacing: 0.5,
+                      color: isDark ? Colors.white : Colors.black87,
                     ),
                   ),
                 ),
+                Icon(Icons.expand_less_rounded,
+                    color: isDark ? Colors.white38 : Colors.black38, size: 20),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const ClampingScrollPhysics(),
-              itemCount: matches.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 8),
-              itemBuilder: (context, index) => SoccerMatchCard(
-                match: matches[index],
-                data: data,
-                onTap: () {},
+          ListView.builder(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            physics: const ClampingScrollPhysics(),
+            itemCount: matches.length,
+            itemBuilder: (context, index) => SoccerMatchCard(
+              match: matches[index],
+              data: data,
+              onTap: () {},
+            ),
+          ),
+          // Footer Link as in HTML
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: headerColor,
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(12)),
+              border: Border(
+                top: BorderSide(
+                    color: borderColor ?? Colors.transparent, width: 0.5),
               ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'SECCIÓN DE ${league.shortName.toUpperCase()}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF10B981),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.chevron_right_rounded,
+                    color: Color(0xFF10B981), size: 14),
+              ],
             ),
           ),
         ],

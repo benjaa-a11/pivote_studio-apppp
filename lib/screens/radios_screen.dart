@@ -42,7 +42,7 @@ class _RadiosScreenState extends State<RadiosScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F0E13) : Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -68,7 +68,7 @@ class _RadiosScreenState extends State<RadiosScreen>
         children: [
           Text(
             'Radio',
-            style: GoogleFonts.splineSans(
+            style: GoogleFonts.poppins(
               fontSize: 32,
               fontWeight: FontWeight.w700,
               color: textColor,
@@ -105,6 +105,7 @@ class _RadiosScreenState extends State<RadiosScreen>
             itemBuilder: (context, index) {
               final category = categories[index];
               final isSelected = provider.activeCategory == category;
+              final textColor = isDark ? Colors.white : Colors.black;
 
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -123,23 +124,19 @@ class _RadiosScreenState extends State<RadiosScreen>
                       border: Border.all(
                         color: isSelected
                             ? Colors.transparent
-                            : (isDark
-                                ? Colors.white.withValues(alpha: 0.1)
-                                : Colors.black.withValues(alpha: 0.1)),
+                            : textColor.withValues(alpha: 0.1),
                         width: 1,
                       ),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       category.toUpperCase(),
-                      style: GoogleFonts.splineSans(
+                      style: GoogleFonts.poppins(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: isSelected
-                            ? (isDark ? Colors.black : Colors.white)
-                            : (isDark
-                                ? Colors.white.withValues(alpha: 0.6)
-                                : Colors.black.withValues(alpha: 0.6)),
+                            ? Theme.of(context).colorScheme.surface
+                            : textColor.withValues(alpha: 0.6),
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -181,7 +178,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                 const SizedBox(height: 16),
                 Text(
                   'No se encontraron radios',
-                  style: GoogleFonts.splineSans(
+                  style: GoogleFonts.poppins(
                     color: isDark ? Colors.white38 : Colors.black38,
                     fontSize: 16,
                   ),
@@ -243,7 +240,9 @@ class _RadiosScreenState extends State<RadiosScreen>
                 width: 64,
                 height: 64,
                 decoration: ShapeDecoration(
-                  color: isDark ? const Color(0xFF1A1A1A) : Colors.grey[200],
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.05),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -280,7 +279,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                 children: [
                   Text(
                     radio.name,
-                    style: GoogleFonts.splineSans(
+                    style: GoogleFonts.poppins(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: isCurrent
@@ -294,9 +293,9 @@ class _RadiosScreenState extends State<RadiosScreen>
                   const SizedBox(height: 3),
                   Text(
                     radio.frequency,
-                    style: GoogleFonts.splineSans(
+                    style: GoogleFonts.poppins(
                       fontSize: 14,
-                      fontWeight: FontWeight.w300,
+                      fontWeight: FontWeight.w400,
                       color: textColor.withValues(alpha: 0.5),
                     ),
                     maxLines: 1,

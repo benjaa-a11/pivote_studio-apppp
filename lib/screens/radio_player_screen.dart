@@ -154,7 +154,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
         }
       },
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF0A0A0A) : Colors.white,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: GestureDetector(
           onVerticalDragStart: _handleDragStart,
           onVerticalDragUpdate: _handleDragUpdate,
@@ -217,12 +217,15 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
           end: Alignment.bottomCenter,
           colors: isDark
               ? [
-                  const Color(0xFF0A0A0A),
-                  const Color(0xFF161618),
+                  Theme.of(context).scaffoldBackgroundColor,
+                  Theme.of(context).colorScheme.inverseSurface,
                 ]
               : [
-                  Colors.white,
-                  const Color(0xFFF5F5F7),
+                  Theme.of(context).scaffoldBackgroundColor,
+                  Theme.of(context)
+                      .colorScheme
+                      .inverseSurface
+                      .withValues(alpha: 0.05),
                 ],
         ),
       ),
@@ -253,7 +256,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
             children: [
               Text(
                 'RADIO EN VIVO',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.poppins(
                   color: textColor.withValues(alpha: 0.4),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -375,7 +378,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
         Text(
           widget.radio.name,
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.poppins(
             color: textColor,
             fontSize: 28,
             fontWeight: FontWeight.w700,
@@ -386,10 +389,10 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
         Text(
           widget.radio.frequency,
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.poppins(
             color: isDark
-                ? const Color(0xFF86868B)
-                : Colors.black.withValues(alpha: 0.5),
+                ? Theme.of(context).textTheme.bodyMedium?.color
+                : textColor.withValues(alpha: 0.5),
             fontSize: 18,
             fontWeight: FontWeight.w500,
           ),
