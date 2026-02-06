@@ -17,56 +17,91 @@ class UserProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
 
   UserProvider() {
-    _loadUserData();
-    _loadProfileImage();
+    _initialize();
   }
 
+  /// Initialize provider - load user data and profile image
+  Future<void> _initialize() async {
+    debugPrint('🔵 UserProvider: Initializing...');
+    await _loadUserData();
+    await _loadProfileImage();
+    debugPrint('✅ UserProvider: Initialization complete');
+  }
+
+  /// Load user data from Firestore
   Future<void> _loadUserData() async {
     _isLoading = true;
     notifyListeners();
 
     try {
+      debugPrint('🔵 UserProvider: Loading user data...');
       _user = await AuthService.getUser();
-      if (_user?.photoUrl != null) {
-        _downloadAndCacheProfileImage(_user!.photoUrl!);
+      
+      if (_user != null) {
+        debugPrint('✅ UserProvider: User data loaded: ${_user!.email}');
+        
+        // Download and cache profile image if URL exists
+        if (_user!.photoUrl != null && _user!.photoUrl!.isNotEmpty) {
+          debugPrint('🔵 UserProvider: Profile URL found, caching image...');
+          await _downloadAndCacheProfileImage(_user!.photoUrl!);
+        }
+      } else {
+        debugPrint('⚠️ UserProvider: No user data found');
       }
     } catch (e) {
-      debugPrint('Error loading user data: $e');
+      debugPrint('❌ UserProvider: Error loading user data: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  /// Download and cache profile image from URL
   Future<void> _downloadAndCacheProfileImage(String url) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cachedUrl = prefs.getString('cached_photo_url');
       final currentPath = prefs.getString('profile_image_path');
 
-      // If URL hasn't changed and file exists, we are good
-      if (cachedUrl == url &&
-          currentPath != null &&
-          File(currentPath).existsSync()) {
-        return;
+      // If URL hasn't changed and file exists, skip download
+      if (cachedUrl == url && currentPath != null) {
+        final file = File(currentPath);
+        if (await file.exists()) {
+          debugPrint('✅ UserProvider: Using cached profile image');
+          _profileImagePath = currentPath;
+          notifyListeners();
+          return;
+        }
       }
 
+      debugPrint('🔵 UserProvider: Downloading profile image from: $url');
+
       // Download new image
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url)).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Timeout downloading profile image');
+        },
+      );
+
       if (response.statusCode == 200) {
         final appDir = await getApplicationDocumentsDirectory();
-        final fileName =
-            'profile_cache_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final fileName = 'profile_cache_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final file = File('${appDir.path}/$fileName');
 
         await file.writeAsBytes(response.bodyBytes);
+        debugPrint('✅ UserProvider: Profile image cached at: ${file.path}');
 
-        // Delete old cache if exists
-        if (currentPath != null) {
+        // Delete old cache if exists and it's different
+        if (currentPath != null && currentPath != file.path) {
           final oldFile = File(currentPath);
-          if (oldFile.existsSync()) {
-            // check if it's the same file to avoid deletion (unlikely with timestamp)
-            if (oldFile.path != file.path) await oldFile.delete();
+          if (await oldFile.exists()) {
+            try {
+              await oldFile.delete();
+              debugPrint('🗑️ UserProvider: Old cache deleted');
+            } catch (e) {
+              debugPrint('⚠️ UserProvider: Could not delete old cache: $e');
+            }
           }
         }
 
@@ -75,97 +110,177 @@ class UserProvider with ChangeNotifier {
         await prefs.setString('profile_image_path', file.path);
         await prefs.setString('cached_photo_url', url);
         notifyListeners();
+      } else {
+        debugPrint('⚠️ UserProvider: Failed to download image. Status: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Error caching profile image: $e');
+      debugPrint('❌ UserProvider: Error caching profile image: $e');
     }
   }
 
+  /// Load cached profile image path from SharedPreferences
   Future<void> _loadProfileImage() async {
-    final prefs = await SharedPreferences.getInstance();
-    _profileImagePath = prefs.getString('profile_image_path');
-    if (_profileImagePath != null) {
-      if (!File(_profileImagePath!).existsSync()) {
-        _profileImagePath = null;
-        await prefs.remove('profile_image_path');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedPath = prefs.getString('profile_image_path');
+      
+      if (cachedPath != null) {
+        final file = File(cachedPath);
+        if (await file.exists()) {
+          _profileImagePath = cachedPath;
+          debugPrint('✅ UserProvider: Loaded cached profile image');
+        } else {
+          // File no longer exists, clear cache
+          await prefs.remove('profile_image_path');
+          await prefs.remove('cached_photo_url');
+          _profileImagePath = null;
+          debugPrint('⚠️ UserProvider: Cached image file not found, cleared cache');
+        }
       }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ UserProvider: Error loading profile image: $e');
     }
-    notifyListeners();
   }
 
+  /// Update profile image - pick from gallery and upload
   Future<void> updateProfileImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 512,
-      maxHeight: 512,
-      imageQuality: 85,
-    );
-
-    if (pickedFile != null) {
-      try {
-        _isLoading = true;
-        notifyListeners();
-
-        // 1. Permanently save the image to the app's document directory
-        final appDir = await getApplicationDocumentsDirectory();
-        final fileName =
-            'profile_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final savedImage =
-            await File(pickedFile.path).copy('${appDir.path}/$fileName');
-
-        // 2. Clear old cached local image if exists
-        final prefs = await SharedPreferences.getInstance();
-        final oldPath = prefs.getString('profile_image_path');
-        if (oldPath != null && File(oldPath).existsSync()) {
-          try {
-            await File(oldPath).delete();
-          } catch (e) {
-            debugPrint('Error deleting old profile image: $e');
-          }
-        }
-
-        // 3. Update local state and prefs
-        _profileImagePath = savedImage.path;
-        await prefs.setString('profile_image_path', savedImage.path);
-        notifyListeners();
-
-        // 4. Upload to remote storage
-        final downloadUrl = await AuthService.uploadProfileImage(savedImage);
-
-        // 5. Update user model and Firestore
-        if (_user != null) {
-          final updatedUser = _user!.copyWith(photoUrl: downloadUrl);
-          await AuthService.updateUser(updatedUser);
-          _user = updatedUser;
-        }
-      } catch (e) {
-        debugPrint('Error uploading profile image: $e');
-      } finally {
-        _isLoading = false;
-        notifyListeners();
-      }
-    }
-  }
-
-  Future<void> updatePassword(String newPassword) async {
+    
     try {
+      debugPrint('🔵 UserProvider: Opening image picker...');
+      
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) {
+        debugPrint('⚠️ UserProvider: Image selection canceled');
+        return;
+      }
+
+      debugPrint('✅ UserProvider: Image selected: ${pickedFile.path}');
+
       _isLoading = true;
       notifyListeners();
-      await AuthService.updatePassword(newPassword);
+
+      // 1. Save image permanently to app's document directory
+      final appDir = await getApplicationDocumentsDirectory();
+      final fileName = 'profile_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedImage = await File(pickedFile.path).copy('${appDir.path}/$fileName');
+      debugPrint('✅ UserProvider: Image saved locally: ${savedImage.path}');
+
+      // 2. Clear old cached image if exists
+      final prefs = await SharedPreferences.getInstance();
+      final oldPath = prefs.getString('profile_image_path');
+      if (oldPath != null) {
+        final oldFile = File(oldPath);
+        if (await oldFile.exists()) {
+          try {
+            await oldFile.delete();
+            debugPrint('🗑️ UserProvider: Old profile image deleted');
+          } catch (e) {
+            debugPrint('⚠️ UserProvider: Error deleting old image: $e');
+          }
+        }
+      }
+
+      // 3. Update local state and cache
+      _profileImagePath = savedImage.path;
+      await prefs.setString('profile_image_path', savedImage.path);
+      notifyListeners();
+
+      // 4. Upload to Firebase Storage
+      debugPrint('🔵 UserProvider: Uploading to Firebase Storage...');
+      final downloadUrl = await AuthService.uploadProfileImage(savedImage);
+      debugPrint('✅ UserProvider: Upload complete: $downloadUrl');
+
+      // 5. Update user model and Firestore
+      if (_user != null) {
+        final updatedUser = _user!.copyWith(photoUrl: downloadUrl);
+        await AuthService.updateUser(updatedUser);
+        _user = updatedUser;
+        
+        // Update cached URL
+        await prefs.setString('cached_photo_url', downloadUrl);
+        debugPrint('✅ UserProvider: User profile updated in Firestore');
+      }
+    } catch (e) {
+      debugPrint('❌ UserProvider: Error updating profile image: $e');
+      // Optionally show error to user via callback
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  /// Update user password
+  Future<void> updatePassword(String newPassword) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+      
+      debugPrint('🔵 UserProvider: Updating password...');
+      await AuthService.updatePassword(newPassword);
+      debugPrint('✅ UserProvider: Password updated successfully');
+    } catch (e) {
+      debugPrint('❌ UserProvider: Error updating password: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Refresh user data from Firestore
   Future<void> refreshUser() async {
+    debugPrint('🔵 UserProvider: Refreshing user data...');
     await _loadUserData();
   }
 
-  void clearUser() {
+  /// Clear user data (on logout)
+  Future<void> clearUser() async {
+    debugPrint('🔵 UserProvider: Clearing user data...');
+    
+    // Clear in-memory state
     _user = null;
     _profileImagePath = null;
+    
+    // Clear cached data
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('profile_image_path');
+      await prefs.remove('cached_photo_url');
+      
+      // Optionally delete cached image file
+      final cachedPath = prefs.getString('profile_image_path');
+      if (cachedPath != null) {
+        final file = File(cachedPath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+      
+      debugPrint('✅ UserProvider: User data cleared');
+    } catch (e) {
+      debugPrint('⚠️ UserProvider: Error clearing cache: $e');
+    }
+    
     notifyListeners();
+  }
+
+  /// Get user's full name
+  String get fullName {
+    if (_user == null) return 'Usuario';
+    return '${_user!.name} ${_user!.lastName}'.trim();
+  }
+
+  /// Check if user has profile image
+  bool get hasProfileImage {
+    return _profileImagePath != null || (_user?.photoUrl != null && _user!.photoUrl!.isNotEmpty);
   }
 }

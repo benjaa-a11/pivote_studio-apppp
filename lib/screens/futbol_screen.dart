@@ -47,24 +47,18 @@ class _FutbolScreenState extends State<FutbolScreen> {
               headerSliverBuilder: (context, innerBoxIsScrolled) {
                 return [
                   SliverAppBar(
-                    expandedHeight: 180,
+                    expandedHeight: 110,
                     floating: true,
                     pinned: true,
                     elevation: 0,
                     backgroundColor: theme.scaffoldBackgroundColor,
-                    flexibleSpace: FlexibleSpaceBar(
+                    flexibleSpace: const FlexibleSpaceBar(
                       background: Column(
                         children: [
-                          const SizedBox(height: 10),
-                          const WorldCupCountdown(),
-                          const SizedBox(height: 20),
-                          _buildDateSelector(theme, isDark),
+                          SizedBox(height: 10),
+                          WorldCupCountdown(),
                         ],
                       ),
-                    ),
-                    bottom: PreferredSize(
-                      preferredSize: const Size.fromHeight(60),
-                      child: _buildTabs(theme, soccerProvider, isDark),
                     ),
                   ),
                 ];
@@ -73,144 +67,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDateSelector(ThemeData theme, bool isDark) {
-    // This would typically come from a provider, for now we keep the UI logic
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          _buildDateItem('AYER', '05 FEB', false, theme, isDark),
-          const SizedBox(width: 12),
-          _buildDateItem('HOY', '06 FEB', true, theme, isDark),
-          const SizedBox(width: 12),
-          _buildDateItem('MAÑ.', '07 FEB', false, theme, isDark),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : theme.colorScheme.primary.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.calendar_today_rounded,
-              size: 20,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDateItem(
-      String day, String date, bool isSelected, ThemeData theme, bool isDark) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? theme.colorScheme.primary
-            : (isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.03)),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                )
-              ]
-            : null,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            day,
-            style: GoogleFonts.ubuntu(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color: isSelected
-                  ? Colors.white
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.4),
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            date,
-            style: GoogleFonts.ubuntu(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: isSelected ? Colors.white : theme.colorScheme.onSurface,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabs(ThemeData theme, SoccerProvider provider, bool isDark) {
-    final liveCount =
-        provider.soccerData?.matches.where((m) => m.isLive).length ?? 0;
-
-    return Container(
-      height: 60,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF1A1D24)
-            : Colors.black.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          _buildTabItem('TODOS', true, theme),
-          _buildTabItem('EN VIVO ($liveCount)', false, theme, isLive: true),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabItem(String label, bool isSelected, ThemeData theme,
-      {bool isLive = false}) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: isSelected ? theme.colorScheme.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  )
-                ]
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: GoogleFonts.ubuntu(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface.withValues(alpha: 0.5),
-            letterSpacing: 0.5,
-          ),
-        ),
       ),
     );
   }
@@ -256,8 +112,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
   }
 
   Widget _buildLeagueCarousel(SoccerData data, ThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
-
     return Container(
       height: 90,
       margin: const EdgeInsets.only(top: 8, bottom: 16),
@@ -447,7 +301,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
                     child: CachedNetworkImage(
                       imageUrl: league.logoUrl!,
                       fit: BoxFit.contain,
-                      errorWidget: (context, url, error) => Icon(
+                      errorWidget: (context, url, error) => const Icon(
                           Icons.emoji_events_rounded,
                           color: Colors.amber,
                           size: 16),

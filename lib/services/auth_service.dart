@@ -10,7 +10,9 @@ import '../models/user_model.dart';
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final GoogleSignIn _googleSignIn = GoogleSignIn();
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
   static const String _usersCollection = 'usuarios-pivote';
 
   /// Stream of auth state changes
@@ -21,65 +23,109 @@ class AuthService {
 
   /// Sign in with email and password
   static Future<void> signIn(String email, String password) async {
-    await _auth.signInWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+    } catch (e) {
+      debugPrint('Error in email sign in: $e');
+      rethrow;
+    }
   }
 
-  /// Sign in with Google
-  static Future<void> signInWithGoogle() async {
+  /// Sign in with Google - VERSIÓN CORREGIDA
+  static Future<User?> signInWithGoogle() async {
     try {
-      // Sign out first to ensure fresh authentication and account selection
-      // This fixes re-authentication issues
+      debugPrint('🔵 Starting Google Sign-In process...');
+      
+      // 1. Sign out from previous session to force account picker
       await _googleSignIn.signOut();
+      debugPrint('🔵 Cleared previous Google session');
 
-      // Trigger the authentication flow
+      // 2. Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       // User canceled the sign-in
       if (googleUser == null) {
-        debugPrint('Google Sign-In canceled by user');
-        return;
+        debugPrint('⚠️ Google Sign-In canceled by user');
+        throw FirebaseAuthException(
+          code: 'sign_in_canceled',
+          message: 'El usuario canceló el inicio de sesión',
+        );
       }
 
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      debugPrint('✅ Google account selected: ${googleUser.email}');
 
-      // Verify we have the required tokens
+      // 3. Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // 4. Verify we have the required tokens
       if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-        throw Exception('Failed to obtain Google authentication tokens');
+        debugPrint('❌ Failed to obtain Google tokens');
+        throw FirebaseAuthException(
+          code: 'missing-google-tokens',
+          message: 'No se pudieron obtener los tokens de Google',
+        );
       }
 
-      // Create a new credential
+      debugPrint('✅ Google tokens obtained successfully');
+
+      // 5. Create a new credential
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Sign in to Firebase with the Google credential
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
+      debugPrint('🔵 Signing in to Firebase with Google credential...');
 
-      if (userCredential.user != null) {
-        final user = userCredential.user!;
-        final nameParts = user.displayName?.split(' ') ?? ['Usuario', ''];
-        final firstName = nameParts.first;
-        final lastName =
-            nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+      // 6. Sign in to Firebase with the Google credential
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
 
-        // Check/Create user in Firestore
-        await _createTextUserDocument(
-          uid: user.uid,
-          email: user.email ?? '',
-          name: firstName,
-          lastName: lastName,
+      if (userCredential.user == null) {
+        debugPrint('❌ Firebase sign-in returned null user');
+        throw FirebaseAuthException(
+          code: 'null-user',
+          message: 'No se pudo obtener el usuario después del inicio de sesión',
         );
       }
-    } catch (e) {
-      debugPrint('Error in Google Sign-In: $e');
+
+      final user = userCredential.user!;
+      debugPrint('✅ Firebase sign-in successful: ${user.uid}');
+
+      // 7. Parse name from Google account
+      final nameParts = user.displayName?.split(' ') ?? ['Usuario', 'Google'];
+      final firstName = nameParts.isNotEmpty ? nameParts.first : 'Usuario';
+      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'Google';
+
+      debugPrint('🔵 Creating/updating Firestore document...');
+      debugPrint('   - Name: $firstName');
+      debugPrint('   - LastName: $lastName');
+      debugPrint('   - Email: ${user.email}');
+
+      // 8. Create or update user document in Firestore
+      await _createOrUpdateUserDocument(
+        uid: user.uid,
+        email: user.email ?? '',
+        name: firstName,
+        lastName: lastName,
+        photoUrl: user.photoURL,
+      );
+
+      debugPrint('✅ User document created/updated successfully');
+      debugPrint('🎉 Google Sign-In completed successfully!');
+
+      return user;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('❌ FirebaseAuthException: ${e.code} - ${e.message}');
       rethrow;
+    } catch (e, stackTrace) {
+      debugPrint('❌ Unexpected error in Google Sign-In: $e');
+      debugPrint('Stack trace: $stackTrace');
+      throw FirebaseAuthException(
+        code: 'unknown-error',
+        message: 'Error inesperado durante el inicio de sesión: $e',
+      );
     }
   }
 
@@ -90,140 +136,246 @@ class AuthService {
     required String name,
     required String lastName,
   }) async {
-    final userCredential = await _auth.createUserWithEmailAndPassword(
-      email: email.trim(),
-      password: password,
-    );
-
-    if (userCredential.user != null) {
-      // Create user document in Firestore
-      await _createTextUserDocument(
-        uid: userCredential.user!.uid,
+    try {
+      debugPrint('🔵 Starting email sign-up...');
+      
+      final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
-        name: name.trim(),
-        lastName: lastName.trim(),
+        password: password,
       );
 
-      // Update display name in Auth
-      final fullName = '${name.trim()} ${lastName.trim()}';
-      await userCredential.user!.updateDisplayName(fullName);
+      if (userCredential.user != null) {
+        final user = userCredential.user!;
+        debugPrint('✅ User created: ${user.uid}');
+
+        // Create user document in Firestore
+        await _createOrUpdateUserDocument(
+          uid: user.uid,
+          email: email.trim(),
+          name: name.trim(),
+          lastName: lastName.trim(),
+        );
+
+        // Update display name in Auth
+        final fullName = '${name.trim()} ${lastName.trim()}';
+        await user.updateDisplayName(fullName);
+        
+        debugPrint('✅ Sign-up completed successfully');
+      }
+    } catch (e) {
+      debugPrint('❌ Error in sign-up: $e');
+      rethrow;
     }
   }
 
-  /// Create user document in Firestore
-  static Future<void> _createTextUserDocument({
+  /// Create or update user document in Firestore - VERSIÓN MEJORADA
+  static Future<void> _createOrUpdateUserDocument({
     required String uid,
     required String email,
     required String name,
     required String lastName,
+    String? photoUrl,
   }) async {
-    final userRef = _firestore.collection(_usersCollection).doc(uid);
+    try {
+      final userRef = _firestore.collection(_usersCollection).doc(uid);
 
-    // Check if user already exists to avoid overwriting
-    final doc = await userRef.get();
-    if (!doc.exists) {
-      await userRef.set({
+      // Check if user already exists
+      final doc = await userRef.get();
+      
+      final userData = {
         'uid': uid,
         'name': name,
         'lastName': lastName,
         'email': email,
-        'createdAt': FieldValue.serverTimestamp(),
         'favorites': [], // Initialize empty favorites
-      });
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (photoUrl != null && photoUrl.isNotEmpty) {
+        userData['photoUrl'] = photoUrl;
+      }
+
+      if (!doc.exists) {
+        // New user - create document
+        userData['createdAt'] = FieldValue.serverTimestamp();
+        await userRef.set(userData);
+        debugPrint('✅ New user document created in Firestore');
+      } else {
+        // Existing user - update document (merge to keep other fields)
+        await userRef.update(userData);
+        debugPrint('✅ User document updated in Firestore');
+      }
+    } catch (e) {
+      debugPrint('❌ Error creating/updating user document: $e');
+      rethrow;
     }
   }
 
   /// Get current user model from Firestore
   static Future<UserModel?> getUser() async {
     final user = _auth.currentUser;
-    if (user == null) return null;
+    if (user == null) {
+      debugPrint('⚠️ No current user in Firebase Auth');
+      return null;
+    }
 
     try {
-      final doc =
-          await _firestore.collection(_usersCollection).doc(user.uid).get();
+      debugPrint('🔵 Fetching user data from Firestore: ${user.uid}');
+      
+      final doc = await _firestore.collection(_usersCollection).doc(user.uid).get();
+      
       if (doc.exists && doc.data() != null) {
+        debugPrint('✅ User data retrieved from Firestore');
         return UserModel.fromJson(doc.data()!);
       } else {
-        // Backup if document doesn't exist but user is logged in
+        // Fallback if document doesn't exist but user is logged in
+        debugPrint('⚠️ User document not found in Firestore, using Auth data');
+        final nameParts = user.displayName?.split(' ') ?? ['Usuario', ''];
         return UserModel(
-            name: user.displayName ?? 'Usuario',
-            lastName: '',
-            email: user.email ?? '');
+          name: nameParts.isNotEmpty ? nameParts.first : 'Usuario',
+          lastName: nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '',
+          email: user.email ?? '',
+          photoUrl: user.photoURL,
+        );
       }
     } catch (e) {
-      debugPrint('Error getting user data: $e');
+      debugPrint('❌ Error getting user data: $e');
       return null;
     }
   }
 
   /// Check if user is logged in
   static Future<bool> isLoggedIn() async {
-    return _auth.currentUser != null;
+    final isLogged = _auth.currentUser != null;
+    debugPrint('🔍 User logged in: $isLogged');
+    return isLogged;
   }
 
-  /// Logout user
+  /// Logout user - VERSIÓN MEJORADA
   static Future<void> logout() async {
-    await Future.wait([
-      _auth.signOut(),
-      _googleSignIn.signOut(),
-    ]);
+    try {
+      debugPrint('🔵 Starting logout process...');
+      
+      await Future.wait([
+        _auth.signOut(),
+        _googleSignIn.signOut(),
+      ]);
+      
+      debugPrint('✅ Logout completed successfully');
+    } catch (e) {
+      debugPrint('❌ Error during logout: $e');
+      rethrow;
+    }
   }
 
   /// Update user information in Firestore
   static Future<void> updateUser(UserModel user) async {
     final currentUser = _auth.currentUser;
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      debugPrint('⚠️ No current user to update');
+      return;
+    }
 
-    await _firestore.collection(_usersCollection).doc(currentUser.uid).update({
-      'name': user.name,
-      'email': user.email,
-      if (user.photoUrl != null) 'photoUrl': user.photoUrl,
-    });
-
-    // Also update Auth profile
-    if (user.name != currentUser.displayName ||
-        user.photoUrl != currentUser.photoURL) {
-      await currentUser.updateDisplayName(user.name);
+    try {
+      debugPrint('🔵 Updating user information...');
+      
+      final updateData = {
+        'name': user.name,
+        'lastName': user.lastName,
+        'email': user.email,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      
       if (user.photoUrl != null) {
+        updateData['photoUrl'] = user.photoUrl as Object;
+      }
+
+      await _firestore.collection(_usersCollection).doc(currentUser.uid).update(updateData);
+
+      // Also update Auth profile
+      final fullName = '${user.name} ${user.lastName}';
+      if (fullName != currentUser.displayName) {
+        await currentUser.updateDisplayName(fullName);
+      }
+      
+      if (user.photoUrl != null && user.photoUrl != currentUser.photoURL) {
         await currentUser.updatePhotoURL(user.photoUrl);
       }
+      
+      debugPrint('✅ User information updated successfully');
+    } catch (e) {
+      debugPrint('❌ Error updating user: $e');
+      rethrow;
     }
   }
 
   /// Update password (requires recent login)
   static Future<void> updatePassword(String newPassword) async {
     final user = _auth.currentUser;
-    if (user == null) throw FirebaseAuthException(code: 'no-current-user');
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No hay usuario autenticado',
+      );
+    }
 
-    await user.updatePassword(newPassword);
+    try {
+      await user.updatePassword(newPassword);
+      debugPrint('✅ Password updated successfully');
+    } catch (e) {
+      debugPrint('❌ Error updating password: $e');
+      rethrow;
+    }
   }
 
   /// Upload profile image to Firebase Storage and return URL
   static Future<String> uploadProfileImage(File imageFile) async {
     final user = _auth.currentUser;
-    if (user == null) throw Exception('No user logged in');
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No hay usuario autenticado',
+      );
+    }
 
-    final ref = FirebaseStorage.instance
-        .ref()
-        .child('user_profiles')
-        .child('${user.uid}.jpg');
+    try {
+      debugPrint('🔵 Uploading profile image...');
+      
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('user_profiles')
+          .child('${user.uid}.jpg');
 
-    await ref.putFile(imageFile);
-    return await ref.getDownloadURL();
+      final uploadTask = await ref.putFile(imageFile);
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+      
+      debugPrint('✅ Profile image uploaded: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      debugPrint('❌ Error uploading profile image: $e');
+      rethrow;
+    }
   }
 
   /// Map Firebase Auth error codes to professional Spanish messages
   static String getErrorMessage(dynamic error) {
+    debugPrint('🔍 Processing error: $error');
+    
     if (error is! FirebaseAuthException) {
       // Handle generic errors
       final errorString = error.toString().toLowerCase();
-      if (errorString.contains('cancel')) {
+      if (errorString.contains('cancel') || errorString.contains('cancelad')) {
         return 'Inicio de sesión cancelado.';
+      }
+      if (errorString.contains('network')) {
+        return 'Error de conexión. Revisa tu internet e inténtalo de nuevo.';
       }
       return 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.';
     }
 
     switch (error.code) {
+      case 'sign_in_canceled':
+        return 'Inicio de sesión cancelado.';
       case 'user-not-found':
         return 'No hemos encontrado una cuenta con este correo electrónico.';
       case 'wrong-password':
@@ -249,6 +401,12 @@ class AuthService {
       case 'popup-closed-by-user':
       case 'cancelled-popup-request':
         return 'Inicio de sesión cancelado.';
+      case 'missing-google-tokens':
+        return 'No se pudieron obtener los tokens de Google. Inténtalo de nuevo.';
+      case 'null-user':
+        return 'Error al obtener la información del usuario. Inténtalo de nuevo.';
+      case 'no-current-user':
+        return 'No hay usuario autenticado.';
       default:
         return 'Algo salió mal: ${error.message ?? "Error desconocido"}';
     }
