@@ -119,50 +119,6 @@ class AppAnimations {
     );
   }
 
-  // Page Transitions
-  static Route<T> createRoute<T>(Widget page) {
-    return PageRouteBuilder<T>(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(1.0, 0.0);
-        const end = Offset.zero;
-        const curve = Curves.easeInOutCubic;
-
-        var tween = Tween(begin: begin, end: end).chain(
-          CurveTween(curve: curve),
-        );
-
-        var offsetAnimation = animation.drive(tween);
-        var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-          CurvedAnimation(parent: animation, curve: curve),
-        );
-
-        return SlideTransition(
-          position: offsetAnimation,
-          child: FadeTransition(
-            opacity: fadeAnimation,
-            child: child,
-          ),
-        );
-      },
-      transitionDuration: normal,
-    );
-  }
-
-  // Fade Route
-  static Route<T> createFadeRoute<T>(Widget page) {
-    return PageRouteBuilder<T>(
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: child,
-        );
-      },
-      transitionDuration: fast,
-    );
-  }
-
   // Scale Transition
   static Widget scaleTransition({
     required Animation<double> animation,
@@ -179,57 +135,33 @@ class AppAnimations {
     );
   }
 
-  // Shimmer Animation
+  // Improved Shimmer Animation with more natural motion
   static Widget shimmer({
     required Widget child,
-    Duration duration = const Duration(milliseconds: 1500),
+    Duration duration = const Duration(milliseconds: 2000),
   }) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: -2, end: 2),
+    return _ShimmerAnimation(
       duration: duration,
-      builder: (context, value, child) {
-        return ShaderMask(
-          shaderCallback: (bounds) {
-            return LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: const [
-                Colors.transparent,
-                Colors.white24,
-                Colors.transparent,
-              ],
-              stops: [
-                (value - 1).clamp(0.0, 1.0),
-                value.clamp(0.0, 1.0),
-                (value + 1).clamp(0.0, 1.0),
-              ],
-            ).createShader(bounds);
-          },
-          child: child,
-        );
-      },
       child: child,
-      onEnd: () {
-        // Loop animation
-      },
     );
   }
 
-  // Staggered List Animation
-  static Widget staggeredListItem({
+  // Staggered Slide In for lists - very professional feel
+  static Widget staggeredSlideIn({
     required int index,
     required Widget child,
-    Duration delay = const Duration(milliseconds: 50),
+    Duration delay = const Duration(milliseconds: 60),
+    Duration duration = const Duration(milliseconds: 450),
   }) {
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
-      duration: normal + (delay * index),
-      curve: smoothCurve,
+      duration: duration,
+      curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         return Opacity(
           opacity: value,
           child: Transform.translate(
-            offset: Offset(0, 20 * (1 - value)),
+            offset: Offset(0, 30 * (1 - value)),
             child: child,
           ),
         );
@@ -238,25 +170,101 @@ class AppAnimations {
     );
   }
 
-  // Pulse Animation
-  static Widget pulse({
-    required Widget child,
-    Duration duration = const Duration(milliseconds: 1000),
-  }) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 1.0, end: 1.1),
-      duration: duration,
-      curve: Curves.easeInOut,
-      builder: (context, value, child) {
-        return Transform.scale(
-          scale: value,
+  // Improved Page Transition (iOS-like)
+  static Route<T> createRoute<T>(Widget page) {
+    return PageRouteBuilder<T>(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        var slideTween = Tween(begin: const Offset(1.0, 0.0), end: Offset.zero)
+            .chain(CurveTween(curve: Curves.easeOutCubic));
+
+        var fadeTween = Tween<double>(begin: 0.0, end: 1.0).animate(
+            CurvedAnimation(
+                parent: animation, curve: const Interval(0.0, 0.5)));
+
+        return SlideTransition(
+          position: animation.drive(slideTween),
+          child: FadeTransition(
+            opacity: fadeTween,
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 400),
+    );
+  }
+
+  // Fade Route
+  static Route<T> createFadeRoute<T>(Widget page) {
+    return PageRouteBuilder<T>(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+      transitionDuration: fast,
+    );
+  }
+}
+
+// Internal helper for shimmer to avoid repetitive logic
+class _ShimmerAnimation extends StatefulWidget {
+  final Widget child;
+  final Duration duration;
+
+  const _ShimmerAnimation({required this.child, required this.duration});
+
+  @override
+  State<_ShimmerAnimation> createState() => _ShimmerAnimationState();
+}
+
+class _ShimmerAnimationState extends State<_ShimmerAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration)
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return ShaderMask(
+          blendMode: BlendMode.srcATop,
+          shaderCallback: (bounds) {
+            return LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.transparent,
+                (isDark
+                    ? Colors.white10
+                    : Colors.black.withValues(alpha: 0.05)),
+                Colors.transparent,
+              ],
+              stops: [
+                (_controller.value - 0.3).clamp(0.0, 1.0),
+                _controller.value.clamp(0.0, 1.0),
+                (_controller.value + 0.3).clamp(0.0, 1.0),
+              ],
+            ).createShader(bounds);
+          },
           child: child,
         );
       },
-      child: child,
-      onEnd: () {
-        // Can be looped
-      },
+      child: widget.child,
     );
   }
 }

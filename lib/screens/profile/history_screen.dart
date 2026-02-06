@@ -63,8 +63,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       confirmLabel: 'Borrar',
       cancelLabel: 'Cancelar',
       isDestructive: true,
-      icon: Icons.delete_sweep_rounded,
-      iconColor: const Color(0xFFE7714D),
+      dialogContext: DialogContext.danger,
     );
 
     if (confirmed == true) {
@@ -145,7 +144,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   itemCount: _historyChannels.length,
                   itemBuilder: (context, index) {
                     final channel = _historyChannels[index];
-                    return AppAnimations.staggeredListItem(
+                    return AppAnimations.staggeredSlideIn(
                       index: index,
                       child: _buildHistoryCard(channel),
                     );

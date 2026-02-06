@@ -250,8 +250,7 @@ class FavoritesScreen extends StatelessWidget {
       confirmLabel: 'Eliminar',
       cancelLabel: 'Cancelar',
       isDestructive: true,
-      icon: Icons.favorite_border_rounded,
-      iconColor: Colors.redAccent,
+      dialogContext: DialogContext.danger,
     );
 
     if (confirmed == true) {

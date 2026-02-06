@@ -12,7 +12,7 @@ class AuthService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     serverClientId:
-        '451817571128-ch6b02prjtv8njpek34v233bv3itfpjn.apps.googleusercontent.com',
+        '451817571128-5b8qlq8d7epe9ap40fgquon5tvoa0okb.apps.googleusercontent.com',
     scopes: ['email', 'profile'],
   );
   static const String _usersCollection = 'usuarios-pivote';

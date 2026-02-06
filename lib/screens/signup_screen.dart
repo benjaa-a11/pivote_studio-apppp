@@ -193,7 +193,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Column(
             children: [
               // Google Button
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 0,
                 child: OutlinedButton(
                   onPressed: _isLoading ? null : _handleGoogleSignIn,
@@ -240,7 +240,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 24),
               // Name and Last Name
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 1,
                 child: Row(
                   children: [
@@ -286,7 +286,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 12),
               // Email
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 2,
                 child: TextFormField(
                   controller: _emailController,
@@ -313,7 +313,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 12),
               // Password
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 3,
                 child: TextFormField(
                   controller: _passwordController,
@@ -351,7 +351,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 32),
               // Submit Button
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 4,
                 child: SizedBox(
                   width: double.infinity,
@@ -404,7 +404,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 24),
               // Skip Button for Development
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 5,
                 child: TextButton(
                   onPressed: () {

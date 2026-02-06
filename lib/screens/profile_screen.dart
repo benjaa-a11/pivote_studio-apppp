@@ -549,8 +549,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       confirmLabel: 'SALIR',
       cancelLabel: 'CANCELAR',
       isDestructive: true,
-      icon: Icons.logout_rounded,
-      iconColor: const Color(0xFFE7714D),
+      dialogContext: DialogContext.warning,
     );
 
     if (confirmed == true) {

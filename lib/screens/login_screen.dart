@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               // Google Login Button
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 0,
                 child: OutlinedButton(
                   onPressed: _isLoading ? null : _handleGoogleSignIn,
@@ -235,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               // Email
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 1,
                 child: TextFormField(
                   controller: _emailController,
@@ -262,7 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               // Password
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 2,
                 child: TextFormField(
                   controller: _passwordController,
@@ -300,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 32),
               // Login Button
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 3,
                 child: SizedBox(
                   width: double.infinity,
@@ -325,7 +325,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               // Links
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 4,
                 child: Column(
                   children: [
@@ -376,7 +376,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               // Skip Button for Development
-              AppAnimations.staggeredListItem(
+              AppAnimations.staggeredSlideIn(
                 index: 5,
                 child: TextButton(
                   onPressed: () {
