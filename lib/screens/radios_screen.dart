@@ -68,7 +68,7 @@ class _RadiosScreenState extends State<RadiosScreen>
         children: [
           Text(
             'Radio',
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.ubuntu(
               fontSize: 32,
               fontWeight: FontWeight.w700,
               color: textColor,
@@ -131,7 +131,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                     alignment: Alignment.center,
                     child: Text(
                       category.toUpperCase(),
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.ubuntu(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: isSelected
@@ -178,7 +178,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                 const SizedBox(height: 16),
                 Text(
                   'No se encontraron radios',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.ubuntu(
                     color: isDark ? Colors.white38 : Colors.black38,
                     fontSize: 16,
                   ),
@@ -279,7 +279,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                 children: [
                   Text(
                     radio.name,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.ubuntu(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: isCurrent
@@ -293,7 +293,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                   const SizedBox(height: 3),
                   Text(
                     radio.frequency,
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.ubuntu(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
                       color: textColor.withValues(alpha: 0.5),

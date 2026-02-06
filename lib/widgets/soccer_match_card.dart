@@ -19,7 +19,6 @@ class SoccerMatchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isLive = match.isLive;
 
     final homeTeam = data.teams.firstWhere((t) => t.id == match.homeTeamId,
         orElse: () => SoccerTeam(
@@ -28,106 +27,120 @@ class SoccerMatchCard extends StatelessWidget {
         orElse: () => SoccerTeam(
             id: '', name: match.awayTeam, shortName: match.awayTeam));
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        border: Border(
-          bottom: BorderSide(
-            color:
-                (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
-            width: 0.5,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: theme.dividerColor.withValues(alpha: 0.05),
+              width: 1,
+            ),
           ),
         ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Time / Live Status Column
-              _buildTimeColumn(theme, isDark),
-
-              // Team and Score section
-              Expanded(
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        children: [
-                          _buildTeamInfo(homeTeam, theme, isDark, true),
-                          _buildMatchScore(theme, isDark, isLive),
-                          _buildTeamInfo(awayTeam, theme, isDark, false),
-                        ],
+        child: Row(
+          children: [
+            // Status and Time Column
+            SizedBox(
+              width: 50,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (match.isLive)
+                    _buildLiveBadge(theme)
+                  else if (match.isFinished)
+                    Text(
+                      'FIN',
+                      style: GoogleFonts.ubuntu(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: theme.hintColor.withValues(alpha: 0.5),
                       ),
-                      // Goal events placeholder
-                      if (match.isLive || match.isFinished)
-                        _buildGoalEvents(theme, isDark),
-                    ],
-                  ),
-                ),
+                    )
+                  else
+                    Text(
+                      _formatStartTime(match.startTime),
+                      style: GoogleFonts.ubuntu(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  if (match.isLive)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        match.time,
+                        style: GoogleFonts.ubuntu(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+
+            const SizedBox(width: 8),
+
+            // Match Details: Teams and Score
+            Expanded(
+              child: Column(
+                children: [
+                  _buildTeamRow(
+                      homeTeam,
+                      match.score.isNotEmpty ? match.score[0] : null,
+                      theme,
+                      isDark,
+                      true),
+                  const SizedBox(height: 12),
+                  _buildTeamRow(
+                      awayTeam,
+                      match.score.isNotEmpty ? match.score[1] : null,
+                      theme,
+                      isDark,
+                      false),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Action Icon
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: theme.hintColor.withValues(alpha: 0.3),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildTimeColumn(ThemeData theme, bool isDark) {
-    final isLive = match.isLive;
-    final bgColor = isDark
-        ? theme.cardColor.withValues(alpha: 0.3)
-        : theme.colorScheme.surface;
-    final borderColor = theme.dividerColor.withValues(alpha: 0.1);
-
+  Widget _buildLiveBadge(ThemeData theme) {
     return Container(
-      width: 70,
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
-        color: bgColor,
-        border: Border(
-          right: BorderSide(color: borderColor, width: 1),
-        ),
+        color: theme.colorScheme.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          if (isLive) ...[
-            Text(
-              match.time,
-              style: GoogleFonts.poppins(
-                color: theme.colorScheme.error,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-              ),
+          _buildLivePulse(theme),
+          const SizedBox(width: 4),
+          Text(
+            'VIVO',
+            style: GoogleFonts.ubuntu(
+              fontSize: 8,
+              fontWeight: FontWeight.w900,
+              color: theme.colorScheme.error,
+              letterSpacing: 0.5,
             ),
-            const SizedBox(height: 6),
-            _buildLivePulse(theme),
-          ] else ...[
-            Text(
-              _formatStartTime(match.startTime),
-              style: GoogleFonts.poppins(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w800,
-                fontSize: 14,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'HOY',
-              style: GoogleFonts.poppins(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
-                fontWeight: FontWeight.w700,
-                fontSize: 9,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );
@@ -135,140 +148,90 @@ class SoccerMatchCard extends StatelessWidget {
 
   Widget _buildLivePulse(ThemeData theme) {
     return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.3, end: 1.0),
-      duration: const Duration(seconds: 1),
+      tween: Tween(begin: 0.4, end: 1.0),
+      duration: const Duration(milliseconds: 1000),
       builder: (context, value, child) {
         return Container(
-          width: 8,
-          height: 8,
+          width: 5,
+          height: 5,
           decoration: BoxDecoration(
             color: theme.colorScheme.error.withValues(alpha: value),
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.error.withValues(alpha: value * 0.5),
-                blurRadius: 4,
-                spreadRadius: 2,
-              ),
-            ],
           ),
         );
       },
-      onEnd: () {},
     );
   }
 
-  Widget _buildTeamInfo(
-      SoccerTeam team, ThemeData theme, bool isDark, bool isHome) {
-    return Expanded(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildTeamLogo(team, isDark),
-          const SizedBox(height: 8),
-          Text(
-            team.shortName.toUpperCase(),
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
+  Widget _buildTeamRow(SoccerTeam team, int? currentScore, ThemeData theme,
+      bool isDark, bool isHome) {
+    return Row(
+      children: [
+        // Team Logo Container
+        Container(
+          width: 28,
+          height: 28,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.03)
+                : Colors.black.withValues(alpha: 0.02),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: CachedNetworkImage(
+            imageUrl: team.logoUrl ?? '',
+            fit: BoxFit.contain,
+            errorWidget: (context, url, error) =>
+                const Icon(Icons.shield_outlined, size: 14),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Team Name
+        Expanded(
+          child: Text(
+            team.name,
+            style: GoogleFonts.ubuntu(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
               color: theme.colorScheme.onSurface,
-              height: 1.0,
-              letterSpacing: -0.2,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTeamLogo(SoccerTeam team, bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(100),
-        child: CachedNetworkImage(
-          imageUrl: team.logoUrl ?? '',
-          width: 24,
-          height: 24,
-          fit: BoxFit.contain,
-          errorWidget: (context, url, error) =>
-              const Icon(Icons.sports_soccer, size: 16),
         ),
-      ),
-    );
-  }
-
-  Widget _buildMatchScore(ThemeData theme, bool isDark, bool isLive) {
-    final scoreText =
-        match.score.isNotEmpty ? '${match.score[0]} - ${match.score[1]}' : 'vs';
-    final boxColor =
-        isDark ? theme.scaffoldBackgroundColor : theme.colorScheme.surface;
-
-    return Container(
-      width: 54,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      decoration: BoxDecoration(
-        color: boxColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.dividerColor.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        scoreText,
-        style: GoogleFonts.poppins(
-          fontSize: 16,
-          fontWeight: FontWeight.w900,
-          color: isLive ? theme.colorScheme.error : theme.colorScheme.onSurface,
-          letterSpacing: -0.5,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGoalEvents(ThemeData theme, bool isDark) {
-    // This is hardcoded for the demo based on the template, in reality we'd pull this from match.events
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(
+        // Score (if available)
+        if (currentScore != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: match.isLive
+                  ? theme.colorScheme.error.withValues(alpha: 0.05)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.03)
+                      : Colors.black.withValues(alpha: 0.02)),
+              borderRadius: BorderRadius.circular(6),
+            ),
             child: Text(
-              '', // Right aligned home goals
-              textAlign: TextAlign.right,
-              style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  color: isDark ? Colors.white38 : Colors.black38),
+              currentScore.toString(),
+              style: GoogleFonts.ubuntu(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: match.isLive
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.onSurface,
+              ),
+            ),
+          )
+        else
+          Text(
+            '-',
+            style: GoogleFonts.ubuntu(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: theme.hintColor.withValues(alpha: 0.3),
             ),
           ),
-          const SizedBox(width: 50), // alignment with score
-          Expanded(
-            child: Text(
-              '', // Left aligned away goals
-              textAlign: TextAlign.left,
-              style: GoogleFonts.poppins(
-                  fontSize: 10,
-                  color: isDark ? Colors.white38 : Colors.black38),
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 

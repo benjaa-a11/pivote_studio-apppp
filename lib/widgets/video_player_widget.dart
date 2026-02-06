@@ -100,11 +100,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         state == AppLifecycleState.inactive) {
       try {
         _videoPlayerController?.pause();
+        _betterPlayerController?.pause();
       } catch (_) {}
     } else if (state == AppLifecycleState.resumed) {
       if (!_internalPause) {
         try {
           _videoPlayerController?.play();
+          _betterPlayerController?.play();
         } catch (_) {}
       }
     }
@@ -163,17 +165,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     }
 
-    // Validación de URL según tipo de stream
-    if (_streamType == StreamType.dash) {
-      if (url.isEmpty || !url.contains('.mpd')) {
-        debugPrint('⚠️ URL DASH inválida: $url');
-        throw Exception('URL DASH inválida');
-      }
-    } else {
-      if (url.isEmpty || (!url.contains('.m3u8') && !url.contains('.mp4'))) {
-        debugPrint('⚠️ URL HLS inválida: $url');
-        throw Exception('URL inválida');
-      }
+    // Validación de URL básica
+    if (url.isEmpty) {
+      debugPrint('⚠️ URL vacía');
+      throw Exception('URL vacía');
     }
 
     // Timeout ultra-corto (5s) para cambiar de servidor más rápido
@@ -193,7 +188,19 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_streamType == StreamType.dash) {
       await _initializeBetterPlayer(url);
     } else {
-      await _initializeVideoPlayer(url);
+      // Para HLS y streams directos sin extensión, usar VideoPlayer o BetterPlayer
+      // Detectar si es un stream directo MPEG-TS (sin extensión conocida)
+      final isDirectStream = !url.contains('.m3u8') &&
+          !url.contains('.mp4') &&
+          !url.contains('.mpd');
+
+      if (isDirectStream) {
+        // Usar BetterPlayer para streams directos MPEG-TS
+        await _initializeBetterPlayerForDirectStream(url);
+      } else {
+        // Usar VideoPlayer para HLS/MP4
+        await _initializeVideoPlayer(url);
+      }
     }
   }
 
@@ -203,8 +210,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     HttpClient? httpClient;
     try {
       final uri = Uri.parse(url);
-      httpClient = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 5); // Timeout más corto
+      httpClient = HttpClient()..connectionTimeout = const Duration(seconds: 5);
 
       final request = await httpClient.headUrl(uri);
 
@@ -293,17 +299,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             'Error controller: ${_videoPlayerController!.value.errorDescription}');
       }
 
-      // Buffer inicial ULTRA-OPTIMIZADO - súper rápido (1.5s max)
+      // Buffer inicial ULTRA-OPTIMIZADO
       debugPrint('📦 Esperando buffer inicial...');
       final startWait = DateTime.now();
-      const maxWait = Duration(milliseconds: 1500); // Reducido de 3s a 1.5s
+      const maxWait = Duration(milliseconds: 1500);
       bool gotBuffer = false;
 
       while (DateTime.now().difference(startWait) < maxWait &&
           !_isDisposed &&
           mounted) {
-        await Future.delayed(
-            const Duration(milliseconds: 100)); // Más frecuente
+        await Future.delayed(const Duration(milliseconds: 100));
         final value = _videoPlayerController!.value;
         if (value.isInitialized &&
             !value.isBuffering &&
@@ -320,11 +325,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       await _videoPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
       await _videoPlayerController!.setPlaybackSpeed(1.0);
 
-      // Auto-play ULTRA-AGRESIVO - inicio instantáneo
+      // Auto-play ULTRA-AGRESIVO
       debugPrint('▶️ Iniciando reproducción...');
       bool playbackStarted = false;
       int playAttempts = 0;
-      const maxAttempts = 5; // Aumentado a 5 intentos
+      const maxAttempts = 5;
 
       while (!playbackStarted &&
           playAttempts < maxAttempts &&
@@ -333,19 +338,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         playAttempts++;
         try {
           await _videoPlayerController!.play();
-          await Future.delayed(
-              const Duration(milliseconds: 150)); // Reducido de 250 a 150
+          await Future.delayed(const Duration(milliseconds: 150));
 
           if (_videoPlayerController!.value.isPlaying) {
             playbackStarted = true;
             _lastSuccessfulPlayTime = DateTime.now();
             debugPrint('✅ Play OK intento #$playAttempts');
-
-            // Fade in suave al mostrar el video
             _fadeController.forward();
           } else {
-            final delay =
-                Duration(milliseconds: 100 * playAttempts); // Reducido
+            final delay = Duration(milliseconds: 100 * playAttempts);
             await Future.delayed(delay);
           }
         } catch (e) {
@@ -363,7 +364,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         }
       }
 
-      // Watchdog mejorado
       _startWatchdog();
 
       _safeSetState(() {
@@ -387,7 +387,139 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         if (mounted && !_isDisposed) {
           _safeSetState(() {
             _isLoading = false;
-            _error = 'No se pudo conectar a ningún servidor DASH';
+            _error = 'No se pudo conectar a ningún servidor';
+            _isInitializing = false;
+          });
+        }
+      }
+    }
+  }
+
+  /// Initialize Better Player for direct MPEG-TS streams (without extension)
+  Future<void> _initializeBetterPlayerForDirectStream(String url) async {
+    if (_isDisposed) return;
+
+    try {
+      // Dispose existing controllers
+      if (_betterPlayerController != null) {
+        await _betterPlayerController!.pause();
+        _betterPlayerController!.dispose();
+        _betterPlayerController = null;
+      }
+      if (_videoPlayerController != null) {
+        if (_listenerAttached) {
+          _videoPlayerController!.removeListener(_videoListener);
+          _listenerAttached = false;
+        }
+        await _videoPlayerController!.pause();
+        await _videoPlayerController!.dispose();
+        _videoPlayerController = null;
+      }
+
+      debugPrint('🎬 Stream Directo Servidor ${_currentServerIndex + 1}: $url');
+
+      // Create data source with generic headers and format
+      final dataSource = BetterPlayerDataSource(
+        BetterPlayerDataSourceType.network,
+        url,
+        videoFormat: BetterPlayerVideoFormat
+            .other, // Usar 'other' para streams sin extensión
+        headers: {
+          'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
+          'Accept': '*/*',
+          'Connection': 'keep-alive',
+        },
+        notificationConfiguration: const BetterPlayerNotificationConfiguration(
+          showNotification: false,
+        ),
+      );
+
+      // Create configuration
+      final configuration = BetterPlayerConfiguration(
+        autoPlay: true,
+        looping: false,
+        fullScreenByDefault: false,
+        fit: BoxFit.contain,
+        aspectRatio: _getAspectRatio(),
+        controlsConfiguration: const BetterPlayerControlsConfiguration(
+          showControls: false,
+        ),
+        eventListener: (BetterPlayerEvent event) {
+          if (_isDisposed) return;
+
+          if (event.betterPlayerEventType ==
+              BetterPlayerEventType.initialized) {
+            debugPrint('✅ Better Player initialized (Direct Stream)');
+            _lastSuccessfulPlayTime = DateTime.now();
+          } else if (event.betterPlayerEventType ==
+              BetterPlayerEventType.play) {
+            _lastSuccessfulPlayTime = DateTime.now();
+          } else if (event.betterPlayerEventType ==
+              BetterPlayerEventType.exception) {
+            debugPrint('❌ Better Player exception (Direct Stream)');
+          }
+
+          _safeSetState(() {});
+        },
+      );
+
+      // Create controller
+      _betterPlayerController = BetterPlayerController(configuration);
+      await _betterPlayerController!.setupDataSource(dataSource);
+
+      if (_isDisposed || !mounted) return;
+
+      _serverTimeoutTimer?.cancel();
+
+      // Set volume
+      await _betterPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
+
+      // Wait for initialization
+      debugPrint('📦 Esperando inicialización Stream Directo...');
+      final startWait = DateTime.now();
+      const maxWait = Duration(seconds: 5);
+      bool initialized = false;
+
+      while (DateTime.now().difference(startWait) < maxWait &&
+          !_isDisposed &&
+          mounted) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (_betterPlayerController!.isVideoInitialized() ?? false) {
+          initialized = true;
+          break;
+        }
+      }
+
+      if (!initialized) {
+        debugPrint('⚠️ Inicialización Stream Directo lenta, continuando...');
+      }
+
+      // Fade in animation
+      _fadeController.forward();
+
+      _safeSetState(() {
+        _isLoading = false;
+        _isInitializing = false;
+        _retryCount = 0;
+      });
+
+      debugPrint('✅ Stream Directo Servidor ${_currentServerIndex + 1} OK');
+    } catch (e, st) {
+      debugPrint(
+          '❌ Error Stream Directo servidor ${_currentServerIndex + 1}: $e\n$st');
+
+      if (_isDisposed) return;
+
+      if (_currentServerIndex < widget.channel.streamUrl.length - 1) {
+        _currentServerIndex++;
+        await Future.delayed(_backoffDurationForAttempt(_serverAttempt));
+        _serverAttempt++;
+        await _tryCurrentServer();
+      } else {
+        if (mounted && !_isDisposed) {
+          _safeSetState(() {
+            _isLoading = false;
+            _error = 'No se pudo conectar a ningún servidor';
             _isInitializing = false;
           });
         }
@@ -436,6 +568,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         url,
         videoFormat: BetterPlayerVideoFormat.dash,
         drmConfiguration: drmConfiguration,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
+          'Accept': '*/*',
+          'Connection': 'keep-alive',
+        },
         notificationConfiguration: const BetterPlayerNotificationConfiguration(
           showNotification: false,
         ),
@@ -449,7 +586,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         fit: BoxFit.contain,
         aspectRatio: _getAspectRatio(),
         controlsConfiguration: const BetterPlayerControlsConfiguration(
-          showControls: false, // Use custom controls
+          showControls: false,
         ),
         eventListener: (BetterPlayerEvent event) {
           if (_isDisposed) return;
@@ -589,7 +726,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _bufferingCount++;
         debugPrint('📊 Buffering (contador: $_bufferingCount)');
 
-        // Recuperación ULTRA-AGRESIVA (1 en lugar de 2)
+        // Recuperación ULTRA-AGRESIVA
         if (_bufferingCount >= 1 && !_isRecoveringFromBuffer) {
           _isRecoveringFromBuffer = true;
           debugPrint('🔄 RECUPERACIÓN AUTO (buffers: $_bufferingCount)');
@@ -612,7 +749,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           // Reintentos ULTRA-MEJORADOS
           bool resumed = false;
           int attempts = 0;
-          const attemptsMax = 8; // Aumentado a 8
+          const attemptsMax = 8;
 
           while (!resumed && attempts < attemptsMax && !_isDisposed) {
             attempts++;
@@ -706,12 +843,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Duration _backoffDurationForAttempt(int attempt) {
-    final ms = min(6000, (400 * pow(2, attempt)).toInt()); // Reducido tope
+    final ms = min(6000, (400 * pow(2, attempt)).toInt());
     return Duration(milliseconds: ms);
   }
 
   void _toggleFullScreen() {
-    if (_isDisposed || _videoPlayerController == null) return;
+    if (_isDisposed) return;
 
     final newFullScreenState = !_isFullScreen;
 
@@ -761,6 +898,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           break;
       }
     });
+
+    // Update BetterPlayer aspect ratio if active
+    if (_betterPlayerController != null) {
+      _betterPlayerController!.setOverriddenAspectRatio(_getAspectRatio());
+    }
   }
 
   String _getAspectRatioLabel() {
@@ -779,7 +921,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   double _getAspectRatio() {
     switch (_aspectRatioType) {
       case AspectRatioType.auto:
-        return _videoPlayerController?.value.aspectRatio ?? 16 / 9;
+        if (_videoPlayerController != null &&
+            _videoPlayerController!.value.isInitialized) {
+          return _videoPlayerController!.value.aspectRatio;
+        }
+        return 16 / 9;
       case AspectRatioType.ratio16_9:
         return 16 / 9;
       case AspectRatioType.ratio4_3:
@@ -791,12 +937,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   void _toggleMute() {
-    if (_isDisposed || _videoPlayerController == null) return;
+    if (_isDisposed) return;
     setState(() {
       _isMuted = !_isMuted;
     });
     try {
       _videoPlayerController?.setVolume(_isMuted ? 0.0 : 1.0);
+      _betterPlayerController?.setVolume(_isMuted ? 0.0 : 1.0);
     } catch (e) {
       debugPrint('⚠️ Error toggleMute: $e');
     }
@@ -865,32 +1012,31 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Spinner más pequeño y elegante
             SizedBox(
-              width: 50, // Reducido de 70
+              width: 50,
               height: 50,
               child: CircularProgressIndicator(
-                strokeWidth: 3, // Reducido de 4
+                strokeWidth: 3,
                 valueColor: AlwaysStoppedAnimation<Color>(
                   Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
-            const SizedBox(height: 20), // Reducido de 24
+            const SizedBox(height: 20),
             const Text(
               'Conectando...',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 16, // Reducido de 18
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 6), // Reducido de 8
+            const SizedBox(height: 6),
             Text(
               widget.channel.name,
               style: TextStyle(
                 color: Colors.white.withAlpha(179),
-                fontSize: 14, // Reducido de 15
+                fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -1021,47 +1167,56 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   Widget _buildNativePlayer() {
     // Check which player is active
-    final bool isHLS = _streamType != StreamType.dash;
+    final bool useBetterPlayer = _betterPlayerController != null;
 
-    if (isHLS) {
-      // HLS Player - EXISTING CODE UNCHANGED
-      if (_videoPlayerController == null ||
-          !_videoPlayerController!.value.isInitialized) {
+    if (useBetterPlayer) {
+      // Better Player (DASH or Direct Stream)
+      if (!(_betterPlayerController!.isVideoInitialized() ?? false)) {
         return _buildLoadingWidget();
       }
 
-      final aspectRatio = _getAspectRatio();
+      Widget videoContent;
 
-      Widget videoContent = Center(
-        child: _aspectRatioType == AspectRatioType.stretch
-            ? SizedBox.expand(
-                child: FittedBox(
-                  fit: BoxFit.cover,
-                  child: SizedBox(
-                    width: _videoPlayerController!.value.size.width,
-                    height: _videoPlayerController!.value.size.height,
-                    child: VideoPlayer(_videoPlayerController!),
-                  ),
-                ),
-              )
-            : AspectRatio(
-                aspectRatio: aspectRatio,
-                child: VideoPlayer(_videoPlayerController!),
+      if (_aspectRatioType == AspectRatioType.stretch) {
+        // Estirar horizontalmente para llenar toda la pantalla
+        videoContent = ClipRect(
+          child: OverflowBox(
+            alignment: Alignment.center,
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
+                child: BetterPlayer(controller: _betterPlayerController!),
               ),
-      );
+            ),
+          ),
+        );
+      } else {
+        // Aspect ratio normal
+        videoContent = Center(
+          child: AspectRatio(
+            aspectRatio: _getAspectRatio(),
+            child: BetterPlayer(controller: _betterPlayerController!),
+          ),
+        );
+      }
 
-      // Fade in suave al mostrar video
       Widget playerWidget = Container(
         color: Colors.black,
         child: Stack(
           children: [
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: videoContent,
+            // Video con animación de fade
+            Positioned.fill(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: videoContent,
+              ),
             ),
+            // Controles personalizados
             Positioned.fill(
               child: CustomVideoControls(
-                controller: HLSControllerAdapter(_videoPlayerController!),
+                controller: DASHControllerAdapter(_betterPlayerController!),
                 channelName: widget.channel.name,
                 isFullScreen: _isFullScreen,
                 onFullScreenToggle: _toggleFullScreen,
@@ -1086,26 +1241,55 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             )
           : playerWidget;
     } else {
-      // DASH Player - NEW CODE
-      if (_betterPlayerController == null ||
-          !(_betterPlayerController!.isVideoInitialized() ?? false)) {
+      // HLS Player (VideoPlayer)
+      if (_videoPlayerController == null ||
+          !_videoPlayerController!.value.isInitialized) {
         return _buildLoadingWidget();
+      }
+
+      Widget videoContent;
+
+      if (_aspectRatioType == AspectRatioType.stretch) {
+        // Estirar horizontalmente para llenar toda la pantalla
+        videoContent = ClipRect(
+          child: OverflowBox(
+            alignment: Alignment.center,
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height,
+                child: VideoPlayer(_videoPlayerController!),
+              ),
+            ),
+          ),
+        );
+      } else {
+        // Aspect ratio normal
+        final aspectRatio = _getAspectRatio();
+        videoContent = Center(
+          child: AspectRatio(
+            aspectRatio: aspectRatio,
+            child: VideoPlayer(_videoPlayerController!),
+          ),
+        );
       }
 
       Widget playerWidget = Container(
         color: Colors.black,
         child: Stack(
           children: [
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: AspectRatio(
-                aspectRatio: _getAspectRatio(),
-                child: BetterPlayer(controller: _betterPlayerController!),
+            // Video con animación de fade
+            Positioned.fill(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: videoContent,
               ),
             ),
+            // Controles personalizados
             Positioned.fill(
               child: CustomVideoControls(
-                controller: DASHControllerAdapter(_betterPlayerController!),
+                controller: HLSControllerAdapter(_videoPlayerController!),
                 channelName: widget.channel.name,
                 isFullScreen: _isFullScreen,
                 onFullScreenToggle: _toggleFullScreen,

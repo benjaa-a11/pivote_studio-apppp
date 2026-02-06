@@ -23,96 +23,159 @@ class _FutbolScreenState extends State<FutbolScreen> {
     final isDark = theme.brightness == Brightness.dark;
     final soccerProvider = context.watch<SoccerProvider>();
 
-    // Use standard theme colors
-    final backgroundColor = theme.scaffoldBackgroundColor;
-    final headerColor =
-        isDark ? theme.colorScheme.surface : theme.colorScheme.primary;
-    final subHeaderColor =
-        isDark ? theme.cardColor : theme.colorScheme.secondary;
-
     return Scaffold(
-      backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(theme, headerColor, subHeaderColor),
-            _buildTabs(theme, soccerProvider, headerColor),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                child: _buildContent(soccerProvider, theme, backgroundColor),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: Stack(
+        children: [
+          // Background subtle gradients for depth
+          if (isDark)
+            Positioned(
+              top: -100,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                ),
               ),
             ),
-          ],
-        ),
+
+          SafeArea(
+            child: NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                return [
+                  SliverAppBar(
+                    expandedHeight: 180,
+                    floating: true,
+                    pinned: true,
+                    elevation: 0,
+                    backgroundColor: theme.scaffoldBackgroundColor,
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Column(
+                        children: [
+                          const SizedBox(height: 10),
+                          const WorldCupCountdown(),
+                          const SizedBox(height: 20),
+                          _buildDateSelector(theme, isDark),
+                        ],
+                      ),
+                    ),
+                    bottom: PreferredSize(
+                      preferredSize: const Size.fromHeight(60),
+                      child: _buildTabs(theme, soccerProvider, isDark),
+                    ),
+                  ),
+                ];
+              },
+              body: _buildContent(soccerProvider, theme),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeader(
-      ThemeData theme, Color headerColor, Color subHeaderColor) {
-    return Column(
-      children: [
-        // World Cup Countdown - Original but fits the theme
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          color: theme.scaffoldBackgroundColor, // Keep it on neutral background
-          child: const Center(child: WorldCupCountdown()),
-        ),
-        // Date Navigation Row
-        Container(
-          color: subHeaderColor,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                    size: 14, color: Colors.white),
-              ),
-              const SizedBox(width: 20),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'HOY',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const Icon(Icons.arrow_drop_down_rounded,
-                      color: Colors.white),
-                ],
-              ),
-              const SizedBox(width: 20),
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.arrow_forward_ios_rounded,
-                    size: 14, color: Colors.white),
-              ),
-            ],
+  Widget _buildDateSelector(ThemeData theme, bool isDark) {
+    // This would typically come from a provider, for now we keep the UI logic
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          _buildDateItem('AYER', '05 FEB', false, theme, isDark),
+          const SizedBox(width: 12),
+          _buildDateItem('HOY', '06 FEB', true, theme, isDark),
+          const SizedBox(width: 12),
+          _buildDateItem('MAÑ.', '07 FEB', false, theme, isDark),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : theme.colorScheme.primary.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.calendar_today_rounded,
+              size: 20,
+              color: theme.colorScheme.primary,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildTabs(
-      ThemeData theme, SoccerProvider provider, Color backgroundColor) {
+  Widget _buildDateItem(
+      String day, String date, bool isSelected, ThemeData theme, bool isDark) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? theme.colorScheme.primary
+            : (isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.03)),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                )
+              ]
+            : null,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            day,
+            style: GoogleFonts.ubuntu(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: isSelected
+                  ? Colors.white
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            date,
+            style: GoogleFonts.ubuntu(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: isSelected ? Colors.white : theme.colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabs(ThemeData theme, SoccerProvider provider, bool isDark) {
     final liveCount =
         provider.soccerData?.matches.where((m) => m.isLive).length ?? 0;
 
     return Container(
-      color: backgroundColor,
+      height: 60,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF1A1D24)
+            : Colors.black.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         children: [
           _buildTabItem('TODOS', true, theme),
-          _buildTabItem('VIVO ($liveCount)', false, theme, isLive: true),
+          _buildTabItem('EN VIVO ($liveCount)', false, theme, isLive: true),
         ],
       ),
     );
@@ -121,42 +184,45 @@ class _FutbolScreenState extends State<FutbolScreen> {
   Widget _buildTabItem(String label, bool isSelected, ThemeData theme,
       {bool isLive = false}) {
     return Expanded(
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            width: double.infinity,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.transparent,
-            ),
-            child: Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: isSelected ? Colors.white : Colors.white60,
-                letterSpacing: 1.0,
-              ),
-            ),
+      child: Container(
+        margin: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: isSelected ? theme.colorScheme.surface : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  )
+                ]
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: GoogleFonts.ubuntu(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            letterSpacing: 0.5,
           ),
-          Container(
-            height: 3,
-            color:
-                isSelected ? theme.colorScheme.secondary : Colors.transparent,
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildContent(
-      SoccerProvider provider, ThemeData theme, Color backgroundColor) {
+  Widget _buildContent(SoccerProvider provider, ThemeData theme) {
     if (provider.isLoading && provider.soccerData == null) {
       return Center(
-          child: CircularProgressIndicator(color: theme.colorScheme.secondary));
+        child: CircularProgressIndicator(
+          color: theme.colorScheme.primary,
+          strokeWidth: 3,
+        ),
+      );
     }
 
     if (provider.error != null && provider.soccerData == null) {
@@ -169,7 +235,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
     }
 
     return RefreshIndicator(
-      color: theme.colorScheme.secondary,
+      color: theme.colorScheme.primary,
       onRefresh: () => provider.fetchData(),
       child: CustomScrollView(
         key: const ValueKey('soccer_scroll_view'),
@@ -180,7 +246,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
           ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: _buildMatchesList(soccerData, theme, backgroundColor),
+            sliver: _buildMatchesList(soccerData, theme),
           ),
           SliverToBoxAdapter(child: _buildVersionFooter(theme)),
           const SliverToBoxAdapter(child: SizedBox(height: 120)),
@@ -190,31 +256,23 @@ class _FutbolScreenState extends State<FutbolScreen> {
   }
 
   Widget _buildLeagueCarousel(SoccerData data, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      height: 100,
-      margin: const EdgeInsets.symmetric(vertical: 16),
+      height: 90,
+      margin: const EdgeInsets.only(top: 8, bottom: 16),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemCount: data.leagues.length + 1,
-        separatorBuilder: (context, index) => const SizedBox(width: 20),
+        separatorBuilder: (context, index) => const SizedBox(width: 16),
         itemBuilder: (context, index) {
           if (index == 0) {
-            return _buildLeagueItem(
-              'all',
-              'Todo',
-              null,
-              theme,
-              isAll: true,
-            );
+            return _buildLeagueItem('all', 'Todo', null, theme, isAll: true);
           }
           final league = data.leagues[index - 1];
           return _buildLeagueItem(
-            league.id,
-            league.shortName,
-            league.logoUrl,
-            theme,
-          );
+              league.id, league.shortName, league.logoUrl, theme);
         },
       ),
     );
@@ -224,6 +282,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
       String id, String label, String? logoUrl, ThemeData theme,
       {bool isAll = false}) {
     final isSelected = _selectedLeagueId == id;
+    final isDark = theme.brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () => setState(() => _selectedLeagueId = id),
@@ -231,67 +290,71 @@ class _FutbolScreenState extends State<FutbolScreen> {
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            width: 56,
-            height: 56,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isSelected
-                  ? theme.colorScheme.primary.withValues(alpha: 0.15)
-                  : theme.cardColor,
+                  ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                  : (isDark ? const Color(0xFF1A1D24) : Colors.white),
               border: Border.all(
                 color: isSelected
                     ? theme.colorScheme.primary
-                    : (theme.dividerTheme.color ?? theme.dividerColor)
-                        .withValues(alpha: 0.2),
+                    : theme.dividerColor.withValues(alpha: 0.05),
                 width: 2,
               ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                        blurRadius: 10,
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.15),
+                        blurRadius: 8,
                         spreadRadius: 1,
                       )
                     ]
-                  : null,
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
             ),
             child: Center(
               child: isAll
                   ? Icon(
                       Icons.grid_view_rounded,
+                      size: 20,
                       color: isSelected
                           ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          : theme.hintColor,
                     )
                   : logoUrl != null
                       ? ClipOval(
                           child: CachedNetworkImage(
                             imageUrl: logoUrl,
-                            width: 38,
-                            height: 38,
+                            width: 34,
+                            height: 34,
                             fit: BoxFit.contain,
                             placeholder: (context, url) =>
                                 const SizedBox(width: 20, height: 20),
                             errorWidget: (context, url, error) => Icon(
                                 Icons.sports_soccer_outlined,
-                                color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.4)),
+                                color: theme.hintColor,
+                                size: 20),
                           ),
                         )
                       : Icon(Icons.sports_soccer_outlined,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.4)),
+                          color: theme.hintColor, size: 20),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            style: GoogleFonts.ubuntu(
+              fontSize: 10,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+              color: isSelected ? theme.colorScheme.primary : theme.hintColor,
             ),
           ),
         ],
@@ -299,13 +362,11 @@ class _FutbolScreenState extends State<FutbolScreen> {
     );
   }
 
-  Widget _buildMatchesList(
-      SoccerData data, ThemeData theme, Color backgroundColor) {
+  Widget _buildMatchesList(SoccerData data, ThemeData theme) {
     final filteredMatches = _selectedLeagueId == 'all'
         ? data.matches
         : data.matches.where((m) => m.leagueId == _selectedLeagueId).toList();
 
-    // Group matches by league
     Map<String, List<SoccerMatch>> grouped = {};
     for (var match in filteredMatches) {
       if (!grouped.containsKey(match.leagueId)) {
@@ -336,8 +397,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
                   country: ''));
           final matches = grouped[leagueId]!;
 
-          return _buildLeagueSection(
-              league, matches, data, theme, backgroundColor);
+          return _buildLeagueSection(league, matches, data, theme);
         },
         childCount: leagueIds.length,
       ),
@@ -345,83 +405,90 @@ class _FutbolScreenState extends State<FutbolScreen> {
   }
 
   Widget _buildLeagueSection(SoccerLeague league, List<SoccerMatch> matches,
-      SoccerData data, ThemeData theme, Color backgroundColor) {
+      SoccerData data, ThemeData theme) {
     final isDark = theme.brightness == Brightness.dark;
-    final surfaceColor = theme.cardColor;
-    final borderColor = theme.dividerColor.withValues(alpha: 0.1);
-    final headerColor = isDark
-        ? Colors.white.withValues(alpha: 0.03)
-        : Colors.black.withValues(alpha: 0.02);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? const Color(0xFF13161C) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: borderColor,
+          color: theme.dividerColor.withValues(alpha: 0.05),
           width: 1,
         ),
         boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: headerColor,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(20)),
-              border: Border(
-                bottom: BorderSide(color: borderColor, width: 1),
-              ),
-            ),
+          // Elegant League Header
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                if (league.logoUrl != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                if (league.logoUrl != null)
+                  Container(
+                    width: 32,
+                    height: 32,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : Colors.black.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     child: CachedNetworkImage(
                       imageUrl: league.logoUrl!,
-                      width: 22,
-                      height: 22,
                       fit: BoxFit.contain,
-                      errorWidget: (context, url, error) => const Icon(
+                      errorWidget: (context, url, error) => Icon(
                           Icons.emoji_events_rounded,
                           color: Colors.amber,
-                          size: 18),
+                          size: 16),
                     ),
-                  ),
-                ] else ...[
+                  )
+                else
                   const Icon(Icons.emoji_events_rounded,
-                      color: Colors.amber, size: 18),
-                ],
+                      color: Colors.amber, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    league.shortName.toUpperCase(),
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                      letterSpacing: 0.5,
-                      color: theme.colorScheme.onSurface,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        league.name,
+                        style: GoogleFonts.ubuntu(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      Text(
+                        league.country.toUpperCase(),
+                        style: GoogleFonts.ubuntu(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 9,
+                          letterSpacing: 1.0,
+                          color: theme.hintColor,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Icon(Icons.expand_less_rounded,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                    size: 20),
+                Icon(Icons.chevron_right_rounded,
+                    color: theme.hintColor.withValues(alpha: 0.5), size: 20),
               ],
             ),
           ),
+
+          Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.05)),
+
           ListView.builder(
             shrinkWrap: true,
             padding: EdgeInsets.zero,
@@ -433,33 +500,33 @@ class _FutbolScreenState extends State<FutbolScreen> {
               onTap: () {},
             ),
           ),
-          // Footer Link
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: headerColor,
-              borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(20)),
-              border: Border(
-                top: BorderSide(color: borderColor, width: 1),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'SECCIÓN DE ${league.shortName.toUpperCase()}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.primary,
+
+          // Footer Link - More professional
+          InkWell(
+            onTap: () {},
+            borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(24)),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              width: double.infinity,
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'VER CALENDARIO COMPLETO',
+                    style: GoogleFonts.ubuntu(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                Icon(Icons.chevron_right_rounded,
-                    color: theme.colorScheme.primary, size: 14),
-              ],
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_forward_rounded,
+                      color: theme.colorScheme.primary, size: 12),
+                ],
+              ),
             ),
           ),
         ],
@@ -468,41 +535,47 @@ class _FutbolScreenState extends State<FutbolScreen> {
   }
 
   Widget _buildErrorState(SoccerProvider provider, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Center(
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline_rounded,
-                size: 64,
-                color: theme.colorScheme.error.withValues(alpha: 0.5)),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.error.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.cloud_off_rounded,
+                  size: 64, color: theme.colorScheme.error),
+            ),
             const SizedBox(height: 24),
             Text(
-              '¡Ups! Algo salió mal',
-              style: theme.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              '¡Vaya! Hubo un problema',
+              style:
+                  GoogleFonts.ubuntu(fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
-              'No pudimos cargar los resultados de fútbol en este momento.',
-              style:
-                  theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
+              'No pudimos conectar con los servidores de fútbol. Por favor, intenta de nuevo.',
               textAlign: TextAlign.center,
+              style: GoogleFonts.ubuntu(color: theme.hintColor),
             ),
             const SizedBox(height: 32),
-            ElevatedButton.icon(
+            ElevatedButton(
               onPressed: () => provider.retry(),
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              label: const Text('REINTENTAR'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: theme.primaryColor,
-                foregroundColor: Colors.black,
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
               ),
+              child: Text('REINTENTAR AHORA',
+                  style: GoogleFonts.ubuntu(fontWeight: FontWeight.w800)),
             ),
           ],
         ),
@@ -511,29 +584,30 @@ class _FutbolScreenState extends State<FutbolScreen> {
   }
 
   Widget _buildEmptyState(ThemeData theme, {String? message}) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Center(
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.sports_soccer_outlined,
+            Icon(Icons.sports_soccer_rounded,
                 size: 80, color: theme.dividerColor.withValues(alpha: 0.1)),
             const SizedBox(height: 24),
             Text(
-              message ?? 'No hay partidos disponibles',
-              style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.hintColor, fontWeight: FontWeight.w500),
+              message ?? 'No hay partidos programados',
+              style: GoogleFonts.ubuntu(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: theme.hintColor),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            if (message == null)
-              Text(
-                'Vuelve más tarde para ver los resultados en vivo.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.hintColor.withValues(alpha: 0.7)),
-                textAlign: TextAlign.center,
-              ),
+            Text(
+              'Tan pronto como se confirmen nuevos encuentros, aparecerán aquí.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.ubuntu(
+                  color: theme.hintColor.withValues(alpha: 0.6), fontSize: 13),
+            ),
           ],
         ),
       ),
@@ -542,50 +616,44 @@ class _FutbolScreenState extends State<FutbolScreen> {
 
   Widget _buildVersionFooter(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
+      padding: const EdgeInsets.symmetric(vertical: 40),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 20,
-                height: 1,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-              ),
+                  width: 30,
+                  height: 1,
+                  color: theme.dividerColor.withValues(alpha: 0.1)),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(
-                  Icons.sports_soccer,
-                  size: 14,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Icon(Icons.sports_soccer_rounded,
+                    size: 16, color: theme.dividerColor.withValues(alpha: 0.2)),
               ),
               Container(
-                width: 20,
-                height: 1,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
-              ),
+                  width: 30,
+                  height: 1,
+                  color: theme.dividerColor.withValues(alpha: 0.1)),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           RichText(
             text: TextSpan(
-              style: theme.textTheme.labelSmall?.copyWith(
+              style: GoogleFonts.ubuntu(
                 fontSize: 10,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.2,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.5,
+                color: theme.hintColor.withValues(alpha: 0.3),
               ),
               children: [
                 const TextSpan(text: 'PIVOTE '),
                 TextSpan(
-                  text: 'SPORT',
+                  text: 'SPORTS',
                   style: TextStyle(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.4),
-                  ),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.5)),
                 ),
-                const TextSpan(text: ' v1.5.0'),
+                const TextSpan(text: ' PLATFORM'),
               ],
             ),
           ),
