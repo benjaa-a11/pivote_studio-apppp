@@ -39,53 +39,45 @@ class _RadiosScreenState extends State<RadiosScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            _buildHeader(context, isDark),
-            _buildCategoryFilters(context, isDark),
-            Expanded(
-              child: _buildRadioList(context, isDark),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, bool isDark) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 12, 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Radio',
-            style: GoogleFonts.ubuntu(
-              fontSize: 32,
-              fontWeight: FontWeight.w700,
-              color: textColor,
-              letterSpacing: -0.5,
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        bottom: false,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // Floating Header
+            SliverAppBar(
+              floating: true,
+              snap: true,
+              elevation: 0,
+              backgroundColor: theme.scaffoldBackgroundColor,
+              automaticallyImplyLeading: false,
+              titleSpacing: 24,
+              title: Text(
+                'Radio',
+                style: GoogleFonts.ubuntu(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(60),
+                child: _buildCategoryFilters(context, isDark),
+              ),
             ),
-          ),
-          IconButton(
-            onPressed: () {
-              // Open search overlay or navigate to search screen
-            },
-            icon: Icon(
-              Icons.search_rounded,
-              color: textColor.withValues(alpha: 0.7),
-              size: 28,
-            ),
-          ),
-        ],
+
+            // Radio List Content
+            _buildSliverRadioList(context, isDark),
+          ],
+        ),
       ),
     );
   }
@@ -150,7 +142,7 @@ class _RadiosScreenState extends State<RadiosScreen>
     );
   }
 
-  Widget _buildRadioList(BuildContext context, bool isDark) {
+  Widget _buildSliverRadioList(BuildContext context, bool isDark) {
     return Consumer2<RadioProvider, AudioManager>(
       builder: (context, radioProvider, audioManager, child) {
         final isLoading = radioProvider.isLoading;
@@ -166,38 +158,45 @@ class _RadiosScreenState extends State<RadiosScreen>
             : radioProvider.radios;
 
         if (!isLoading && radios.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.radio_rounded,
-                  size: 64,
-                  color: isDark ? Colors.white10 : Colors.black12,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No se encontraron radios',
-                  style: GoogleFonts.ubuntu(
-                    color: isDark ? Colors.white38 : Colors.black38,
-                    fontSize: 16,
+          return SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.radio_rounded,
+                    size: 64,
+                    color: isDark ? Colors.white10 : Colors.black12,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Text(
+                    'No se encontraron radios',
+                    style: GoogleFonts.ubuntu(
+                      color: isDark ? Colors.white38 : Colors.black38,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
 
-        return ListView.builder(
+        return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          itemCount: radios.length,
-          itemBuilder: (context, index) {
-            final radio = radios[index];
-            return Skeletonizer(
-              enabled: isLoading,
-              child: _buildRadioItem(context, radio, audioManager, isDark),
-            );
-          },
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final radio = radios[index];
+                return Skeletonizer(
+                  enabled: isLoading,
+                  child: _buildRadioItem(context, radio, audioManager, isDark),
+                );
+              },
+              childCount: radios.length,
+            ),
+          ),
         );
       },
     );

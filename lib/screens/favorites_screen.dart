@@ -4,7 +4,6 @@ import '../providers/channel_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../widgets/channel_card.dart';
 import '../widgets/common/custom_dialogs.dart';
-
 import 'package:google_fonts/google_fonts.dart';
 
 class FavoritesScreen extends StatelessWidget {
@@ -17,110 +16,92 @@ class FavoritesScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: Consumer2<ChannelProvider, FavoritesProvider>(
-                builder: (context, channelProvider, favoritesProvider, child) {
-                  final favoriteChannels = favoritesProvider.getSortedFavorites(
-                    channelProvider.allChannels,
-                  );
+        child: Consumer2<ChannelProvider, FavoritesProvider>(
+          builder: (context, channelProvider, favoritesProvider, child) {
+            final favoriteChannels = favoritesProvider.getSortedFavorites(
+              channelProvider.allChannels,
+            );
 
-                  if (favoriteChannels.isEmpty) {
-                    return _buildEmptyState(context);
-                  }
-
-                  return CustomScrollView(
-                    physics: const ClampingScrollPhysics(),
-                    slivers: [
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                        sliver: SliverToBoxAdapter(
-                          child:
-                              _buildCounter(context, favoriteChannels.length),
-                        ),
-                      ),
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 1.05,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              return ChannelCard(
-                                channel: favoriteChannels[index],
-                              );
-                            },
-                            childCount: favoriteChannels.length,
-                          ),
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            'Favoritos',
-            style: GoogleFonts.ubuntu(
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -1,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          const Spacer(),
-          Consumer<FavoritesProvider>(
-            builder: (context, favoritesProvider, child) {
-              if (favoritesProvider.favoriteIds.isEmpty) {
-                return const SizedBox.shrink();
-              }
-
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _showClearDialog(context, favoritesProvider),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.red.withValues(alpha: 0.1),
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.delete_sweep_rounded,
-                      color: Colors.red,
-                      size: 24,
+            return CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // Floating Header
+                SliverAppBar(
+                  floating: true,
+                  snap: true,
+                  elevation: 0,
+                  backgroundColor: theme.scaffoldBackgroundColor,
+                  automaticallyImplyLeading: false,
+                  centerTitle: false,
+                  titleSpacing: 20,
+                  title: Text(
+                    'Favoritos',
+                    style: GoogleFonts.ubuntu(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -1,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
+                  actions: [
+                    if (favoriteChannels.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: IconButton(
+                            onPressed: () =>
+                                _showClearDialog(context, favoritesProvider),
+                            icon: Icon(
+                              Icons.delete_sweep_rounded,
+                              color: theme.colorScheme.primary,
+                              size: 28,
+                            ),
+                            tooltip: 'Limpiar favoritos',
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              );
-            },
-          ),
-        ],
+
+                if (favoriteChannels.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _buildEmptyState(context),
+                  )
+                else ...[
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    sliver: SliverToBoxAdapter(
+                      child: _buildCounter(context, favoriteChannels.length),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 1.05,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          return ChannelCard(
+                            channel: favoriteChannels[index],
+                          );
+                        },
+                        childCount: favoriteChannels.length,
+                      ),
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                ],
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -207,11 +188,10 @@ class FavoritesScreen extends StatelessWidget {
             const SizedBox(height: 32),
             ElevatedButton(
               onPressed: () {
-                // Asumiendo que DefaultTabController está en un ancestro
                 try {
                   DefaultTabController.of(context).animateTo(0);
                 } catch (e) {
-                  // Fallback si no hay TabController
+                  // Fallback
                 }
               },
               style: ElevatedButton.styleFrom(

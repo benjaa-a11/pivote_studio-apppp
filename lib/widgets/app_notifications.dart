@@ -45,19 +45,33 @@ class AppNotifications {
     IconData icon,
   ) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
             children: [
+              // Styled Icon Container
               Container(
-                padding: const EdgeInsets.all(8),
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(12),
+                  // Subtle border to prevent "line" issues if any
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
                 ),
-                child: Icon(icon, color: Colors.white, size: 20),
+                child: Center(
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -67,18 +81,27 @@ class AppNotifications {
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        backgroundColor: color,
+        backgroundColor: color.withValues(alpha: 0.95),
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 10,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 12,
         duration: const Duration(seconds: 4),
+        // Smooth slide & fade animation
+        animation: CurvedAnimation(
+          parent: AnimationController(
+            vsync: ScaffoldMessenger.of(context),
+            duration: const Duration(milliseconds: 600),
+          )..forward(),
+          curve: Curves.easeOutBack,
+        ),
       ),
     );
   }

@@ -208,7 +208,7 @@ class _SearchScreenState extends State<SearchScreen>
 
   Widget _buildInitialState(ChannelProvider provider, bool isDark) {
     return ListView(
-      physics: const BouncingScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
       children: [
         if (_searchHistory.isNotEmpty) ...[

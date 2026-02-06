@@ -28,7 +28,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
 
   late AnimationController _slideAnimationController;
   late Animation<double> _slideAnimation;
-  late AnimationController _pulseController;
   late AnimationController _rotateController;
 
   @override
@@ -48,12 +47,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
       parent: _slideAnimationController,
       curve: Curves.easeOutCubic,
     ));
-
-    // Pulse animation for LIVE indicator
-    _pulseController = AnimationController(
-      duration: const Duration(seconds: 1),
-      vsync: this,
-    )..repeat(reverse: true);
 
     // Subtle rotation/breathing for the logo
     _rotateController = AnimationController(
@@ -136,7 +129,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   void dispose() {
     context.read<AudioManager>().removeListener(_onAudioManagerChanged);
     _slideAnimationController.dispose();
-    _pulseController.dispose();
     _rotateController.dispose();
     super.dispose();
   }
@@ -263,8 +255,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                   letterSpacing: 2.5,
                 ),
               ),
-              const SizedBox(height: 4),
-              _buildStatusIndicator(),
             ],
           ),
           IconButton(
@@ -279,46 +269,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatusIndicator() {
-    return Consumer<AudioManager>(
-      builder: (context, audioManager, _) {
-        final isLoading = audioManager.isLoading;
-        final isError = audioManager.status == AudioManagerStatus.error;
-
-        if (isError) {
-          return Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              color: Color(0xFFEF4444),
-              shape: BoxShape.circle,
-            ),
-          );
-        }
-
-        return ScaleTransition(
-          scale: Tween(begin: 0.8, end: 1.2).animate(_pulseController),
-          child: Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: isLoading ? Colors.amber : const Color(0xFF10B981),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: (isLoading ? Colors.amber : const Color(0xFF10B981))
-                      .withValues(alpha: 0.4),
-                  blurRadius: 4,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -425,7 +375,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                 if (isPlaying) {
                   audioManager.pause();
                 } else {
-                  audioManager.playRadio(widget.radio);
+                  audioManager.resume();
                 }
               },
               child: AnimatedContainer(

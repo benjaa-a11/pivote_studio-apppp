@@ -95,7 +95,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
       onRefresh: () => provider.fetchData(),
       child: CustomScrollView(
         key: const ValueKey('soccer_scroll_view'),
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
             child: _buildLeagueCarousel(soccerData, theme),

@@ -41,40 +41,26 @@ class AudioManager extends ChangeNotifier {
 
     await AudioServiceHelper.init();
 
-    // Listen to player state changes
-    // Listen to player state changes
+    // Listen to player state changes - LÓGICA SIMPLIFICADA
     _audioPlayer.playerStateStream.listen((playerState) {
       final processingState = playerState.processingState;
       final playing = playerState.playing;
 
-      if (processingState == ProcessingState.loading ||
-          processingState == ProcessingState.buffering) {
-        // If we are already playing (user hit play), keep showing playing state (Pause btn)
-        // unless it's the initial load.
-        if (playing && _status == AudioManagerStatus.playing) {
-          // Do nothing, keep status as playing so UI shows Pause button
-        } else {
-          _status = AudioManagerStatus.loading;
-        }
-      } else if (!playing) {
-        // Only set to paused if we are not in initial or error state mostly
+      // Solo mostrar loading en la carga inicial
+      if (processingState == ProcessingState.loading && _status == AudioManagerStatus.loading) {
+        // Mantener loading solo si estamos en loading inicial
+        notifyListeners();
+        return;
+      }
+
+      // Si está reproduciendo (playing = true), mostrar como playing
+      if (playing) {
+        _status = AudioManagerStatus.playing;
+      } else {
+        // Si no está reproduciendo, mostrar como pausado (excepto en error)
         if (_status != AudioManagerStatus.error) {
           _status = AudioManagerStatus.paused;
         }
-      } else if (processingState == ProcessingState.ready) {
-        _status = AudioManagerStatus.playing;
-      } else if (processingState == ProcessingState.completed) {
-        _status = AudioManagerStatus.paused;
-        _audioPlayer.seek(Duration.zero);
-        _audioPlayer.pause();
-      }
-
-      // Override: If playing is true and we are ready/buffering, let's just say playing
-      // so the user sees the Pause button.
-      if (playing &&
-          (processingState == ProcessingState.ready ||
-              processingState == ProcessingState.buffering)) {
-        _status = AudioManagerStatus.playing;
       }
 
       notifyListeners();
@@ -93,7 +79,7 @@ class AudioManager extends ChangeNotifier {
   }
 
   Future<void> playRadio(radio_model.Radio radio) async {
-    // If selecting the same radio that is already loaded
+    // Si es la misma radio y ya está cargada
     if (_currentRadio?.id == radio.id) {
       if (_status == AudioManagerStatus.playing) {
         pause();
@@ -117,12 +103,6 @@ class AudioManager extends ChangeNotifier {
         artist: radio.frequency,
         artUri: Uri.parse(radio.logoUrl),
       );
-
-      // Pass media item to existing service if we needed to,
-      // but here we are using just_audio directly for simplicity in manager
-      // and letting background service hooks handle the notification updates ideally.
-      // However, looking at the existing background_audio_service, it sets the player source.
-      // Let's integrate with the existing connection pattern.
 
       final headers = {
         'User-Agent':
@@ -160,7 +140,34 @@ class AudioManager extends ChangeNotifier {
   }
 
   Future<void> resume() async {
-    await _audioPlayer.play();
+    // Al resumir, reconectamos al stream en vivo
+    if (_currentRadio != null) {
+      try {
+        _status = AudioManagerStatus.loading;
+        notifyListeners();
+
+        final headers = {
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': '*/*',
+          'Connection': 'keep-alive',
+          'Icy-MetaData': '1',
+        };
+
+        // Reconectar al stream para obtener el audio en vivo
+        await _audioPlayer.setUrl(
+          _currentRadio!.streamUrl.first,
+          headers: headers,
+        );
+
+        await _audioPlayer.play();
+      } catch (e) {
+        _status = AudioManagerStatus.error;
+        _errorMessage = "No se pudo reconectar a la emisora.";
+        debugPrint("Error resuming radio: $e");
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> stop() async {

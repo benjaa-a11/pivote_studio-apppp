@@ -563,339 +563,178 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showAboutDialog(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
+        height: MediaQuery.of(context).size.height * 0.75,
         decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 30,
-              offset: const Offset(0, -10),
-            ),
-          ],
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-          child: Stack(
-            children: [
-              // Dynamic Background Blobs
-              Positioned(
-                top: -100,
-                right: -100,
-                child: Container(
-                  width: 300,
-                  height: 300,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(2),
               ),
-              Positioned(
-                bottom: -50,
-                left: -50,
-                child: Container(
-                  width: 250,
-                  height: 250,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondary.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Acerca de',
+              style: GoogleFonts.ubuntu(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
               ),
+            ),
+            const SizedBox(height: 32),
 
-              Column(
+            // App Branding Section
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Center(
+                child: Image.asset(
+                  'assets/logo.png',
+                  width: 60,
+                  errorBuilder: (context, _, __) => Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 40,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Pivote Studio',
+              style: GoogleFonts.ubuntu(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: theme.colorScheme.onSurface,
+                letterSpacing: -0.5,
+              ),
+            ),
+            Text(
+              'Versión $_appVersion',
+              style: GoogleFonts.ubuntu(
+                fontSize: 14,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            // Native-style Information List
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                physics: const BouncingScrollPhysics(),
                 children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    width: 50,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                  _buildAboutTile(
+                    context,
+                    icon: Icons.code_rounded,
+                    title: 'Desarrollador',
+                    subtitle: 'Pivote Tech Team',
                   ),
-                  const SizedBox(height: 32),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: Column(
-                        children: [
-                          // App Logo Container
-                          Container(
-                            height: 140,
-                            width: 140,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? theme.colorScheme.surface
-                                  : Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: theme.colorScheme.primary
-                                      .withValues(alpha: 0.2),
-                                  blurRadius: 25,
-                                  spreadRadius: 5,
-                                ),
-                              ],
-                            ),
-                            child: Image.asset(
-                              'assets/logo.png',
-                              fit: BoxFit.contain,
-                              errorBuilder: (c, e, s) => Icon(
-                                Icons.tv_rounded,
-                                size: 80,
-                                color: theme.colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // App Title & Version
-                          Text(
-                            'Pivote Studio',
-                            style: theme.textTheme.displaySmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -1,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primary
-                                  .withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'Versión $_appVersion',
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: theme.colorScheme.primary,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 32),
-
-                          // Description Card
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.03)
-                                    : Colors.black.withValues(alpha: 0.03),
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.05)),
-                              ),
-                              child: Text(
-                                'Pivote Studio es la plataforma definitiva para el streaming de televisión en vivo. '
-                                'Disfruta de tus canales favoritos con la mejor calidad y una interfaz diseñada para la excelencia.',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  height: 1.6,
-                                  color: theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 40),
-
-                          // Features / Links Header
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 40),
-                            child: Row(
-                              children: [
-                                Text(
-                                  'Conéctate con nosotros',
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                                const Spacer(),
-                                Container(
-                                  width: 40,
-                                  height: 1,
-                                  color: theme.colorScheme.primary
-                                      .withValues(alpha: 0.3),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Modern Link Cards
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                    child: _buildModernLink(
-                                        context,
-                                        FontAwesomeIcons.globe,
-                                        'Sitio Web',
-                                        'pivote.live')),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                    child: _buildModernLink(
-                                        context,
-                                        FontAwesomeIcons.telegram,
-                                        'Telegram',
-                                        '@pivote_chat')),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                    child: _buildModernLink(
-                                        context,
-                                        FontAwesomeIcons.instagram,
-                                        'Instagram',
-                                        '@pivote_studio')),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                    child: _buildModernLink(
-                                        context,
-                                        FontAwesomeIcons.envelope,
-                                        'Contacto',
-                                        'soporte@pivote.live')),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 48),
-
-                          // Bottom Footer
-                          Text(
-                            'Hecho con ❤️ para la comunidad',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.4),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '© 2026 Pivote Studio. Todos los derechos reservados.',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontSize: 10,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.3),
-                            ),
-                          ),
-                          const SizedBox(height: 40),
-                        ],
+                  _buildAboutTile(
+                    context,
+                    icon: Icons.language_rounded,
+                    title: 'Sitio Web',
+                    subtitle: 'www.pivote.app',
+                  ),
+                  _buildAboutTile(
+                    context,
+                    icon: Icons.description_rounded,
+                    title: 'Términos y Condiciones',
+                    subtitle: 'Leer política de privacidad',
+                  ),
+                  _buildAboutTile(
+                    context,
+                    icon: Icons.mail_outline_rounded,
+                    title: 'Soporte Técnico',
+                    subtitle: 'soporte@pivote.app',
+                  ),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: Text(
+                      '© 2026 Pivote Studio. Todos los derechos reservados.',
+                      style: GoogleFonts.ubuntu(
+                        fontSize: 11,
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                        fontWeight: FontWeight.w500,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
+                  const SizedBox(height: 40),
                 ],
               ),
-
-              // Enhanced Close Button
-              Positioned(
-                top: 24,
-                right: 24,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => Navigator.pop(context),
-                    borderRadius: BorderRadius.circular(100),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.05),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.1)),
-                      ),
-                      child: const Icon(Icons.close_rounded, size: 22),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildModernLink(
-      BuildContext context, IconData icon, String label, String value) {
+  Widget _buildAboutTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        // Here we could add url_launcher logic for each link
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.02)
-              : Colors.black.withValues(alpha: 0.02),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.05)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.03)
+            : Colors.black.withValues(alpha: 0.02),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: theme.colorScheme.primary, size: 18),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontSize: 10,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: theme.colorScheme.primary, size: 22),
+        title: Text(
+          title,
+          style: GoogleFonts.ubuntu(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
+        subtitle: Text(
+          subtitle,
+          style: GoogleFonts.ubuntu(
+            fontSize: 13,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios_rounded,
+          size: 14,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+        ),
+        onTap: () {
+          // Future: Open URLs
+        },
       ),
     );
   }
