@@ -86,7 +86,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       appBar: AppBar(
         title: Text(
           'Historial',
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.ubuntu(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
           ),
@@ -226,7 +226,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     children: [
                       Text(
                         channel.name,
-                        style: GoogleFonts.montserrat(
+                        style: GoogleFonts.ubuntu(
                           fontWeight: FontWeight.bold,
                           fontSize: 17,
                           color: theme.colorScheme.onSurface,
@@ -237,7 +237,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       const SizedBox(height: 4),
                       Text(
                         channel.category.toUpperCase(),
-                        style: GoogleFonts.montserrat(
+                        style: GoogleFonts.ubuntu(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color:
@@ -314,7 +314,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           const SizedBox(height: 32),
           Text(
             'Sin historial',
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.ubuntu(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.onSurface,
@@ -326,7 +326,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: Text(
               'Aún no has visto ningún canal. ¡Explora nuestra lista y comienza a disfrutar!',
               textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.ubuntu(
                 fontSize: 15,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 height: 1.5,

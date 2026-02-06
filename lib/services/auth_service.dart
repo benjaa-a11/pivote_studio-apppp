@@ -11,6 +11,8 @@ class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId:
+        '451817571128-ch6b02prjtv8njpek34v233bv3itfpjn.apps.googleusercontent.com',
     scopes: ['email', 'profile'],
   );
   static const String _usersCollection = 'usuarios-pivote';
@@ -38,7 +40,7 @@ class AuthService {
   static Future<User?> signInWithGoogle() async {
     try {
       debugPrint('🔵 Starting Google Sign-In process...');
-      
+
       // 1. Sign out from previous session to force account picker
       await _googleSignIn.signOut();
       debugPrint('🔵 Cleared previous Google session');
@@ -58,7 +60,8 @@ class AuthService {
       debugPrint('✅ Google account selected: ${googleUser.email}');
 
       // 3. Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       // 4. Verify we have the required tokens
       if (googleAuth.accessToken == null || googleAuth.idToken == null) {
@@ -80,7 +83,8 @@ class AuthService {
       debugPrint('🔵 Signing in to Firebase with Google credential...');
 
       // 6. Sign in to Firebase with the Google credential
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
 
       if (userCredential.user == null) {
         debugPrint('❌ Firebase sign-in returned null user');
@@ -96,7 +100,8 @@ class AuthService {
       // 7. Parse name from Google account
       final nameParts = user.displayName?.split(' ') ?? ['Usuario', 'Google'];
       final firstName = nameParts.isNotEmpty ? nameParts.first : 'Usuario';
-      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'Google';
+      final lastName =
+          nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'Google';
 
       debugPrint('🔵 Creating/updating Firestore document...');
       debugPrint('   - Name: $firstName');
@@ -138,7 +143,7 @@ class AuthService {
   }) async {
     try {
       debugPrint('🔵 Starting email sign-up...');
-      
+
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
@@ -159,7 +164,7 @@ class AuthService {
         // Update display name in Auth
         final fullName = '${name.trim()} ${lastName.trim()}';
         await user.updateDisplayName(fullName);
-        
+
         debugPrint('✅ Sign-up completed successfully');
       }
     } catch (e) {
@@ -181,7 +186,7 @@ class AuthService {
 
       // Check if user already exists
       final doc = await userRef.get();
-      
+
       final userData = {
         'uid': uid,
         'name': name,
@@ -221,9 +226,10 @@ class AuthService {
 
     try {
       debugPrint('🔵 Fetching user data from Firestore: ${user.uid}');
-      
-      final doc = await _firestore.collection(_usersCollection).doc(user.uid).get();
-      
+
+      final doc =
+          await _firestore.collection(_usersCollection).doc(user.uid).get();
+
       if (doc.exists && doc.data() != null) {
         debugPrint('✅ User data retrieved from Firestore');
         return UserModel.fromJson(doc.data()!);
@@ -255,12 +261,12 @@ class AuthService {
   static Future<void> logout() async {
     try {
       debugPrint('🔵 Starting logout process...');
-      
+
       await Future.wait([
         _auth.signOut(),
         _googleSignIn.signOut(),
       ]);
-      
+
       debugPrint('✅ Logout completed successfully');
     } catch (e) {
       debugPrint('❌ Error during logout: $e');
@@ -278,30 +284,33 @@ class AuthService {
 
     try {
       debugPrint('🔵 Updating user information...');
-      
+
       final updateData = {
         'name': user.name,
         'lastName': user.lastName,
         'email': user.email,
         'updatedAt': FieldValue.serverTimestamp(),
       };
-      
+
       if (user.photoUrl != null) {
         updateData['photoUrl'] = user.photoUrl as Object;
       }
 
-      await _firestore.collection(_usersCollection).doc(currentUser.uid).update(updateData);
+      await _firestore
+          .collection(_usersCollection)
+          .doc(currentUser.uid)
+          .update(updateData);
 
       // Also update Auth profile
       final fullName = '${user.name} ${user.lastName}';
       if (fullName != currentUser.displayName) {
         await currentUser.updateDisplayName(fullName);
       }
-      
+
       if (user.photoUrl != null && user.photoUrl != currentUser.photoURL) {
         await currentUser.updatePhotoURL(user.photoUrl);
       }
-      
+
       debugPrint('✅ User information updated successfully');
     } catch (e) {
       debugPrint('❌ Error updating user: $e');
@@ -340,7 +349,7 @@ class AuthService {
 
     try {
       debugPrint('🔵 Uploading profile image...');
-      
+
       final ref = FirebaseStorage.instance
           .ref()
           .child('user_profiles')
@@ -348,7 +357,7 @@ class AuthService {
 
       final uploadTask = await ref.putFile(imageFile);
       final downloadUrl = await uploadTask.ref.getDownloadURL();
-      
+
       debugPrint('✅ Profile image uploaded: $downloadUrl');
       return downloadUrl;
     } catch (e) {
@@ -360,7 +369,7 @@ class AuthService {
   /// Map Firebase Auth error codes to professional Spanish messages
   static String getErrorMessage(dynamic error) {
     debugPrint('🔍 Processing error: $error');
-    
+
     if (error is! FirebaseAuthException) {
       // Handle generic errors
       final errorString = error.toString().toLowerCase();

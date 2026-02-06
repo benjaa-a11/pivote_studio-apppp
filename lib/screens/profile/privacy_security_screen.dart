@@ -15,7 +15,7 @@ class PrivacySecurityScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Privacidad y Seguridad',
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+          style: GoogleFonts.ubuntu(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -105,7 +105,7 @@ class PrivacySecurityScreen extends StatelessWidget {
             const SizedBox(height: 20),
             Text(
               'Estás Protegido',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.ubuntu(
                 color: Colors.white,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -115,7 +115,7 @@ class PrivacySecurityScreen extends StatelessWidget {
             Text(
               'Tu seguridad es nuestra máxima prioridad.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.ubuntu(
                 color: Colors.white.withValues(alpha: 0.9),
                 fontSize: 14,
               ),
@@ -151,7 +151,7 @@ class PrivacySecurityScreen extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.ubuntu(
                   fontWeight: FontWeight.bold,
                   fontSize: 17,
                 ),
@@ -159,7 +159,7 @@ class PrivacySecurityScreen extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 content,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.ubuntu(
                   fontSize: 14,
                   height: 1.5,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -194,13 +194,13 @@ class PrivacySecurityScreen extends StatelessWidget {
         leading: Icon(icon, color: color ?? theme.colorScheme.primary),
         title: Text(
           title,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.ubuntu(
             fontWeight: FontWeight.w600,
             color: color,
           ),
         ),
         subtitle: subtitle != null
-            ? Text(subtitle, style: GoogleFonts.montserrat(fontSize: 12))
+            ? Text(subtitle, style: GoogleFonts.ubuntu(fontSize: 12))
             : null,
         trailing: const Icon(Icons.chevron_right, size: 20),
       ),

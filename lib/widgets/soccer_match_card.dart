@@ -34,7 +34,7 @@ class SoccerMatchCard extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: theme.dividerColor.withValues(alpha: 0.05),
+              color: theme.dividerColor.withValues(alpha: 0.1),
               width: 1,
             ),
           ),
@@ -104,15 +104,6 @@ class SoccerMatchCard extends StatelessWidget {
                       false),
                 ],
               ),
-            ),
-
-            const SizedBox(width: 16),
-
-            // Action Icon
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: theme.hintColor.withValues(alpha: 0.3),
             ),
           ],
         ),

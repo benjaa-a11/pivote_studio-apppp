@@ -335,13 +335,11 @@ class _FutbolScreenState extends State<FutbolScreen> {
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded,
-                    color: theme.hintColor.withValues(alpha: 0.5), size: 20),
               ],
             ),
           ),
 
-          Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.05)),
+          Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.1)),
 
           ListView.builder(
             shrinkWrap: true,
@@ -352,35 +350,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
               match: matches[index],
               data: data,
               onTap: () {},
-            ),
-          ),
-
-          // Footer Link - More professional
-          InkWell(
-            onTap: () {},
-            borderRadius:
-                const BorderRadius.vertical(bottom: Radius.circular(24)),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              width: double.infinity,
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'VER CALENDARIO COMPLETO',
-                    style: GoogleFonts.ubuntu(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(Icons.arrow_forward_rounded,
-                      color: theme.colorScheme.primary, size: 12),
-                ],
-              ),
             ),
           ),
         ],

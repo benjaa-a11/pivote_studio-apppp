@@ -112,7 +112,7 @@ class _SearchScreenState extends State<SearchScreen>
               const SizedBox(width: 16),
               Text(
                 'Buscar',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.ubuntu(
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -1,
@@ -151,14 +151,14 @@ class _SearchScreenState extends State<SearchScreen>
               controller: _searchController,
               focusNode: _searchFocusNode,
               onChanged: _onSearch,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.ubuntu(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.onSurface,
               ),
               decoration: InputDecoration(
                 hintText: 'Encuentra tus canales favoritos...',
-                hintStyle: GoogleFonts.inter(
+                hintStyle: GoogleFonts.ubuntu(
                   fontSize: 15,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                   fontWeight: FontWeight.w500,
@@ -225,7 +225,7 @@ class _SearchScreenState extends State<SearchScreen>
       children: [
         Text(
           title,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.ubuntu(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
@@ -242,7 +242,7 @@ class _SearchScreenState extends State<SearchScreen>
             ),
             child: Text(
               'Limpiar',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.ubuntu(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w800,
                 fontSize: 14,
@@ -283,7 +283,7 @@ class _SearchScreenState extends State<SearchScreen>
             const SizedBox(width: 8),
             Text(
               query,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.ubuntu(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
@@ -342,7 +342,7 @@ class _SearchScreenState extends State<SearchScreen>
               const SizedBox(height: 32),
               Text(
                 'No encontramos resultados',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.ubuntu(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.5,
@@ -352,7 +352,7 @@ class _SearchScreenState extends State<SearchScreen>
               const SizedBox(height: 12),
               Text(
                 'Prueba con otras palabras o revisa que no haya errores de escritura para encontrar el canal que buscas.',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.ubuntu(
                   fontSize: 15,
                   height: 1.5,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5),

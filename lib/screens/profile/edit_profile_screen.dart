@@ -129,7 +129,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         title: Text(
           'Editar Perfil',
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.ubuntu(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
           ),
@@ -269,7 +269,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       children: [
         Text(
           title,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.ubuntu(
             fontSize: 14,
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.primary,
@@ -309,7 +309,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: TextFormField(
         controller: controller,
         obscureText: isPassword,
-        style: GoogleFonts.montserrat(
+        style: GoogleFonts.ubuntu(
           fontWeight: FontWeight.w500,
           color: theme.colorScheme.onSurface,
         ),
@@ -396,7 +396,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         child: Text(
           'GUARDAR CAMBIOS',
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.ubuntu(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             letterSpacing: 1,

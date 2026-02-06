@@ -231,7 +231,7 @@ class ElegantDialog extends StatelessWidget {
                         Text(
                           title,
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.montserrat(
+                          style: GoogleFonts.ubuntu(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
@@ -241,7 +241,7 @@ class ElegantDialog extends StatelessWidget {
                         Text(
                           message,
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.montserrat(
+                          style: GoogleFonts.ubuntu(
                             fontSize: 15,
                             color: theme.colorScheme.onSurface
                                 .withValues(alpha: 0.7),
@@ -338,7 +338,7 @@ class _ElegantButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.ubuntu(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             fontSize: 14,
@@ -373,7 +373,7 @@ class _ElegantButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.ubuntu(
             fontWeight: FontWeight.bold,
             fontSize: 14,
             letterSpacing: 0.5,

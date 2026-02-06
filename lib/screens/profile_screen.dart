@@ -352,12 +352,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: theme.colorScheme.primary.withValues(alpha: 0.7)),
             const SizedBox(height: 12),
             Text(value,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.ubuntu(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 )),
             Text(label,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.ubuntu(
                     fontSize: 11,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5))),
           ],
@@ -526,11 +526,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 BorderSide(color: theme.dividerColor.withValues(alpha: 0.05))),
         leading: Icon(icon, color: theme.colorScheme.primary),
         title: Text(title,
-            style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w600, fontSize: 15)),
+            style:
+                GoogleFonts.ubuntu(fontWeight: FontWeight.w600, fontSize: 15)),
         subtitle: subtitle != null
             ? Text(subtitle,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.ubuntu(
                     fontSize: 12,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6)))
             : null,

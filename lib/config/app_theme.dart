@@ -50,67 +50,66 @@ class AppTheme {
     canvasColor: darkBackground,
     cardColor: darkCard,
 
-    // Tipografía premium con Montserrat y Outfit si estuviera (usaremos Montserrat como base)
-    textTheme:
-        GoogleFonts.montserratTextTheme(ThemeData.dark().textTheme).copyWith(
-      displayLarge: GoogleFonts.montserrat(
+    // Tipografía premium con Ubuntu
+    textTheme: GoogleFonts.ubuntuTextTheme(ThemeData.dark().textTheme).copyWith(
+      displayLarge: GoogleFonts.ubuntu(
         fontSize: 34,
         fontWeight: FontWeight.w900,
         letterSpacing: -1.5,
         height: 1.1,
         color: darkForeground,
       ),
-      displayMedium: GoogleFonts.montserrat(
+      displayMedium: GoogleFonts.ubuntu(
         fontSize: 28,
         fontWeight: FontWeight.w800,
         letterSpacing: -1,
         height: 1.2,
         color: darkForeground,
       ),
-      displaySmall: GoogleFonts.montserrat(
+      displaySmall: GoogleFonts.ubuntu(
         fontSize: 24,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.5,
         height: 1.2,
         color: darkForeground,
       ),
-      headlineMedium: GoogleFonts.montserrat(
+      headlineMedium: GoogleFonts.ubuntu(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         height: 1.3,
         color: darkForeground,
       ),
-      headlineSmall: GoogleFonts.montserrat(
+      headlineSmall: GoogleFonts.ubuntu(
         fontSize: 18,
         fontWeight: FontWeight.w700,
         height: 1.3,
         color: darkForeground,
       ),
-      titleLarge: GoogleFonts.montserrat(
+      titleLarge: GoogleFonts.ubuntu(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         height: 1.4,
         color: darkForeground,
       ),
-      titleMedium: GoogleFonts.montserrat(
+      titleMedium: GoogleFonts.ubuntu(
         fontSize: 15,
         fontWeight: FontWeight.w600,
         height: 1.4,
         color: darkSecondaryForeground,
       ),
-      bodyLarge: GoogleFonts.montserrat(
+      bodyLarge: GoogleFonts.ubuntu(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: darkSecondaryForeground,
       ),
-      bodyMedium: GoogleFonts.montserrat(
+      bodyMedium: GoogleFonts.ubuntu(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: darkMutedForeground,
       ),
-      labelLarge: GoogleFonts.montserrat(
+      labelLarge: GoogleFonts.ubuntu(
         fontSize: 14,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.5,
@@ -134,7 +133,7 @@ class AppTheme {
       surfaceTintColor: Colors.transparent,
       centerTitle: false,
       iconTheme: const IconThemeData(color: darkForeground),
-      titleTextStyle: GoogleFonts.montserrat(
+      titleTextStyle: GoogleFonts.ubuntu(
         fontSize: 22,
         fontWeight: FontWeight.w900,
         color: darkForeground,
@@ -149,14 +148,14 @@ class AppTheme {
       height: 70,
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return GoogleFonts.montserrat(
+          return GoogleFonts.ubuntu(
             fontSize: 11,
             fontWeight: FontWeight.w800,
             color: darkPrimary,
             letterSpacing: 0.2,
           );
         }
-        return GoogleFonts.montserrat(
+        return GoogleFonts.ubuntu(
           fontSize: 11,
           fontWeight: FontWeight.w500,
           color: darkMutedForeground,
@@ -188,7 +187,7 @@ class AppTheme {
         borderSide: const BorderSide(color: darkPrimary, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      hintStyle: GoogleFonts.montserrat(
+      hintStyle: GoogleFonts.ubuntu(
         color: darkMutedForeground.withValues(alpha: 0.7),
         fontSize: 15,
       ),
@@ -207,7 +206,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: GoogleFonts.montserrat(
+        textStyle: GoogleFonts.ubuntu(
           fontSize: 15,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.5,
@@ -230,12 +229,12 @@ class AppTheme {
     dialogTheme: DialogThemeData(
       backgroundColor: darkSurface,
       elevation: 0,
-      titleTextStyle: GoogleFonts.montserrat(
+      titleTextStyle: GoogleFonts.ubuntu(
         fontSize: 22,
         fontWeight: FontWeight.w800,
         color: darkForeground,
       ),
-      contentTextStyle: GoogleFonts.montserrat(
+      contentTextStyle: GoogleFonts.ubuntu(
         fontSize: 16,
         color: darkSecondaryForeground,
       ),
@@ -247,7 +246,7 @@ class AppTheme {
 
     snackBarTheme: SnackBarThemeData(
       backgroundColor: darkSurface,
-      contentTextStyle: GoogleFonts.montserrat(
+      contentTextStyle: GoogleFonts.ubuntu(
         color: darkForeground,
         fontWeight: FontWeight.w600,
       ),
@@ -279,65 +278,65 @@ class AppTheme {
     canvasColor: lightBackground,
     cardColor: lightCard,
     textTheme:
-        GoogleFonts.montserratTextTheme(ThemeData.light().textTheme).copyWith(
-      displayLarge: GoogleFonts.montserrat(
+        GoogleFonts.ubuntuTextTheme(ThemeData.light().textTheme).copyWith(
+      displayLarge: GoogleFonts.ubuntu(
         fontSize: 34,
         fontWeight: FontWeight.w800,
         letterSpacing: -1,
         height: 1.2,
         color: Colors.black87,
       ),
-      displayMedium: GoogleFonts.montserrat(
+      displayMedium: GoogleFonts.ubuntu(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
         height: 1.2,
         color: Colors.black87,
       ),
-      displaySmall: GoogleFonts.montserrat(
+      displaySmall: GoogleFonts.ubuntu(
         fontSize: 24,
         fontWeight: FontWeight.w700,
         letterSpacing: 0,
         height: 1.3,
         color: Colors.black87,
       ),
-      headlineMedium: GoogleFonts.montserrat(
+      headlineMedium: GoogleFonts.ubuntu(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         height: 1.3,
         color: Colors.black87,
       ),
-      headlineSmall: GoogleFonts.montserrat(
+      headlineSmall: GoogleFonts.ubuntu(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         height: 1.3,
         color: Colors.black87,
       ),
-      titleLarge: GoogleFonts.montserrat(
+      titleLarge: GoogleFonts.ubuntu(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         height: 1.4,
         color: Colors.black87,
       ),
-      titleMedium: GoogleFonts.montserrat(
+      titleMedium: GoogleFonts.ubuntu(
         fontSize: 15,
         fontWeight: FontWeight.w500,
         height: 1.4,
         color: Colors.black54,
       ),
-      bodyLarge: GoogleFonts.montserrat(
+      bodyLarge: GoogleFonts.ubuntu(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: Colors.black54,
       ),
-      bodyMedium: GoogleFonts.montserrat(
+      bodyMedium: GoogleFonts.ubuntu(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: Colors.black45,
       ),
-      labelLarge: GoogleFonts.montserrat(
+      labelLarge: GoogleFonts.ubuntu(
         fontSize: 15,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
@@ -357,7 +356,7 @@ class AppTheme {
       backgroundColor: lightBackground,
       surfaceTintColor: Colors.transparent,
       centerTitle: false,
-      titleTextStyle: GoogleFonts.montserrat(
+      titleTextStyle: GoogleFonts.ubuntu(
         fontSize: 24,
         fontWeight: FontWeight.w700,
         color: Colors.black87,
@@ -372,14 +371,14 @@ class AppTheme {
       height: 72,
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return GoogleFonts.montserrat(
+          return GoogleFonts.ubuntu(
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: lightPrimary,
             letterSpacing: 0.5,
           );
         }
-        return GoogleFonts.montserrat(
+        return GoogleFonts.ubuntu(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: Colors.grey[600],
@@ -401,7 +400,7 @@ class AppTheme {
         borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      hintStyle: GoogleFonts.montserrat(color: Colors.grey[500], fontSize: 15),
+      hintStyle: GoogleFonts.ubuntu(color: Colors.grey[500], fontSize: 15),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
@@ -410,7 +409,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: GoogleFonts.montserrat(
+        textStyle: GoogleFonts.ubuntu(
           fontSize: 15,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.5,
@@ -425,12 +424,12 @@ class AppTheme {
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: lightSurface,
-      titleTextStyle: GoogleFonts.montserrat(
+      titleTextStyle: GoogleFonts.ubuntu(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         color: Colors.black87,
       ),
-      contentTextStyle: GoogleFonts.montserrat(
+      contentTextStyle: GoogleFonts.ubuntu(
         fontSize: 15,
         color: Colors.black54,
       ),
@@ -440,7 +439,7 @@ class AppTheme {
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: lightCard,
-      contentTextStyle: GoogleFonts.montserrat(
+      contentTextStyle: GoogleFonts.ubuntu(
         color: Colors.black87,
       ),
       actionTextColor: lightPrimary,
