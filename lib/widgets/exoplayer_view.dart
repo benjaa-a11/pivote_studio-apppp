@@ -1,17 +1,19 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'exoplayer_controller.dart';
 
-/// Widget que muestra la vista nativa de ExoPlayer en Android
+/// Widget que muestra el ExoPlayer nativo de Android
 class ExoPlayerView extends StatefulWidget {
   final ExoPlayerController controller;
-  final Function(ExoPlayerController) onCreated;
+  final Function(ExoPlayerController)? onCreated;
 
   const ExoPlayerView({
     super.key,
     required this.controller,
-    required this.onCreated,
+    this.onCreated,
   });
 
   @override
@@ -21,28 +23,48 @@ class ExoPlayerView extends StatefulWidget {
 class _ExoPlayerViewState extends State<ExoPlayerView> {
   @override
   Widget build(BuildContext context) {
-    if (defaultTargetPlatform != TargetPlatform.android) {
-      return const Center(
-        child: Text('ExoPlayer solo está disponible en Android'),
+    // Solo Android soporta PlatformView de ExoPlayer
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return PlatformViewLink(
+        viewType: 'exoplayer_view',
+        surfaceFactory: (context, controller) {
+          return AndroidViewSurface(
+            controller: controller as AndroidViewController,
+            gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+            hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+          );
+        },
+        onCreatePlatformView: (params) {
+          final androidViewController = PlatformViewsService.initSurfaceAndroidView(
+            id: params.id,
+            viewType: 'exoplayer_view',
+            layoutDirection: TextDirection.ltr,
+            creationParams: {},
+            creationParamsCodec: const StandardMessageCodec(),
+            onFocus: () {
+              params.onFocusChanged(true);
+            },
+          );
+
+          androidViewController.addOnPlatformViewCreatedListener((id) {
+            params.onPlatformViewCreated(id);
+            widget.onCreated?.call(widget.controller);
+          });
+
+          return androidViewController..create();
+        },
       );
     }
 
-    return AndroidView(
-      viewType: 'exoplayer_view',
-      onPlatformViewCreated: _onPlatformViewCreated,
-      creationParams: const <String, dynamic>{},
-      creationParamsCodec: const StandardMessageCodec(),
+    // Fallback para plataformas no soportadas
+    return Container(
+      color: Colors.black,
+      child: const Center(
+        child: Text(
+          'ExoPlayer solo está disponible en Android',
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
     );
-  }
-
-  void _onPlatformViewCreated(int id) {
-    // Actualizamos el controller con el ID real de la vista
-    // Aunque en este caso el controller ya tiene un ID placeholder,
-    // el canal se basará en el ID que pasamos aquí si quisiéramos ser dinámicos.
-    // Pero según la implementación actual, el controller usa el viewId.
-
-    // Si el controller es compartido o se crea antes, podemos re-inicializarlo
-    // o simplemente llamar al callback.
-    widget.onCreated(widget.controller);
   }
 }

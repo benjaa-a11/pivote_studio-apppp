@@ -354,48 +354,23 @@ class MatchCard extends StatelessWidget {
       timeText = match.startTime;
     }
 
+    final isFinished = match.isFinished;
+    final timeStatus = match.timeStatus;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Estado EN VIVO o HOY
+        // Estado EN VIVO, FINALIZADO o TIEMPO
         if (isLive)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFDC2626),
-              borderRadius: BorderRadius.circular(6),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFDC2626).withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  spreadRadius: 0,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                const Text(
-                  'EN VIVO',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          )
+          _buildLiveIndicator()
+        else if (isFinished)
+          _buildStatusBadge(
+              timeStatus.isEmpty ? 'FINAL' : timeStatus.toUpperCase(),
+              Colors.grey)
+        else if (timeStatus.toLowerCase().contains('prog') ||
+            timeStatus.toLowerCase().contains('aplaz') ||
+            timeStatus.toLowerCase().contains('susp'))
+          _buildStatusBadge(timeStatus.toUpperCase(), primaryColor)
         else ...[
           Text(
             'HOY',
@@ -419,6 +394,84 @@ class MatchCard extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildLiveIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFDC2626),
+        borderRadius: BorderRadius.circular(6),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFDC2626).withValues(alpha: 0.3),
+            blurRadius: 8,
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildLivePulse(),
+          const SizedBox(width: 8),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'EN VIVO',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              if (match.timeStatus.isNotEmpty)
+                Text(
+                  match.timeStatus,
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white70,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLivePulse() {
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: color,
+          letterSpacing: 0.5,
+        ),
+      ),
     );
   }
 

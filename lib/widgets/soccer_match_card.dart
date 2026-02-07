@@ -43,19 +43,41 @@ class SoccerMatchCard extends StatelessWidget {
           children: [
             // Status and Time Column
             SizedBox(
-              width: 50,
+              width:
+                  60, // Aumentado ligeramente para textos más largos como "Aplaz."
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (match.isLive)
-                    _buildLiveBadge(theme)
-                  else if (match.isFinished)
+                  if (match.isLive) ...[
+                    _buildLiveBadge(theme),
+                    const SizedBox(height: 4),
                     Text(
-                      'FIN',
+                      match.timeStatus,
+                      style: GoogleFonts.ubuntu(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
+                  ] else if (match.isFinished)
+                    Text(
+                      match.timeStatus.toUpperCase(),
                       style: GoogleFonts.ubuntu(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
-                        color: theme.hintColor.withValues(alpha: 0.5),
+                        color: theme.hintColor.withValues(alpha: 0.6),
+                      ),
+                    )
+                  else if (match.timeStatus.toLowerCase().contains('prog') ||
+                      match.timeStatus.toLowerCase().contains('aplaz') ||
+                      match.timeStatus.toLowerCase().contains('susp'))
+                    Text(
+                      match.timeStatus,
+                      style: GoogleFonts.ubuntu(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.primary,
                       ),
                     )
                   else
@@ -65,18 +87,6 @@ class SoccerMatchCard extends StatelessWidget {
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                  if (match.isLive)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        match.time,
-                        style: GoogleFonts.ubuntu(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.error,
-                        ),
                       ),
                     ),
                 ],

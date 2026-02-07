@@ -22,8 +22,8 @@ enum AspectRatioType {
 }
 
 enum PlayerType {
-  videoPlayer, // Para HLS (M3U8)
-  exoPlayer, // Para DASH con DRM
+  videoPlayer,  // Para HLS (M3U8)
+  exoPlayer,    // Para DASH con DRM
 }
 
 class VideoPlayerWidget extends StatefulWidget {
@@ -40,15 +40,16 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  
   // Players
   VideoPlayerController? _videoPlayerController;
   ExoPlayerController? _exoPlayerController;
-
+  
   // State
   PlayerType? _playerType;
   StreamSource? _currentStream;
   StreamType? _streamType;
-
+  
   bool _isLoading = true;
   String? _error;
   bool _isFullScreen = false;
@@ -170,8 +171,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           !_isDisposed &&
           _isLoading &&
           _currentServerIndex < widget.channel.streamUrl.length - 1) {
-        debugPrint(
-            '⏱️ Timeout servidor ${_currentServerIndex + 1}, siguiente...');
+        debugPrint('⏱️ Timeout servidor ${_currentServerIndex + 1}, siguiente...');
         _currentServerIndex++;
         _tryCurrentServer();
       }
@@ -234,8 +234,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     try {
       await _disposeExistingControllers();
 
-      debugPrint(
-          '🎬 VideoPlayer (HLS) Servidor ${_currentServerIndex + 1}: $url');
+      debugPrint('🎬 VideoPlayer (HLS) Servidor ${_currentServerIndex + 1}: $url');
 
       final headers = <String, String>{
         'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
@@ -272,8 +271,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       debugPrint('✅ VideoPlayer Servidor ${_currentServerIndex + 1} OK');
     } catch (e, st) {
-      debugPrint(
-          '❌ Error VideoPlayer servidor ${_currentServerIndex + 1}: $e\n$st');
+      debugPrint('❌ Error VideoPlayer servidor ${_currentServerIndex + 1}: $e\n$st');
       await _handleServerFailure();
     }
   }
@@ -285,42 +283,40 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       await _disposeExistingControllers();
 
       final hasDrm = k1 != null && k2 != null;
-      debugPrint(
-          '🎬 ExoPlayer ${hasDrm ? "(DRM)" : ""} Servidor ${_currentServerIndex + 1}: $url');
+      debugPrint('🎬 ExoPlayer ${hasDrm ? "(DRM)" : ""} Servidor ${_currentServerIndex + 1}: $url');
 
       // Crear controller de ExoPlayer
       // El viewId será generado cuando se cree la PlatformView
       _exoPlayerController = ExoPlayerController(0); // Placeholder ID
 
       // Suscribirse a eventos
-      _exoPlayerStateSubscription =
-          _exoPlayerController!.onStateChange.listen((state) {
+      _exoPlayerStateSubscription = _exoPlayerController!.onStateChange.listen((state) {
         debugPrint('📺 ExoPlayer State: $state');
-
+        
         if (state == PlayerState.ready) {
           _serverTimeoutTimer?.cancel();
           _fadeController.forward();
-
+          
           _safeSetState(() {
             _isLoading = false;
             _isInitializing = false;
             _retryCount = 0;
           });
-
+          
           debugPrint('✅ ExoPlayer Servidor ${_currentServerIndex + 1} OK');
         } else if (state == PlayerState.buffering) {
           // Opcional: mostrar indicador de buffering
         }
       });
 
-      _exoPlayerPlayingSubscription =
-          _exoPlayerController!.onPlayingChange.listen((isPlaying) {
+      _exoPlayerPlayingSubscription = _exoPlayerController!.onPlayingChange.listen((isPlaying) {
         debugPrint('▶️ ExoPlayer Playing: $isPlaying');
+        if (isPlaying) {
+        }
         _safeSetState(() {});
       });
 
-      _exoPlayerErrorSubscription =
-          _exoPlayerController!.onError.listen((error) {
+      _exoPlayerErrorSubscription = _exoPlayerController!.onError.listen((error) {
         debugPrint('❌ ExoPlayer Error: $error');
         _handleServerFailure();
       });
@@ -331,9 +327,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _safeSetState(() {
         _playerType = PlayerType.exoPlayer;
       });
+
     } catch (e, st) {
-      debugPrint(
-          '❌ Error ExoPlayer servidor ${_currentServerIndex + 1}: $e\n$st');
+      debugPrint('❌ Error ExoPlayer servidor ${_currentServerIndex + 1}: $e\n$st');
       await _handleServerFailure();
     }
   }
@@ -351,6 +347,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       );
 
       await controller.setVolume(_isMuted ? 0.0 : 1.0);
+
     } catch (e) {
       debugPrint('❌ Error inicializando ExoPlayer: $e');
       await _handleServerFailure();
@@ -363,7 +360,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     final value = _videoPlayerController!.value;
 
     if (value.isInitialized && value.isPlaying && !value.hasError) {
-      // Logic for successful play removed if not used elsewhere
     }
 
     if (value.hasError && !_isLoading && !_isInitializing) {
@@ -402,7 +398,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       await _exoPlayerStateSubscription?.cancel();
       await _exoPlayerPlayingSubscription?.cancel();
       await _exoPlayerErrorSubscription?.cancel();
-
+      
       await _exoPlayerController!.dispose();
       _exoPlayerController = null;
     }
@@ -456,7 +452,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _changeAspectRatio() {
     if (_isDisposed) return;
-
+    
     setState(() {
       switch (_aspectRatioType) {
         case AspectRatioType.auto:
@@ -508,11 +504,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _toggleMute() {
     if (_isDisposed) return;
-
+    
     setState(() {
       _isMuted = !_isMuted;
     });
-
+    
     _videoPlayerController?.setVolume(_isMuted ? 0.0 : 1.0);
     _exoPlayerController?.setVolume(_isMuted ? 0.0 : 1.0);
   }
@@ -586,8 +582,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             if (_currentServerIndex > 0 || _retryCount > 0) ...[
               const SizedBox(height: 10),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white.withAlpha(26),
                   borderRadius: BorderRadius.circular(8),
@@ -715,8 +710,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         controller: _exoPlayerController!,
         onCreated: _onExoPlayerViewCreated,
       );
-    } else if (_playerType == PlayerType.videoPlayer &&
-        _videoPlayerController != null) {
+    } else if (_playerType == PlayerType.videoPlayer && _videoPlayerController != null) {
       // VideoPlayer (HLS)
       if (!_videoPlayerController!.value.isInitialized) {
         return _buildLoadingWidget();
@@ -787,16 +781,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   UnifiedVideoController _createUnifiedController() {
-    if (_playerType == PlayerType.videoPlayer &&
-        _videoPlayerController != null) {
+    if (_playerType == PlayerType.videoPlayer && _videoPlayerController != null) {
       return HLSControllerAdapter(_videoPlayerController!);
-    } else if (_playerType == PlayerType.exoPlayer &&
-        _exoPlayerController != null) {
+    } else if (_playerType == PlayerType.exoPlayer && _exoPlayerController != null) {
       return ExoPlayerControllerAdapter(_exoPlayerController!);
     } else {
       // Fallback
-      return HLSControllerAdapter(
-          _videoPlayerController ?? VideoPlayerController.asset(''));
+      return HLSControllerAdapter(_videoPlayerController ?? VideoPlayerController.asset(''));
     }
   }
 
