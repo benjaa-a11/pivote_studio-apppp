@@ -3,17 +3,13 @@ class Channel {
   final String name;
   final String category;
   final List<String> logoUrl; // [0] dark mode, [1] light mode
-  final List<StreamSource> streamUrl; // Changed to support both String and Map
+  final List<StreamSource> streamUrl;
   final String description;
   final bool isHidden;
   final int order;
   bool isFavorite;
-  final String? type; // Optional: 'dash' or 'hls' to override detection
-  final String? quality; // Optional: quality indicator
-  
-  // DRM keys at channel level (for backwards compatibility)
-  final String? k1;
-  final String? k2;
+  final String? type; // 'dash' or 'hls' to override detection
+  final String? quality;
 
   Channel({
     required this.id,
@@ -27,8 +23,6 @@ class Channel {
     this.isFavorite = false,
     this.type,
     this.quality,
-    this.k1,
-    this.k2,
   });
 
   factory Channel.fromJson(Map<String, dynamic> json) {
@@ -67,8 +61,6 @@ class Channel {
       isFavorite: json['isFavorite'] ?? false,
       type: json['type'],
       quality: json['quality'],
-      k1: json['k1'],
-      k2: json['k2'],
     );
   }
 
@@ -85,8 +77,6 @@ class Channel {
       'isFavorite': isFavorite,
       if (type != null) 'type': type,
       if (quality != null) 'quality': quality,
-      if (k1 != null) 'k1': k1,
-      if (k2 != null) 'k2': k2,
     };
   }
 
@@ -106,10 +96,7 @@ class Channel {
       return StreamType.mp4;
     } else if (url.contains('iframe') ||
         url.contains('embed') ||
-        url.contains('pivopro.vercel.app') ||
-        (!url.contains('.m3u8') &&
-            !url.contains('.mp4') &&
-            !url.contains('.mpd'))) {
+        url.contains('pivopro.vercel.app')) {
       return StreamType.iframe;
     }
     // Default to m3u8 for live streams
@@ -128,8 +115,6 @@ class Channel {
     bool? isFavorite,
     String? type,
     String? quality,
-    String? k1,
-    String? k2,
   }) {
     return Channel(
       id: id ?? this.id,
@@ -143,8 +128,6 @@ class Channel {
       isFavorite: isFavorite ?? this.isFavorite,
       type: type ?? this.type,
       quality: quality ?? this.quality,
-      k1: k1 ?? this.k1,
-      k2: k2 ?? this.k2,
     );
   }
 
@@ -158,8 +141,8 @@ class Channel {
 /// Represents a stream source with URL and optional DRM keys
 class StreamSource {
   final String url;
-  final String? k1; // Key ID for DRM
-  final String? k2; // Key for DRM
+  final String? k1; // Key ID for DRM (hex format)
+  final String? k2; // Key for DRM (hex format)
   final String? label; // Optional label like "Servidor 1", "HD", etc.
 
   StreamSource({
@@ -186,16 +169,19 @@ class StreamSource {
     return map;
   }
 
-  bool get hasDrm => k1 != null && k2 != null;
+  /// Returns true if this stream has DRM keys
+  bool get hasDrm => k1 != null && k2 != null && k1!.isNotEmpty && k2!.isNotEmpty;
 
+  /// Returns true if this is a DASH stream
   bool get isDash => url.contains('.mpd');
   
+  /// Returns true if this is an HLS stream
   bool get isHls => url.contains('.m3u8') || url.contains('m3u');
 }
 
 enum StreamType {
-  m3u8,
-  mp4,
-  dash,
-  iframe,
+  m3u8,   // HLS
+  mp4,    // MP4 video
+  dash,   // DASH (MPD)
+  iframe, // Embed/iframe
 }

@@ -1,18 +1,18 @@
 import 'package:video_player/video_player.dart';
-import 'package:better_player_plus/better_player_plus.dart';
+import 'exoplayer_controller.dart';
 
-/// Unified interface for both VideoPlayerController and BetterPlayerController
+/// Unified interface for all video controllers
 abstract class UnifiedVideoController {
   bool get isPlaying;
   bool get isBuffering;
   bool get isInitialized;
   Duration get position;
   Duration get duration;
-
+  
   Future<void> play();
   Future<void> pause();
   Future<void> setVolume(double volume);
-
+  
   void addListener(void Function() listener);
   void removeListener(void Function() listener);
 }
@@ -20,85 +20,78 @@ abstract class UnifiedVideoController {
 /// Adapter for HLS VideoPlayerController
 class HLSControllerAdapter implements UnifiedVideoController {
   final VideoPlayerController controller;
-
+  
   HLSControllerAdapter(this.controller);
-
+  
   @override
   bool get isPlaying => controller.value.isPlaying;
-
+  
   @override
   bool get isBuffering => controller.value.isBuffering;
-
+  
   @override
   bool get isInitialized => controller.value.isInitialized;
-
+  
   @override
   Duration get position => controller.value.position;
-
+  
   @override
   Duration get duration => controller.value.duration;
-
+  
   @override
   Future<void> play() => controller.play();
-
+  
   @override
   Future<void> pause() => controller.pause();
-
+  
   @override
   Future<void> setVolume(double volume) => controller.setVolume(volume);
-
+  
   @override
-  void addListener(void Function() listener) =>
-      controller.addListener(listener);
-
+  void addListener(void Function() listener) => controller.addListener(listener);
+  
   @override
-  void removeListener(void Function() listener) =>
-      controller.removeListener(listener);
+  void removeListener(void Function() listener) => controller.removeListener(listener);
 }
 
-/// Adapter for DASH BetterPlayerController
-class DASHControllerAdapter implements UnifiedVideoController {
-  final BetterPlayerController controller;
-
-  DASHControllerAdapter(this.controller);
-
+/// Adapter for ExoPlayerController (DASH with DRM)
+class ExoPlayerControllerAdapter implements UnifiedVideoController {
+  final ExoPlayerController controller;
+  
+  ExoPlayerControllerAdapter(this.controller);
+  
   @override
-  bool get isPlaying => controller.isPlaying() ?? false;
-
+  bool get isPlaying => controller.isPlaying;
+  
   @override
-  bool get isBuffering {
-    // BetterPlayer doesn't expose buffering state directly, so we approximate
-    return !isInitialized || (!isPlaying && position == Duration.zero);
-  }
-
+  bool get isBuffering => controller.state == PlayerState.buffering;
+  
   @override
-  bool get isInitialized => controller.isVideoInitialized() ?? false;
-
+  bool get isInitialized => controller.state == PlayerState.ready || controller.state == PlayerState.buffering;
+  
   @override
-  Duration get position =>
-      controller.videoPlayerController?.value.position ?? Duration.zero;
-
+  Duration get position => Duration.zero; // ExoPlayer maneja posición internamente
+  
   @override
-  Duration get duration =>
-      controller.videoPlayerController?.value.duration ?? Duration.zero;
-
+  Duration get duration => Duration.zero; // ExoPlayer maneja duración internamente
+  
   @override
-  Future<void> play() async => controller.play();
-
+  Future<void> play() => controller.play();
+  
   @override
-  Future<void> pause() async => controller.pause();
-
+  Future<void> pause() => controller.pause();
+  
   @override
-  Future<void> setVolume(double volume) async => controller.setVolume(volume);
-
+  Future<void> setVolume(double volume) => controller.setVolume(volume);
+  
   @override
   void addListener(void Function() listener) {
-    // BetterPlayer uses event listeners, so we adapt it
-    controller.videoPlayerController?.addListener(listener);
+    // ExoPlayer usa streams, no listeners directos
+    // Los eventos se manejan via streams en el widget
   }
-
+  
   @override
   void removeListener(void Function() listener) {
-    controller.videoPlayerController?.removeListener(listener);
+    // No applicable for ExoPlayer streams
   }
 }
