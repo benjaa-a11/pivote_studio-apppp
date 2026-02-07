@@ -27,35 +27,45 @@ class ExoPlayerController {
   ExoPlayerController(this.viewId) {
     _channel = MethodChannel('exoplayer_$viewId');
     _channel.setMethodCallHandler(_handleMethodCall);
+    debugPrint('🎮 ExoPlayerController created for view $viewId');
   }
 
   /// Maneja llamadas desde el código nativo
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     if (_isDisposed) return;
 
+    debugPrint('📥 MethodCall from native: ${call.method}');
+
     switch (call.method) {
       case 'onStateChange':
         final stateStr = call.arguments as String;
         _state = _parseState(stateStr);
+        debugPrint('📺 State changed to: $_state');
         _stateController.add(_state);
         break;
 
       case 'onPlayingChange':
         _isPlaying = call.arguments as bool;
+        debugPrint('▶️ Playing changed to: $_isPlaying');
         _playingController.add(_isPlaying);
         break;
 
       case 'onError':
         final error = call.arguments as Map;
         final message = error['message'] as String? ?? 'Unknown error';
-        debugPrint('❌ ExoPlayer Error: $message');
+        final code = error['code'];
+        final cause = error['cause'] as String? ?? '';
+        debugPrint('❌ ExoPlayer Error:');
+        debugPrint('   Message: $message');
+        debugPrint('   Code: $code');
+        debugPrint('   Cause: $cause');
         _errorController.add(message);
         break;
     }
   }
 
   PlayerState _parseState(String state) {
-    switch (state) {
+    switch (state.toLowerCase()) {
       case 'idle':
         return PlayerState.idle;
       case 'buffering':
@@ -78,8 +88,8 @@ class ExoPlayerController {
       debugPrint('📺 URL: $url');
       if (k1 != null && k2 != null) {
         debugPrint('🔐 DRM: ClearKey');
-        debugPrint('🔑 K1: $k1');
-        debugPrint('🔑 K2: $k2');
+        debugPrint('🔑 K1: ${k1.substring(0, 16)}...');
+        debugPrint('🔑 K2: ${k2.substring(0, 16)}...');
       }
 
       await _channel.invokeMethod('initialize', {
@@ -89,8 +99,9 @@ class ExoPlayerController {
       });
 
       debugPrint('✅ ExoPlayer inicializado');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ Error inicializando ExoPlayer: $e');
+      debugPrint('Stack: $stackTrace');
       rethrow;
     }
   }
@@ -101,6 +112,7 @@ class ExoPlayerController {
     
     try {
       await _channel.invokeMethod('play');
+      debugPrint('▶️ Play command sent');
     } catch (e) {
       debugPrint('❌ Error en play: $e');
     }
@@ -112,6 +124,7 @@ class ExoPlayerController {
     
     try {
       await _channel.invokeMethod('pause');
+      debugPrint('⏸️ Pause command sent');
     } catch (e) {
       debugPrint('❌ Error en pause: $e');
     }
@@ -123,6 +136,7 @@ class ExoPlayerController {
     
     try {
       await _channel.invokeMethod('stop');
+      debugPrint('⏹️ Stop command sent');
     } catch (e) {
       debugPrint('❌ Error en stop: $e');
     }
@@ -169,6 +183,7 @@ class ExoPlayerController {
   Future<void> dispose() async {
     if (_isDisposed) return;
     
+    debugPrint('🗑️ Disposing ExoPlayerController');
     _isDisposed = true;
     
     try {

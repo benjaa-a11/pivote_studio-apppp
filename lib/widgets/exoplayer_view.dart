@@ -21,6 +21,8 @@ class ExoPlayerView extends StatefulWidget {
 }
 
 class _ExoPlayerViewState extends State<ExoPlayerView> {
+  int? _viewId;
+
   @override
   Widget build(BuildContext context) {
     // Solo Android soporta PlatformView de ExoPlayer
@@ -47,8 +49,19 @@ class _ExoPlayerViewState extends State<ExoPlayerView> {
           );
 
           androidViewController.addOnPlatformViewCreatedListener((id) {
+            debugPrint('🏗️ PlatformView created with ID: $id');
+            _viewId = id;
+            
+            // Actualizar el controller con el viewId correcto
+            final newController = ExoPlayerController(id);
+            
+            // Copiar los streams del controller anterior
+            widget.controller.onStateChange.listen((state) {
+              debugPrint('State forwarded: $state');
+            });
+            
             params.onPlatformViewCreated(id);
-            widget.onCreated?.call(widget.controller);
+            widget.onCreated?.call(newController);
           });
 
           return androidViewController..create();
@@ -66,5 +79,11 @@ class _ExoPlayerViewState extends State<ExoPlayerView> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    debugPrint('🗑️ ExoPlayerView disposed (viewId: $_viewId)');
+    super.dispose();
   }
 }

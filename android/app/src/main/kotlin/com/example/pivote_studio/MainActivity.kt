@@ -1,13 +1,22 @@
 package com.example.pivote_studio
 
+import android.util.Log
+import androidx.annotation.NonNull
 import androidx.media3.common.util.UnstableApi
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 
 @UnstableApi
 class MainActivity : FlutterActivity() {
-    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+    
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+    
+    override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        
+        Log.d(TAG, "🔧 Configurando FlutterEngine...")
         
         // Registrar la PlatformView Factory
         flutterEngine
@@ -17,7 +26,7 @@ class MainActivity : FlutterActivity() {
                 "exoplayer_view",
                 ExoPlayerViewFactory(flutterEngine.dartExecutor.binaryMessenger)
             )
-            
-        println("✅ ExoPlayerView registrado correctamente")
+        
+        Log.d(TAG, "✅ ExoPlayerView registrado correctamente")
     }
 }

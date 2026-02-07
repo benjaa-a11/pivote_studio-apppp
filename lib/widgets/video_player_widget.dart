@@ -23,7 +23,7 @@ enum AspectRatioType {
 
 enum PlayerType {
   videoPlayer,  // Para HLS (M3U8)
-  exoPlayer,    // Para DASH con DRM
+  exoPlayer,    // Para DASH con/sin DRM
 }
 
 class VideoPlayerWidget extends StatefulWidget {
@@ -59,6 +59,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Timer? _serverTimeoutTimer;
   Timer? _errorRecoveryTimer;
   Timer? _watchdogTimer;
+  Timer? _stateCheckTimer;
 
   bool _isMuted = false;
   bool _isInitializing = false;
@@ -66,7 +67,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   int _retryCount = 0;
   static const int _maxRetries = 2;
 
+  DateTime? _lastSuccessfulPlayTime;
+  DateTime? _lastStateChange;
   int _serverAttempt = 0;
+  
+  // Watchdog para detectar streams trabados
+  PlayerState? _lastKnownState;
+  int _stuckCounter = 0;
 
   // Animación
   late AnimationController _fadeController;
@@ -93,7 +100,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
+    
+    debugPrint('🎬 VideoPlayerWidget iniciando para canal: ${widget.channel.name}');
     _initializePlayer();
+    _startWatchdog();
   }
 
   @override
@@ -102,12 +112,60 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
+      debugPrint('⏸️ App en background - pausando');
       _videoPlayerController?.pause();
       _exoPlayerController?.pause();
     } else if (state == AppLifecycleState.resumed) {
+      debugPrint('▶️ App en foreground - resumiendo');
       _videoPlayerController?.play();
       _exoPlayerController?.play();
     }
+  }
+
+  /// Watchdog para detectar si el player se traba
+  void _startWatchdog() {
+    _stateCheckTimer?.cancel();
+    _stateCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_isDisposed || !mounted) {
+        timer.cancel();
+        return;
+      }
+
+      // Verificar ExoPlayer
+      if (_playerType == PlayerType.exoPlayer && _exoPlayerController != null) {
+        final currentState = _exoPlayerController!.state;
+        
+        if (currentState == PlayerState.buffering) {
+          _stuckCounter++;
+          debugPrint('⚠️ Watchdog: Buffering por ${_stuckCounter * 5}s');
+          
+          // Si está buffering por más de 15 segundos, cambiar servidor
+          if (_stuckCounter >= 3) {
+            debugPrint('🔄 Watchdog: Stream trabado, cambiando servidor');
+            _stuckCounter = 0;
+            _handleServerFailure();
+          }
+        } else if (currentState == PlayerState.ready) {
+          _stuckCounter = 0;
+        }
+      }
+
+      // Verificar VideoPlayer
+      if (_playerType == PlayerType.videoPlayer && _videoPlayerController != null) {
+        if (_videoPlayerController!.value.isBuffering) {
+          _stuckCounter++;
+          debugPrint('⚠️ Watchdog: VideoPlayer buffering por ${_stuckCounter * 5}s');
+          
+          if (_stuckCounter >= 3) {
+            debugPrint('🔄 Watchdog: Stream trabado, cambiando servidor');
+            _stuckCounter = 0;
+            _handleServerFailure();
+          }
+        } else if (_videoPlayerController!.value.isPlaying) {
+          _stuckCounter = 0;
+        }
+      }
+    });
   }
 
   Future<void> _initializePlayer() async {
@@ -119,6 +177,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _error = null;
       _retryCount = 0;
       _serverAttempt = 0;
+      _stuckCounter = 0;
     });
 
     try {
@@ -147,7 +206,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     // Detect stream type
     _streamType = widget.channel.getStreamType(url);
-    debugPrint('🎬 Stream type detected: $_streamType for URL: $url');
+    debugPrint('🎬 Stream type: $_streamType');
+    debugPrint('📺 URL: $url');
 
     // Resolve dynamic URLs for M3U8
     if (url.contains('phpcode/lista01.php') && url.contains('token=')) {
@@ -155,6 +215,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         final resolvedUrl = await _resolveDynamicM3u8Url(url);
         if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
           url = resolvedUrl;
+          debugPrint('✅ URL resuelta: $url');
         }
       } catch (e) {
         debugPrint('❌ Error resolviendo URL dinámica: $e');
@@ -165,8 +226,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       throw Exception('URL vacía');
     }
 
-    // Timeout de 8 segundos para cambiar de servidor
-    _serverTimeoutTimer = Timer(const Duration(seconds: 8), () {
+    // Timeout de 10 segundos para cambiar de servidor
+    _serverTimeoutTimer = Timer(const Duration(seconds: 10), () {
       if (mounted &&
           !_isDisposed &&
           _isLoading &&
@@ -178,18 +239,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     });
 
     // Decidir qué reproductor usar
-    if (_streamType == StreamType.dash && _currentStream!.hasDrm) {
-      // DASH con DRM → ExoPlayer nativo
+    if (_streamType == StreamType.dash) {
+      // DASH (con o sin DRM) → ExoPlayer nativo
       _playerType = PlayerType.exoPlayer;
-      await _initializeExoPlayer(url, _currentStream!.k1!, _currentStream!.k2!);
+      await _initializeExoPlayer(url, _currentStream!.k1, _currentStream!.k2);
     } else if (_streamType == StreamType.m3u8) {
       // HLS → VideoPlayer
       _playerType = PlayerType.videoPlayer;
       await _initializeVideoPlayer(url);
-    } else if (_streamType == StreamType.dash && !_currentStream!.hasDrm) {
-      // DASH sin DRM → ExoPlayer (mejor compatibilidad que VideoPlayer)
-      _playerType = PlayerType.exoPlayer;
-      await _initializeExoPlayer(url, null, null);
     } else {
       // Fallback a VideoPlayer
       _playerType = PlayerType.videoPlayer;
@@ -198,12 +255,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Future<String?> _resolveDynamicM3u8Url(String url) async {
-    debugPrint('🔍 Resolviendo URL: $url');
+    debugPrint('🔍 Resolviendo URL dinámica: $url');
 
     HttpClient? httpClient;
     try {
       final uri = Uri.parse(url);
-      httpClient = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+      httpClient = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 5)
+        ..badCertificateCallback = (cert, host, port) => true; // Aceptar certificados
 
       final request = await httpClient.headUrl(uri);
       request.headers.set(
@@ -234,11 +293,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     try {
       await _disposeExistingControllers();
 
-      debugPrint('🎬 VideoPlayer (HLS) Servidor ${_currentServerIndex + 1}: $url');
+      debugPrint('🎬 Inicializando VideoPlayer (HLS)');
+      debugPrint('📺 Servidor ${_currentServerIndex + 1}: $url');
 
       final headers = <String, String>{
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
         'Accept': '*/*',
+        'Accept-Encoding': 'gzip, deflate',
         'Connection': 'keep-alive',
       };
 
@@ -252,6 +313,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       );
 
       _videoPlayerController!.addListener(_videoListener);
+      
+      debugPrint('⏳ Inicializando VideoPlayerController...');
       await _videoPlayerController!.initialize();
 
       if (_isDisposed || !mounted) return;
@@ -259,14 +322,18 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _serverTimeoutTimer?.cancel();
 
       await _videoPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
+      
+      debugPrint('▶️ Iniciando reproducción...');
       await _videoPlayerController!.play();
 
+      _lastSuccessfulPlayTime = DateTime.now();
       _fadeController.forward();
 
       _safeSetState(() {
         _isLoading = false;
         _isInitializing = false;
         _retryCount = 0;
+        _stuckCounter = 0;
       });
 
       debugPrint('✅ VideoPlayer Servidor ${_currentServerIndex + 1} OK');
@@ -275,7 +342,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       await _handleServerFailure();
     }
   }
-
   Future<void> _initializeExoPlayer(String url, String? k1, String? k2) async {
     if (_isDisposed) return;
 
@@ -283,19 +349,28 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       await _disposeExistingControllers();
 
       final hasDrm = k1 != null && k2 != null;
-      debugPrint('🎬 ExoPlayer ${hasDrm ? "(DRM)" : ""} Servidor ${_currentServerIndex + 1}: $url');
+      debugPrint('🎬 Inicializando ExoPlayer ${hasDrm ? "(DRM ClearKey)" : ""}');
+      debugPrint('📺 Servidor ${_currentServerIndex + 1}: $url');
+      if (hasDrm) {
+        debugPrint('🔐 K1: ${k1.substring(0, 16)}...');
+        debugPrint('🔐 K2: ${k2.substring(0, 16)}...');
+      }
 
       // Crear controller de ExoPlayer
-      // El viewId será generado cuando se cree la PlatformView
-      _exoPlayerController = ExoPlayerController(0); // Placeholder ID
+      // El viewId será generado por la PlatformView
+      _exoPlayerController = ExoPlayerController(0); // Placeholder, se actualizará
 
       // Suscribirse a eventos
       _exoPlayerStateSubscription = _exoPlayerController!.onStateChange.listen((state) {
         debugPrint('📺 ExoPlayer State: $state');
+        _lastStateChange = DateTime.now();
+        _lastKnownState = state;
         
         if (state == PlayerState.ready) {
           _serverTimeoutTimer?.cancel();
+          _lastSuccessfulPlayTime = DateTime.now();
           _fadeController.forward();
+          _stuckCounter = 0;
           
           _safeSetState(() {
             _isLoading = false;
@@ -305,13 +380,26 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           
           debugPrint('✅ ExoPlayer Servidor ${_currentServerIndex + 1} OK');
         } else if (state == PlayerState.buffering) {
-          // Opcional: mostrar indicador de buffering
+          debugPrint('⏳ ExoPlayer buffering...');
+        } else if (state == PlayerState.idle) {
+          debugPrint('⚠️ ExoPlayer IDLE - verificando...');
+          // Si está en IDLE por más de 10s, reintentar
+          Timer(const Duration(seconds: 10), () {
+            if (_exoPlayerController?.state == PlayerState.idle && !_isDisposed) {
+              debugPrint('❌ ExoPlayer stuck in IDLE - retrying');
+              _handleServerFailure();
+            }
+          });
         }
+        
+        _safeSetState(() {});
       });
 
       _exoPlayerPlayingSubscription = _exoPlayerController!.onPlayingChange.listen((isPlaying) {
         debugPrint('▶️ ExoPlayer Playing: $isPlaying');
         if (isPlaying) {
+          _lastSuccessfulPlayTime = DateTime.now();
+          _stuckCounter = 0;
         }
         _safeSetState(() {});
       });
@@ -320,9 +408,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         debugPrint('❌ ExoPlayer Error: $error');
         _handleServerFailure();
       });
-
-      // NOTA: La inicialización real se hará cuando se cree la PlatformView
-      // Ver _onExoPlayerViewCreated()
 
       _safeSetState(() {
         _playerType = PlayerType.exoPlayer;
@@ -339,7 +424,54 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_isDisposed) return;
 
     try {
-      // Ahora sí inicializamos el reproductor nativo
+      debugPrint('🏗️ ExoPlayerView creada, inicializando...');
+      
+      // Actualizar referencia al controller
+      _exoPlayerController = controller;
+      
+      // Re-suscribir a eventos con el controller real
+      await _exoPlayerStateSubscription?.cancel();
+      await _exoPlayerPlayingSubscription?.cancel();
+      await _exoPlayerErrorSubscription?.cancel();
+      
+      _exoPlayerStateSubscription = controller.onStateChange.listen((state) {
+        debugPrint('📺 State: $state');
+        _lastStateChange = DateTime.now();
+        _lastKnownState = state;
+        
+        if (state == PlayerState.ready) {
+          _serverTimeoutTimer?.cancel();
+          _lastSuccessfulPlayTime = DateTime.now();
+          _fadeController.forward();
+          _stuckCounter = 0;
+          
+          _safeSetState(() {
+            _isLoading = false;
+            _isInitializing = false;
+            _retryCount = 0;
+          });
+          
+          debugPrint('✅ ExoPlayer READY');
+        }
+        
+        _safeSetState(() {});
+      });
+
+      _exoPlayerPlayingSubscription = controller.onPlayingChange.listen((isPlaying) {
+        debugPrint('▶️ Playing: $isPlaying');
+        if (isPlaying) {
+          _lastSuccessfulPlayTime = DateTime.now();
+        }
+        _safeSetState(() {});
+      });
+
+      _exoPlayerErrorSubscription = controller.onError.listen((error) {
+        debugPrint('❌ Error: $error');
+        _handleServerFailure();
+      });
+
+      // Ahora sí inicializar el reproductor nativo
+      debugPrint('🔧 Llamando initialize nativo...');
       await controller.initialize(
         _currentStream!.url,
         k1: _currentStream!.k1,
@@ -347,9 +479,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       );
 
       await controller.setVolume(_isMuted ? 0.0 : 1.0);
+      debugPrint('✅ ExoPlayer nativo inicializado');
 
-    } catch (e) {
-      debugPrint('❌ Error inicializando ExoPlayer: $e');
+    } catch (e, st) {
+      debugPrint('❌ Error inicializando ExoPlayer nativo: $e\n$st');
       await _handleServerFailure();
     }
   }
@@ -360,6 +493,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     final value = _videoPlayerController!.value;
 
     if (value.isInitialized && value.isPlaying && !value.hasError) {
+      _lastSuccessfulPlayTime = DateTime.now();
+      _stuckCounter = 0;
     }
 
     if (value.hasError && !_isLoading && !_isInitializing) {
@@ -368,7 +503,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       if (_errorRecoveryTimer?.isActive ?? false) return;
 
-      _errorRecoveryTimer = Timer(const Duration(milliseconds: 600), () async {
+      _errorRecoveryTimer = Timer(const Duration(milliseconds: 800), () async {
         if (_isDisposed || !mounted) return;
         _retryCount++;
         debugPrint('🔄 Recuperación $_retryCount/$_maxRetries');
@@ -388,8 +523,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     // VideoPlayer
     if (_videoPlayerController != null) {
       _videoPlayerController!.removeListener(_videoListener);
-      await _videoPlayerController!.pause();
-      await _videoPlayerController!.dispose();
+      try {
+        await _videoPlayerController!.pause();
+        await _videoPlayerController!.dispose();
+      } catch (e) {
+        debugPrint('⚠️ Error disposing VideoPlayer: $e');
+      }
       _videoPlayerController = null;
     }
 
@@ -399,7 +538,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       await _exoPlayerPlayingSubscription?.cancel();
       await _exoPlayerErrorSubscription?.cancel();
       
-      await _exoPlayerController!.dispose();
+      try {
+        await _exoPlayerController!.dispose();
+      } catch (e) {
+        debugPrint('⚠️ Error disposing ExoPlayer: $e');
+      }
       _exoPlayerController = null;
     }
   }
@@ -407,12 +550,18 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Future<void> _handleServerFailure() async {
     if (_isDisposed) return;
 
+    debugPrint('⚠️ Servidor ${_currentServerIndex + 1} falló');
+    
     if (_currentServerIndex < widget.channel.streamUrl.length - 1) {
       _currentServerIndex++;
+      debugPrint('🔄 Intentando servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}');
+      
       await Future.delayed(_backoffDurationForAttempt(_serverAttempt));
       _serverAttempt++;
+      
       await _tryCurrentServer();
     } else {
+      debugPrint('❌ No quedan más servidores');
       if (mounted && !_isDisposed) {
         _safeSetState(() {
           _isLoading = false;
@@ -424,7 +573,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Duration _backoffDurationForAttempt(int attempt) {
-    final ms = min(6000, (400 * pow(2, attempt)).toInt());
+    final ms = min(6000, (500 * pow(2, attempt)).toInt());
     return Duration(milliseconds: ms);
   }
 
@@ -523,6 +672,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _serverTimeoutTimer?.cancel();
     _errorRecoveryTimer?.cancel();
     _watchdogTimer?.cancel();
+    _stateCheckTimer?.cancel();
     _fadeController.dispose();
 
     _disposeExistingControllers();
@@ -543,7 +693,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     return _buildNativePlayer();
   }
-
   Widget _buildLoadingWidget() {
     return Container(
       color: Colors.black,
@@ -574,7 +723,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             Text(
               widget.channel.name,
               style: TextStyle(
-                color: Colors.white.withAlpha(179),
+                color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
@@ -584,7 +733,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(26),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -592,7 +741,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                       ? 'Reintentando $_retryCount/$_maxRetries...'
                       : 'Servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
                   style: TextStyle(
-                    color: Colors.white.withAlpha(204),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -620,14 +769,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                   color: Colors.white.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: SvgPicture.asset(
-                  'assets/icons/player/caido.svg',
-                  width: 56,
-                  height: 56,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
+                child: const Icon(
+                  Icons.error_outline,
+                  color: Colors.white,
+                  size: 56,
                 ),
               ),
               const SizedBox(height: 20),
@@ -678,6 +823,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                     onPressed: () {
                       _currentServerIndex = 0;
                       _retryCount = 0;
+                      _stuckCounter = 0;
                       _initializePlayer();
                     },
                     icon: const Icon(Icons.refresh_rounded, size: 18),
