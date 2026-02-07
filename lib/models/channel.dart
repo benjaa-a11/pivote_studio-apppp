@@ -2,19 +2,18 @@ class Channel {
   final String id;
   final String name;
   final String category;
-  final List<String>
-      logoUrl; // Array with 2 URLs: [0] for dark mode, [1] for light mode
-  final List<String> streamUrl;
+  final List<String> logoUrl; // [0] dark mode, [1] light mode
+  final List<StreamSource> streamUrl; // Changed to support both String and Map
   final String description;
-  final String? quality; // Add quality property
   final bool isHidden;
-  final int order; // Default display order (lower = higher priority)
+  final int order;
   bool isFavorite;
-
-  // DASH DRM Support
-  final String? type; // 'hls' or 'dash' - optional for backward compatibility
-  final String? k1; // DRM ClearKey key 1
-  final String? k2; // DRM ClearKey key 2
+  final String? type; // Optional: 'dash' or 'hls' to override detection
+  final String? quality; // Optional: quality indicator
+  
+  // DRM keys at channel level (for backwards compatibility)
+  final String? k1;
+  final String? k2;
 
   Channel({
     required this.id,
@@ -23,13 +22,13 @@ class Channel {
     required this.logoUrl,
     required this.streamUrl,
     required this.description,
-    this.quality, // Add quality parameter
     this.isHidden = false,
-    this.order = 999, // Default to end if not specified
+    this.order = 999,
     this.isFavorite = false,
-    this.type, // Optional: 'hls' or 'dash'
-    this.k1, // Optional: DRM key 1
-    this.k2, // Optional: DRM key 2
+    this.type,
+    this.quality,
+    this.k1,
+    this.k2,
   });
 
   factory Channel.fromJson(Map<String, dynamic> json) {
@@ -40,11 +39,20 @@ class Channel {
       logoUrls = [json['logoUrl']];
     }
 
-    List<String> streams = [];
+    // Parse streamUrl - supports both old String format and new Map format
+    List<StreamSource> streams = [];
     if (json['streamUrl'] is List) {
-      streams = List<String>.from(json['streamUrl']);
+      for (var item in json['streamUrl']) {
+        if (item is String) {
+          // Old format: simple string URL
+          streams.add(StreamSource(url: item));
+        } else if (item is Map<String, dynamic>) {
+          // New format: map with url, k1, k2
+          streams.add(StreamSource.fromJson(item));
+        }
+      }
     } else if (json['streamUrl'] is String) {
-      streams = [json['streamUrl']];
+      streams = [StreamSource(url: json['streamUrl'])];
     }
 
     return Channel(
@@ -54,13 +62,13 @@ class Channel {
       logoUrl: logoUrls,
       streamUrl: streams,
       description: json['description'] ?? '',
-      quality: json['quality'], // Add quality field
       isHidden: json['isHidden'] ?? false,
-      order: json['order'] ?? 999, // Add order field with default
+      order: json['order'] ?? 999,
       isFavorite: json['isFavorite'] ?? false,
-      type: json['type'], // Optional: stream type
-      k1: json['k1'], // Optional: DRM key 1
-      k2: json['k2'], // Optional: DRM key 2
+      type: json['type'],
+      quality: json['quality'],
+      k1: json['k1'],
+      k2: json['k2'],
     );
   }
 
@@ -70,15 +78,15 @@ class Channel {
       'name': name,
       'category': category,
       'logoUrl': logoUrl,
-      'streamUrl': streamUrl,
+      'streamUrl': streamUrl.map((s) => s.toJson()).toList(),
       'description': description,
-      'quality': quality, // Add quality field
       'isHidden': isHidden,
-      'order': order, // Add order field
+      'order': order,
       'isFavorite': isFavorite,
-      'type': type, // Stream type
-      'k1': k1, // DRM key 1
-      'k2': k2, // DRM key 2
+      if (type != null) 'type': type,
+      if (quality != null) 'quality': quality,
+      if (k1 != null) 'k1': k1,
+      if (k2 != null) 'k2': k2,
     };
   }
 
@@ -102,7 +110,6 @@ class Channel {
         (!url.contains('.m3u8') &&
             !url.contains('.mp4') &&
             !url.contains('.mpd'))) {
-      // If it doesn't contain typical video extensions but has a URL, treat as iframe
       return StreamType.iframe;
     }
     // Default to m3u8 for live streams
@@ -114,15 +121,15 @@ class Channel {
     String? name,
     String? category,
     List<String>? logoUrl,
-    List<String>? streamUrl,
+    List<StreamSource>? streamUrl,
     String? description,
-    String? quality, // Add quality parameter
     bool? isHidden,
-    int? order, // Add order parameter
+    int? order,
     bool? isFavorite,
-    String? type, // Add type parameter
-    String? k1, // Add k1 parameter
-    String? k2, // Add k2 parameter
+    String? type,
+    String? quality,
+    String? k1,
+    String? k2,
   }) {
     return Channel(
       id: id ?? this.id,
@@ -131,28 +138,64 @@ class Channel {
       logoUrl: logoUrl ?? this.logoUrl,
       streamUrl: streamUrl ?? this.streamUrl,
       description: description ?? this.description,
-      quality: quality ?? this.quality, // Add quality parameter
       isHidden: isHidden ?? this.isHidden,
-      order: order ?? this.order, // Add order parameter
+      order: order ?? this.order,
       isFavorite: isFavorite ?? this.isFavorite,
-      type: type ?? this.type, // Add type parameter
-      k1: k1 ?? this.k1, // Add k1 parameter
-      k2: k2 ?? this.k2, // Add k2 parameter
+      type: type ?? this.type,
+      quality: quality ?? this.quality,
+      k1: k1 ?? this.k1,
+      k2: k2 ?? this.k2,
     );
   }
 
-  // Get logo URL based on theme mode
   String getLogoUrl(bool isDarkMode) {
     if (logoUrl.isEmpty) return '';
     if (logoUrl.length == 1) return logoUrl[0];
-    // Return dark mode logo (index 0) or light mode logo (index 1)
     return isDarkMode ? logoUrl[0] : logoUrl[1];
   }
+}
+
+/// Represents a stream source with URL and optional DRM keys
+class StreamSource {
+  final String url;
+  final String? k1; // Key ID for DRM
+  final String? k2; // Key for DRM
+  final String? label; // Optional label like "Servidor 1", "HD", etc.
+
+  StreamSource({
+    required this.url,
+    this.k1,
+    this.k2,
+    this.label,
+  });
+
+  factory StreamSource.fromJson(Map<String, dynamic> json) {
+    return StreamSource(
+      url: json['url'] ?? '',
+      k1: json['k1'],
+      k2: json['k2'],
+      label: json['label'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{'url': url};
+    if (k1 != null) map['k1'] = k1;
+    if (k2 != null) map['k2'] = k2;
+    if (label != null) map['label'] = label;
+    return map;
+  }
+
+  bool get hasDrm => k1 != null && k2 != null;
+
+  bool get isDash => url.contains('.mpd');
+  
+  bool get isHls => url.contains('.m3u8') || url.contains('m3u');
 }
 
 enum StreamType {
   m3u8,
   mp4,
+  dash,
   iframe,
-  dash, // DASH with DRM support
 }

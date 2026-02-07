@@ -34,13 +34,14 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  // HLS Player (existing)
+  // HLS Player (VideoPlayer for M3U8)
   VideoPlayerController? _videoPlayerController;
 
-  // DASH Player (new)
+  // DASH Player (BetterPlayer for MPD with DRM)
   BetterPlayerController? _betterPlayerController;
 
-  // Stream type detection
+  // Current stream info
+  StreamSource? _currentStream;
   StreamType? _streamType;
 
   bool _isLoading = true;
@@ -60,7 +61,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   int _retryCount = 0;
   static const int _maxRetries = 2;
 
-  // Buffering y recuperación
+  // Buffering and recovery
   int _bufferingCount = 0;
   bool _isRecoveringFromBuffer = false;
   DateTime? _lastSuccessfulPlayTime;
@@ -68,7 +69,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   bool _internalPause = false;
   int _serverAttempt = 0;
 
-  // Animación para transiciones suaves
+  // Smooth transition animation
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -77,7 +78,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     super.initState();
     _isDisposed = false;
 
-    // Inicializar animación
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
@@ -125,12 +125,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     });
 
     try {
-      // Detect stream type from first URL
-      if (widget.channel.streamUrl.isNotEmpty) {
-        _streamType = widget.channel.getStreamType(widget.channel.streamUrl[0]);
-        debugPrint('🎬 Stream type detected: $_streamType');
-      }
-
       await _tryCurrentServer();
     } catch (e, st) {
       debugPrint('❌ Error en initializePlayer: $e\n$st');
@@ -151,9 +145,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       throw Exception('No hay más servidores disponibles');
     }
 
-    String url = widget.channel.streamUrl[_currentServerIndex].trim();
+    _currentStream = widget.channel.streamUrl[_currentServerIndex];
+    String url = _currentStream!.url.trim();
 
-    // Resolver URLs dinámicas optimizado
+    // Detect stream type
+    _streamType = widget.channel.getStreamType(url);
+    debugPrint('🎬 Stream type detected: $_streamType for URL: $url');
+
+    // Resolve dynamic URLs for M3U8
     if (url.contains('phpcode/lista01.php') && url.contains('token=')) {
       try {
         final resolvedUrl = await _resolveDynamicM3u8Url(url);
@@ -165,13 +164,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     }
 
-    // Validación de URL básica
     if (url.isEmpty) {
       debugPrint('⚠️ URL vacía');
       throw Exception('URL vacía');
     }
 
-    // Timeout ultra-corto (5s) para cambiar de servidor más rápido
+    // Ultra-short timeout (5s) for faster server switching
     _serverTimeoutTimer = Timer(const Duration(seconds: 5), () {
       if (mounted &&
           !_isDisposed &&
@@ -184,23 +182,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     });
 
-    // Inicializar reproductor según tipo de stream
+    // Initialize player based on stream type
     if (_streamType == StreamType.dash) {
       await _initializeBetterPlayer(url);
+    } else if (_streamType == StreamType.m3u8) {
+      await _initializeVideoPlayer(url);
     } else {
-      // Para HLS y streams directos sin extensión, usar VideoPlayer o BetterPlayer
-      // Detectar si es un stream directo MPEG-TS (sin extensión conocida)
-      final isDirectStream = !url.contains('.m3u8') &&
-          !url.contains('.mp4') &&
-          !url.contains('.mpd');
-
-      if (isDirectStream) {
-        // Usar BetterPlayer para streams directos MPEG-TS
-        await _initializeBetterPlayerForDirectStream(url);
-      } else {
-        // Usar VideoPlayer para HLS/MP4
-        await _initializeVideoPlayer(url);
-      }
+      // For direct streams without extension, use BetterPlayer
+      await _initializeBetterPlayerForDirectStream(url);
     }
   }
 
@@ -250,19 +239,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_isDisposed) return;
 
     try {
-      if (_videoPlayerController != null) {
-        if (_listenerAttached) {
-          _videoPlayerController!.removeListener(_videoListener);
-          _listenerAttached = false;
-        }
-        await _videoPlayerController!.pause();
-        await _videoPlayerController!.dispose();
-        _videoPlayerController = null;
-      }
+      // Dispose existing controllers
+      await _disposeExistingControllers();
 
-      debugPrint('🎬 Servidor ${_currentServerIndex + 1}: $url');
+      debugPrint('🎬 HLS Servidor ${_currentServerIndex + 1}: $url');
 
-      // Headers optimizados
       final headers = <String, String>{
         'User-Agent':
             'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
@@ -299,7 +280,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             'Error controller: ${_videoPlayerController!.value.errorDescription}');
       }
 
-      // Buffer inicial ULTRA-OPTIMIZADO
+      // Initial buffer wait
       debugPrint('📦 Esperando buffer inicial...');
       final startWait = DateTime.now();
       const maxWait = Duration(milliseconds: 1500);
@@ -325,44 +306,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       await _videoPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
       await _videoPlayerController!.setPlaybackSpeed(1.0);
 
-      // Auto-play ULTRA-AGRESIVO
-      debugPrint('▶️ Iniciando reproducción...');
-      bool playbackStarted = false;
-      int playAttempts = 0;
-      const maxAttempts = 5;
-
-      while (!playbackStarted &&
-          playAttempts < maxAttempts &&
-          !_isDisposed &&
-          mounted) {
-        playAttempts++;
-        try {
-          await _videoPlayerController!.play();
-          await Future.delayed(const Duration(milliseconds: 150));
-
-          if (_videoPlayerController!.value.isPlaying) {
-            playbackStarted = true;
-            _lastSuccessfulPlayTime = DateTime.now();
-            debugPrint('✅ Play OK intento #$playAttempts');
-            _fadeController.forward();
-          } else {
-            final delay = Duration(milliseconds: 100 * playAttempts);
-            await Future.delayed(delay);
-          }
-        } catch (e) {
-          debugPrint('❌ Error play #$playAttempts: $e');
-          await Future.delayed(const Duration(milliseconds: 150));
-        }
-      }
-
-      if (!playbackStarted) {
-        debugPrint('🔴 Intento final...');
-        try {
-          await _videoPlayerController?.play();
-        } catch (e) {
-          debugPrint('❌ Intento final falló: $e');
-        }
-      }
+      // Aggressive auto-play
+      await _aggressivePlayStart(_videoPlayerController!);
 
       _startWatchdog();
 
@@ -372,58 +317,25 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _retryCount = 0;
       });
 
-      debugPrint('✅ Servidor ${_currentServerIndex + 1} OK');
+      debugPrint('✅ HLS Servidor ${_currentServerIndex + 1} OK');
     } catch (e, st) {
-      debugPrint('❌ Error servidor ${_currentServerIndex + 1}: $e\n$st');
-
-      if (_isDisposed) return;
-
-      if (_currentServerIndex < widget.channel.streamUrl.length - 1) {
-        _currentServerIndex++;
-        await Future.delayed(_backoffDurationForAttempt(_serverAttempt));
-        _serverAttempt++;
-        await _tryCurrentServer();
-      } else {
-        if (mounted && !_isDisposed) {
-          _safeSetState(() {
-            _isLoading = false;
-            _error = 'No se pudo conectar a ningún servidor';
-            _isInitializing = false;
-          });
-        }
-      }
+      debugPrint('❌ Error HLS servidor ${_currentServerIndex + 1}: $e\n$st');
+      await _handleServerFailure();
     }
   }
 
-  /// Initialize Better Player for direct MPEG-TS streams (without extension)
   Future<void> _initializeBetterPlayerForDirectStream(String url) async {
     if (_isDisposed) return;
 
     try {
-      // Dispose existing controllers
-      if (_betterPlayerController != null) {
-        await _betterPlayerController!.pause();
-        _betterPlayerController!.dispose();
-        _betterPlayerController = null;
-      }
-      if (_videoPlayerController != null) {
-        if (_listenerAttached) {
-          _videoPlayerController!.removeListener(_videoListener);
-          _listenerAttached = false;
-        }
-        await _videoPlayerController!.pause();
-        await _videoPlayerController!.dispose();
-        _videoPlayerController = null;
-      }
+      await _disposeExistingControllers();
 
       debugPrint('🎬 Stream Directo Servidor ${_currentServerIndex + 1}: $url');
 
-      // Create data source with generic headers and format
       final dataSource = BetterPlayerDataSource(
         BetterPlayerDataSourceType.network,
         url,
-        videoFormat: BetterPlayerVideoFormat
-            .other, // Usar 'other' para streams sin extensión
+        videoFormat: BetterPlayerVideoFormat.other,
         headers: {
           'User-Agent': 'VLC/3.0.18 LibVLC/3.0.18',
           'Accept': '*/*',
@@ -434,7 +346,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         ),
       );
 
-      // Create configuration
       final configuration = BetterPlayerConfiguration(
         autoPlay: true,
         looping: false,
@@ -444,26 +355,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         controlsConfiguration: const BetterPlayerControlsConfiguration(
           showControls: false,
         ),
-        eventListener: (BetterPlayerEvent event) {
-          if (_isDisposed) return;
-
-          if (event.betterPlayerEventType ==
-              BetterPlayerEventType.initialized) {
-            debugPrint('✅ Better Player initialized (Direct Stream)');
-            _lastSuccessfulPlayTime = DateTime.now();
-          } else if (event.betterPlayerEventType ==
-              BetterPlayerEventType.play) {
-            _lastSuccessfulPlayTime = DateTime.now();
-          } else if (event.betterPlayerEventType ==
-              BetterPlayerEventType.exception) {
-            debugPrint('❌ Better Player exception (Direct Stream)');
-          }
-
-          _safeSetState(() {});
-        },
+        eventListener: _betterPlayerEventListener,
       );
 
-      // Create controller
       _betterPlayerController = BetterPlayerController(configuration);
       await _betterPlayerController!.setupDataSource(dataSource);
 
@@ -471,30 +365,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       _serverTimeoutTimer?.cancel();
 
-      // Set volume
       await _betterPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
 
       // Wait for initialization
-      debugPrint('📦 Esperando inicialización Stream Directo...');
-      final startWait = DateTime.now();
-      const maxWait = Duration(seconds: 5);
-      bool initialized = false;
+      await _waitForBetterPlayerInit();
 
-      while (DateTime.now().difference(startWait) < maxWait &&
-          !_isDisposed &&
-          mounted) {
-        await Future.delayed(const Duration(milliseconds: 200));
-        if (_betterPlayerController!.isVideoInitialized() ?? false) {
-          initialized = true;
-          break;
-        }
-      }
-
-      if (!initialized) {
-        debugPrint('⚠️ Inicialización Stream Directo lenta, continuando...');
-      }
-
-      // Fade in animation
       _fadeController.forward();
 
       _safeSetState(() {
@@ -507,69 +382,41 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     } catch (e, st) {
       debugPrint(
           '❌ Error Stream Directo servidor ${_currentServerIndex + 1}: $e\n$st');
-
-      if (_isDisposed) return;
-
-      if (_currentServerIndex < widget.channel.streamUrl.length - 1) {
-        _currentServerIndex++;
-        await Future.delayed(_backoffDurationForAttempt(_serverAttempt));
-        _serverAttempt++;
-        await _tryCurrentServer();
-      } else {
-        if (mounted && !_isDisposed) {
-          _safeSetState(() {
-            _isLoading = false;
-            _error = 'No se pudo conectar a ningún servidor';
-            _isInitializing = false;
-          });
-        }
-      }
+      await _handleServerFailure();
     }
   }
 
-  /// Initialize Better Player for DASH streams with DRM ClearKey
   Future<void> _initializeBetterPlayer(String url) async {
     if (_isDisposed) return;
 
     try {
-      // Dispose existing controllers
-      if (_betterPlayerController != null) {
-        await _betterPlayerController!.pause();
-        _betterPlayerController!.dispose();
-        _betterPlayerController = null;
-      }
-      if (_videoPlayerController != null) {
-        if (_listenerAttached) {
-          _videoPlayerController!.removeListener(_videoListener);
-          _listenerAttached = false;
-        }
-        await _videoPlayerController!.pause();
-        await _videoPlayerController!.dispose();
-        _videoPlayerController = null;
-      }
+      await _disposeExistingControllers();
 
       debugPrint('🎬 DASH Servidor ${_currentServerIndex + 1}: $url');
+      debugPrint('🔐 DRM Keys - K1: ${_currentStream?.k1}, K2: ${_currentStream?.k2}');
 
       // Configure DRM if keys are provided
       BetterPlayerDrmConfiguration? drmConfiguration;
-      if (widget.channel.k1 != null && widget.channel.k2 != null) {
+      if (_currentStream?.hasDrm == true) {
         debugPrint('🔐 Configurando DRM ClearKey');
         drmConfiguration = BetterPlayerDrmConfiguration(
           drmType: BetterPlayerDrmType.clearKey,
           clearKey: BetterPlayerClearKeyUtils.generateKey({
-            widget.channel.k1!: widget.channel.k2!,
+            _currentStream!.k1!: _currentStream!.k2!,
           }),
         );
+      } else {
+        debugPrint('ℹ️ Stream DASH sin DRM');
       }
 
-      // Create data source
       final dataSource = BetterPlayerDataSource(
         BetterPlayerDataSourceType.network,
         url,
         videoFormat: BetterPlayerVideoFormat.dash,
         drmConfiguration: drmConfiguration,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
+          'User-Agent':
+              'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
           'Accept': '*/*',
           'Connection': 'keep-alive',
         },
@@ -578,7 +425,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         ),
       );
 
-      // Create configuration
       final configuration = BetterPlayerConfiguration(
         autoPlay: true,
         looping: false,
@@ -588,26 +434,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         controlsConfiguration: const BetterPlayerControlsConfiguration(
           showControls: false,
         ),
-        eventListener: (BetterPlayerEvent event) {
-          if (_isDisposed) return;
-
-          if (event.betterPlayerEventType ==
-              BetterPlayerEventType.initialized) {
-            debugPrint('✅ Better Player initialized');
-            _lastSuccessfulPlayTime = DateTime.now();
-          } else if (event.betterPlayerEventType ==
-              BetterPlayerEventType.play) {
-            _lastSuccessfulPlayTime = DateTime.now();
-          } else if (event.betterPlayerEventType ==
-              BetterPlayerEventType.exception) {
-            debugPrint('❌ Better Player exception');
-          }
-
-          _safeSetState(() {});
-        },
+        eventListener: _betterPlayerEventListener,
       );
 
-      // Create controller
       _betterPlayerController = BetterPlayerController(configuration);
       await _betterPlayerController!.setupDataSource(dataSource);
 
@@ -615,30 +444,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       _serverTimeoutTimer?.cancel();
 
-      // Set volume
       await _betterPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
 
-      // Wait for initialization
-      debugPrint('📦 Esperando inicialización DASH...');
-      final startWait = DateTime.now();
-      const maxWait = Duration(seconds: 3);
-      bool initialized = false;
+      await _waitForBetterPlayerInit();
 
-      while (DateTime.now().difference(startWait) < maxWait &&
-          !_isDisposed &&
-          mounted) {
-        await Future.delayed(const Duration(milliseconds: 200));
-        if (_betterPlayerController!.isVideoInitialized() ?? false) {
-          initialized = true;
-          break;
-        }
-      }
-
-      if (!initialized) {
-        debugPrint('⚠️ Inicialización DASH lenta, continuando...');
-      }
-
-      // Fade in animation
       _fadeController.forward();
 
       _safeSetState(() {
@@ -650,22 +459,127 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       debugPrint('✅ DASH Servidor ${_currentServerIndex + 1} OK');
     } catch (e, st) {
       debugPrint('❌ Error DASH servidor ${_currentServerIndex + 1}: $e\n$st');
+      await _handleServerFailure();
+    }
+  }
 
-      if (_isDisposed) return;
+  void _betterPlayerEventListener(BetterPlayerEvent event) {
+    if (_isDisposed) return;
 
-      if (_currentServerIndex < widget.channel.streamUrl.length - 1) {
-        _currentServerIndex++;
-        await Future.delayed(_backoffDurationForAttempt(_serverAttempt));
-        _serverAttempt++;
-        await _tryCurrentServer();
-      } else {
-        if (mounted && !_isDisposed) {
-          _safeSetState(() {
-            _isLoading = false;
-            _error = 'No se pudo conectar a ningún servidor DASH';
-            _isInitializing = false;
-          });
+    if (event.betterPlayerEventType == BetterPlayerEventType.initialized) {
+      debugPrint('✅ Better Player initialized');
+      _lastSuccessfulPlayTime = DateTime.now();
+    } else if (event.betterPlayerEventType == BetterPlayerEventType.play) {
+      _lastSuccessfulPlayTime = DateTime.now();
+    } else if (event.betterPlayerEventType == BetterPlayerEventType.exception) {
+      debugPrint('❌ Better Player exception');
+    }
+
+    _safeSetState(() {});
+  }
+
+  Future<void> _waitForBetterPlayerInit() async {
+    debugPrint('📦 Esperando inicialización BetterPlayer...');
+    final startWait = DateTime.now();
+    const maxWait = Duration(seconds: 5);
+    bool initialized = false;
+
+    while (DateTime.now().difference(startWait) < maxWait &&
+        !_isDisposed &&
+        mounted) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (_betterPlayerController!.isVideoInitialized() ?? false) {
+        initialized = true;
+        break;
+      }
+    }
+
+    if (!initialized) {
+      debugPrint('⚠️ Inicialización BetterPlayer lenta, continuando...');
+    }
+  }
+
+  Future<void> _aggressivePlayStart(VideoPlayerController controller) async {
+    debugPrint('▶️ Iniciando reproducción agresiva...');
+    bool playbackStarted = false;
+    int playAttempts = 0;
+    const maxAttempts = 5;
+
+    while (!playbackStarted &&
+        playAttempts < maxAttempts &&
+        !_isDisposed &&
+        mounted) {
+      playAttempts++;
+      try {
+        await controller.play();
+        await Future.delayed(const Duration(milliseconds: 150));
+
+        if (controller.value.isPlaying) {
+          playbackStarted = true;
+          _lastSuccessfulPlayTime = DateTime.now();
+          debugPrint('✅ Play OK intento #$playAttempts');
+          _fadeController.forward();
+        } else {
+          final delay = Duration(milliseconds: 100 * playAttempts);
+          await Future.delayed(delay);
         }
+      } catch (e) {
+        debugPrint('❌ Error play #$playAttempts: $e');
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+    }
+
+    if (!playbackStarted) {
+      debugPrint('🔴 Intento final de play...');
+      try {
+        await controller.play();
+      } catch (e) {
+        debugPrint('❌ Intento final falló: $e');
+      }
+    }
+  }
+
+  Future<void> _disposeExistingControllers() async {
+    if (_betterPlayerController != null) {
+      try {
+        await _betterPlayerController!.pause();
+      } catch (_) {}
+      try {
+        _betterPlayerController!.dispose();
+      } catch (_) {}
+      _betterPlayerController = null;
+    }
+
+    if (_videoPlayerController != null) {
+      if (_listenerAttached) {
+        _videoPlayerController!.removeListener(_videoListener);
+        _listenerAttached = false;
+      }
+      try {
+        await _videoPlayerController!.pause();
+      } catch (_) {}
+      try {
+        await _videoPlayerController!.dispose();
+      } catch (_) {}
+      _videoPlayerController = null;
+    }
+  }
+
+  Future<void> _handleServerFailure() async {
+    if (_isDisposed) return;
+
+    if (_currentServerIndex < widget.channel.streamUrl.length - 1) {
+      _currentServerIndex++;
+      await Future.delayed(_backoffDurationForAttempt(_serverAttempt));
+      _serverAttempt++;
+      await _tryCurrentServer();
+    } else {
+      if (mounted && !_isDisposed) {
+        _safeSetState(() {
+          _isLoading = false;
+          _error = 'No se pudo conectar a ningún servidor';
+          _isInitializing = false;
+        });
       }
     }
   }
@@ -676,7 +590,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     final value = _videoPlayerController!.value;
     final now = DateTime.now();
 
-    // Actualizar última reproducción exitosa
     if (value.isInitialized &&
         value.isPlaying &&
         !value.isBuffering &&
@@ -684,7 +597,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _lastSuccessfulPlayTime = now;
     }
 
-    // Manejo de errores críticos
     if (value.hasError && !_isLoading && !_isInitializing) {
       final errorDesc = value.errorDescription ?? 'Error desconocido';
       debugPrint('⚠️ Error: $errorDesc');
@@ -699,23 +611,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         if (_retryCount <= _maxRetries) {
           await Future.delayed(Duration(milliseconds: 250 * _retryCount));
           await _initializeVideoPlayer(
-              widget.channel.streamUrl[_currentServerIndex]);
+              widget.channel.streamUrl[_currentServerIndex].url);
         } else {
-          if (_currentServerIndex < widget.channel.streamUrl.length - 1) {
-            _currentServerIndex++;
-            _retryCount = 0;
-            await _tryCurrentServer();
-          } else {
-            _safeSetState(() {
-              _error = 'Error de reproducción: $errorDesc';
-              _isLoading = false;
-            });
-          }
+          await _handleServerFailure();
         }
       });
     }
 
-    // Debounce mejorado
     _bufferDebounceTimer?.cancel();
     _bufferDebounceTimer = Timer(const Duration(milliseconds: 300), () async {
       if (_isDisposed || _videoPlayerController == null) return;
@@ -726,68 +628,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _bufferingCount++;
         debugPrint('📊 Buffering (contador: $_bufferingCount)');
 
-        // Recuperación ULTRA-AGRESIVA
         if (_bufferingCount >= 1 && !_isRecoveringFromBuffer) {
-          _isRecoveringFromBuffer = true;
-          debugPrint('🔄 RECUPERACIÓN AUTO (buffers: $_bufferingCount)');
-
-          _internalPause = true;
-          try {
-            await _videoPlayerController?.pause();
-          } catch (_) {}
-
-          // Tiempo adaptativo ULTRA-CORTO
-          final recoveryTime = _bufferingCount >= 5
-              ? const Duration(milliseconds: 2000)
-              : const Duration(milliseconds: 1000);
-
-          debugPrint('⏱️ Esperando ${recoveryTime.inMilliseconds}ms...');
-          await Future.delayed(recoveryTime);
-
-          if (_isDisposed || _videoPlayerController == null) return;
-
-          // Reintentos ULTRA-MEJORADOS
-          bool resumed = false;
-          int attempts = 0;
-          const attemptsMax = 8;
-
-          while (!resumed && attempts < attemptsMax && !_isDisposed) {
-            attempts++;
-            debugPrint('▶️ Intento recovery #$attempts/$attemptsMax');
-            try {
-              await _videoPlayerController!.play();
-              await Future.delayed(const Duration(milliseconds: 200));
-
-              if (_videoPlayerController!.value.isPlaying) {
-                resumed = true;
-                debugPrint('✅ RECUPERADO OK');
-                _lastSuccessfulPlayTime = DateTime.now();
-              } else {
-                await Future.delayed(const Duration(milliseconds: 200));
-              }
-            } catch (e) {
-              debugPrint('❌ Error intento #$attempts: $e');
-              await Future.delayed(const Duration(milliseconds: 200));
-            }
-          }
-
-          if (!resumed) {
-            debugPrint('🔴 No recuperado tras $attemptsMax intentos');
-            try {
-              await _videoPlayerController?.play();
-            } catch (e) {
-              debugPrint('❌ Intento final: $e');
-            }
-          }
-
-          _bufferingCount = 0;
-          _isRecoveringFromBuffer = false;
-          _internalPause = false;
+          await _recoverFromBuffering();
         }
       } else {
         if (_bufferingCount > 0) _bufferingCount = max(0, _bufferingCount - 1);
 
-        // Forzar play si está detenido sin razón
         if (!v.isBuffering &&
             !v.hasError &&
             !v.isPlaying &&
@@ -813,9 +659,64 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _safeSetState(() {});
   }
 
+  Future<void> _recoverFromBuffering() async {
+    _isRecoveringFromBuffer = true;
+    debugPrint('🔄 RECUPERACIÓN AUTO (buffers: $_bufferingCount)');
+
+    _internalPause = true;
+    try {
+      await _videoPlayerController?.pause();
+    } catch (_) {}
+
+    final recoveryTime = _bufferingCount >= 5
+        ? const Duration(milliseconds: 2000)
+        : const Duration(milliseconds: 1000);
+
+    debugPrint('⏱️ Esperando ${recoveryTime.inMilliseconds}ms...');
+    await Future.delayed(recoveryTime);
+
+    if (_isDisposed || _videoPlayerController == null) return;
+
+    bool resumed = false;
+    int attempts = 0;
+    const attemptsMax = 8;
+
+    while (!resumed && attempts < attemptsMax && !_isDisposed) {
+      attempts++;
+      debugPrint('▶️ Intento recovery #$attempts/$attemptsMax');
+      try {
+        await _videoPlayerController!.play();
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        if (_videoPlayerController!.value.isPlaying) {
+          resumed = true;
+          debugPrint('✅ RECUPERADO OK');
+          _lastSuccessfulPlayTime = DateTime.now();
+        } else {
+          await Future.delayed(const Duration(milliseconds: 200));
+        }
+      } catch (e) {
+        debugPrint('❌ Error intento #$attempts: $e');
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+    }
+
+    if (!resumed) {
+      debugPrint('🔴 No recuperado tras $attemptsMax intentos');
+      try {
+        await _videoPlayerController?.play();
+      } catch (e) {
+        debugPrint('❌ Intento final: $e');
+      }
+    }
+
+    _bufferingCount = 0;
+    _isRecoveringFromBuffer = false;
+    _internalPause = false;
+  }
+
   void _startWatchdog() {
     _watchdogTimer?.cancel();
-    // Watchdog ULTRA-FRECUENTE (1s para detección instantánea)
     _watchdogTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (_isDisposed || _videoPlayerController == null || !mounted) {
         timer.cancel();
@@ -899,7 +800,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     });
 
-    // Update BetterPlayer aspect ratio if active
     if (_betterPlayerController != null) {
       _betterPlayerController!.setOverriddenAspectRatio(_getAspectRatio());
     }
@@ -962,7 +862,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _watchdogTimer?.cancel();
     _fadeController.dispose();
 
-    // Dispose HLS player
     if (_videoPlayerController != null) {
       if (_listenerAttached) {
         _videoPlayerController!.removeListener(_videoListener);
@@ -977,7 +876,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _videoPlayerController = null;
     }
 
-    // Dispose DASH player
     if (_betterPlayerController != null) {
       try {
         _betterPlayerController!.pause();
@@ -1166,11 +1064,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Widget _buildNativePlayer() {
-    // Check which player is active
     final bool useBetterPlayer = _betterPlayerController != null;
 
     if (useBetterPlayer) {
-      // Better Player (DASH or Direct Stream)
       if (!(_betterPlayerController!.isVideoInitialized() ?? false)) {
         return _buildLoadingWidget();
       }
@@ -1178,7 +1074,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       Widget videoContent;
 
       if (_aspectRatioType == AspectRatioType.stretch) {
-        // Estirar horizontalmente para llenar toda la pantalla
         videoContent = ClipRect(
           child: OverflowBox(
             alignment: Alignment.center,
@@ -1193,7 +1088,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           ),
         );
       } else {
-        // Aspect ratio normal
         videoContent = Center(
           child: AspectRatio(
             aspectRatio: _getAspectRatio(),
@@ -1206,14 +1100,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         color: Colors.black,
         child: Stack(
           children: [
-            // Video con animación de fade
             Positioned.fill(
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: videoContent,
               ),
             ),
-            // Controles personalizados
             Positioned.fill(
               child: CustomVideoControls(
                 controller: DASHControllerAdapter(_betterPlayerController!),
@@ -1241,7 +1133,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             )
           : playerWidget;
     } else {
-      // HLS Player (VideoPlayer)
       if (_videoPlayerController == null ||
           !_videoPlayerController!.value.isInitialized) {
         return _buildLoadingWidget();
@@ -1250,7 +1141,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       Widget videoContent;
 
       if (_aspectRatioType == AspectRatioType.stretch) {
-        // Estirar horizontalmente para llenar toda la pantalla
         videoContent = ClipRect(
           child: OverflowBox(
             alignment: Alignment.center,
@@ -1265,7 +1155,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           ),
         );
       } else {
-        // Aspect ratio normal
         final aspectRatio = _getAspectRatio();
         videoContent = Center(
           child: AspectRatio(
@@ -1279,14 +1168,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         color: Colors.black,
         child: Stack(
           children: [
-            // Video con animación de fade
             Positioned.fill(
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: videoContent,
               ),
             ),
-            // Controles personalizados
             Positioned.fill(
               child: CustomVideoControls(
                 controller: HLSControllerAdapter(_videoPlayerController!),

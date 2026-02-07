@@ -18,7 +18,7 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: CustomScrollView(
-                physics: const ClampingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           slivers: [
             // Floating Search Header
             SliverAppBar(
@@ -51,7 +51,7 @@ class HomeScreen extends StatelessWidget {
                                 id: 'dummy',
                                 name: 'Channel Name',
                                 logoUrl: [''],
-                                streamUrl: [''],
+                                streamUrl: [StreamSource(url: '')],
                                 category: 'General',
                                 description: 'Description',
                               ))

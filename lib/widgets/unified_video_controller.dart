@@ -1,64 +1,104 @@
-import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:better_player_plus/better_player_plus.dart';
 
 /// Unified interface for both VideoPlayerController and BetterPlayerController
-/// This allows CustomVideoControls to work with both HLS and DASH players
 abstract class UnifiedVideoController {
-  bool get isBuffering;
   bool get isPlaying;
-  void addListener(VoidCallback listener);
-  void removeListener(VoidCallback listener);
+  bool get isBuffering;
+  bool get isInitialized;
+  Duration get position;
+  Duration get duration;
+
+  Future<void> play();
+  Future<void> pause();
+  Future<void> setVolume(double volume);
+
+  void addListener(void Function() listener);
+  void removeListener(void Function() listener);
 }
 
-/// Adapter for standard VideoPlayerController (HLS/MP4)
-class HLSControllerAdapter extends UnifiedVideoController {
-  final VideoPlayerController _controller;
+/// Adapter for HLS VideoPlayerController
+class HLSControllerAdapter implements UnifiedVideoController {
+  final VideoPlayerController controller;
 
-  HLSControllerAdapter(this._controller);
-
-  @override
-  bool get isBuffering => _controller.value.isBuffering;
+  HLSControllerAdapter(this.controller);
 
   @override
-  bool get isPlaying => _controller.value.isPlaying;
+  bool get isPlaying => controller.value.isPlaying;
 
   @override
-  void addListener(VoidCallback listener) => _controller.addListener(listener);
+  bool get isBuffering => controller.value.isBuffering;
 
   @override
-  void removeListener(VoidCallback listener) =>
-      _controller.removeListener(listener);
+  bool get isInitialized => controller.value.isInitialized;
+
+  @override
+  Duration get position => controller.value.position;
+
+  @override
+  Duration get duration => controller.value.duration;
+
+  @override
+  Future<void> play() => controller.play();
+
+  @override
+  Future<void> pause() => controller.pause();
+
+  @override
+  Future<void> setVolume(double volume) => controller.setVolume(volume);
+
+  @override
+  void addListener(void Function() listener) =>
+      controller.addListener(listener);
+
+  @override
+  void removeListener(void Function() listener) =>
+      controller.removeListener(listener);
 }
 
-/// Adapter for BetterPlayerController (DASH with DRM)
-class DASHControllerAdapter extends UnifiedVideoController {
-  final BetterPlayerController _controller;
-  VoidCallback? _listener;
+/// Adapter for DASH BetterPlayerController
+class DASHControllerAdapter implements UnifiedVideoController {
+  final BetterPlayerController controller;
 
-  DASHControllerAdapter(this._controller);
-
-  @override
-  bool get isBuffering => _controller.isBuffering() ?? false;
+  DASHControllerAdapter(this.controller);
 
   @override
-  bool get isPlaying => _controller.isPlaying() ?? false;
+  bool get isPlaying => controller.isPlaying() ?? false;
 
   @override
-  void addListener(VoidCallback listener) {
-    _listener = listener;
-    // Better Player uses event streams, we need to listen to state changes
-    _controller.addEventsListener((event) {
-      if (_listener != null) {
-        _listener!();
-      }
-    });
+  bool get isBuffering {
+    // BetterPlayer doesn't expose buffering state directly, so we approximate
+    return !isInitialized || (!isPlaying && position == Duration.zero);
   }
 
   @override
-  void removeListener(VoidCallback listener) {
-    // Better Player doesn't have a direct removeListener
-    // The listener will be cleaned up when controller is disposed
-    _listener = null;
+  bool get isInitialized => controller.isVideoInitialized() ?? false;
+
+  @override
+  Duration get position =>
+      controller.videoPlayerController?.value.position ?? Duration.zero;
+
+  @override
+  Duration get duration =>
+      controller.videoPlayerController?.value.duration ?? Duration.zero;
+
+  @override
+  Future<void> play() async => controller.play();
+
+  @override
+  Future<void> pause() async => controller.pause();
+
+  @override
+  Future<void> setVolume(double volume) async => controller.setVolume(volume);
+
+  @override
+  void addListener(void Function() listener) {
+    // BetterPlayer uses event listeners, so we adapt it
+    controller.videoPlayerController?.addListener(listener);
+  }
+
+  @override
+  void removeListener(void Function() listener) {
+    controller.videoPlayerController?.removeListener(listener);
   }
 }
