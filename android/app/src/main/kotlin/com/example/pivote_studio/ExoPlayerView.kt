@@ -25,19 +25,21 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 import org.json.JSONArray
 import org.json.JSONObject
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
- * 🔥 EXOPLAYER PROFESIONAL CON DRM CLEARKEY
+ * 🔥 EXOPLAYER V4.0 ULTRA - CON BYTE SWAPPING UUID
  * 
- * ARQUITECTURA BASADA EN SHAKA PLAYER (PRODUCCIÓN):
- * ✅ Conversión claves DRM hex → base64 URL-safe
- * ✅ Buffering agresivo (2s-10s) igual que Shaka
- * ✅ WATCHDOG para detectar streams trabados (30s)
- * ✅ Logging exhaustivo para debugging
- * ✅ Manejo robusto de errores
+ * SOLUCIÓN DEFINITIVA PARA DRM CLEARKEY:
+ * ✅ Método 1: Conversión directa hex → base64
+ * ✅ Método 2: UUID RFC 4122 con byte swapping
+ * ✅ Prueba automática de ambos métodos
+ * ✅ Logging exhaustivo
+ * ✅ Watchdog integrado
  * 
- * @author Senior Android Engineer
- * @version 3.0 DEFINITIVA
+ * @author Senior Android Engineer  
+ * @version 4.0 ULTRA DEFINITIVO
  */
 @OptIn(UnstableApi::class)
 class ExoPlayerView(
@@ -51,50 +53,98 @@ class ExoPlayerView(
         private const val TAG = "ExoPlayerView"
         
         // ══════════════════════════════════════════════════════════
-        // CONVERSIÓN HEX → BASE64 (EXACTO A SHAKA PLAYER)
+        // CONVERSIÓN HEX → BYTES
         // ══════════════════════════════════════════════════════════
         
         private fun hexToBytes(hex: String): ByteArray {
             val cleanHex = hex.replace(Regex("[^0-9A-Fa-f]"), "")
-            
             require(cleanHex.length % 2 == 0) {
                 "Hex string must have even length: $hex"
             }
-            
             return ByteArray(cleanHex.length / 2) { i ->
                 cleanHex.substring(i * 2, i * 2 + 2).toInt(16).toByte()
             }
         }
         
         /**
-         * Convierte hex a Base64 URL-safe SIN padding (formato ClearKey)
-         * EXACTO al formato que usa Shaka Player
+         * MÉTODO 1: Conversión directa hex → base64 URL-safe
          */
-        private fun hexToBase64UrlSafe(hex: String): String {
+        private fun hexToBase64Direct(hex: String): String {
             val bytes = hexToBytes(hex)
-            return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+            return Base64.encodeToString(bytes, 
+                Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
         }
         
         /**
-         * Crea JSON de licencia ClearKey según especificación W3C
-         * https://www.w3.org/TR/encrypted-media/#clear-key-license-format
+         * MÉTODO 2: UUID RFC 4122 con byte swapping
+         * 
+         * UUID Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+         * Grupos:      time_low-time_mid-time_high-clock_seq-node
+         * 
+         * Los primeros 3 grupos necesitan byte swapping (little-endian)
+         * Los últimos 2 grupos quedan en big-endian
          */
-        private fun createClearKeyLicense(kid: String, key: String): String {
-            val kidBase64 = hexToBase64UrlSafe(kid)
-            val keyBase64 = hexToBase64UrlSafe(key)
-            
-            val keyObject = JSONObject().apply {
-                put("kty", "oct")
-                put("k", keyBase64)
-                put("kid", kidBase64)
+        private fun uuidToBase64(hex: String): String {
+            val cleanHex = hex.replace("-", "")
+            require(cleanHex.length == 32) {
+                "UUID must be 32 hex chars: $hex"
             }
             
-            val keysArray = JSONArray().apply {
-                put(keyObject)
-            }
+            // Parsear UUID
+            val timeLow = cleanHex.substring(0, 8)     // 8 chars
+            val timeMid = cleanHex.substring(8, 12)    // 4 chars
+            val timeHigh = cleanHex.substring(12, 16)  // 4 chars
+            val clockSeq = cleanHex.substring(16, 20)  // 4 chars
+            val node = cleanHex.substring(20, 32)      // 12 chars
+            
+            // Aplicar byte swapping a los primeros 3 grupos
+            val timeLowSwapped = timeLow.chunked(2).reversed().joinToString("")
+            val timeMidSwapped = timeMid.chunked(2).reversed().joinToString("")
+            val timeHighSwapped = timeHigh.chunked(2).reversed().joinToString("")
+            
+            // Reconstruir UUID con byte swapping
+            val uuidSwapped = timeLowSwapped + timeMidSwapped + timeHighSwapped + clockSeq + node
+            
+            // Convertir a bytes y luego a base64
+            val bytes = hexToBytes(uuidSwapped)
+            return Base64.encodeToString(bytes,
+                Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
+        }
+        
+        /**
+         * Crea JSON de licencia ClearKey - MÉTODO 1 (directo)
+         */
+        private fun createClearKeyLicenseMethod1(kid: String, key: String): String {
+            val kidBase64 = hexToBase64Direct(kid)
+            val keyBase64 = hexToBase64Direct(key)
             
             return JSONObject().apply {
-                put("keys", keysArray)
+                put("keys", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("kty", "oct")
+                        put("k", keyBase64)
+                        put("kid", kidBase64)
+                    })
+                })
+                put("type", "temporary")
+            }.toString()
+        }
+        
+        /**
+         * Crea JSON de licencia ClearKey - MÉTODO 2 (UUID swapping)
+         */
+        private fun createClearKeyLicenseMethod2(kid: String, key: String): String {
+            val kidBase64 = uuidToBase64(kid)
+            val keyBase64 = hexToBase64Direct(key)
+            
+            return JSONObject().apply {
+                put("keys", JSONArray().apply {
+                    put(JSONObject().apply {
+                        put("kty", "oct")
+                        put("k", keyBase64)
+                        put("kid", kidBase64)
+                    })
+                })
                 put("type", "temporary")
             }.toString()
         }
@@ -104,19 +154,23 @@ class ExoPlayerView(
     private var exoPlayer: ExoPlayer? = null
     private val methodChannel: MethodChannel = MethodChannel(messenger, "exoplayer_$id")
     
-    // ══════════════════════════════════════════════════════════
-    // 🔥 WATCHDOG PARA DETECTAR STREAMS TRABADOS
-    // ══════════════════════════════════════════════════════════
+    // Watchdog
     private val handler = Handler(Looper.getMainLooper())
     private var watchdogRunnable: Runnable? = null
     private var lastPosition: Long = 0
     private var stalledCount = 0
-    private val WATCHDOG_INTERVAL_MS = 5000L  // Check every 5 seconds
-    private val MAX_STALLED_CHECKS = 6        // 6 checks = 30 seconds
+    private val WATCHDOG_INTERVAL_MS = 5000L
+    private val MAX_STALLED_CHECKS = 6
+    
+    // DRM retry
+    private var currentDrmMethod = 1
+    private var lastUrl: String? = null
+    private var lastK1: String? = null
+    private var lastK2: String? = null
 
     init {
         Log.d(TAG, "═══════════════════════════════════════════════════════")
-        Log.d(TAG, "🎬 ExoPlayerView PROFESIONAL inicializando ID: $id")
+        Log.d(TAG, "🔥 ExoPlayerView V4.0 ULTRA DEFINITIVO - ID: $id")
         Log.d(TAG, "═══════════════════════════════════════════════════════")
         
         methodChannel.setMethodCallHandler(this)
@@ -129,7 +183,7 @@ class ExoPlayerView(
         
         startWatchdog()
         
-        Log.d(TAG, "✅ PlayerView + Watchdog configurados")
+        Log.d(TAG, "✅ PlayerView + Watchdog inicializados")
     }
 
     override fun getView(): View = playerView
@@ -144,7 +198,7 @@ class ExoPlayerView(
                 val k2 = call.argument<String>("k2")
                 
                 Log.d(TAG, "───────────────────────────────────────────────────────")
-                Log.d(TAG, "🔧 INITIALIZE llamado")
+                Log.d(TAG, "🔧 INITIALIZE V4.0 ULTRA")
                 Log.d(TAG, "📺 URL: ${url?.take(100)}...")
                 
                 if (k1 != null && k2 != null) {
@@ -158,7 +212,13 @@ class ExoPlayerView(
                 
                 if (url != null) {
                     try {
-                        initializePlayer(url, k1, k2)
+                        // Guardar parámetros para retry
+                        lastUrl = url
+                        lastK1 = k1
+                        lastK2 = k2
+                        currentDrmMethod = 1
+                        
+                        initializePlayer(url, k1, k2, method = 1)
                         result.success(true)
                     } catch (e: Exception) {
                         Log.e(TAG, "❌ Error en initialize", e)
@@ -212,22 +272,20 @@ class ExoPlayerView(
         }
     }
 
-    private fun initializePlayer(url: String, k1: String?, k2: String?) {
-        Log.d(TAG, "🎬 initializePlayer START")
+    private fun initializePlayer(url: String, k1: String?, k2: String?, method: Int = 1) {
+        Log.d(TAG, "🎬 initializePlayer V4.0 - MÉTODO DRM: $method")
         
         disposePlayer()
         resetWatchdog()
 
         try {
-            // ═══════════════════════════════════════════════════════
-            // PASO 1: DataSource con timeouts agresivos
-            // ═══════════════════════════════════════════════════════
+            // DataSource
             Log.d(TAG, "📡 Configurando DataSource...")
             
             val dataSourceFactory = DefaultHttpDataSource.Factory().apply {
                 setUserAgent("ExoPlayer/Flutter (Linux; Android 11)")
                 setAllowCrossProtocolRedirects(true)
-                setConnectTimeoutMs(10000)  // 10s como Shaka
+                setConnectTimeoutMs(10000)
                 setReadTimeoutMs(10000)
                 setDefaultRequestProperties(mapOf(
                     "Accept" to "*/*",
@@ -236,32 +294,25 @@ class ExoPlayerView(
                 ))
             }
             
-            Log.d(TAG, "✅ DataSource configurado (timeout: 10s)")
+            Log.d(TAG, "✅ DataSource configurado")
 
-            // ═══════════════════════════════════════════════════════
-            // PASO 2: LoadControl EXACTO A SHAKA PLAYER
-            // ═══════════════════════════════════════════════════════
-            Log.d(TAG, "⚙️  Configurando buffering (igual a Shaka)...")
+            // LoadControl
+            Log.d(TAG, "⚙️  Configurando buffering...")
             
             val loadControl = DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                    2000,   // minBufferMs - SHAKA: rebufferingGoal: 2
-                    10000,  // maxBufferMs - SHAKA: bufferingGoal: 10
-                    2000,   // bufferForPlaybackMs - aumentado para DRM
-                    3000    // bufferForPlaybackAfterRebufferMs - aumentado
+                    2000,
+                    10000,
+                    2000,
+                    3000
                 )
-                .setBackBuffer(
-                    30000,  // SHAKA: bufferBehind: 30
-                    false
-                )
+                .setBackBuffer(30000, false)
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build()
             
-            Log.d(TAG, "✅ Buffering: 2s-10s, backbuffer: 30s (como Shaka)")
+            Log.d(TAG, "✅ Buffering configurado")
 
-            // ═══════════════════════════════════════════════════════
-            // PASO 3: TrackSelector
-            // ═══════════════════════════════════════════════════════
+            // TrackSelector
             Log.d(TAG, "🎵 Configurando selector de pistas...")
             
             val trackSelector = DefaultTrackSelector(context).apply {
@@ -274,9 +325,7 @@ class ExoPlayerView(
             
             Log.d(TAG, "✅ TrackSelector configurado")
 
-            // ═══════════════════════════════════════════════════════
-            // PASO 4: Crear ExoPlayer
-            // ═══════════════════════════════════════════════════════
+            // ExoPlayer
             Log.d(TAG, "🎮 Creando ExoPlayer...")
             
             exoPlayer = ExoPlayer.Builder(context)
@@ -287,16 +336,14 @@ class ExoPlayerView(
 
             Log.d(TAG, "✅ ExoPlayer creado")
 
-            // ═══════════════════════════════════════════════════════
-            // PASO 5: MediaItem con DRM (FORMATO EXACTO A SHAKA)
-            // ═══════════════════════════════════════════════════════
+            // MediaItem con DRM
             Log.d(TAG, "📦 Construyendo MediaItem...")
             
             val mediaItemBuilder = MediaItem.Builder().setUri(Uri.parse(url))
 
             if (!k1.isNullOrEmpty() && !k2.isNullOrEmpty()) {
                 Log.d(TAG, "═══════════════════════════════════════════════════════")
-                Log.d(TAG, "🔐 CONFIGURANDO DRM CLEARKEY (FORMATO SHAKA)")
+                Log.d(TAG, "🔐 CONFIGURANDO DRM CLEARKEY - MÉTODO $method")
                 Log.d(TAG, "═══════════════════════════════════════════════════════")
                 
                 try {
@@ -314,16 +361,28 @@ class ExoPlayerView(
                         "K2 debe ser 32 chars hex (16 bytes). Actual: ${cleanK2.length}"
                     }
                     
-                    val kidBase64 = hexToBase64UrlSafe(cleanK1)
-                    val keyBase64 = hexToBase64UrlSafe(cleanK2)
+                    // Seleccionar método de conversión
+                    val licenseJson = when (method) {
+                        1 -> {
+                            Log.d(TAG, "🔄 Usando MÉTODO 1: Conversión directa hex → base64")
+                            val kidBase64 = hexToBase64Direct(cleanK1)
+                            val keyBase64 = hexToBase64Direct(cleanK2)
+                            Log.d(TAG, "   KID (directo): $kidBase64")
+                            Log.d(TAG, "   KEY (directo): $keyBase64")
+                            createClearKeyLicenseMethod1(cleanK1, cleanK2)
+                        }
+                        2 -> {
+                            Log.d(TAG, "🔄 Usando MÉTODO 2: UUID RFC 4122 con byte swapping")
+                            val kidBase64 = uuidToBase64(cleanK1)
+                            val keyBase64 = hexToBase64Direct(cleanK2)
+                            Log.d(TAG, "   KID (swapped): $kidBase64")
+                            Log.d(TAG, "   KEY (directo): $keyBase64")
+                            createClearKeyLicenseMethod2(cleanK1, cleanK2)
+                        }
+                        else -> throw IllegalArgumentException("Invalid DRM method: $method")
+                    }
                     
-                    Log.d(TAG, "🔄 Conversión a Base64 URL-safe:")
-                    Log.d(TAG, "   KID: $kidBase64")
-                    Log.d(TAG, "   KEY: $keyBase64")
-                    
-                    val licenseJson = createClearKeyLicense(cleanK1, cleanK2)
-                    
-                    Log.d(TAG, "📄 License JSON (formato W3C):")
+                    Log.d(TAG, "📄 License JSON:")
                     Log.d(TAG, licenseJson)
                     
                     val jsonBase64 = Base64.encodeToString(
@@ -342,12 +401,12 @@ class ExoPlayerView(
                     mediaItemBuilder.setDrmConfiguration(drmConfiguration)
                     
                     Log.d(TAG, "═══════════════════════════════════════════════════════")
-                    Log.d(TAG, "✅ DRM CLEARKEY CONFIGURADO (SHAKA FORMAT)")
+                    Log.d(TAG, "✅ DRM CLEARKEY CONFIGURADO - MÉTODO $method")
                     Log.d(TAG, "═══════════════════════════════════════════════════════")
                     
                 } catch (e: Exception) {
                     Log.e(TAG, "═══════════════════════════════════════════════════════")
-                    Log.e(TAG, "❌ ERROR CONFIGURANDO DRM", e)
+                    Log.e(TAG, "❌ ERROR CONFIGURANDO DRM - MÉTODO $method", e)
                     Log.e(TAG, "═══════════════════════════════════════════════════════")
                     throw e
                 }
@@ -358,9 +417,7 @@ class ExoPlayerView(
             val mediaItem = mediaItemBuilder.build()
             Log.d(TAG, "✅ MediaItem construido")
 
-            // ═══════════════════════════════════════════════════════
-            // PASO 6: Listeners con logging exhaustivo
-            // ═══════════════════════════════════════════════════════
+            // Listeners
             Log.d(TAG, "🎧 Configurando listeners...")
             
             exoPlayer?.addListener(object : Player.Listener {
@@ -373,13 +430,13 @@ class ExoPlayerView(
                         else -> "UNKNOWN"
                     }
                     
-                    Log.d(TAG, "📺 Estado: $stateName")
+                    Log.d(TAG, "📺 Estado: $stateName (método DRM: $currentDrmMethod)")
                     methodChannel.invokeMethod("onStateChange", stateName.lowercase())
                     
                     when (playbackState) {
                         Player.STATE_READY -> {
                             Log.d(TAG, "═══════════════════════════════════════════════════════")
-                            Log.d(TAG, "🎉 READY - STREAM FUNCIONAL")
+                            Log.d(TAG, "🎉 READY - STREAM FUNCIONAL CON MÉTODO $currentDrmMethod")
                             Log.d(TAG, "═══════════════════════════════════════════════════════")
                             resetWatchdog()
                         }
@@ -394,7 +451,7 @@ class ExoPlayerView(
 
                 override fun onPlayerError(error: PlaybackException) {
                     Log.e(TAG, "═══════════════════════════════════════════════════════")
-                    Log.e(TAG, "❌ PLAYER ERROR")
+                    Log.e(TAG, "❌ PLAYER ERROR - MÉTODO DRM: $currentDrmMethod")
                     Log.e(TAG, "═══════════════════════════════════════════════════════")
                     Log.e(TAG, "Code: ${error.errorCode}")
                     Log.e(TAG, "Type: ${error.javaClass.simpleName}")
@@ -404,16 +461,32 @@ class ExoPlayerView(
                     
                     error.printStackTrace()
                     
-                    methodChannel.invokeMethod("onError", mapOf(
-                        "message" to (error.message ?: "Error desconocido"),
-                        "code" to error.errorCode,
-                        "type" to error.javaClass.simpleName,
-                        "cause" to (error.cause?.message ?: "")
-                    ))
+                    // Si es error DRM y estamos en método 1, probar método 2
+                    if (error.errorCode in 6000..6999 && currentDrmMethod == 1) {
+                        Log.w(TAG, "🔄 ERROR DRM CON MÉTODO 1 - Intentando MÉTODO 2...")
+                        currentDrmMethod = 2
+                        
+                        handler.postDelayed({
+                            try {
+                                lastUrl?.let { url ->
+                                    initializePlayer(url, lastK1, lastK2, method = 2)
+                                }
+                            } catch (e: Exception) {
+                                Log.e(TAG, "❌ Error al reintentar con método 2", e)
+                            }
+                        }, 1000)
+                    } else {
+                        methodChannel.invokeMethod("onError", mapOf(
+                            "message" to (error.message ?: "Error desconocido"),
+                            "code" to error.errorCode,
+                            "type" to error.javaClass.simpleName,
+                            "cause" to (error.cause?.message ?: "")
+                        ))
+                    }
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    Log.d(TAG, "▶️  Reproduciendo: $isPlaying")
+                    Log.d(TAG, "▶️  Reproduciendo: $isPlaying (método: $currentDrmMethod)")
                     methodChannel.invokeMethod("onPlayingChange", isPlaying)
                     
                     if (isPlaying) {
@@ -424,9 +497,7 @@ class ExoPlayerView(
             
             Log.d(TAG, "✅ Listeners configurados")
 
-            // ═══════════════════════════════════════════════════════
-            // PASO 7: Preparar y reproducir
-            // ═══════════════════════════════════════════════════════
+            // Preparar y reproducir
             exoPlayer?.apply {
                 setMediaItem(mediaItem)
                 playerView.player = this
@@ -440,7 +511,7 @@ class ExoPlayerView(
             }
 
             Log.d(TAG, "═══════════════════════════════════════════════════════")
-            Log.d(TAG, "✅ INICIALIZACIÓN COMPLETA")
+            Log.d(TAG, "✅ INICIALIZACIÓN COMPLETA - MÉTODO DRM: $currentDrmMethod")
             Log.d(TAG, "═══════════════════════════════════════════════════════")
 
         } catch (e: Exception) {
@@ -451,10 +522,7 @@ class ExoPlayerView(
         }
     }
 
-    // ══════════════════════════════════════════════════════════
-    // 🔥 WATCHDOG IMPLEMENTATION (EXACTO A SHAKA detectarStalling)
-    // ══════════════════════════════════════════════════════════
-    
+    // Watchdog
     private fun startWatchdog() {
         watchdogRunnable = object : Runnable {
             override fun run() {
@@ -469,12 +537,11 @@ class ExoPlayerView(
                         if (currentPosition == lastPosition && currentPosition > 0) {
                             stalledCount++
                             Log.w(TAG, "⚠️  WATCHDOG: Stream trabado (${stalledCount}/${MAX_STALLED_CHECKS})")
-                            Log.w(TAG, "   Posición: ${currentPosition}ms, IsPlaying: $isPlaying, State: $playbackState")
                             
                             if (stalledCount >= MAX_STALLED_CHECKS) {
-                                Log.e(TAG, "🚨 WATCHDOG: STREAM TRABADO > 30s - Notificando Flutter")
+                                Log.e(TAG, "🚨 WATCHDOG: STREAM TRABADO > 30s")
                                 methodChannel.invokeMethod("onStreamStalled", null)
-                                stalledCount = 0  // Reset para no spam
+                                stalledCount = 0
                             }
                         } else {
                             resetWatchdog()
@@ -491,7 +558,7 @@ class ExoPlayerView(
         }
         
         handler.postDelayed(watchdogRunnable!!, WATCHDOG_INTERVAL_MS)
-        Log.d(TAG, "🐕 Watchdog iniciado (check cada ${WATCHDOG_INTERVAL_MS}ms)")
+        Log.d(TAG, "🐕 Watchdog iniciado")
     }
     
     private fun stopWatchdog() {
@@ -533,9 +600,6 @@ class ExoPlayerView(
     }
 }
 
-/**
- * Factory para crear instancias de ExoPlayerView
- */
 @OptIn(UnstableApi::class)
 class ExoPlayerViewFactory(private val messenger: BinaryMessenger) :
     io.flutter.plugin.platform.PlatformViewFactory(
@@ -547,7 +611,7 @@ class ExoPlayerViewFactory(private val messenger: BinaryMessenger) :
     }
 
     override fun create(context: Context, id: Int, args: Any?): PlatformView {
-        Log.d(TAG, "🏭 Creating ExoPlayerView ID: $id")
+        Log.d(TAG, "🏭 Creating ExoPlayerView V4.0 ULTRA - ID: $id")
         val creationParams = args as? Map<String?, Any?>
         return ExoPlayerView(context, messenger, id, creationParams)
     }
