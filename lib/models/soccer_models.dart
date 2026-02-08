@@ -174,8 +174,24 @@ class SoccerMatch {
     if (start == null) return false;
 
     final now = DateTime.now();
-    // 2 horas y 15 minutos (135 minutos)
-    return now.difference(start).inMinutes > 135;
+    // Expirar 2 horas y media después del inicio como fallback (150 minutos)
+    return now.difference(start).inMinutes > 150;
+  }
+
+  /// Indica si el partido debe ser removido del Hero (10 minutos después de terminar)
+  bool get shouldRemoveFromHero {
+    if (!isFinished) return false;
+
+    // Si ha pasado más de 10 minutos desde que se estima que terminó el partido
+    // Asumiendo que un partido dura aprox 110 minutos (incl. ET)
+    final start = startDateTime;
+    if (start != null) {
+      final now = DateTime.now();
+      return now.difference(start).inMinutes >
+          120; // 110m de partido + 10m de cortesía
+    }
+
+    return false;
   }
 
   bool get isWatchable {

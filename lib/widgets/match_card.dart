@@ -370,7 +370,21 @@ class MatchCard extends StatelessWidget {
         else if (timeStatus.toLowerCase().contains('prog') ||
             timeStatus.toLowerCase().contains('aplaz') ||
             timeStatus.toLowerCase().contains('susp'))
-          _buildStatusBadge(timeStatus.toUpperCase(), primaryColor)
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildStatusBadge(timeStatus.toUpperCase(), primaryColor),
+              const SizedBox(height: 6),
+              Text(
+                timeText,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: primaryColor.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          )
         else ...[
           Text(
             'HOY',

@@ -43,10 +43,9 @@ class SoccerMatchCard extends StatelessWidget {
           children: [
             // Status and Time Column
             SizedBox(
-              width:
-                  60, // Aumentado ligeramente para textos más largos como "Aplaz."
+              width: 60,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (match.isLive) ...[
@@ -59,6 +58,7 @@ class SoccerMatchCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color: theme.colorScheme.error,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ] else if (match.isFinished)
                     Text(
@@ -68,6 +68,7 @@ class SoccerMatchCard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         color: theme.hintColor.withValues(alpha: 0.6),
                       ),
+                      textAlign: TextAlign.center,
                     )
                   else if (match.timeStatus.toLowerCase().contains('prog') ||
                       match.timeStatus.toLowerCase().contains('aplaz') ||
@@ -79,6 +80,7 @@ class SoccerMatchCard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         color: theme.colorScheme.primary,
                       ),
+                      textAlign: TextAlign.center,
                     )
                   else
                     Text(
@@ -88,6 +90,7 @@ class SoccerMatchCard extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         color: theme.colorScheme.onSurface,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                 ],
               ),

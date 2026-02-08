@@ -94,11 +94,13 @@ class _MatchesHeroState extends State<MatchesHero> {
   /// Filtra partidos destacados (en vivo o próximos hoy con señales válidas)
   List<SoccerMatch> _getFeaturedMatches(List<SoccerMatch> matches) {
     return matches.where((match) {
-      // Excluir si ya terminó (API) o si ya pasaron 2h 15m (Auto-Finish)
-      if (match.isFinished || match.isAutoFinished) return false;
+      // Excluir si ya pasó el tiempo de permanencia (10 min después de finalizar) o auto-finish
+      if (match.shouldRemoveFromHero || match.isAutoFinished) return false;
 
-      // Solo mostrar si es en vivo o programado
-      final isFeatured = match.isLive || match.isScheduled;
+      // Solo mostrar si es en vivo, programado o finalizado recientemente
+      final isFeatured = match.isLive ||
+          match.isScheduled ||
+          (match.isFinished && !match.shouldRemoveFromHero);
       if (!isFeatured) return false;
 
       // Y solo si tiene al menos un canal con ID válido
