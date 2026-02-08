@@ -11,6 +11,7 @@ class ExoPlayerController {
   final _stateController = StreamController<PlayerState>.broadcast();
   final _playingController = StreamController<bool>.broadcast();
   final _errorController = StreamController<String>.broadcast();
+  final _stalledController = StreamController<void>.broadcast();
   
   // State
   PlayerState _state = PlayerState.idle;
@@ -23,6 +24,7 @@ class ExoPlayerController {
   Stream<PlayerState> get onStateChange => _stateController.stream;
   Stream<bool> get onPlayingChange => _playingController.stream;
   Stream<String> get onError => _errorController.stream;
+  Stream<void> get onStreamStalled => _stalledController.stream;
 
   ExoPlayerController(this.viewId) {
     _channel = MethodChannel('exoplayer_$viewId');
@@ -60,6 +62,11 @@ class ExoPlayerController {
         debugPrint('   Code: $code');
         debugPrint('   Cause: $cause');
         _errorController.add(message);
+        break;
+
+      case 'onStreamStalled':
+        debugPrint('🚨 WATCHDOG: Stream trabado detectado por ExoPlayer');
+        _stalledController.add(null);
         break;
     }
   }
@@ -195,6 +202,7 @@ class ExoPlayerController {
     await _stateController.close();
     await _playingController.close();
     await _errorController.close();
+    await _stalledController.close();
   }
 }
 
