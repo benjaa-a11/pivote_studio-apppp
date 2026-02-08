@@ -1,0 +1,25 @@
+workflows:
+  android-build:
+    name: Flutter Android APK Build
+    max_build_duration: 30
+    instance_type: linux # Más rápido y barato para Android
+    environment:
+      flutter: stable
+    scripts:
+      - name: Get dependencies
+        script: flutter packages pub get
+      - name: Static analysis (opcional)
+        script: flutter analyze
+      - name: Run tests
+        script: flutter test
+      - name: Build Android APK
+        script: |
+          # El flag --split-per-abi es útil si quieres APKs más ligeros
+          flutter build apk --release --build-name=1.0.$BUILD_NUMBER --build-number=$BUILD_NUMBER
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+    publishing:
+      email:
+        recipients:
+          - benjaferrer83@gmail.com # Cambia esto por tu correo
+        not_if_build_fails: true
