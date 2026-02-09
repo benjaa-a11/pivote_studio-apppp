@@ -82,7 +82,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
         SnackBar(
           content: Text(
             'Limpieza completada correctamente',
-            style: GoogleFonts.ubuntu(fontWeight: FontWeight.w600),
+            style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
           ),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
@@ -102,7 +102,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
       appBar: AppBar(
         title: Text(
           'Almacenamiento',
-          style: GoogleFonts.ubuntu(fontWeight: FontWeight.bold),
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -119,7 +119,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                   const SizedBox(height: 32),
                   Text(
                     'Detalle del espacio',
-                    style: GoogleFonts.ubuntu(
+                    style: GoogleFonts.montserrat(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface,
@@ -187,7 +187,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
             const SizedBox(height: 16),
             Text(
               'Espacio Ocupado',
-              style: GoogleFonts.ubuntu(
+              style: GoogleFonts.montserrat(
                 color: Colors.white.withValues(alpha: 0.8),
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -205,7 +205,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
               child: Text(
                 totalSize,
                 key: ValueKey(totalSize),
-                style: GoogleFonts.ubuntu(
+                style: GoogleFonts.montserrat(
                   color: Colors.white,
                   fontSize: 48,
                   fontWeight: FontWeight.bold,
@@ -215,7 +215,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
             const SizedBox(height: 16),
             Text(
               'Última limpieza: ${_formatDate(_stats['lastClearTime'])}',
-              style: GoogleFonts.ubuntu(
+              style: GoogleFonts.montserrat(
                 color: Colors.white.withValues(alpha: 0.6),
                 fontSize: 12,
               ),
@@ -263,7 +263,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.ubuntu(
+                    style: GoogleFonts.montserrat(
                       fontWeight: FontWeight.w600,
                       fontSize: 15,
                     ),
@@ -273,7 +273,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                     child: Text(
                       size,
                       key: ValueKey(size),
-                      style: GoogleFonts.ubuntu(
+                      style: GoogleFonts.montserrat(
                         color:
                             theme.colorScheme.onSurface.withValues(alpha: 0.5),
                         fontSize: 13,
@@ -318,7 +318,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
               )
             : Text(
                 'Limpiar Todo por Completo',
-                style: GoogleFonts.ubuntu(
+                style: GoogleFonts.montserrat(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),

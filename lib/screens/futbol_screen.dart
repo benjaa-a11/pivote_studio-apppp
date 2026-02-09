@@ -205,7 +205,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
           const SizedBox(height: 6),
           Text(
             label,
-            style: GoogleFonts.ubuntu(
+            style: GoogleFonts.montserrat(
               fontSize: 10,
               fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
               color: isSelected ? theme.colorScheme.primary : theme.hintColor,
@@ -317,7 +317,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
                     children: [
                       Text(
                         league.name,
-                        style: GoogleFonts.ubuntu(
+                        style: GoogleFonts.montserrat(
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
                           color: theme.colorScheme.onSurface,
@@ -325,7 +325,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
                       ),
                       Text(
                         league.country.toUpperCase(),
-                        style: GoogleFonts.ubuntu(
+                        style: GoogleFonts.montserrat(
                           fontWeight: FontWeight.w700,
                           fontSize: 9,
                           letterSpacing: 1.0,
@@ -376,14 +376,14 @@ class _FutbolScreenState extends State<FutbolScreen> {
             const SizedBox(height: 24),
             Text(
               '¡Vaya! Hubo un problema',
-              style:
-                  GoogleFonts.ubuntu(fontSize: 20, fontWeight: FontWeight.w800),
+              style: GoogleFonts.montserrat(
+                  fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
               'No pudimos conectar con los servidores de fútbol. Por favor, intenta de nuevo.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.ubuntu(color: theme.hintColor),
+              style: GoogleFonts.montserrat(color: theme.hintColor),
             ),
             const SizedBox(height: 32),
             ElevatedButton(
@@ -398,7 +398,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
                 elevation: 0,
               ),
               child: Text('REINTENTAR AHORA',
-                  style: GoogleFonts.ubuntu(fontWeight: FontWeight.w800)),
+                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w800)),
             ),
           ],
         ),
@@ -418,7 +418,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
             const SizedBox(height: 24),
             Text(
               message ?? 'No hay partidos programados',
-              style: GoogleFonts.ubuntu(
+              style: GoogleFonts.montserrat(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: theme.hintColor),
@@ -428,7 +428,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
             Text(
               'Tan pronto como se confirmen nuevos encuentros, aparecerán aquí.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.ubuntu(
+              style: GoogleFonts.montserrat(
                   color: theme.hintColor.withValues(alpha: 0.6), fontSize: 13),
             ),
           ],
@@ -463,7 +463,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
           const SizedBox(height: 16),
           RichText(
             text: TextSpan(
-              style: GoogleFonts.ubuntu(
+              style: GoogleFonts.montserrat(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.5,

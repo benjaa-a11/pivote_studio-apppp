@@ -77,7 +77,7 @@ class AppNotifications {
               Expanded(
                 child: Text(
                   message,
-                  style: GoogleFonts.ubuntu(
+                  style: GoogleFonts.montserrat(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,

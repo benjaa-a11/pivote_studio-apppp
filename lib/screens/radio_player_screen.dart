@@ -248,7 +248,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
             children: [
               Text(
                 'RADIO EN VIVO',
-                style: GoogleFonts.ubuntu(
+                style: GoogleFonts.montserrat(
                   color: textColor.withValues(alpha: 0.4),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -328,7 +328,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
         Text(
           widget.radio.name,
           textAlign: TextAlign.center,
-          style: GoogleFonts.ubuntu(
+          style: GoogleFonts.montserrat(
             color: textColor,
             fontSize: 28,
             fontWeight: FontWeight.w700,
@@ -339,7 +339,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
         Text(
           widget.radio.frequency,
           textAlign: TextAlign.center,
-          style: GoogleFonts.ubuntu(
+          style: GoogleFonts.montserrat(
             color: isDark
                 ? Theme.of(context).textTheme.bodyMedium?.color
                 : textColor.withValues(alpha: 0.5),

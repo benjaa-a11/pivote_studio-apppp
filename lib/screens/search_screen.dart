@@ -69,33 +69,21 @@ class _SearchScreenState extends State<SearchScreen>
       },
       child: Scaffold(
         backgroundColor: isDark ? AppTheme.darkBackground : Colors.white,
-        body: Stack(
+        body: Column(
           children: [
-            // Content
-            SafeArea(
-              child: Column(
-                children: [
-                  const SizedBox(height: 140), // Space for header
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 400),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      child: _isSearching
-                          ? _buildSearchResults(channelProvider, isDark)
-                          : _buildInitialState(channelProvider, isDark),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Glassmorphic Header (Not Positioned anymore to avoid overlap)
+            _buildGlassHeader(context, isDark),
 
-            // Glassmorphic Header
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: _buildGlassHeader(context, isDark),
+            // Content
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: _isSearching
+                    ? _buildSearchResults(channelProvider, isDark)
+                    : _buildInitialState(channelProvider, isDark),
+              ),
             ),
           ],
         ),
@@ -142,7 +130,7 @@ class _SearchScreenState extends State<SearchScreen>
                   const SizedBox(width: 16),
                   Text(
                     'Buscar',
-                    style: GoogleFonts.ubuntu(
+                    style: GoogleFonts.montserrat(
                       fontSize: 26,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -1,
@@ -169,13 +157,13 @@ class _SearchScreenState extends State<SearchScreen>
                   controller: _searchController,
                   focusNode: _searchFocusNode,
                   onChanged: _onSearch,
-                  style: GoogleFonts.ubuntu(
+                  style: GoogleFonts.montserrat(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Encuentra canales por nombre...',
-                    hintStyle: GoogleFonts.ubuntu(
+                    hintStyle: GoogleFonts.montserrat(
                       fontSize: 14,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                       fontWeight: FontWeight.w500,
@@ -208,8 +196,8 @@ class _SearchScreenState extends State<SearchScreen>
 
   Widget _buildInitialState(ChannelProvider provider, bool isDark) {
     return ListView(
-      physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       children: [
         if (_searchHistory.isNotEmpty) ...[
           AppAnimations.staggeredSlideIn(
@@ -251,7 +239,7 @@ class _SearchScreenState extends State<SearchScreen>
       children: [
         Text(
           title,
-          style: GoogleFonts.ubuntu(
+          style: GoogleFonts.montserrat(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: theme.colorScheme.onSurface,
@@ -266,7 +254,7 @@ class _SearchScreenState extends State<SearchScreen>
             ),
             child: Text(
               'Limpiar',
-              style: GoogleFonts.ubuntu(
+              style: GoogleFonts.montserrat(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
@@ -307,7 +295,7 @@ class _SearchScreenState extends State<SearchScreen>
             const SizedBox(width: 8),
             Text(
               query,
-              style: GoogleFonts.ubuntu(
+              style: GoogleFonts.montserrat(
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
@@ -368,7 +356,7 @@ class _SearchScreenState extends State<SearchScreen>
                 const SizedBox(height: 24),
                 Text(
                   'No hay resultados',
-                  style: GoogleFonts.ubuntu(
+                  style: GoogleFonts.montserrat(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                     color: theme.colorScheme.onSurface,
@@ -377,7 +365,7 @@ class _SearchScreenState extends State<SearchScreen>
                 const SizedBox(height: 12),
                 Text(
                   'Intenta con palabras diferentes o revisa la ortografía para encontrar el canal.',
-                  style: GoogleFonts.ubuntu(
+                  style: GoogleFonts.montserrat(
                     fontSize: 14,
                     height: 1.5,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),

@@ -53,7 +53,7 @@ class SoccerMatchCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       match.timeStatus,
-                      style: GoogleFonts.ubuntu(
+                      style: GoogleFonts.montserrat(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: theme.colorScheme.error,
@@ -63,7 +63,7 @@ class SoccerMatchCard extends StatelessWidget {
                   ] else if (match.isFinished)
                     Text(
                       match.timeStatus.toUpperCase(),
-                      style: GoogleFonts.ubuntu(
+                      style: GoogleFonts.montserrat(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: theme.hintColor.withValues(alpha: 0.6),
@@ -75,7 +75,7 @@ class SoccerMatchCard extends StatelessWidget {
                       match.timeStatus.toLowerCase().contains('susp'))
                     Text(
                       match.timeStatus,
-                      style: GoogleFonts.ubuntu(
+                      style: GoogleFonts.montserrat(
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: theme.colorScheme.primary,
@@ -85,7 +85,7 @@ class SoccerMatchCard extends StatelessWidget {
                   else
                     Text(
                       _formatStartTime(match.startTime),
-                      style: GoogleFonts.ubuntu(
+                      style: GoogleFonts.montserrat(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: theme.colorScheme.onSurface,
@@ -138,7 +138,7 @@ class SoccerMatchCard extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             'VIVO',
-            style: GoogleFonts.ubuntu(
+            style: GoogleFonts.montserrat(
               fontSize: 8,
               fontWeight: FontWeight.w900,
               color: theme.colorScheme.error,
@@ -194,7 +194,7 @@ class SoccerMatchCard extends StatelessWidget {
         Expanded(
           child: Text(
             team.name,
-            style: GoogleFonts.ubuntu(
+            style: GoogleFonts.montserrat(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: theme.colorScheme.onSurface,
@@ -217,7 +217,7 @@ class SoccerMatchCard extends StatelessWidget {
             ),
             child: Text(
               currentScore.toString(),
-              style: GoogleFonts.ubuntu(
+              style: GoogleFonts.montserrat(
                 fontSize: 14,
                 fontWeight: FontWeight.w800,
                 color: match.isLive
@@ -229,7 +229,7 @@ class SoccerMatchCard extends StatelessWidget {
         else
           Text(
             '-',
-            style: GoogleFonts.ubuntu(
+            style: GoogleFonts.montserrat(
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: theme.hintColor.withValues(alpha: 0.3),
