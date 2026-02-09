@@ -1,5 +1,5 @@
 import 'package:video_player/video_player.dart';
-import 'exoplayer_controller.dart';
+import 'exoplayer_controller_simple.dart';
 
 /// Unified interface for all video controllers
 abstract class UnifiedVideoController {
