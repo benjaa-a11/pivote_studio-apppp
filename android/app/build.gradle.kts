@@ -58,22 +58,11 @@ dependencies {
     /* =========================
        FIREBASE (solo lo necesario)
        ========================= */
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
-
-    // Google Sign-In
-    implementation("com.google.android.gms:play-services-auth:21.0.0")
-
-    /* =========================
-       MEDIA3 / EXOPLAYER
-       ========================= */
-    implementation("androidx.media3:media3-exoplayer:1.5.0")
-    implementation("androidx.media3:media3-exoplayer-dash:1.5.0")
-    implementation("androidx.media3:media3-exoplayer-hls:1.5.0")
-    implementation("androidx.media3:media3-ui:1.5.0")
-    implementation("androidx.media3:media3-common:1.5.0")
-    implementation("androidx.media3:media3-datasource:1.5.0")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-storage")
 
     /* =========================
        ANDROIDX BÁSICO

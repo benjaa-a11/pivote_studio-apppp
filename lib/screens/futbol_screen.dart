@@ -20,53 +20,33 @@ class _FutbolScreenState extends State<FutbolScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final soccerProvider = context.watch<SoccerProvider>();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          // Background subtle gradients for depth
-          if (isDark)
-            Positioned(
-              top: -100,
-              right: -100,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.05),
+      body: SafeArea(
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              SliverAppBar(
+                expandedHeight: 110,
+                floating: true,
+                pinned: false, // Ahora desaparece por completo al scrollear
+                elevation: 0,
+                backgroundColor: theme.scaffoldBackgroundColor,
+                flexibleSpace: const FlexibleSpaceBar(
+                  background: Column(
+                    children: [
+                      SizedBox(height: 10),
+                      WorldCupCountdown(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-
-          SafeArea(
-            child: NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                return [
-                  SliverAppBar(
-                    expandedHeight: 110,
-                    floating: true,
-                    pinned: true,
-                    elevation: 0,
-                    backgroundColor: theme.scaffoldBackgroundColor,
-                    flexibleSpace: const FlexibleSpaceBar(
-                      background: Column(
-                        children: [
-                          SizedBox(height: 10),
-                          WorldCupCountdown(),
-                        ],
-                      ),
-                    ),
-                  ),
-                ];
-              },
-              body: _buildContent(soccerProvider, theme),
-            ),
-          ),
-        ],
+            ];
+          },
+          body: _buildContent(soccerProvider, theme),
+        ),
       ),
     );
   }

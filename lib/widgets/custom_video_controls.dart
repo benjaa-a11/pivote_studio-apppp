@@ -140,6 +140,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: _toggleControls,
       child: Container(
         color: Colors.transparent,
@@ -154,7 +155,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
             // Controles con fade
             FadeTransition(
               opacity: _fadeAnimation,
-              child: _showControls ? _buildControls() : const SizedBox.shrink(),
+              child: IgnorePointer(
+                ignoring: _fadeAnimation.value < 0.1,
+                child: _buildControls(),
+              ),
             ),
           ],
         ),
