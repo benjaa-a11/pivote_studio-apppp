@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import android.util.Base64
 import android.util.Log
 import android.view.View
 import androidx.annotation.OptIn
@@ -16,6 +15,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
@@ -23,23 +23,21 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
-import org.json.JSONArray
-import org.json.JSONObject
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 /**
- * 🔥 EXOPLAYER V4.0 ULTRA - CON BYTE SWAPPING UUID
+ * Professional ExoPlayer implementation for Flutter.
  * 
- * SOLUCIÓN DEFINITIVA PARA DRM CLEARKEY:
- * ✅ Método 1: Conversión directa hex → base64
- * ✅ Método 2: UUID RFC 4122 con byte swapping
- * ✅ Prueba automática de ambos métodos
- * ✅ Logging exhaustivo
- * ✅ Watchdog integrado
+ * Features:
+ * - DASH (MPD) with ClearKey DRM support
+ * - HLS (M3U8) support
+ * - Automatic DRM method fallback (hex -> UUID swap)
+ * - Advanced buffering strategies
+ * - Comprehensive error handling
+ * - Stream health watchdog
+ * - Quality track selection
  * 
- * @author Senior Android Engineer  
- * @version 4.0 ULTRA DEFINITIVO
+ * @version 2.0
+ * @author Pivote Studio Team
  */
 @OptIn(UnstableApi::class)
 class ExoPlayerView(
@@ -47,572 +45,397 @@ class ExoPlayerView(
     messenger: BinaryMessenger,
     id: Int,
     creationParams: Map<String?, Any?>?
-) : PlatformView, MethodChannel.MethodCallHandler {
+) : PlatformView, MethodChannel.MethodCallHandler, Player.Listener {
 
     companion object {
         private const val TAG = "ExoPlayerView"
-        
-        // ══════════════════════════════════════════════════════════
-        // CONVERSIÓN HEX → BYTES
-        // ══════════════════════════════════════════════════════════
-        
-        private fun hexToBytes(hex: String): ByteArray {
-            val cleanHex = hex.replace(Regex("[^0-9A-Fa-f]"), "")
-            require(cleanHex.length % 2 == 0) {
-                "Hex string must have even length: $hex"
-            }
-            return ByteArray(cleanHex.length / 2) { i ->
-                cleanHex.substring(i * 2, i * 2 + 2).toInt(16).toByte()
-            }
-        }
-        
-        /**
-         * MÉTODO 1: Conversión directa hex → base64 URL-safe
-         */
-        private fun hexToBase64Direct(hex: String): String {
-            val bytes = hexToBytes(hex)
-            return Base64.encodeToString(bytes, 
-                Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
-        }
-        
-        /**
-         * MÉTODO 2: UUID RFC 4122 con byte swapping
-         * 
-         * UUID Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-         * Grupos:      time_low-time_mid-time_high-clock_seq-node
-         * 
-         * Los primeros 3 grupos necesitan byte swapping (little-endian)
-         * Los últimos 2 grupos quedan en big-endian
-         */
-        private fun uuidToBase64(hex: String): String {
-            val cleanHex = hex.replace("-", "")
-            require(cleanHex.length == 32) {
-                "UUID must be 32 hex chars: $hex"
-            }
-            
-            // Parsear UUID
-            val timeLow = cleanHex.substring(0, 8)     // 8 chars
-            val timeMid = cleanHex.substring(8, 12)    // 4 chars
-            val timeHigh = cleanHex.substring(12, 16)  // 4 chars
-            val clockSeq = cleanHex.substring(16, 20)  // 4 chars
-            val node = cleanHex.substring(20, 32)      // 12 chars
-            
-            // Aplicar byte swapping a los primeros 3 grupos
-            val timeLowSwapped = timeLow.chunked(2).reversed().joinToString("")
-            val timeMidSwapped = timeMid.chunked(2).reversed().joinToString("")
-            val timeHighSwapped = timeHigh.chunked(2).reversed().joinToString("")
-            
-            // Reconstruir UUID con byte swapping
-            val uuidSwapped = timeLowSwapped + timeMidSwapped + timeHighSwapped + clockSeq + node
-            
-            // Convertir a bytes y luego a base64
-            val bytes = hexToBytes(uuidSwapped)
-            return Base64.encodeToString(bytes,
-                Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP)
-        }
-        
-        /**
-         * Crea JSON de licencia ClearKey - MÉTODO 1 (directo)
-         */
-        private fun createClearKeyLicenseMethod1(kid: String, key: String): String {
-            val kidBase64 = hexToBase64Direct(kid)
-            val keyBase64 = hexToBase64Direct(key)
-            
-            return JSONObject().apply {
-                put("keys", JSONArray().apply {
-                    put(JSONObject().apply {
-                        put("kty", "oct")
-                        put("k", keyBase64)
-                        put("kid", kidBase64)
-                    })
-                })
-                put("type", "temporary")
-            }.toString()
-        }
-        
-        /**
-         * Crea JSON de licencia ClearKey - MÉTODO 2 (UUID swapping)
-         */
-        private fun createClearKeyLicenseMethod2(kid: String, key: String): String {
-            val kidBase64 = uuidToBase64(kid)
-            val keyBase64 = hexToBase64Direct(key)
-            
-            return JSONObject().apply {
-                put("keys", JSONArray().apply {
-                    put(JSONObject().apply {
-                        put("kty", "oct")
-                        put("k", keyBase64)
-                        put("kid", kidBase64)
-                    })
-                })
-                put("type", "temporary")
-            }.toString()
-        }
     }
 
+    // UI
     private val playerView: PlayerView = PlayerView(context)
+    
+    // Player
     private var exoPlayer: ExoPlayer? = null
     private val methodChannel: MethodChannel = MethodChannel(messenger, "exoplayer_$id")
-    
+
+    // State
+    private var lastUrl: String? = null
+    private var lastK1: String? = null
+    private var lastK2: String? = null
+    private var currentDrmMethod = DrmMethod.HEX
+    private var retryCount = 0
+
     // Watchdog
     private val handler = Handler(Looper.getMainLooper())
     private var watchdogRunnable: Runnable? = null
     private var lastPosition: Long = 0
     private var stalledCount = 0
-    private val WATCHDOG_INTERVAL_MS = 5000L
-    private val MAX_STALLED_CHECKS = 6
-    
-    // DRM retry
-    private var currentDrmMethod = 1
-    private var lastUrl: String? = null
-    private var lastK1: String? = null
-    private var lastK2: String? = null
+
+    // DRM Methods
+    private enum class DrmMethod {
+        HEX,        // Standard hex to base64
+        UUID_SWAP   // Microsoft GUID byte swap
+    }
 
     init {
-        Log.d(TAG, "═══════════════════════════════════════════════════════")
-        Log.d(TAG, "🔥 ExoPlayerView V4.0 ULTRA DEFINITIVO - ID: $id")
-        Log.d(TAG, "═══════════════════════════════════════════════════════")
-        
         methodChannel.setMethodCallHandler(this)
-        
+        configurePlayerView()
+        startWatchdog()
+        Log.d(TAG, "ExoPlayerView initialized (id: $id)")
+    }
+
+    private fun configurePlayerView() {
         playerView.apply {
             useController = true
-            controllerShowTimeoutMs = 5000
+            controllerShowTimeoutMs = PlayerConfig.UI.CONTROLLER_TIMEOUT_MS
             controllerHideOnTouch = true
+            setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS)
         }
-        
-        startWatchdog()
-        
-        Log.d(TAG, "✅ PlayerView + Watchdog inicializados")
     }
 
     override fun getView(): View = playerView
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        Log.d(TAG, "📞 MethodCall: ${call.method}")
-        
-        when (call.method) {
-            "initialize" -> {
-                val url = call.argument<String>("url")
-                val k1 = call.argument<String>("k1")
-                val k2 = call.argument<String>("k2")
-                
-                Log.d(TAG, "───────────────────────────────────────────────────────")
-                Log.d(TAG, "🔧 INITIALIZE V4.0 ULTRA")
-                Log.d(TAG, "📺 URL: ${url?.take(100)}...")
-                
-                if (k1 != null && k2 != null) {
-                    Log.d(TAG, "🔐 DRM ClearKey detectado")
-                    Log.d(TAG, "   K1: ${k1.take(16)}... (${k1.length} chars)")
-                    Log.d(TAG, "   K2: ${k2.take(16)}... (${k2.length} chars)")
-                } else {
-                    Log.d(TAG, "ℹ️  Stream sin DRM")
-                }
-                Log.d(TAG, "───────────────────────────────────────────────────────")
-                
-                if (url != null) {
-                    try {
-                        // Guardar parámetros para retry
-                        lastUrl = url
-                        lastK1 = k1
-                        lastK2 = k2
-                        currentDrmMethod = 1
-                        
-                        initializePlayer(url, k1, k2, method = 1)
-                        result.success(true)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "❌ Error en initialize", e)
-                        result.error("INIT_ERROR", e.message, e.stackTraceToString())
-                    }
-                } else {
-                    Log.e(TAG, "❌ URL es null")
-                    result.error("INVALID_URL", "URL is required", null)
-                }
+        try {
+            when (call.method) {
+                "initialize" -> handleInitialize(call, result)
+                "play" -> handlePlay(result)
+                "pause" -> handlePause(result)
+                "stop" -> handleStop(result)
+                "dispose" -> handleDispose(result)
+                "setVolume" -> handleSetVolume(call, result)
+                "getPosition" -> handleGetPosition(result)
+                "getDuration" -> handleGetDuration(result)
+                "isPlaying" -> handleIsPlaying(result)
+                else -> result.notImplemented()
             }
-            
-            "play" -> {
-                exoPlayer?.play()
-                result.success(true)
-            }
-            
-            "pause" -> {
-                exoPlayer?.pause()
-                result.success(true)
-            }
-            
-            "stop" -> {
-                exoPlayer?.stop()
-                result.success(true)
-            }
-            
-            "dispose" -> {
-                disposePlayer()
-                result.success(true)
-            }
-            
-            "setVolume" -> {
-                val volume = call.argument<Double>("volume")?.toFloat() ?: 1.0f
-                exoPlayer?.volume = volume.coerceIn(0f, 1f)
-                result.success(true)
-            }
-            
-            "getPosition" -> {
-                result.success(exoPlayer?.currentPosition ?: 0L)
-            }
-            
-            "getDuration" -> {
-                result.success(exoPlayer?.duration ?: 0L)
-            }
-            
-            "isPlaying" -> {
-                result.success(exoPlayer?.isPlaying ?: false)
-            }
-            
-            else -> result.notImplemented()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in method ${call.method}", e)
+            result.error("EXCEPTION", e.message, e.stackTraceToString())
         }
     }
 
-    private fun initializePlayer(url: String, k1: String?, k2: String?, method: Int = 1) {
-        Log.d(TAG, "🎬 initializePlayer V4.0 - MÉTODO DRM: $method")
-        
+    private fun handleInitialize(call: MethodCall, result: MethodChannel.Result) {
+        val url = call.argument<String>("url")
+        val k1 = call.argument<String>("k1")
+        val k2 = call.argument<String>("k2")
+
+        if (url == null) {
+            result.error("INVALID_ARGUMENT", "URL is required", null)
+            return
+        }
+
+        lastUrl = url
+        lastK1 = k1
+        lastK2 = k2
+        currentDrmMethod = DrmMethod.HEX
+        retryCount = 0
+
+        initializePlayer(url, k1, k2, currentDrmMethod)
+        result.success(true)
+    }
+
+    private fun handlePlay(result: MethodChannel.Result) {
+        exoPlayer?.play()
+        result.success(true)
+    }
+
+    private fun handlePause(result: MethodChannel.Result) {
+        exoPlayer?.pause()
+        result.success(true)
+    }
+
+    private fun handleStop(result: MethodChannel.Result) {
+        exoPlayer?.stop()
+        result.success(true)
+    }
+
+    private fun handleDispose(result: MethodChannel.Result) {
         disposePlayer()
-        resetWatchdog()
+        result.success(true)
+    }
+
+    private fun handleSetVolume(call: MethodCall, result: MethodChannel.Result) {
+        val volume = call.argument<Double>("volume")?.toFloat() ?: 1.0f
+        exoPlayer?.volume = volume.coerceIn(0f, 1f)
+        result.success(true)
+    }
+
+    private fun handleGetPosition(result: MethodChannel.Result) {
+        result.success(exoPlayer?.currentPosition ?: 0L)
+    }
+
+    private fun handleGetDuration(result: MethodChannel.Result) {
+        result.success(exoPlayer?.duration ?: 0L)
+    }
+
+    private fun handleIsPlaying(result: MethodChannel.Result) {
+        result.success(exoPlayer?.isPlaying ?: false)
+    }
+
+    /**
+     * Initializes the ExoPlayer with the given URL and optional DRM keys.
+     */
+    private fun initializePlayer(url: String, k1: String?, k2: String?, drmMethod: DrmMethod) {
+        val hasDrm = k1 != null && k2 != null
+        Log.d(TAG, "═══════════════════════════════════════")
+        Log.d(TAG, "Initializing ExoPlayer")
+        Log.d(TAG, "URL: $url")
+        Log.d(TAG, "DRM: ${if (hasDrm) "Yes (Method: $drmMethod)" else "No"}")
+        Log.d(TAG, "═══════════════════════════════════════")
+
+        disposePlayer()
 
         try {
-            // DataSource
-            Log.d(TAG, "📡 Configurando DataSource...")
-            
-            val dataSourceFactory = DefaultHttpDataSource.Factory().apply {
-                setUserAgent("ExoPlayer/Flutter (Linux; Android 11)")
-                setAllowCrossProtocolRedirects(true)
-                setConnectTimeoutMs(10000)
-                setReadTimeoutMs(10000)
-                setDefaultRequestProperties(mapOf(
-                    "Accept" to "*/*",
-                    "Accept-Encoding" to "gzip, deflate",
-                    "Connection" to "keep-alive"
-                ))
+            // Track Selector with quality preferences
+            val trackSelector = DefaultTrackSelector(context).apply {
+                setParameters(
+                    buildUponParameters()
+                        .setMaxVideoSizeSd()
+                        .setPreferredAudioLanguage("es") // Spanish preference
+                )
             }
-            
-            Log.d(TAG, "✅ DataSource configurado")
 
-            // LoadControl
-            Log.d(TAG, "⚙️  Configurando buffering...")
-            
+            // Load Control with professional buffering
             val loadControl = DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                    2000,
-                    10000,
-                    2000,
-                    3000
+                    PlayerConfig.Buffering.MIN_BUFFER_MS,
+                    PlayerConfig.Buffering.MAX_BUFFER_MS,
+                    PlayerConfig.Buffering.BUFFER_FOR_PLAYBACK_MS,
+                    PlayerConfig.Buffering.BUFFER_FOR_REBUFFER_MS
                 )
-                .setBackBuffer(30000, false)
-                .setPrioritizeTimeOverSizeThresholds(true)
                 .build()
-            
-            Log.d(TAG, "✅ Buffering configurado")
 
-            // TrackSelector
-            Log.d(TAG, "🎵 Configurando selector de pistas...")
-            
-            val trackSelector = DefaultTrackSelector(context).apply {
-                parameters = buildUponParameters()
-                    .setPreferredAudioLanguage("es")
-                    .setPreferredTextLanguage("es")
-                    .setForceHighestSupportedBitrate(false)
-                    .build()
+            // Data Source Factory
+            val dataSourceFactory = DefaultHttpDataSource.Factory()
+                .setUserAgent(PlayerConfig.USER_AGENT)
+                .setAllowCrossProtocolRedirects(PlayerConfig.Network.ALLOW_CROSS_PROTOCOL)
+                .setConnectTimeoutMs(PlayerConfig.Network.CONNECT_TIMEOUT_MS)
+                .setReadTimeoutMs(PlayerConfig.Network.READ_TIMEOUT_MS)
+
+            // Media Source Factory
+            val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+
+            // Configure DRM if needed
+            if (hasDrm) {
+                val drmSessionManager = createDrmSessionManager(k1!!, k2!!, drmMethod)
+                mediaSourceFactory.setDrmSessionManagerProvider { drmSessionManager }
             }
-            
-            Log.d(TAG, "✅ TrackSelector configurado")
 
-            // ExoPlayer
-            Log.d(TAG, "🎮 Creando ExoPlayer...")
-            
+            // Build ExoPlayer
             exoPlayer = ExoPlayer.Builder(context)
-                .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
-                .setLoadControl(loadControl)
                 .setTrackSelector(trackSelector)
+                .setLoadControl(loadControl)
+                .setMediaSourceFactory(mediaSourceFactory)
                 .build()
 
-            Log.d(TAG, "✅ ExoPlayer creado")
+            exoPlayer?.addListener(this)
+            playerView.player = exoPlayer
 
-            // MediaItem con DRM
-            Log.d(TAG, "📦 Construyendo MediaItem...")
-            
-            val mediaItemBuilder = MediaItem.Builder().setUri(Uri.parse(url))
+            // Build and set media item
+            val mediaItem = MediaItem.Builder()
+                .setUri(Uri.parse(url))
+                .build()
 
-            if (!k1.isNullOrEmpty() && !k2.isNullOrEmpty()) {
-                Log.d(TAG, "═══════════════════════════════════════════════════════")
-                Log.d(TAG, "🔐 CONFIGURANDO DRM CLEARKEY - MÉTODO $method")
-                Log.d(TAG, "═══════════════════════════════════════════════════════")
-                
-                try {
-                    val cleanK1 = k1.replace(Regex("[^0-9A-Fa-f]"), "")
-                    val cleanK2 = k2.replace(Regex("[^0-9A-Fa-f]"), "")
-                    
-                    Log.d(TAG, "📋 Claves limpias:")
-                    Log.d(TAG, "   K1: $cleanK1 (${cleanK1.length} chars)")
-                    Log.d(TAG, "   K2: $cleanK2 (${cleanK2.length} chars)")
-                    
-                    require(cleanK1.length == 32) {
-                        "K1 debe ser 32 chars hex (16 bytes). Actual: ${cleanK1.length}"
-                    }
-                    require(cleanK2.length == 32) {
-                        "K2 debe ser 32 chars hex (16 bytes). Actual: ${cleanK2.length}"
-                    }
-                    
-                    // Seleccionar método de conversión
-                    val licenseJson = when (method) {
-                        1 -> {
-                            Log.d(TAG, "🔄 Usando MÉTODO 1: Conversión directa hex → base64")
-                            val kidBase64 = hexToBase64Direct(cleanK1)
-                            val keyBase64 = hexToBase64Direct(cleanK2)
-                            Log.d(TAG, "   KID (directo): $kidBase64")
-                            Log.d(TAG, "   KEY (directo): $keyBase64")
-                            createClearKeyLicenseMethod1(cleanK1, cleanK2)
-                        }
-                        2 -> {
-                            Log.d(TAG, "🔄 Usando MÉTODO 2: UUID RFC 4122 con byte swapping")
-                            val kidBase64 = uuidToBase64(cleanK1)
-                            val keyBase64 = hexToBase64Direct(cleanK2)
-                            Log.d(TAG, "   KID (swapped): $kidBase64")
-                            Log.d(TAG, "   KEY (directo): $keyBase64")
-                            createClearKeyLicenseMethod2(cleanK1, cleanK2)
-                        }
-                        else -> throw IllegalArgumentException("Invalid DRM method: $method")
-                    }
-                    
-                    Log.d(TAG, "📄 License JSON:")
-                    Log.d(TAG, licenseJson)
-                    
-                    val jsonBase64 = Base64.encodeToString(
-                        licenseJson.toByteArray(Charsets.UTF_8),
-                        Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
-                    )
-                    
-                    val licenseUri = "data:application/json;base64,$jsonBase64"
-                    
-                    Log.d(TAG, "🔗 License Data URI: ${licenseUri.take(100)}...")
-                    
-                    val drmConfiguration = MediaItem.DrmConfiguration.Builder(C.CLEARKEY_UUID)
-                        .setLicenseUri(licenseUri)
-                        .build()
-                    
-                    mediaItemBuilder.setDrmConfiguration(drmConfiguration)
-                    
-                    Log.d(TAG, "═══════════════════════════════════════════════════════")
-                    Log.d(TAG, "✅ DRM CLEARKEY CONFIGURADO - MÉTODO $method")
-                    Log.d(TAG, "═══════════════════════════════════════════════════════")
-                    
-                } catch (e: Exception) {
-                    Log.e(TAG, "═══════════════════════════════════════════════════════")
-                    Log.e(TAG, "❌ ERROR CONFIGURANDO DRM - MÉTODO $method", e)
-                    Log.e(TAG, "═══════════════════════════════════════════════════════")
-                    throw e
-                }
-            } else {
-                Log.d(TAG, "ℹ️  Stream sin cifrado DRM")
-            }
+            exoPlayer?.setMediaItem(mediaItem)
+            exoPlayer?.prepare()
+            exoPlayer?.playWhenReady = true
 
-            val mediaItem = mediaItemBuilder.build()
-            Log.d(TAG, "✅ MediaItem construido")
-
-            // Listeners
-            Log.d(TAG, "🎧 Configurando listeners...")
-            
-            exoPlayer?.addListener(object : Player.Listener {
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    val stateName = when (playbackState) {
-                        Player.STATE_IDLE -> "IDLE"
-                        Player.STATE_BUFFERING -> "BUFFERING"
-                        Player.STATE_READY -> "READY"
-                        Player.STATE_ENDED -> "ENDED"
-                        else -> "UNKNOWN"
-                    }
-                    
-                    Log.d(TAG, "📺 Estado: $stateName (método DRM: $currentDrmMethod)")
-                    methodChannel.invokeMethod("onStateChange", stateName.lowercase())
-                    
-                    when (playbackState) {
-                        Player.STATE_READY -> {
-                            Log.d(TAG, "═══════════════════════════════════════════════════════")
-                            Log.d(TAG, "🎉 READY - STREAM FUNCIONAL CON MÉTODO $currentDrmMethod")
-                            Log.d(TAG, "═══════════════════════════════════════════════════════")
-                            resetWatchdog()
-                        }
-                        Player.STATE_BUFFERING -> {
-                            Log.d(TAG, "⏳ Buffering...")
-                        }
-                        Player.STATE_IDLE -> {
-                            Log.w(TAG, "⚠️  IDLE detectado")
-                        }
-                    }
-                }
-
-                override fun onPlayerError(error: PlaybackException) {
-                    Log.e(TAG, "═══════════════════════════════════════════════════════")
-                    Log.e(TAG, "❌ PLAYER ERROR - MÉTODO DRM: $currentDrmMethod")
-                    Log.e(TAG, "═══════════════════════════════════════════════════════")
-                    Log.e(TAG, "Code: ${error.errorCode}")
-                    Log.e(TAG, "Type: ${error.javaClass.simpleName}")
-                    Log.e(TAG, "Message: ${error.message}")
-                    Log.e(TAG, "Cause: ${error.cause?.message}")
-                    Log.e(TAG, "═══════════════════════════════════════════════════════")
-                    
-                    error.printStackTrace()
-                    
-                    // Si es error DRM y estamos en método 1, probar método 2
-                    if (error.errorCode in 6000..6999 && currentDrmMethod == 1) {
-                        Log.w(TAG, "🔄 ERROR DRM CON MÉTODO 1 - Intentando MÉTODO 2...")
-                        currentDrmMethod = 2
-                        
-                        handler.postDelayed({
-                            try {
-                                lastUrl?.let { url ->
-                                    initializePlayer(url, lastK1, lastK2, method = 2)
-                                }
-                            } catch (e: Exception) {
-                                Log.e(TAG, "❌ Error al reintentar con método 2", e)
-                            }
-                        }, 1000)
-                    } else {
-                        methodChannel.invokeMethod("onError", mapOf(
-                            "message" to (error.message ?: "Error desconocido"),
-                            "code" to error.errorCode,
-                            "type" to error.javaClass.simpleName,
-                            "cause" to (error.cause?.message ?: "")
-                        ))
-                    }
-                }
-
-                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    Log.d(TAG, "▶️  Reproduciendo: $isPlaying (método: $currentDrmMethod)")
-                    methodChannel.invokeMethod("onPlayingChange", isPlaying)
-                    
-                    if (isPlaying) {
-                        resetWatchdog()
-                    }
-                }
-            })
-            
-            Log.d(TAG, "✅ Listeners configurados")
-
-            // Preparar y reproducir
-            exoPlayer?.apply {
-                setMediaItem(mediaItem)
-                playerView.player = this
-                
-                Log.d(TAG, "🔄 Preparando...")
-                prepare()
-                
-                Log.d(TAG, "▶️  Iniciando (playWhenReady = true)...")
-                playWhenReady = true
-                volume = 1.0f
-            }
-
-            Log.d(TAG, "═══════════════════════════════════════════════════════")
-            Log.d(TAG, "✅ INICIALIZACIÓN COMPLETA - MÉTODO DRM: $currentDrmMethod")
-            Log.d(TAG, "═══════════════════════════════════════════════════════")
+            Log.d(TAG, "✅ ExoPlayer initialized successfully")
 
         } catch (e: Exception) {
-            Log.e(TAG, "═══════════════════════════════════════════════════════")
-            Log.e(TAG, "❌ ERROR FATAL", e)
-            Log.e(TAG, "═══════════════════════════════════════════════════════")
-            throw e
+            Log.e(TAG, "❌ Error initializing player", e)
+            notifyError("Initialization Error: ${e.message}", "INIT_ERROR", e.cause?.message)
         }
     }
 
-    // Watchdog
-    private fun startWatchdog() {
-        watchdogRunnable = object : Runnable {
-            override fun run() {
-                exoPlayer?.let { player ->
-                    val currentPosition = player.currentPosition
-                    val isPlaying = player.isPlaying
-                    val playbackState = player.playbackState
-                    
-                    if (playbackState == Player.STATE_BUFFERING || 
-                        (playbackState == Player.STATE_READY && !isPlaying)) {
-                        
-                        if (currentPosition == lastPosition && currentPosition > 0) {
-                            stalledCount++
-                            Log.w(TAG, "⚠️  WATCHDOG: Stream trabado (${stalledCount}/${MAX_STALLED_CHECKS})")
-                            
-                            if (stalledCount >= MAX_STALLED_CHECKS) {
-                                Log.e(TAG, "🚨 WATCHDOG: STREAM TRABADO > 30s")
-                                methodChannel.invokeMethod("onStreamStalled", null)
-                                stalledCount = 0
-                            }
-                        } else {
-                            resetWatchdog()
-                        }
-                    } else {
-                        resetWatchdog()
-                    }
-                    
-                    lastPosition = currentPosition
+    /**
+     * Creates a DRM session manager with ClearKey callback.
+     */
+    private fun createDrmSessionManager(
+        k1: String,
+        k2: String,
+        method: DrmMethod
+    ): DefaultDrmSessionManager {
+        Log.d(TAG, "Creating DRM Session Manager")
+        Log.d(TAG, "K1: ${k1.take(16)}...")
+        Log.d(TAG, "K2: ${k2.take(16)}...")
+        Log.d(TAG, "Method: $method")
+
+        val useUuidSwap = method == DrmMethod.UUID_SWAP
+        val drmCallback = ClearKeyDrmCallback(k1, k2, useUuidSwap)
+
+        return DefaultDrmSessionManager.Builder()
+            .setUuidAndExoMediaDrmProvider(C.CLEARKEY_UUID) { uuid ->
+                androidx.media3.exoplayer.drm.FrameworkMediaDrm.newInstance(uuid)
+            }
+            .build(drmCallback)
+    }
+
+    // ═══════════════════════════════════════
+    // Player Listeners
+    // ═══════════════════════════════════════
+
+    override fun onPlaybackStateChanged(playbackState: Int) {
+        val stateString = when (playbackState) {
+            Player.STATE_IDLE -> "idle"
+            Player.STATE_BUFFERING -> "buffering"
+            Player.STATE_READY -> "ready"
+            Player.STATE_ENDED -> "ended"
+            else -> "unknown"
+        }
+
+        Log.d(TAG, "📺 State: $stateString")
+        methodChannel.invokeMethod("onStateChange", stateString)
+
+        if (playbackState == Player.STATE_READY) {
+            stalledCount = 0
+            retryCount = 0
+            Log.d(TAG, "✅ Playback ready (DRM method: $currentDrmMethod)")
+        }
+    }
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        Log.d(TAG, "▶️ Playing: $isPlaying")
+        methodChannel.invokeMethod("onPlayingChange", isPlaying)
+    }
+
+    override fun onPlayerError(error: PlaybackException) {
+        Log.e(TAG, "❌ Player Error: ${error.errorCodeName}", error)
+        Log.e(TAG, "Error Code: ${error.errorCode}")
+        Log.e(TAG, "Message: ${error.message}")
+
+        // DRM-specific error handling with automatic fallback
+        if (isDrmError(error) && shouldRetryWithDifferentMethod()) {
+            handleDrmErrorWithFallback()
+            return
+        }
+
+        // Generic error retry
+        if (retryCount < PlayerConfig.Retry.MAX_RETRY_ATTEMPTS) {
+            retryCount++
+            Log.w(TAG, "🔄 Retrying initialization (attempt $retryCount/${PlayerConfig.Retry.MAX_RETRY_ATTEMPTS})")
+            
+            handler.postDelayed({
+                lastUrl?.let { url ->
+                    initializePlayer(url, lastK1, lastK2, currentDrmMethod)
                 }
-                
-                handler.postDelayed(this, WATCHDOG_INTERVAL_MS)
+            }, calculateBackoff(retryCount))
+            return
+        }
+
+        // Max retries exceeded
+        notifyError(
+            error.message ?: "Unknown Error",
+            error.errorCodeName,
+            error.cause?.message
+        )
+    }
+
+    private fun isDrmError(error: PlaybackException): Boolean {
+        return error.errorCode == PlaybackException.ERROR_CODE_DRM_LICENSE_ACQUISITION_FAILED ||
+               error.errorCode == PlaybackException.ERROR_CODE_DRM_PROVISIONING_FAILED ||
+               error.errorCode == PlaybackException.ERROR_CODE_DRM_DEVICE_REVOKED ||
+               error.errorCode == PlaybackException.ERROR_CODE_DRM_SYSTEM_ERROR
+    }
+
+    private fun shouldRetryWithDifferentMethod(): Boolean {
+        return PlayerConfig.Drm.ENABLE_UUID_SWAP_FALLBACK &&
+               currentDrmMethod == DrmMethod.HEX &&
+               lastK1 != null &&
+               lastK2 != null
+    }
+
+    private fun handleDrmErrorWithFallback() {
+        Log.w(TAG, "🔄 DRM Method HEX failed, trying UUID_SWAP...")
+        currentDrmMethod = DrmMethod.UUID_SWAP
+        retryCount = 0
+
+        handler.post {
+            lastUrl?.let { url ->
+                initializePlayer(url, lastK1, lastK2, currentDrmMethod)
             }
         }
-        
-        handler.postDelayed(watchdogRunnable!!, WATCHDOG_INTERVAL_MS)
-        Log.d(TAG, "🐕 Watchdog iniciado")
     }
-    
-    private fun stopWatchdog() {
-        watchdogRunnable?.let {
-            handler.removeCallbacks(it)
-            watchdogRunnable = null
+
+    private fun calculateBackoff(attempt: Int): Long {
+        val backoff = (PlayerConfig.Retry.INITIAL_BACKOFF_MS * 
+                      Math.pow(PlayerConfig.Retry.BACKOFF_MULTIPLIER, (attempt - 1).toDouble())).toLong()
+        return backoff.coerceAtMost(PlayerConfig.Retry.MAX_BACKOFF_MS)
+    }
+
+    private fun notifyError(message: String, code: String, cause: String? = null) {
+        methodChannel.invokeMethod("onError", mapOf(
+            "message" to message,
+            "code" to code,
+            "cause" to (cause ?: "")
+        ))
+    }
+
+    // ═══════════════════════════════════════
+    // Watchdog - Stream Health Monitoring
+    // ═══════════════════════════════════════
+
+    private fun startWatchdog() {
+        stopWatchdog()
+        watchdogRunnable = object : Runnable {
+            override fun run() {
+                checkPlaybackProgress()
+                handler.postDelayed(this, PlayerConfig.Watchdog.CHECK_INTERVAL_MS)
+            }
         }
-        Log.d(TAG, "🐕 Watchdog detenido")
+        handler.postDelayed(watchdogRunnable!!, PlayerConfig.Watchdog.CHECK_INTERVAL_MS)
+        Log.d(TAG, "🐕 Watchdog started")
     }
-    
-    private fun resetWatchdog() {
+
+    private fun stopWatchdog() {
+        watchdogRunnable?.let { 
+            handler.removeCallbacks(it)
+            Log.d(TAG, "🐕 Watchdog stopped")
+        }
+        watchdogRunnable = null
+    }
+
+    private fun checkPlaybackProgress() {
+        val player = exoPlayer ?: return
+        
+        if (player.isPlaying) {
+            val currentPos = player.currentPosition
+            
+            if (currentPos == lastPosition && currentPos > 0) {
+                stalledCount++
+                Log.w(TAG, "⚠️ Watchdog: Stream stalled ($stalledCount/${PlayerConfig.Watchdog.STALLED_THRESHOLD})")
+                
+                if (stalledCount >= PlayerConfig.Watchdog.STALLED_THRESHOLD) {
+                    Log.e(TAG, "🚨 Watchdog: Stream is stuck!")
+                    methodChannel.invokeMethod("onStreamStalled", null)
+                    stalledCount = 0
+                }
+            } else {
+                if (stalledCount > 0) {
+                    Log.d(TAG, "✅ Watchdog: Stream recovered")
+                }
+                stalledCount = 0
+                lastPosition = currentPos
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════
+    // Lifecycle Management
+    // ═══════════════════════════════════════
+
+    private fun disposePlayer() {
+        Log.d(TAG, "🗑️ Disposing player")
+        exoPlayer?.release()
+        exoPlayer = null
         stalledCount = 0
         lastPosition = 0
     }
 
-    private fun disposePlayer() {
-        if (exoPlayer != null) {
-            Log.d(TAG, "🗑️  Disposing player...")
-            
-            stopWatchdog()
-            
-            exoPlayer?.apply {
-                stop()
-                release()
-            }
-            exoPlayer = null
-            playerView.player = null
-            
-            resetWatchdog()
-            
-            Log.d(TAG, "✅ Player disposed")
-        }
-    }
-
     override fun dispose() {
-        Log.d(TAG, "🗑️  Disposing ExoPlayerView")
+        Log.d(TAG, "🗑️ Disposing ExoPlayerView")
+        stopWatchdog()
         disposePlayer()
-        methodChannel.setMethodCallHandler(null)
-    }
-}
-
-@OptIn(UnstableApi::class)
-class ExoPlayerViewFactory(private val messenger: BinaryMessenger) :
-    io.flutter.plugin.platform.PlatformViewFactory(
-        io.flutter.plugin.common.StandardMessageCodec.INSTANCE
-    ) {
-
-    companion object {
-        private const val TAG = "ExoPlayerViewFactory"
-    }
-
-    override fun create(context: Context, id: Int, args: Any?): PlatformView {
-        Log.d(TAG, "🏭 Creating ExoPlayerView V4.0 ULTRA - ID: $id")
-        val creationParams = args as? Map<String?, Any?>
-        return ExoPlayerView(context, messenger, id, creationParams)
     }
 }
