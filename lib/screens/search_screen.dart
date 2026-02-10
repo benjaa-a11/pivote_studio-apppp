@@ -222,13 +222,78 @@ class _SearchScreenState extends State<SearchScreen>
           ),
           const SizedBox(height: 32),
         ],
+
+        // Quick Filters Section
         AppAnimations.staggeredSlideIn(
-          index: 2,
+          index: _searchHistory.isEmpty ? 0 : 2,
+          child: _buildSectionHeader('Categorías rápidas'),
+        ),
+        const SizedBox(height: 12),
+        AppAnimations.staggeredSlideIn(
+          index: _searchHistory.isEmpty ? 1 : 3,
+          child: SizedBox(
+            height: 40,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _buildCategoryChip('Deportes', Icons.sports_soccer),
+                _buildCategoryChip('Noticias', Icons.newspaper),
+                _buildCategoryChip('Música', Icons.music_note),
+                _buildCategoryChip('Películas', Icons.movie),
+                _buildCategoryChip('Infantil', Icons.child_care),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 32),
+
+        AppAnimations.staggeredSlideIn(
+          index: _searchHistory.isEmpty ? 2 : 4,
           child: _buildSectionHeader('Canales populares'),
         ),
         const SizedBox(height: 20),
         _buildPopularChannels(provider),
       ],
+    );
+  }
+
+  Widget _buildCategoryChip(String label, IconData icon) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(right: 10),
+      child: InkWell(
+        onTap: () {
+          _searchController.text = label;
+          _onSearch(label);
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? theme.cardColor : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: 0.1),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.montserrat(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

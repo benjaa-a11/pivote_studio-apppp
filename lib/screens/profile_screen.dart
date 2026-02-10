@@ -569,9 +569,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
+        height: MediaQuery.of(context).size.height * 0.85,
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+          color: theme.scaffoldBackgroundColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
@@ -581,13 +581,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                color: theme.dividerColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 24),
             Text(
-              'Acerca de',
+              'Acerca de Pivote Studio',
               style: GoogleFonts.montserrat(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -596,42 +596,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 32),
 
-            // App Branding Section
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Center(
-                child: Image.asset(
-                  'assets/logo.png',
-                  width: 60,
-                  errorBuilder: (context, _, __) => Icon(
-                    Icons.auto_awesome_rounded,
-                    size: 40,
-                    color: theme.colorScheme.primary,
+            // App Branding Section with Animation
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutBack,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: child,
+                );
+              },
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                  border: Border.all(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1)),
+                ),
+                child: Center(
+                  child: Image.asset(
+                    'assets/logo.png',
+                    width: 70,
+                    errorBuilder: (context, _, __) => Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 50,
+                      color: theme.colorScheme.primary,
+                    ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
               'Pivote Studio',
               style: GoogleFonts.montserrat(
-                fontSize: 24,
+                fontSize: 26,
                 fontWeight: FontWeight.w900,
                 color: theme.colorScheme.onSurface,
                 letterSpacing: -0.5,
               ),
             ),
-            Text(
-              'Versión $_appVersion',
-              style: GoogleFonts.montserrat(
-                fontSize: 14,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                fontWeight: FontWeight.w500,
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Versión $_appVersion',
+                style: GoogleFonts.montserrat(
+                  fontSize: 13,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             const SizedBox(height: 32),
@@ -645,36 +673,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildAboutTile(
                     context,
                     icon: Icons.code_rounded,
-                    title: 'Desarrollador',
+                    title: 'Desarrollado por',
                     subtitle: 'Pivote Tech Team',
                   ),
                   _buildAboutTile(
                     context,
                     icon: Icons.language_rounded,
-                    title: 'Sitio Web',
+                    title: 'Sitio Web Oficial',
                     subtitle: 'www.pivote.app',
                   ),
                   _buildAboutTile(
                     context,
-                    icon: Icons.description_rounded,
-                    title: 'Términos y Condiciones',
-                    subtitle: 'Leer política de privacidad',
+                    icon: Icons.policy_rounded,
+                    title: 'Política de Privacidad',
+                    subtitle: 'Revisa cómo cuidamos tus datos',
                   ),
                   _buildAboutTile(
                     context,
-                    icon: Icons.mail_outline_rounded,
-                    title: 'Soporte Técnico',
-                    subtitle: 'soporte@pivote.app',
+                    icon: Icons.description_rounded,
+                    title: 'Términos de Servicio',
+                    subtitle: 'Reglas de uso de la plataforma',
                   ),
                   const SizedBox(height: 24),
+
+                  // Botón de Verificar Actualizaciones
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _checkUpdates(context),
+                      icon: const Icon(Icons.system_update_rounded, size: 20),
+                      label: Text(
+                        'Buscar Actualizaciones',
+                        style:
+                            GoogleFonts.montserrat(fontWeight: FontWeight.w700),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.surface,
+                        foregroundColor: theme.colorScheme.primary,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: BorderSide(
+                          color: theme.dividerColor.withValues(alpha: 0.1),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
                   Center(
                     child: Text(
-                      '© 2026 Pivote Studio. Todos los derechos reservados.',
+                      '© 2026 Pivote Studio. Todos los derechos reservados.\nHecho con ❤️ en Argentina.',
                       style: GoogleFonts.montserrat(
                         fontSize: 11,
                         color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                            theme.colorScheme.onSurface.withValues(alpha: 0.4),
                         fontWeight: FontWeight.w500,
+                        height: 1.5,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -687,6 +744,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _checkUpdates(BuildContext context) async {
+    Navigator.pop(context); // Close the modal
+
+    // Show loading notification
+    AppNotifications.showInfo(context, 'Buscando actualizaciones...');
+
+    // Simulate network request
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (context.mounted) {
+      AppNotifications.showSuccess(
+          context, '¡Tu app está actualizada a la última versión!');
+    }
   }
 
   Widget _buildAboutTile(

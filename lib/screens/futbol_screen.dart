@@ -329,7 +329,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
             itemBuilder: (context, index) => SoccerMatchCard(
               match: matches[index],
               data: data,
-              onTap: () {},
             ),
           ),
         ],

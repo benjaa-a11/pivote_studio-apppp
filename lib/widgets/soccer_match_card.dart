@@ -6,13 +6,11 @@ import '../models/soccer_models.dart';
 class SoccerMatchCard extends StatelessWidget {
   final SoccerMatch match;
   final SoccerData data;
-  final VoidCallback onTap;
 
   const SoccerMatchCard({
     super.key,
     required this.match,
     required this.data,
-    required this.onTap,
   });
 
   @override
@@ -27,9 +25,8 @@ class SoccerMatchCard extends StatelessWidget {
         orElse: () => SoccerTeam(
             id: '', name: match.awayTeam, shortName: match.awayTeam));
 
-    return InkWell(
-      onTap: onTap,
-      child: Container(
+    return Container(
+
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
           border: Border(
@@ -120,8 +117,7 @@ class SoccerMatchCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildLiveBadge(ThemeData theme) {

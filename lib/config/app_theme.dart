@@ -2,33 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // ==================== TEMA OSCURO (Midnight Indigo) ====================
-  // Inspirado en interfaces modernas de alto rendimiento como Vercel, Linear, Framer
-  static const Color darkBackground = Color(0xFF030712); // Negro ultra profundo
-  static const Color darkSurface = Color(0xFF0F172A); // Slate 900
-  static const Color darkCard = Color(0xFF1E293B); // Slate 800
-  static const Color darkPrimary = Color(0xFF6366F1); // Indigo 500
-  static const Color darkSecondary = Color(0xFF10B981); // Emerald 500
-  static const Color darkAccent = Color(0xFF8B5CF6); // Violet 500
-  static const Color darkError = Color(0xFFEF4444); // Red 500
-  static const Color darkForeground = Color(0xFFF8FAFC); // Slate 50
-  static const Color darkSecondaryForeground = Color(0xFFE2E8F0); // Slate 200
-  static const Color darkMutedForeground = Color(0xFF94A3B8); // Slate 400
-  static const Color darkBorder = Color(0xFF334155); // Slate 700
-  static const Color darkRing = Color(0xFF6366F1); // Indigo 500 (Primary)
+  // ==================== TEMA OSCURO (Midnight Indigo Pro) ====================
+  static const Color darkBackground =
+      Color(0xFF020408); // Ultra Dark Blue/Black
+  static const Color darkSurface = Color(0xFF0B1121); // Rich Deep Blue
+  static const Color darkCard = Color(0xFF151E32); // Lighter Deep Blue
+  static const Color darkPrimary = Color(0xFF5C6BC0); // Indigo 400 (Softer)
+  static const Color darkSecondary = Color(0xFF26A69A); // Teal 400
+  static const Color darkAccent = Color(0xFF7E57C2); // Deep Purple 400
+  static const Color darkError = Color(0xFFE57373); // Red 300
+  static const Color darkTextPrimary = Color(0xFFECEFF1); // Blue Grey 50
+  static const Color darkTextSecondary = Color(0xFFB0BEC5); // Blue Grey 200
+  static const Color darkBorder = Color(0xFF273546); // Muted Blue Border
 
-  static const Color chart1 = Color(0xFF6366F1);
-  static const Color chart2 = Color(0xFF10B981);
-
-  // ==================== TEMA CLARO ====================
-  // Inspirado en Apple, Google, interfaces modernas
-  static const Color lightBackground = Color(0xFFFEFFFF); // Gris muy claro
-  static const Color lightSurface = Color(0xFFFFFFFF); // Blanco puro
-  static const Color lightCard = Color(0xFFEBF1FD); // Blanco con tinte
-  static const Color lightPrimary = Color(0xFF0066FF); // Azul moderno
-  static const Color lightSecondary = Color(0xFF0052CC); // Azul profundo
-  static const Color lightAccent = Color(0xFF00B8D4); // Cyan
-  static const Color lightError = Color(0xFFDC3545); // Rojo error
+  // ==================== TEMA CLARO (Clean Slate) ====================
+  static const Color lightBackground = Color(0xFFF8F9FA); // Off White
+  static const Color lightSurface = Color(0xFFFFFFFF); // Pure White
+  static const Color lightCard = Color(0xFFFFFFFF); // White Cards
+  static const Color lightPrimary = Color(0xFF3F51B5); // Indigo 500
+  static const Color lightSecondary = Color(0xFF00897B); // Teal 600
+  static const Color lightTextPrimary = Color(0xFF263238); // Blue Grey 900
+  static const Color lightTextSecondary = Color(0xFF546E7A); // Blue Grey 600
+  static const Color lightBorder = Color(0xFFE0E0E0); // Grey 300
 
   // ==================== TEMA OSCURO ====================
   static ThemeData darkTheme = ThemeData(
@@ -37,228 +32,110 @@ class AppTheme {
     colorScheme: const ColorScheme.dark(
       primary: darkPrimary,
       secondary: darkSecondary,
-      surface: darkBackground,
-      onSurface: darkForeground,
+      surface: darkSurface,
+      onSurface: darkTextPrimary,
       error: darkError,
       tertiary: darkAccent,
-      inverseSurface: darkSurface,
+      inverseSurface: darkTextPrimary, // For contrast on some widgets
       outline: darkBorder,
     ),
-    splashFactory: InkRipple.splashFactory,
-    primaryColor: darkPrimary,
     scaffoldBackgroundColor: darkBackground,
-    canvasColor: darkBackground,
     cardColor: darkCard,
+    dividerColor: darkBorder,
 
-    // Tipografía premium con Montserrat
+    // Tipografía optimizada (Solo Montserrat)
     textTheme:
         GoogleFonts.montserratTextTheme(ThemeData.dark().textTheme).copyWith(
       displayLarge: GoogleFonts.montserrat(
-        fontSize: 34,
-        fontWeight: FontWeight.w900,
-        letterSpacing: -1.5,
-        height: 1.1,
-        color: darkForeground,
-      ),
+          fontSize: 32,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -1.0,
+          color: darkTextPrimary),
       displayMedium: GoogleFonts.montserrat(
-        fontSize: 28,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -1,
-        height: 1.2,
-        color: darkForeground,
-      ),
-      displaySmall: GoogleFonts.montserrat(
-        fontSize: 24,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.5,
-        height: 1.2,
-        color: darkForeground,
-      ),
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
+          color: darkTextPrimary),
       headlineMedium: GoogleFonts.montserrat(
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-        height: 1.3,
-        color: darkForeground,
-      ),
+          fontSize: 24, fontWeight: FontWeight.w700, color: darkTextPrimary),
       headlineSmall: GoogleFonts.montserrat(
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        height: 1.3,
-        color: darkForeground,
-      ),
+          fontSize: 20, fontWeight: FontWeight.w600, color: darkTextPrimary),
       titleLarge: GoogleFonts.montserrat(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        height: 1.4,
-        color: darkForeground,
-      ),
+          fontSize: 18, fontWeight: FontWeight.w600, color: darkTextPrimary),
       titleMedium: GoogleFonts.montserrat(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        height: 1.4,
-        color: darkSecondaryForeground,
-      ),
+          fontSize: 16, fontWeight: FontWeight.w600, color: darkTextPrimary),
       bodyLarge: GoogleFonts.montserrat(
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-        height: 1.5,
-        color: darkSecondaryForeground,
-      ),
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          color: darkTextSecondary,
+          height: 1.5),
       bodyMedium: GoogleFonts.montserrat(
-        fontSize: 14,
-        fontWeight: FontWeight.w400,
-        height: 1.5,
-        color: darkMutedForeground,
-      ),
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: darkTextSecondary,
+          height: 1.5),
       labelLarge: GoogleFonts.montserrat(
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.5,
-        color: darkForeground,
-      ),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.5,
+          color: darkTextPrimary),
     ),
 
     cardTheme: CardThemeData(
       elevation: 0,
+      color: darkCard,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: darkBorder.withValues(alpha: 0.5), width: 1),
+        side: BorderSide(color: darkBorder.withValues(alpha: 0.5)),
       ),
-      color: darkSurface,
-      surfaceTintColor: Colors.transparent,
+      margin: EdgeInsets.zero,
     ),
 
     appBarTheme: AppBarTheme(
-      elevation: 0,
       backgroundColor: darkBackground,
-      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
       centerTitle: false,
-      iconTheme: const IconThemeData(color: darkForeground),
+      iconTheme: const IconThemeData(color: darkTextPrimary),
       titleTextStyle: GoogleFonts.montserrat(
         fontSize: 22,
-        fontWeight: FontWeight.w900,
-        color: darkForeground,
-        letterSpacing: -0.8,
+        fontWeight: FontWeight.w700,
+        color: darkTextPrimary,
       ),
     ),
-
-    navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: darkBackground,
-      indicatorColor: darkPrimary.withValues(alpha: 0.15),
-      elevation: 0,
-      height: 70,
-      labelTextStyle: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return GoogleFonts.montserrat(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: darkPrimary,
-            letterSpacing: 0.2,
-          );
-        }
-        return GoogleFonts.montserrat(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: darkMutedForeground,
-        );
-      }),
-      iconTheme: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return const IconThemeData(color: darkPrimary, size: 26, weight: 800);
-        }
-        return const IconThemeData(color: darkMutedForeground, size: 24);
-      }),
-    ),
-
-    iconTheme: const IconThemeData(color: darkForeground, size: 24),
 
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: darkSurface,
+      fillColor: darkCard,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: darkBorder.withValues(alpha: 0.5)),
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: darkBorder.withValues(alpha: 0.3)),
+        borderSide: BorderSide(color: darkBorder.withValues(alpha: 0.5)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: darkPrimary, width: 2),
+        borderSide: const BorderSide(color: darkPrimary, width: 1.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      contentPadding: const EdgeInsets.all(20),
       hintStyle: GoogleFonts.montserrat(
-        color: darkMutedForeground.withValues(alpha: 0.7),
-        fontSize: 15,
-      ),
-    ),
-
-    dividerTheme: DividerThemeData(
-      color: darkBorder.withValues(alpha: 0.4),
-      thickness: 1,
-      space: 1,
+          color: darkTextSecondary.withValues(alpha: 0.6)),
     ),
 
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        elevation: 0,
         backgroundColor: darkPrimary,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: GoogleFonts.montserrat(
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.5,
-        ),
-      ).copyWith(
-        overlayColor:
-            WidgetStateProperty.all(Colors.white.withValues(alpha: 0.1)),
-        splashFactory: InkRipple.splashFactory,
+        textStyle:
+            GoogleFonts.montserrat(fontWeight: FontWeight.w700, fontSize: 16),
       ),
     ),
-
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: darkPrimary,
-      foregroundColor: Colors.white,
-      elevation: 12,
-      // shadowColor no existe directamente en FloatingActionButtonThemeData, se usa elevation
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-    ),
-
-    dialogTheme: DialogThemeData(
-      backgroundColor: darkSurface,
-      elevation: 0,
-      titleTextStyle: GoogleFonts.montserrat(
-        fontSize: 22,
-        fontWeight: FontWeight.w800,
-        color: darkForeground,
-      ),
-      contentTextStyle: GoogleFonts.montserrat(
-        fontSize: 16,
-        color: darkSecondaryForeground,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: darkBorder.withValues(alpha: 0.5)),
-      ),
-    ),
-
-    snackBarTheme: SnackBarThemeData(
-      backgroundColor: darkSurface,
-      contentTextStyle: GoogleFonts.montserrat(
-        color: darkForeground,
-        fontWeight: FontWeight.w600,
-      ),
-      actionTextColor: darkPrimary,
-      behavior: SnackBarBehavior.floating,
-      elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: darkBorder.withValues(alpha: 0.5)),
-      ),
-    ),
+    dialogTheme: const DialogThemeData(backgroundColor: darkSurface),
   );
 
   // ==================== TEMA CLARO ====================
@@ -268,184 +145,101 @@ class AppTheme {
     colorScheme: const ColorScheme.light(
       primary: lightPrimary,
       secondary: lightSecondary,
-      surface: lightBackground,
-      onSurface: Colors.black87,
-      error: lightError,
-      tertiary: lightAccent,
+      surface: lightSurface,
+      onSurface: lightTextPrimary,
+      error: Color(0xFFD32F2F),
+      tertiary: Color(0xFF0097A7),
+      outline: lightBorder,
     ),
-    splashFactory: InkRipple.splashFactory,
-    primaryColor: lightPrimary,
     scaffoldBackgroundColor: lightBackground,
-    canvasColor: lightBackground,
     cardColor: lightCard,
+    dialogTheme: const DialogThemeData(backgroundColor: lightSurface),
+    dividerColor: lightBorder,
     textTheme:
         GoogleFonts.montserratTextTheme(ThemeData.light().textTheme).copyWith(
       displayLarge: GoogleFonts.montserrat(
-        fontSize: 34,
-        fontWeight: FontWeight.w800,
-        letterSpacing: -1,
-        height: 1.2,
-        color: Colors.black87,
-      ),
+          fontSize: 32,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -1.0,
+          color: lightTextPrimary),
       displayMedium: GoogleFonts.montserrat(
-        fontSize: 28,
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.5,
-        height: 1.2,
-        color: Colors.black87,
-      ),
-      displaySmall: GoogleFonts.montserrat(
-        fontSize: 24,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0,
-        height: 1.3,
-        color: Colors.black87,
-      ),
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.5,
+          color: lightTextPrimary),
       headlineMedium: GoogleFonts.montserrat(
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        height: 1.3,
-        color: Colors.black87,
-      ),
+          fontSize: 24, fontWeight: FontWeight.w700, color: lightTextPrimary),
       headlineSmall: GoogleFonts.montserrat(
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
-        height: 1.3,
-        color: Colors.black87,
-      ),
+          fontSize: 20, fontWeight: FontWeight.w600, color: lightTextPrimary),
       titleLarge: GoogleFonts.montserrat(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        height: 1.4,
-        color: Colors.black87,
-      ),
+          fontSize: 18, fontWeight: FontWeight.w600, color: lightTextPrimary),
       titleMedium: GoogleFonts.montserrat(
-        fontSize: 15,
-        fontWeight: FontWeight.w500,
-        height: 1.4,
-        color: Colors.black54,
-      ),
+          fontSize: 16, fontWeight: FontWeight.w600, color: lightTextPrimary),
       bodyLarge: GoogleFonts.montserrat(
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-        height: 1.5,
-        color: Colors.black54,
-      ),
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          color: lightTextSecondary,
+          height: 1.5),
       bodyMedium: GoogleFonts.montserrat(
-        fontSize: 14,
-        fontWeight: FontWeight.w400,
-        height: 1.5,
-        color: Colors.black45,
-      ),
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: lightTextSecondary,
+          height: 1.5),
       labelLarge: GoogleFonts.montserrat(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.5,
-        color: Colors.black87,
-      ),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.5,
+          color: Colors.white),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
       color: lightCard,
-      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: lightBorder),
+      ),
+      margin: EdgeInsets.zero,
     ),
     appBarTheme: AppBarTheme(
-      elevation: 0,
       backgroundColor: lightBackground,
-      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
       centerTitle: false,
+      iconTheme: const IconThemeData(color: lightTextPrimary),
       titleTextStyle: GoogleFonts.montserrat(
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: FontWeight.w700,
-        color: Colors.black87,
-        letterSpacing: -0.5,
+        color: lightTextPrimary,
       ),
-      iconTheme: const IconThemeData(color: Colors.black87),
     ),
-    navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: lightSurface,
-      indicatorColor: lightPrimary.withValues(alpha: 0.15),
-      elevation: 8,
-      height: 72,
-      labelTextStyle: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return GoogleFonts.montserrat(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: lightPrimary,
-            letterSpacing: 0.5,
-          );
-        }
-        return GoogleFonts.montserrat(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: Colors.grey[600],
-        );
-      }),
-      iconTheme: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) {
-          return const IconThemeData(color: lightPrimary, size: 26);
-        }
-        return IconThemeData(color: Colors.grey[600], size: 24);
-      }),
-    ),
-    iconTheme: const IconThemeData(color: Colors.black87, size: 24),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: lightCard,
+      fillColor: Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: lightBorder),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      hintStyle: GoogleFonts.montserrat(color: Colors.grey[500], fontSize: 15),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: lightBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: lightPrimary, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.all(20),
+      hintStyle: GoogleFonts.montserrat(
+          color: lightTextSecondary.withValues(alpha: 0.6)),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        elevation: 0,
         backgroundColor: lightPrimary,
         foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: GoogleFonts.montserrat(
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.5,
-        ),
-      ),
-    ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: lightPrimary,
-      foregroundColor: Colors.white,
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    ),
-    dialogTheme: DialogThemeData(
-      backgroundColor: lightSurface,
-      titleTextStyle: GoogleFonts.montserrat(
-        fontSize: 20,
-        fontWeight: FontWeight.w700,
-        color: Colors.black87,
-      ),
-      contentTextStyle: GoogleFonts.montserrat(
-        fontSize: 15,
-        color: Colors.black54,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-    ),
-    snackBarTheme: SnackBarThemeData(
-      backgroundColor: lightCard,
-      contentTextStyle: GoogleFonts.montserrat(
-        color: Colors.black87,
-      ),
-      actionTextColor: lightPrimary,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        elevation: 0,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle:
+            GoogleFonts.montserrat(fontWeight: FontWeight.w700, fontSize: 16),
       ),
     ),
   );

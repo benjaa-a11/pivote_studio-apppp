@@ -41,26 +41,21 @@ class AudioManager extends ChangeNotifier {
 
     await AudioServiceHelper.init();
 
-    // Listen to player state changes - LÓGICA SIMPLIFICADA
+    // Listen to player state changes
     _audioPlayer.playerStateStream.listen((playerState) {
       final processingState = playerState.processingState;
       final playing = playerState.playing;
 
-      // Solo mostrar loading en la carga inicial
-      if (processingState == ProcessingState.loading && _status == AudioManagerStatus.loading) {
-        // Mantener loading solo si estamos en loading inicial
-        notifyListeners();
-        return;
-      }
-
-      // Si está reproduciendo (playing = true), mostrar como playing
-      if (playing) {
+      if (processingState == ProcessingState.loading ||
+          processingState == ProcessingState.buffering) {
+        _status = AudioManagerStatus.loading;
+      } else if (!playing) {
+        _status = AudioManagerStatus.paused;
+      } else if (processingState != ProcessingState.completed) {
         _status = AudioManagerStatus.playing;
       } else {
-        // Si no está reproduciendo, mostrar como pausado (excepto en error)
-        if (_status != AudioManagerStatus.error) {
-          _status = AudioManagerStatus.paused;
-        }
+        _audioPlayer.seek(Duration.zero);
+        _audioPlayer.pause();
       }
 
       notifyListeners();

@@ -4,6 +4,7 @@ import 'package:skeletonizer/skeletonizer.dart';
 import '../screens/search_screen.dart';
 import '../providers/user_provider.dart';
 import '../config/app_animations.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SearchHeader extends StatefulWidget {
   const SearchHeader({super.key});
@@ -15,9 +16,58 @@ class SearchHeader extends StatefulWidget {
 class _SearchHeaderState extends State<SearchHeader> {
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour >= 5 && hour < 12) return 'Buenos días,';
-    if (hour >= 12 && hour < 19) return 'Buenas tardes,';
-    return 'Buenas noches,';
+    if (hour >= 6 && hour < 12) return 'Buenos días';
+    if (hour >= 12 && hour < 20) return 'Buenas tardes';
+    return 'Buenas noches';
+  }
+
+  String _getFormattedDate() {
+    final now = DateTime.now();
+    final months = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre'
+    ];
+
+    // Weekday is 1-based (Monday=1), so subtract 1 for 0-based index
+    // Be careful, DateTime.weekday 1=Mon, 7=Sun.
+    // My list is 0-based.
+    // Actually, simple way:
+    String dayName = '';
+    switch (now.weekday) {
+      case 1:
+        dayName = 'Lunes';
+        break;
+      case 2:
+        dayName = 'Martes';
+        break;
+      case 3:
+        dayName = 'Miércoles';
+        break;
+      case 4:
+        dayName = 'Jueves';
+        break;
+      case 5:
+        dayName = 'Viernes';
+        break;
+      case 6:
+        dayName = 'Sábado';
+        break;
+      case 7:
+        dayName = 'Domingo';
+        break;
+    }
+
+    return '$dayName, ${now.day} de ${months[now.month - 1]}';
   }
 
   @override
@@ -50,14 +100,25 @@ class _SearchHeaderState extends State<SearchHeader> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    _getGreeting(),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        _getGreeting(),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        '👋',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 2),
                   Skeletonizer(
                     enabled: isLoading,
                     child: Text(
@@ -65,9 +126,20 @@ class _SearchHeaderState extends State<SearchHeader> {
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: theme.colorScheme.onSurface,
-                        fontSize: 22,
+                        fontSize: 24,
                         letterSpacing: -0.5,
+                        height: 1.1,
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _getFormattedDate(),
+                    style: GoogleFonts.montserrat(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.primary,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
