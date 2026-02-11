@@ -49,7 +49,7 @@ class _RadiosScreenState extends State<RadiosScreen>
         bottom: false,
         child: CustomScrollView(
           controller: _scrollController,
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           slivers: [
             // Floating Header
             SliverAppBar(

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 import '../services/auth_service.dart';
 import '../config/app_animations.dart';
 import '../widgets/app_notifications.dart';
@@ -29,9 +31,16 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final userProvider = context.read<UserProvider>();
+
+    // UI Loading state handled by UserProvider notification or local if needed
+    // But since UserProvider notifies listeners, we might not need local setState if we listened to it.
+    // However, mixing local and provider state can be tricky.
+    // Let's keep local loading for the button animation, but call provider.
+
     setState(() => _isLoading = true);
     try {
-      await AuthService.signIn(
+      await userProvider.login(
         _emailController.text,
         _passwordController.text,
       );
@@ -39,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Show success message
         AppNotifications.showSuccess(context, '¡Bienvenido de nuevo!');
 
-        // Navigate to MainScreen and remove login screen from stack
+        // Navigate to MainScreen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const MainScreen(),
@@ -58,12 +67,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
     try {
-      await AuthService.signInWithGoogle();
+      final userProvider = context.read<UserProvider>();
+      await userProvider.signInWithGoogle();
+
       if (mounted) {
         // Show success message
         AppNotifications.showSuccess(context, 'Sesión iniciada con Google');
 
-        // Navigate to MainScreen and remove login screen from stack
+        // Navigate to MainScreen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const MainScreen(),

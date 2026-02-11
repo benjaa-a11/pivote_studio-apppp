@@ -103,6 +103,23 @@ class AppTheme {
         color: darkTextPrimary,
       ),
     ),
+    navigationBarTheme: NavigationBarThemeData(
+      indicatorColor: Colors.transparent,
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return GoogleFonts.montserrat(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: darkPrimary,
+          );
+        }
+        return GoogleFonts.montserrat(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: darkTextSecondary,
+        );
+      }),
+    ),
 
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -211,6 +228,23 @@ class AppTheme {
         fontWeight: FontWeight.w700,
         color: lightTextPrimary,
       ),
+    ),
+    navigationBarTheme: NavigationBarThemeData(
+      indicatorColor: Colors.transparent,
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return GoogleFonts.montserrat(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: lightPrimary,
+          );
+        }
+        return GoogleFonts.montserrat(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: lightTextSecondary,
+        );
+      }),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,

@@ -36,10 +36,10 @@ class UserProvider with ChangeNotifier {
     try {
       debugPrint('🔵 UserProvider: Loading user data...');
       _user = await AuthService.getUser();
-      
+
       if (_user != null) {
         debugPrint('✅ UserProvider: User data loaded: ${_user!.email}');
-        
+
         // Download and cache profile image if URL exists
         if (_user!.photoUrl != null && _user!.photoUrl!.isNotEmpty) {
           debugPrint('🔵 UserProvider: Profile URL found, caching image...');
@@ -86,7 +86,8 @@ class UserProvider with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final appDir = await getApplicationDocumentsDirectory();
-        final fileName = 'profile_cache_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final fileName =
+            'profile_cache_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final file = File('${appDir.path}/$fileName');
 
         await file.writeAsBytes(response.bodyBytes);
@@ -111,7 +112,8 @@ class UserProvider with ChangeNotifier {
         await prefs.setString('cached_photo_url', url);
         notifyListeners();
       } else {
-        debugPrint('⚠️ UserProvider: Failed to download image. Status: ${response.statusCode}');
+        debugPrint(
+            '⚠️ UserProvider: Failed to download image. Status: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('❌ UserProvider: Error caching profile image: $e');
@@ -123,7 +125,7 @@ class UserProvider with ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final cachedPath = prefs.getString('profile_image_path');
-      
+
       if (cachedPath != null) {
         final file = File(cachedPath);
         if (await file.exists()) {
@@ -134,7 +136,8 @@ class UserProvider with ChangeNotifier {
           await prefs.remove('profile_image_path');
           await prefs.remove('cached_photo_url');
           _profileImagePath = null;
-          debugPrint('⚠️ UserProvider: Cached image file not found, cleared cache');
+          debugPrint(
+              '⚠️ UserProvider: Cached image file not found, cleared cache');
         }
       }
       notifyListeners();
@@ -146,10 +149,10 @@ class UserProvider with ChangeNotifier {
   /// Update profile image - pick from gallery and upload
   Future<void> updateProfileImage() async {
     final picker = ImagePicker();
-    
+
     try {
       debugPrint('🔵 UserProvider: Opening image picker...');
-      
+
       final pickedFile = await picker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 1024,
@@ -169,8 +172,10 @@ class UserProvider with ChangeNotifier {
 
       // 1. Save image permanently to app's document directory
       final appDir = await getApplicationDocumentsDirectory();
-      final fileName = 'profile_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final savedImage = await File(pickedFile.path).copy('${appDir.path}/$fileName');
+      final fileName =
+          'profile_image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final savedImage =
+          await File(pickedFile.path).copy('${appDir.path}/$fileName');
       debugPrint('✅ UserProvider: Image saved locally: ${savedImage.path}');
 
       // 2. Clear old cached image if exists
@@ -203,7 +208,7 @@ class UserProvider with ChangeNotifier {
         final updatedUser = _user!.copyWith(photoUrl: downloadUrl);
         await AuthService.updateUser(updatedUser);
         _user = updatedUser;
-        
+
         // Update cached URL
         await prefs.setString('cached_photo_url', downloadUrl);
         debugPrint('✅ UserProvider: User profile updated in Firestore');
@@ -218,12 +223,82 @@ class UserProvider with ChangeNotifier {
     }
   }
 
+  /// Sign in with Google - Robust Method
+  Future<void> signInWithGoogle() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      debugPrint('🔵 UserProvider: Starting Google Sign-In...');
+      final user = await AuthService.signInWithGoogle();
+
+      if (user != null) {
+        // Reload user data immediately to update UI
+        await _loadUserData();
+        await _loadProfileImage();
+        debugPrint('✅ UserProvider: Google Sign-In complete');
+      }
+    } catch (e) {
+      debugPrint('❌ UserProvider: Google Sign-In error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Sign in with Email/Password
+  Future<void> login(String email, String password) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      debugPrint('🔵 UserProvider: Starting Email Login...');
+      await AuthService.signIn(email, password);
+
+      // Load user data immediately
+      await _loadUserData();
+      await _loadProfileImage();
+      debugPrint('✅ UserProvider: Login complete');
+    } catch (e) {
+      debugPrint('❌ UserProvider: Login error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Sign up with Email/Password
+  Future<void> register(
+      String email, String password, String name, String lastName) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      debugPrint('🔵 UserProvider: Starting Registration...');
+      await AuthService.signUp(
+          email: email, password: password, name: name, lastName: lastName);
+
+      // Load user data immediately
+      await _loadUserData();
+      // No profile image to load for new user
+      debugPrint('✅ UserProvider: Registration complete');
+    } catch (e) {
+      debugPrint('❌ UserProvider: Registration error: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Update user password
   Future<void> updatePassword(String newPassword) async {
     try {
       _isLoading = true;
       notifyListeners();
-      
+
       debugPrint('🔵 UserProvider: Updating password...');
       await AuthService.updatePassword(newPassword);
       debugPrint('✅ UserProvider: Password updated successfully');
@@ -245,17 +320,17 @@ class UserProvider with ChangeNotifier {
   /// Clear user data (on logout)
   Future<void> clearUser() async {
     debugPrint('🔵 UserProvider: Clearing user data...');
-    
+
     // Clear in-memory state
     _user = null;
     _profileImagePath = null;
-    
+
     // Clear cached data
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('profile_image_path');
       await prefs.remove('cached_photo_url');
-      
+
       // Optionally delete cached image file
       final cachedPath = prefs.getString('profile_image_path');
       if (cachedPath != null) {
@@ -264,12 +339,12 @@ class UserProvider with ChangeNotifier {
           await file.delete();
         }
       }
-      
+
       debugPrint('✅ UserProvider: User data cleared');
     } catch (e) {
       debugPrint('⚠️ UserProvider: Error clearing cache: $e');
     }
-    
+
     notifyListeners();
   }
 
@@ -281,6 +356,7 @@ class UserProvider with ChangeNotifier {
 
   /// Check if user has profile image
   bool get hasProfileImage {
-    return _profileImagePath != null || (_user?.photoUrl != null && _user!.photoUrl!.isNotEmpty);
+    return _profileImagePath != null ||
+        (_user?.photoUrl != null && _user!.photoUrl!.isNotEmpty);
   }
 }

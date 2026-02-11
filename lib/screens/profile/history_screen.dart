@@ -63,7 +63,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       confirmLabel: 'Borrar',
       cancelLabel: 'Cancelar',
       isDestructive: true,
-      dialogContext: DialogContext.danger,
+      type: DialogType.error,
     );
 
     if (confirmed == true) {

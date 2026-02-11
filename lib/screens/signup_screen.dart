@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 import '../services/auth_service.dart';
 import '../config/app_animations.dart';
 import '../widgets/app_notifications.dart';
@@ -34,17 +36,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await AuthService.signUp(
-        email: _emailController.text,
-        password: _passwordController.text,
-        name: _nameController.text,
-        lastName: _lastNameController.text,
+      final userProvider = context.read<UserProvider>();
+      await userProvider.register(
+        _emailController.text,
+        _passwordController.text,
+        _nameController.text,
+        _lastNameController.text,
       );
+
       if (mounted) {
         // Show success message
         AppNotifications.showSuccess(context, '¡Bienvenido a Pivote!');
 
-        // Navigate to MainScreen and remove signup screen from stack
+        // Navigate to MainScreen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const MainScreen(),
@@ -63,12 +67,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isLoading = true);
     try {
-      await AuthService.signInWithGoogle();
+      final userProvider = context.read<UserProvider>();
+      await userProvider.signInWithGoogle();
+
       if (mounted) {
         // Show success message
         AppNotifications.showSuccess(context, 'Sesión iniciada con Google');
 
-        // Navigate to MainScreen and remove signup screen from stack
+        // Navigate to MainScreen
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const MainScreen(),

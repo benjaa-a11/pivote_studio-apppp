@@ -23,7 +23,7 @@ class FavoritesScreen extends StatelessWidget {
             );
 
             return CustomScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               slivers: [
                 // Floating Header
                 SliverAppBar(
@@ -230,7 +230,7 @@ class FavoritesScreen extends StatelessWidget {
       confirmLabel: 'Eliminar',
       cancelLabel: 'Cancelar',
       isDestructive: true,
-      dialogContext: DialogContext.danger,
+      type: DialogType.error,
     );
 
     if (confirmed == true) {

@@ -10,11 +10,10 @@ import '../models/user_model.dart';
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId:
-        '451817571128-5b8qlq8d7epe9ap40fgquon5tvoa0okb.apps.googleusercontent.com',
-    scopes: ['email', 'profile'],
-  );
+  // Simplificado: Usar configuración por defecto de google-services.json
+  // Esto evita errores de mismatch en Android (ApiException 10)
+  static final GoogleSignIn _googleSignIn = GoogleSignIn();
+
   static const String _usersCollection = 'usuarios-pivote';
 
   /// Stream of auth state changes
@@ -36,45 +35,46 @@ class AuthService {
     }
   }
 
-  /// Sign in with Google - VERSIÓN CORREGIDA
+  /// Sign in with Google - ROBUST IMPLEMENTATION
   static Future<User?> signInWithGoogle() async {
     try {
       debugPrint('🔵 Starting Google Sign-In process...');
 
-      // 1. Sign out from previous session to force account picker
-      await _googleSignIn.signOut();
-      debugPrint('🔵 Cleared previous Google session');
+      // 1. Force sign out to ensure account picker works reliably
+      try {
+        await _googleSignIn.signOut();
+      } catch (e) {
+        debugPrint('⚠️ Error signing out from Google (non-fatal): $e');
+      }
 
       // 2. Trigger the authentication flow
+      // IMPORTANTE: Asegúrate de que el SHA-1 y SHA-256 estén agregados en Firebase Console
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
-      // User canceled the sign-in
       if (googleUser == null) {
         debugPrint('⚠️ Google Sign-In canceled by user');
         throw FirebaseAuthException(
           code: 'sign_in_canceled',
-          message: 'El usuario canceló el inicio de sesión',
+          message: 'Inicio de sesión cancelado',
         );
       }
 
       debugPrint('✅ Google account selected: ${googleUser.email}');
 
-      // 3. Obtain the auth details from the request
+      // 3. Obtain the auth details
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
-      // 4. Verify we have the required tokens
+      // 4. Verify tokens
       if (googleAuth.accessToken == null || googleAuth.idToken == null) {
         debugPrint('❌ Failed to obtain Google tokens');
         throw FirebaseAuthException(
           code: 'missing-google-tokens',
-          message: 'No se pudieron obtener los tokens de Google',
+          message: 'Error de autenticación con Google (Tokens faltantes)',
         );
       }
 
-      debugPrint('✅ Google tokens obtained successfully');
-
-      // 5. Create a new credential
+      // 5. Create credential
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -82,33 +82,27 @@ class AuthService {
 
       debugPrint('🔵 Signing in to Firebase with Google credential...');
 
-      // 6. Sign in to Firebase with the Google credential
+      // 6. Sign in to Firebase
       final UserCredential userCredential =
           await _auth.signInWithCredential(credential);
 
       if (userCredential.user == null) {
-        debugPrint('❌ Firebase sign-in returned null user');
         throw FirebaseAuthException(
           code: 'null-user',
-          message: 'No se pudo obtener el usuario después del inicio de sesión',
+          message: 'Error al obtener usuario de Firebase',
         );
       }
 
       final user = userCredential.user!;
       debugPrint('✅ Firebase sign-in successful: ${user.uid}');
 
-      // 7. Parse name from Google account
+      // 7. Parse name
       final nameParts = user.displayName?.split(' ') ?? ['Usuario', 'Google'];
-      final firstName = nameParts.isNotEmpty ? nameParts.first : 'Usuario';
+      final firstName = nameParts.first;
       final lastName =
-          nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'Google';
+          nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
 
-      debugPrint('🔵 Creating/updating Firestore document...');
-      debugPrint('   - Name: $firstName');
-      debugPrint('   - LastName: $lastName');
-      debugPrint('   - Email: ${user.email}');
-
-      // 8. Create or update user document in Firestore
+      // 8. Update Firestore
       await _createOrUpdateUserDocument(
         uid: user.uid,
         email: user.email ?? '',
@@ -117,19 +111,15 @@ class AuthService {
         photoUrl: user.photoURL,
       );
 
-      debugPrint('✅ User document created/updated successfully');
-      debugPrint('🎉 Google Sign-In completed successfully!');
-
       return user;
-    } on FirebaseAuthException catch (e) {
-      debugPrint('❌ FirebaseAuthException: ${e.code} - ${e.message}');
+    } on FirebaseAuthException {
       rethrow;
     } catch (e, stackTrace) {
       debugPrint('❌ Unexpected error in Google Sign-In: $e');
       debugPrint('Stack trace: $stackTrace');
       throw FirebaseAuthException(
         code: 'unknown-error',
-        message: 'Error inesperado durante el inicio de sesión: $e',
+        message: 'Error inesperado: $e',
       );
     }
   }

@@ -57,7 +57,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
       confirmLabel: 'LIMPIAR AHORA',
       cancelLabel: 'CANCELAR',
       isDestructive: true,
-      dialogContext: DialogContext.danger,
+      type: DialogType.error,
     );
 
     if (confirmed != true) return;
