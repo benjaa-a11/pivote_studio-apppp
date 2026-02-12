@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -16,8 +17,9 @@ import 'unified_video_controller.dart';
 /// - Automatic server failover
 /// - Intelligent error recovery
 /// - Stream health monitoring
+/// - Token-based URL resolution
 ///
-/// @version 2.1 (HLS Only)
+/// @version 2.2 (HLS Only - Enhanced)
 enum AspectRatioType {
   auto,
   ratio16_9,
@@ -72,6 +74,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Timer? _serverTimeoutTimer;
   Timer? _errorRecoveryTimer;
   Timer? _stateCheckTimer;
+  Timer? _orientationCheckTimer;
 
   // ═══════════════════════════════════════
   // Animation
@@ -97,13 +100,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     WakelockPlus.enable();
 
     debugPrint('═══════════════════════════════════════');
-    debugPrint('🎬 VideoPlayerWidget v2.1 (HLS Only)');
+    debugPrint('🎬 VideoPlayerWidget v2.2 (HLS Enhanced)');
     debugPrint('📺 Canal: ${widget.channel.name}');
     debugPrint('🔢 Servidores: ${widget.channel.streamUrl.length}');
     debugPrint('═══════════════════════════════════════');
 
     _initializePlayer();
     _startWatchdog();
+    _startOrientationMonitor();
   }
 
   @override
@@ -114,20 +118,48 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         state == AppLifecycleState.inactive) {
       debugPrint('⏸️ App en background - pausando');
       _videoPlayerController?.pause();
-
-      // Reset UI orientations when leaving foreground to prevent bugs
-      if (_isFullScreen) {
-        SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-      }
     } else if (state == AppLifecycleState.resumed) {
       debugPrint('▶️ App en foreground - resumiendo');
-      if (_isFullScreen) {
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ]);
-      }
       _videoPlayerController?.play();
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // Orientation Monitor - Fix fullscreen bugs
+  // ═══════════════════════════════════════
+
+  void _startOrientationMonitor() {
+    _orientationCheckTimer?.cancel();
+    _orientationCheckTimer =
+        Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (_isDisposed || !mounted) {
+        timer.cancel();
+        return;
+      }
+
+      _checkOrientation();
+    });
+  }
+
+  void _checkOrientation() {
+    if (!mounted) return;
+
+    final currentOrientation = MediaQuery.of(context).orientation;
+    final isLandscape = currentOrientation == Orientation.landscape;
+
+    // Si la orientación cambió a portrait pero el estado dice fullscreen
+    if (!isLandscape && _isFullScreen) {
+      debugPrint('🔄 Detectado cambio a portrait - saliendo de fullscreen');
+      _safeSetState(() {
+        _isFullScreen = false;
+      });
+    }
+    // Si la orientación cambió a landscape pero el estado dice no fullscreen
+    else if (isLandscape && !_isFullScreen) {
+      debugPrint('🔄 Detectado cambio a landscape - entrando a fullscreen');
+      _safeSetState(() {
+        _isFullScreen = true;
+      });
     }
   }
 
@@ -216,17 +248,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     debugPrint('🔗 URL: ${url.substring(0, min(60, url.length))}...');
     debugPrint('───────────────────────────────────────');
 
-    // Resolve dynamic URLs for M3U8
-    if (url.contains('phpcode/lista01.php') && url.contains('token=')) {
-      try {
-        final resolvedUrl = await _resolveDynamicM3u8Url(url);
-        if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
-          url = resolvedUrl;
-          debugPrint('✅ URL resuelta dinámicamente');
-        }
-      } catch (e) {
-        debugPrint('⚠️ Error resolviendo URL dinámica: $e');
+    // Resolve URLs with tokens or redirects
+    try {
+      final resolvedUrl = await _resolveStreamUrl(url);
+      if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
+        url = resolvedUrl;
+        debugPrint('✅ URL resuelta: ${url.substring(0, min(80, url.length))}');
       }
+    } catch (e) {
+      debugPrint('⚠️ Error resolviendo URL: $e');
     }
 
     if (url.isEmpty) {
@@ -250,32 +280,97 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     await _initializeVideoPlayer(url);
   }
 
-  Future<String?> _resolveDynamicM3u8Url(String url) async {
-    debugPrint('🔍 Resolviendo URL dinámica...');
+  /// Enhanced URL resolver - handles tokens, redirects, and dynamic URLs
+  Future<String?> _resolveStreamUrl(String url) async {
+    debugPrint('🔍 Resolviendo URL...');
+
+    // If it already ends with .m3u8, no need to resolve
+    if (url.toLowerCase().endsWith('.m3u8')) {
+      debugPrint('✓ URL ya es .m3u8');
+      return url;
+    }
 
     HttpClient? httpClient;
     try {
       final uri = Uri.parse(url);
       httpClient = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 5)
+        ..connectionTimeout = const Duration(seconds: 8)
         ..badCertificateCallback = (cert, host, port) => true;
 
-      final request = await httpClient.headUrl(uri);
+      debugPrint('📡 Siguiendo redirects para: ${uri.host}');
+
+      final request = await httpClient.getUrl(uri);
       request.headers.set(
         'User-Agent',
-        'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
+        'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
       );
+      request.headers.set('Accept', '*/*');
+      request.headers.set('Connection', 'keep-alive');
 
       final response = await request.close();
 
+      // Follow redirects
       if (response.redirects.isNotEmpty) {
-        final redirected = response.redirects.last.location.toString();
-        return redirected;
+        final finalUrl = response.redirects.last.location.toString();
+        debugPrint(
+            '🔀 Redirect encontrado: ${finalUrl.substring(0, min(80, finalUrl.length))}');
+
+        // If the final URL is an m3u8, return it
+        if (finalUrl.toLowerCase().endsWith('.m3u8')) {
+          return finalUrl;
+        }
+
+        // Otherwise, check if we can extract m3u8 from response
+        final body = await response.transform(const Utf8Decoder()).join();
+        if (body.contains('.m3u8')) {
+          // Try to extract m3u8 URL from response body
+          final m3u8Match =
+              RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
+          if (m3u8Match != null) {
+            final extractedUrl = m3u8Match.group(0)!;
+            debugPrint('📎 URL .m3u8 extraída del body');
+            return extractedUrl;
+          }
+        }
+
+        return finalUrl;
       }
 
+      // Check response headers for Location or m3u8
+      final location = response.headers.value('location');
+      if (location != null) {
+        debugPrint('📍 Location header encontrado');
+        return location;
+      }
+
+      // If status is 200, read body to check for m3u8
+      if (response.statusCode == 200) {
+        final contentType = response.headers.contentType;
+
+        // If content type suggests it's an m3u8
+        if (contentType?.mimeType == 'application/vnd.apple.mpegurl' ||
+            contentType?.mimeType == 'application/x-mpegURL') {
+          debugPrint('✓ Content-Type indica m3u8');
+          return url;
+        }
+
+        // Try reading body for m3u8 URL
+        final body = await response.transform(const Utf8Decoder()).join();
+        if (body.contains('.m3u8')) {
+          final m3u8Match =
+              RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
+          if (m3u8Match != null) {
+            final extractedUrl = m3u8Match.group(0)!;
+            debugPrint('📎 URL .m3u8 extraída del body');
+            return extractedUrl;
+          }
+        }
+      }
+
+      debugPrint('⚠️ No se encontró .m3u8, usando URL original');
       return url;
     } catch (e) {
-      debugPrint('❌ Error resolviendo: $e');
+      debugPrint('❌ Error resolviendo URL: $e');
       return url;
     } finally {
       httpClient?.close(force: true);
@@ -520,6 +615,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _serverTimeoutTimer?.cancel();
     _errorRecoveryTimer?.cancel();
     _stateCheckTimer?.cancel();
+    _orientationCheckTimer?.cancel();
     _fadeController.dispose();
 
     _disposeExistingControllers();
@@ -547,6 +643,32 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         colorScheme: ColorScheme.fromSeed(
           seedColor: Theme.of(context).colorScheme.primary,
           brightness: Brightness.dark,
+        ),
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(
+            fontFamily: 'Roboto',
+            fontWeight: FontWeight.w300,
+            letterSpacing: -0.5,
+          ),
+          displayMedium: TextStyle(
+            fontFamily: 'Roboto',
+            fontWeight: FontWeight.w400,
+          ),
+          bodyLarge: TextStyle(
+            fontFamily: 'Roboto',
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.15,
+          ),
+          bodyMedium: TextStyle(
+            fontFamily: 'Roboto',
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.25,
+          ),
+          labelLarge: TextStyle(
+            fontFamily: 'Roboto',
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.5,
+          ),
         ),
       ),
       child: _buildContent(),
@@ -586,18 +708,22 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             const Text(
               'Conectando...',
               style: TextStyle(
+                fontFamily: 'Roboto',
                 color: Colors.white,
                 fontSize: 16,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.15,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               widget.channel.name,
               style: TextStyle(
+                fontFamily: 'Roboto',
                 color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
+                letterSpacing: 0.25,
               ),
             ),
             if (_currentServerIndex > 0 || _retryCount > 0) ...[
@@ -614,9 +740,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                       ? 'Reintentando $_retryCount/$_maxRetries...'
                       : 'Servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
                   style: TextStyle(
+                    fontFamily: 'Roboto',
                     color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
+                    letterSpacing: 0.4,
                   ),
                 ),
               ),
@@ -652,17 +780,22 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               const Text(
                 'Problemas de conexión',
                 style: TextStyle(
+                  fontFamily: 'Roboto',
                   color: Colors.white,
                   fontSize: 20,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.15,
                 ),
               ),
               const SizedBox(height: 10),
               Text(
                 errorMessage,
                 style: const TextStyle(
+                  fontFamily: 'Roboto',
                   color: Colors.white70,
                   fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 0.25,
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,
@@ -679,7 +812,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                       _initializePlayer();
                     },
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Reintentar'),
+                    label: const Text(
+                      'Reintentar',
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.white,
@@ -693,7 +833,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                   OutlinedButton.icon(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.arrow_back),
-                    label: const Text('Volver'),
+                    label: const Text(
+                      'Volver',
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white,
                       side: const BorderSide(color: Colors.white54),

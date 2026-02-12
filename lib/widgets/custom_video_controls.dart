@@ -149,8 +149,9 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
             // Indicador de buffering mejorado
             if (widget.controller.isBuffering) _buildBufferingIndicator(),
 
-            // Toast de aspect ratio con animación
-            if (_showAspectRatioToast) _buildAspectRatioToast(),
+            // Toast de aspect ratio con animación (solo en fullscreen)
+            if (_showAspectRatioToast && widget.isFullScreen)
+              _buildAspectRatioToast(),
 
             // Controles con fade
             FadeTransition(
@@ -175,7 +176,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
           return Opacity(
             opacity: value,
             child: Container(
-              padding: const EdgeInsets.all(18), // Más compacto
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Colors.black.withAlpha(204),
                 borderRadius: BorderRadius.circular(16),
@@ -191,7 +192,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 40, // Más pequeño
+                    width: 40,
                     height: 40,
                     child: CircularProgressIndicator(
                       strokeWidth: 3,
@@ -204,9 +205,11 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   const Text(
                     'Cargando...',
                     style: TextStyle(
+                      fontFamily: 'Roboto',
                       color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
+                      letterSpacing: 0.15,
                     ),
                   ),
                 ],
@@ -223,7 +226,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       child: ScaleTransition(
         scale: _toastAnimation,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.black.withAlpha(230),
             borderRadius: BorderRadius.circular(12),
@@ -251,9 +254,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               Text(
                 widget.aspectRatioLabel,
                 style: const TextStyle(
+                  fontFamily: 'Roboto',
                   color: Colors.white,
                   fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -296,12 +300,13 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       bottom: false,
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: widget.isFullScreen ? 8 : 10,
+          horizontal: 16,
+          vertical: widget.isFullScreen ? 10 : 12,
         ),
         child: Row(
           children: [
-            if (widget.isFullScreen && widget.onFullScreenToggle != null)
+            // Botón de volver SOLO en fullscreen
+            if (widget.isFullScreen && widget.onFullScreenToggle != null) ...[
               _buildControlButton(
                 icon: Icons.arrow_back_rounded,
                 onPressed: () {
@@ -311,7 +316,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 size: 22,
                 padding: const EdgeInsets.all(8),
               ),
-            if (widget.isFullScreen) const SizedBox(width: 10),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,15 +325,16 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   Text(
                     widget.channelName,
                     style: TextStyle(
+                      fontFamily: 'Roboto',
                       color: Colors.white,
-                      fontSize: widget.isFullScreen ? 17 : 15,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
+                      fontSize: widget.isFullScreen ? 17 : 16,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.15,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       Container(
@@ -344,24 +351,22 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                           ],
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 7),
                       const Text(
                         'EN VIVO',
                         style: TextStyle(
+                          fontFamily: 'Roboto',
                           color: Colors.white70,
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.8,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 1.0,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      // HD Badge removed
-
                       if (widget.totalServers > 1) ...[
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
+                            horizontal: 8,
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
@@ -378,9 +383,11 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                           child: Text(
                             '${widget.currentServer}/${widget.totalServers}',
                             style: const TextStyle(
+                              fontFamily: 'Roboto',
                               color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.4,
                             ),
                           ),
                         ),
@@ -400,9 +407,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
         child: Row(
           children: [
+            // Botón de mute/unmute
             _buildControlSvg(
               assetPath: widget.isMuted
                   ? 'assets/icons/volume_off_16.svg'
@@ -413,8 +421,9 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               },
               size: 20,
             ),
+            // Botón de aspect ratio SOLO en fullscreen
             if (widget.isFullScreen) ...[
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               _buildControlButton(
                 icon: Icons.aspect_ratio_rounded,
                 label: widget.aspectRatioLabel,
@@ -427,6 +436,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               ),
             ],
             const Spacer(),
+            // Botón de fullscreen (siempre visible)
             if (widget.onFullScreenToggle != null)
               _buildControlSvg(
                 assetPath: widget.isFullScreen
@@ -491,10 +501,11 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   Text(
                     label,
                     style: const TextStyle(
+                      fontFamily: 'Roboto',
                       color: Colors.white,
                       fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.3,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
