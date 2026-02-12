@@ -33,32 +33,8 @@ class FavoritesScreen extends StatelessWidget {
                   elevation: 0,
                   backgroundColor: theme.scaffoldBackgroundColor,
                   automaticallyImplyLeading: false,
-                  leading: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface
-                                .withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.1)),
-                          ),
-                          child: IconButton(
-                            icon:
-                                const Icon(Icons.arrow_back_ios_new, size: 18),
-                            onPressed: () => Navigator.pop(context),
-                            padding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                   centerTitle: false,
-                  titleSpacing: 8,
+                  titleSpacing: 20,
                   title: Text(
                     'Favoritos',
                     style: GoogleFonts.montserrat(

@@ -114,8 +114,19 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         state == AppLifecycleState.inactive) {
       debugPrint('⏸️ App en background - pausando');
       _videoPlayerController?.pause();
+
+      // Reset UI orientations when leaving foreground to prevent bugs
+      if (_isFullScreen) {
+        SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      }
     } else if (state == AppLifecycleState.resumed) {
       debugPrint('▶️ App en foreground - resumiendo');
+      if (_isFullScreen) {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      }
       _videoPlayerController?.play();
     }
   }
@@ -513,6 +524,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     _disposeExistingControllers();
 
+    // Reset system UI state strictly
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
+
     WakelockPlus.disable();
     super.dispose();
   }
@@ -523,6 +541,19 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   @override
   Widget build(BuildContext context) {
+    // The player must always be in dark mode
+    return Theme(
+      data: ThemeData.dark().copyWith(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Theme.of(context).colorScheme.primary,
+          brightness: Brightness.dark,
+        ),
+      ),
+      child: _buildContent(),
+    );
+  }
+
+  Widget _buildContent() {
     if (_isLoading) {
       return _buildLoadingWidget();
     }
@@ -707,6 +738,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             onMuteToggle: _toggleMute,
             isMuted: _isMuted,
             channelName: widget.channel.name,
+            currentServer: _currentServerIndex + 1,
+            totalServers: widget.channel.streamUrl.length,
           ),
         ],
       ),

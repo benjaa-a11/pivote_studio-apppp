@@ -252,9 +252,15 @@ class _BaseDialog extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: actions.map((a) => Expanded(child: a)).toList(),
+                Divider(
+                  height: 1,
+                  color: theme.dividerColor.withValues(alpha: 0.1),
+                ),
+                const SizedBox(height: 16),
+                IntrinsicHeight(
+                  child: Row(
+                    children: _buildSeparatedActions(theme),
+                  ),
                 ),
               ],
             ),
@@ -262,6 +268,27 @@ class _BaseDialog extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildSeparatedActions(ThemeData theme) {
+    if (actions.length <= 1) {
+      return actions.map((a) => Expanded(child: a)).toList();
+    }
+
+    final List<Widget> separated = [];
+    for (int i = 0; i < actions.length; i++) {
+      separated.add(Expanded(child: actions[i]));
+      if (i < actions.length - 1) {
+        separated.add(VerticalDivider(
+          width: 1,
+          thickness: 1,
+          color: theme.dividerColor.withValues(alpha: 0.1),
+          indent: 12,
+          endIndent: 12,
+        ));
+      }
+    }
+    return separated;
   }
 }
 
@@ -289,8 +316,7 @@ class _DialogButton extends StatelessWidget {
         onPressed: onPressed,
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: const StadiumBorder(),
         ),
         child: Text(
           label,
@@ -314,8 +340,7 @@ class _DialogButton extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: const StadiumBorder(),
         ),
         child: Text(
           label,

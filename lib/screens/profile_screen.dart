@@ -10,6 +10,7 @@ import '../providers/user_provider.dart';
 import '../services/cache_manager_service.dart';
 import '../services/viewing_history_service.dart';
 import '../services/auth_service.dart';
+import '../config/app_animations.dart';
 import '../widgets/app_notifications.dart';
 import '../widgets/profile/section_header.dart';
 import 'profile/storage_manager_screen.dart';
@@ -52,279 +53,242 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final userProvider = Provider.of<UserProvider>(context);
-
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: CustomScrollView(
+      body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
-        slivers: [
-          _buildSliverHeader(context, userProvider),
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                const SizedBox(height: 24),
-                _buildStats(context),
-                const SizedBox(height: 12),
+        child: Column(
+          children: [
+            _buildModernHeader(context),
+            const SizedBox(height: 24),
+            _buildStats(context),
+            const SizedBox(height: 12),
 
-                // UI Sections
-                _buildSection(
-                  context,
-                  title: 'Apariencia',
-                  icon: Icons.palette_outlined,
-                  children: [_buildAppearanceSection(context)],
-                ),
-
-                _buildSection(
-                  context,
-                  title: 'Almacenamiento',
-                  icon: Icons.storage_outlined,
-                  children: [_buildStorageSection(context)],
-                ),
-
-                _buildSection(
-                  context,
-                  title: 'Soporte',
-                  icon: Icons.support_agent_outlined,
-                  children: [_buildSupportSection(context)],
-                ),
-
-                _buildSection(
-                  context,
-                  title: 'Información',
-                  icon: Icons.info_outline,
-                  children: [_buildAboutAppSection(context)],
-                ),
-
-                const SizedBox(height: 24),
-                _buildLogoutButton(context),
-                const SizedBox(height: 48),
-              ],
+            // UI Sections
+            _buildSection(
+              context,
+              title: 'Apariencia',
+              icon: Icons.palette_outlined,
+              children: [_buildAppearanceSection(context)],
             ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildSliverHeader(BuildContext context, UserProvider userProvider) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final user = userProvider.user;
+            _buildSection(
+              context,
+              title: 'Almacenamiento',
+              icon: Icons.storage_outlined,
+              children: [_buildStorageSection(context)],
+            ),
 
-    return SliverAppBar(
-      expandedHeight: 380,
-      pinned: true,
-      stretch: true,
-      backgroundColor: theme.colorScheme.primary,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(50)),
-      ),
-      flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [
-          StretchMode.zoomBackground,
-          StretchMode.blurBackground,
-        ],
-        background: LayoutBuilder(
-          builder: (context, constraints) {
-            final double percentage = (constraints.maxHeight - kToolbarHeight) /
-                (380 - kToolbarHeight);
-            final double opacity = percentage.clamp(0.0, 1.0);
+            _buildSection(
+              context,
+              title: 'Soporte',
+              icon: Icons.support_agent_outlined,
+              children: [_buildSupportSection(context)],
+            ),
 
-            return Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark
-                      ? [
-                          theme.colorScheme.primary,
-                          theme.colorScheme.primary.withValues(alpha: 0.8)
-                        ]
-                      : [
-                          theme.colorScheme.primary,
-                          theme.colorScheme.secondary
-                        ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Stack(
-                children: [
-                  // Decorative Blobs
-                  Positioned(
-                    top: -30,
-                    right: -30,
-                    child: Opacity(
-                      opacity: opacity,
-                      child: Container(
-                        width: 160,
-                        height: 160,
-                        decoration: BoxDecoration(
-                          color: (isDark
-                                  ? theme.colorScheme.tertiary
-                                  : theme.colorScheme.secondary)
-                              .withValues(alpha: 0.3),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 40,
-                    left: -50,
-                    child: Opacity(
-                      opacity: opacity,
-                      child: Container(
-                        width: 200,
-                        height: 200,
-                        decoration: BoxDecoration(
-                          color: (isDark
-                                  ? theme.colorScheme.secondary
-                                  : theme.colorScheme.tertiary)
-                              .withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ),
+            _buildSection(
+              context,
+              title: 'Información',
+              icon: Icons.info_outline,
+              children: [_buildAboutAppSection(context)],
+            ),
 
-                  // Content with Fade Transition
-                  Opacity(
-                    opacity: opacity,
-                    child: SafeArea(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(height: 20),
-                          // Profile Image with Edit Button
-                          _buildProfileImage(context, userProvider, isDark),
-                          const SizedBox(height: 24),
-                          // User Details
-                          _buildUserDetails(context, user, theme),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+            const SizedBox(height: 24),
+            _buildLogoutButton(context),
+            const SizedBox(height: 48),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileImage(
-      BuildContext context, UserProvider userProvider, bool isDark) {
+  Widget _buildModernHeader(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final userProvider = Provider.of<UserProvider>(context);
+    final user = userProvider.user;
     final imagePath = userProvider.profileImagePath;
-    return Center(
+
+    return Container(
+      height: 380,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [
+                  theme.colorScheme.primary,
+                  theme.colorScheme.primary.withValues(alpha: 0.8)
+                ]
+              : [theme.colorScheme.primary, theme.colorScheme.secondary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(50)),
+      ),
       child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: CircleAvatar(
-              radius: 65,
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
-              backgroundImage:
-                  imagePath != null ? FileImage(File(imagePath)) : null,
-              child: imagePath == null
-                  ? const Icon(Icons.person, size: 70, color: Colors.white)
-                  : null,
+          // Decorative Blobs
+          Positioned(
+            top: -30,
+            right: -30,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                color: (isDark
+                        ? theme.colorScheme.tertiary
+                        : theme.colorScheme.secondary)
+                    .withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
             ),
           ),
           Positioned(
-            bottom: 4,
-            right: 4,
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                userProvider.updateProfileImage();
-              },
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? Theme.of(context).colorScheme.surface
-                      : Colors.black,
-                  shape: BoxShape.circle,
-                ),
-                child:
-                    const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+            bottom: 40,
+            left: -50,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                color: (isDark
+                        ? theme.colorScheme.secondary
+                        : theme.colorScheme.tertiary)
+                    .withValues(alpha: 0.2),
+                shape: BoxShape.circle,
               ),
+            ),
+          ),
+
+          // Header Content
+          SafeArea(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
+                // Profile Image with Edit Button
+                Center(
+                  child: Stack(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.2),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: CircleAvatar(
+                          radius: 65,
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
+                          backgroundImage: imagePath != null
+                              ? FileImage(File(imagePath))
+                              : null,
+                          child: imagePath == null
+                              ? const Icon(Icons.person,
+                                  size: 70, color: Colors.white)
+                              : null,
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () {
+                            HapticFeedback.mediumImpact();
+                            userProvider.updateProfileImage();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? theme.colorScheme.surface
+                                  : Colors.black,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.camera_alt,
+                                color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // User Details
+                AppAnimations.smoothFadeIn(
+                  child: Column(
+                    children: [
+                      Text(
+                        user != null
+                            ? '${user.name} ${user.lastName}'
+                            : 'Cargando...',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        user?.email ?? '',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3)),
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        const EditProfileScreen()));
+                          },
+                          borderRadius: BorderRadius.circular(100),
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.edit_rounded,
+                                    color: Colors.white, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Editar Perfil',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildUserDetails(
-      BuildContext context, dynamic user, ThemeData theme) {
-    return Column(
-      children: [
-        Text(
-          user != null ? '${user.name} ${user.lastName}' : 'Cargando...',
-          style: theme.textTheme.headlineMedium?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          user?.email ?? '',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(100),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-          ),
-          child: InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const EditProfileScreen()),
-              );
-            },
-            borderRadius: BorderRadius.circular(100),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.edit_rounded, color: Colors.white, size: 14),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Editar Perfil',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 

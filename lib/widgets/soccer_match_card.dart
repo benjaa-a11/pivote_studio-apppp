@@ -26,98 +26,97 @@ class SoccerMatchCard extends StatelessWidget {
             id: '', name: match.awayTeam, shortName: match.awayTeam));
 
     return Container(
-
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: theme.dividerColor.withValues(alpha: 0.1),
-              width: 1,
-            ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: theme.dividerColor.withValues(alpha: 0.1),
+            width: 1,
           ),
         ),
-        child: Row(
-          children: [
-            // Status and Time Column
-            SizedBox(
-              width: 60,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (match.isLive) ...[
-                    _buildLiveBadge(theme),
-                    const SizedBox(height: 4),
-                    Text(
-                      match.timeStatus,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.error,
-                      ),
-                      textAlign: TextAlign.center,
+      ),
+      child: Row(
+        children: [
+          // Status and Time Column
+          SizedBox(
+            width: 60,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (match.isLive) ...[
+                  _buildLiveBadge(theme),
+                  const SizedBox(height: 4),
+                  Text(
+                    match.timeStatus,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.error,
                     ),
-                  ] else if (match.isFinished)
-                    Text(
-                      match.timeStatus.toUpperCase(),
-                      style: GoogleFonts.montserrat(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: theme.hintColor.withValues(alpha: 0.6),
-                      ),
-                      textAlign: TextAlign.center,
-                    )
-                  else if (match.timeStatus.toLowerCase().contains('prog') ||
-                      match.timeStatus.toLowerCase().contains('aplaz') ||
-                      match.timeStatus.toLowerCase().contains('susp'))
-                    Text(
-                      match.timeStatus,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: theme.colorScheme.primary,
-                      ),
-                      textAlign: TextAlign.center,
-                    )
-                  else
-                    Text(
-                      _formatStartTime(match.startTime),
-                      style: GoogleFonts.montserrat(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                      textAlign: TextAlign.center,
+                    textAlign: TextAlign.center,
+                  ),
+                ] else if (match.isFinished)
+                  Text(
+                    match.timeStatus.toUpperCase(),
+                    style: GoogleFonts.montserrat(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: theme.hintColor.withValues(alpha: 0.6),
                     ),
-                ],
-              ),
+                    textAlign: TextAlign.center,
+                  )
+                else if (match.timeStatus.toLowerCase().contains('prog') ||
+                    match.timeStatus.toLowerCase().contains('aplaz') ||
+                    match.timeStatus.toLowerCase().contains('susp'))
+                  Text(
+                    '${match.timeStatus}\n${_formatStartTime(match.startTime)}',
+                    style: GoogleFonts.montserrat(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.primary,
+                    ),
+                    textAlign: TextAlign.center,
+                  )
+                else
+                  Text(
+                    _formatStartTime(match.startTime),
+                    style: GoogleFonts.montserrat(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+              ],
             ),
+          ),
 
-            const SizedBox(width: 8),
+          const SizedBox(width: 8),
 
-            // Match Details: Teams and Score
-            Expanded(
-              child: Column(
-                children: [
-                  _buildTeamRow(
-                      homeTeam,
-                      match.score.isNotEmpty ? match.score[0] : null,
-                      theme,
-                      isDark,
-                      true),
-                  const SizedBox(height: 12),
-                  _buildTeamRow(
-                      awayTeam,
-                      match.score.isNotEmpty ? match.score[1] : null,
-                      theme,
-                      isDark,
-                      false),
-                ],
-              ),
+          // Match Details: Teams and Score
+          Expanded(
+            child: Column(
+              children: [
+                _buildTeamRow(
+                    homeTeam,
+                    match.score.isNotEmpty ? match.score[0] : null,
+                    theme,
+                    isDark,
+                    true),
+                const SizedBox(height: 12),
+                _buildTeamRow(
+                    awayTeam,
+                    match.score.isNotEmpty ? match.score[1] : null,
+                    theme,
+                    isDark,
+                    false),
+              ],
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildLiveBadge(ThemeData theme) {

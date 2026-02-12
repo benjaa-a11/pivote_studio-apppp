@@ -85,7 +85,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
             sliver: _buildMatchesList(soccerData, theme),
           ),
           SliverToBoxAdapter(child: _buildVersionFooter(theme)),
-          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
       ),
     );

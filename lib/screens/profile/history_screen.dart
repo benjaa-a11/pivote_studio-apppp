@@ -60,7 +60,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       title: '¿Limpiar Historial?',
       message:
           'Esta acción borrará todos los canales que has visto recientemente. ¿Deseas continuar?',
-      confirmLabel: 'Borrar',
+      confirmLabel: 'Limpiar Todo',
       cancelLabel: 'Cancelar',
       isDestructive: true,
       type: AppDialogType.error,

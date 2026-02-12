@@ -355,23 +355,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // HD Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 2),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white, width: 1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: SvgPicture.asset(
-                          'assets/icons/player/hd.svg',
-                          height: 10,
-                          colorFilter: const ColorFilter.mode(
-                            Colors.white,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                      ),
+                      // HD Badge removed
+
                       if (widget.totalServers > 1) ...[
                         const SizedBox(width: 10),
                         Container(
@@ -391,7 +376,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                             ),
                           ),
                           child: Text(
-                            'S${widget.currentServer}/${widget.totalServers}',
+                            '${widget.currentServer}/${widget.totalServers}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 10,
@@ -428,17 +413,19 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               },
               size: 20,
             ),
-            const SizedBox(width: 10),
-            _buildControlButton(
-              icon: Icons.aspect_ratio_rounded,
-              label: widget.aspectRatioLabel,
-              onPressed: () {
-                widget.onAspectRatioChange?.call();
-                _showAspectRatioChangeToast();
-                _startHideTimer();
-              },
-              size: 19,
-            ),
+            if (widget.isFullScreen) ...[
+              const SizedBox(width: 10),
+              _buildControlButton(
+                icon: Icons.aspect_ratio_rounded,
+                label: widget.aspectRatioLabel,
+                onPressed: () {
+                  widget.onAspectRatioChange?.call();
+                  _showAspectRatioChangeToast();
+                  _startHideTimer();
+                },
+                size: 19,
+              ),
+            ],
             const Spacer(),
             if (widget.onFullScreenToggle != null)
               _buildControlSvg(
