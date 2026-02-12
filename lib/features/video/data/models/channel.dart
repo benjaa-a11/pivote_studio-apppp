@@ -141,32 +141,23 @@ class Channel {
 /// Represents a stream source with URL and optional DRM keys
 class StreamSource {
   final String url;
-  final String? k1; // Key ID for DRM (hex format)
-  final String? k2; // Key for DRM (hex format)
+  final String? k1; // Key ID for DRM
+  final String? k2; // Key for DRM
   final String? label; // Optional label like "Servidor 1", "HD", etc.
-  final Map<String, String>?
-      headers; // Custom HTTP headers (Referer, Origin, etc.)
 
   StreamSource({
     required this.url,
     this.k1,
     this.k2,
     this.label,
-    this.headers,
   });
 
   factory StreamSource.fromJson(Map<String, dynamic> json) {
-    Map<String, String>? parsedHeaders;
-    if (json['headers'] != null && json['headers'] is Map) {
-      parsedHeaders = Map<String, String>.from(json['headers']);
-    }
-
     return StreamSource(
       url: json['url'] ?? '',
       k1: json['k1'],
       k2: json['k2'],
       label: json['label'],
-      headers: parsedHeaders,
     );
   }
 
@@ -175,27 +166,12 @@ class StreamSource {
     if (k1 != null) map['k1'] = k1;
     if (k2 != null) map['k2'] = k2;
     if (label != null) map['label'] = label;
-    if (headers != null) map['headers'] = headers;
     return map;
   }
 
   /// Returns true if this stream has DRM keys
   bool get hasDrm =>
       k1 != null && k2 != null && k1!.isNotEmpty && k2!.isNotEmpty;
-
-  /// Returns true if DRM keys are valid (hexadecimal format)
-  bool get hasValidDrm {
-    if (!hasDrm) return false;
-    final hexPattern = RegExp(r'^[0-9a-fA-F]+$');
-    return hexPattern.hasMatch(k1!) && hexPattern.hasMatch(k2!);
-  }
-
-  /// Builds ClearKey configuration string for media_kit
-  /// Format: "keyId:key"
-  String? get clearKeyConfig {
-    if (!hasValidDrm) return null;
-    return '$k1:$k2';
-  }
 
   /// Returns true if this is a DASH stream
   bool get isDash => url.contains('.mpd');

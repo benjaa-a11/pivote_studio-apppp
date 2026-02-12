@@ -16,11 +16,10 @@ dependencies:
   
   # Video Players
   video_player: ^2.8.0
-  flutter_inappwebview: ^6.0.0
   wakelock_plus: ^1.2.0
-  media_kit: ^1.1.10
-  media_kit_video: ^1.2.4
-  media_kit_libs_video: ^1.0.4
+  webview_flutter: ^4.4.2
+  webview_flutter_android: ^3.12.1
+  webview_flutter_wkwebview: ^3.9.4
 
   # Audio Player para Radio
   just_audio: ^0.9.36
@@ -83,7 +82,7 @@ flutter:
     - assets/logo.svg
     - assets/logo.png
     - assets/icons/
-    
+    - assets/html/
     - assets/icons/player/
     - assets/FWC-26/
 

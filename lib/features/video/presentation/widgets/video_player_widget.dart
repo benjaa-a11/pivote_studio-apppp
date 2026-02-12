@@ -11,17 +11,17 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
+import 'package:pivote/features/video/presentation/widgets/html_player_widget.dart';
 
 /// Professional video player widget with support for:
-/// - HLS (M3U8) streams via VideoPlayer
+/// - MPD (DASH) streams with DRM ClearKey via WebView + Shaka Player
+/// - M3U8 (HLS) streams via WebView + Shaka Player
+/// - Iframe embeds via WebView
 /// - Automatic server failover
 /// - Intelligent error recovery
 /// - Stream health monitoring
-/// - Token-based URL resolution
 ///
-/// @version 2.2 (HLS Only - Enhanced)
+/// @version 3.0 (WebView + HTML Player)
 enum AspectRatioType {
   auto,
   ratio16_9,
@@ -47,8 +47,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   // Controllers
   // ═══════════════════════════════════════
   VideoPlayerController? _videoPlayerController;
-  Player? _mpdPlayer;
-  VideoController? _mpdController;
 
   // ═══════════════════════════════════════
   // State
@@ -67,6 +65,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   int _retryCount = 0;
   int _serverAttempt = 0;
   int _stuckCounter = 0;
+  bool _useHtmlPlayer = false; // Use HTML player for all streams
 
   static const int _maxRetries = 2;
   static const int _watchdogThreshold = 3; // 15 seconds (3 * 5s checks)
@@ -199,36 +198,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _stuckCounter = 0;
       }
     }
-
-    // Check MediaKit (DASH)
-    if (_mpdPlayer != null) {
-      final state = _mpdPlayer!.state;
-
-      // Check if stream is completely stuck (possible DRM error)
-      if (!state.playing && !state.buffering && state.position.inSeconds == 0) {
-        _stuckCounter++;
-        debugPrint(
-            '⚠️ Watchdog: DASH not starting (${_stuckCounter * 5}s) - possible DRM error');
-
-        if (_stuckCounter >= 2) {
-          // 10 seconds
-          debugPrint('🔄 Watchdog: DASH failed to start, switching server');
-          _stuckCounter = 0;
-          _handleServerFailure();
-        }
-      } else if (state.buffering) {
-        _stuckCounter++;
-        debugPrint('⚠️ Watchdog: MediaKit buffering (${_stuckCounter * 5}s)');
-
-        if (_stuckCounter >= _watchdogThreshold) {
-          debugPrint('🔄 Watchdog: DASH stream stalled, switching server');
-          _stuckCounter = 0;
-          _handleServerFailure();
-        }
-      } else if (state.playing) {
-        _stuckCounter = 0;
-      }
-    }
   }
 
   // ═══════════════════════════════════════
@@ -271,23 +240,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _currentStream = widget.channel.streamUrl[_currentServerIndex];
     String url = _currentStream!.url.trim();
 
-    // Detect stream type inline
-    final isDash = url.toLowerCase().contains('.mpd');
-    final isHls = url.toLowerCase().contains('.m3u8') ||
-        url.toLowerCase().contains('m3u');
-
     debugPrint('───────────────────────────────────────');
     debugPrint(
         '🔄 Servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}');
-    debugPrint('📡 Tipo: ${isDash ? "DASH" : isHls ? "HLS" : "UNKNOWN"}');
-    debugPrint('🔐 DRM Required: ${_currentStream!.hasDrm}');
-    if (_currentStream!.hasDrm) {
-      debugPrint('   Valid DRM: ${_currentStream!.hasValidDrm}');
-    }
-    debugPrint('📋 Custom Headers: ${_currentStream!.headers != null}');
-    if (_currentStream!.headers != null) {
-      debugPrint('   Headers: ${_currentStream!.headers!.keys.join(", ")}');
-    }
     debugPrint('🔗 URL: ${url.substring(0, min(60, url.length))}...');
     debugPrint('───────────────────────────────────────');
 
@@ -319,14 +274,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     });
 
-    // Detect DASH (.mpd)
-    if (url.toLowerCase().endsWith('.mpd')) {
-      await _initializeDashPlayer(url);
-      return;
-    }
+    // Use HTML player for all streams (MPD, M3U8, iframe)
+    setState(() {
+      _useHtmlPlayer = true;
+      _isLoading = false;
+      _isInitializing = false;
+    });
 
-    // Always use VideoPlayer for HLS
-    await _initializeVideoPlayer(url);
+    _serverTimeoutTimer?.cancel();
+    _fadeController.forward();
   }
 
   /// Enhanced URL resolver - handles tokens, redirects, and dynamic URLs
@@ -514,142 +470,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   // ═══════════════════════════════════════
-  // MediaKit (DASH + DRM)
-  // ═══════════════════════════════════════
-
-  Future<void> _initializeDashPlayer(String url) async {
-    if (_isDisposed) return;
-
-    try {
-      await _disposeExistingControllers();
-
-      debugPrint('🎬 Inicializando DASH Player');
-
-      // Build HTTP headers
-      final headers = <String, String>{
-        'User-Agent':
-            'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
-        'Accept': '*/*',
-        'Connection': 'keep-alive',
-      };
-
-      // Add custom headers if present
-      if (_currentStream!.headers != null) {
-        headers.addAll(_currentStream!.headers!);
-        debugPrint('📋 Custom Headers Added:');
-        _currentStream!.headers!.forEach((key, value) {
-          debugPrint('   $key: $value');
-        });
-      }
-
-      _mpdPlayer = Player();
-      _mpdController = VideoController(_mpdPlayer!);
-
-      // Build extras dynamically
-      final extras = <String, String>{
-        'demuxer-lavf-format': 'dash',
-      };
-
-      // Add DRM configuration if valid
-      if (_currentStream!.hasDrm) {
-        if (_currentStream!.hasValidDrm) {
-          final clearKeyConfig = _currentStream!.clearKeyConfig!;
-          extras['clearkey-key'] = clearKeyConfig;
-          debugPrint('🔐 DRM ClearKey Applied');
-          debugPrint('   KeyID: ${_currentStream!.k1}');
-          debugPrint('   Key: ${_currentStream!.k2!.substring(0, 8)}...');
-        } else {
-          // Has DRM keys but they're invalid
-          debugPrint('❌ DRM keys are invalid (must be hexadecimal)');
-          throw Exception(
-              'DRM keys are invalid. Keys must be in hexadecimal format.');
-        }
-      } else {
-        debugPrint('ℹ️ No DRM required for this stream');
-      }
-
-      // Open media with configuration
-      await _mpdPlayer!.open(
-        Media(
-          url,
-          httpHeaders: headers,
-          extras: extras,
-        ),
-      );
-
-      // Listen for errors
-      _mpdPlayer!.stream.error.listen((error) {
-        if (!_isDisposed && mounted) {
-          debugPrint('❌ MediaKit Error: $error');
-          _handleDashError(error);
-        }
-      });
-
-      _serverTimeoutTimer?.cancel();
-      _fadeController.forward();
-
-      _safeSetState(() {
-        _isLoading = false;
-        _isInitializing = false;
-        _retryCount = 0;
-        _stuckCounter = 0;
-      });
-
-      debugPrint('✅ DASH Player Ready');
-    } catch (e, st) {
-      debugPrint('❌ DASH Error: $e\n$st');
-
-      // Check if it's a DRM validation error
-      if (e.toString().contains('DRM keys are invalid')) {
-        _safeSetState(() {
-          _isLoading = false;
-          _error =
-              'Error de DRM: Las claves de desencriptación son inválidas.\n\nVerifica que k1 y k2 estén en formato hexadecimal.';
-          _isInitializing = false;
-        });
-      } else {
-        await _handleServerFailure();
-      }
-    }
-  }
-
-  /// Handle DASH-specific errors with user-friendly messages
-  void _handleDashError(String error) {
-    final errorLower = error.toLowerCase();
-
-    String userMessage;
-
-    if (errorLower.contains('drm') ||
-        errorLower.contains('decrypt') ||
-        errorLower.contains('clearkey')) {
-      userMessage =
-          'Error de DRM: Las claves de desencriptación son incorrectas.\n\nVerifica que k1 y k2 sean correctos.';
-    } else if (errorLower.contains('403') || errorLower.contains('forbidden')) {
-      userMessage =
-          'Acceso bloqueado (403): El servidor rechazó la conexión.\n\nVerifica que los headers (Referer/Origin) sean correctos.';
-    } else if (errorLower.contains('404')) {
-      userMessage =
-          'Stream no encontrado (404).\n\nLa URL puede estar incorrecta o el contenido no existe.';
-    } else if (errorLower.contains('timeout') ||
-        errorLower.contains('timed out')) {
-      userMessage =
-          'Timeout: El servidor no responde.\n\nIntenta nuevamente más tarde.';
-    } else if (errorLower.contains('network') ||
-        errorLower.contains('connection')) {
-      userMessage =
-          'Error de conexión: No se pudo conectar al servidor.\n\nVerifica tu conexión a internet.';
-    } else {
-      userMessage = 'Error de reproducción DASH.\n\n$error';
-    }
-
-    _safeSetState(() {
-      _isLoading = false;
-      _error = userMessage;
-      _isInitializing = false;
-    });
-  }
-
-  // ═══════════════════════════════════════
   // Error Handling & Server Failover
   // ═══════════════════════════════════════
 
@@ -664,18 +484,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         debugPrint('⚠️ Error disposing VideoPlayer: $e');
       }
       _videoPlayerController = null;
-    }
-
-    // MediaKit
-    if (_mpdPlayer != null) {
-      try {
-        await _mpdPlayer!.pause();
-        await _mpdPlayer!.dispose();
-      } catch (e) {
-        debugPrint('⚠️ Error disposing MediaKit: $e');
-      }
-      _mpdPlayer = null;
-      _mpdController = null;
     }
   }
 
@@ -796,7 +604,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     });
 
     _videoPlayerController?.setVolume(_isMuted ? 0.0 : 1.0);
-    _mpdPlayer?.setVolume(_isMuted ? 0.0 : 100.0);
   }
 
   // ═══════════════════════════════════════
@@ -880,6 +687,30 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     if (_error != null) {
       return _buildErrorWidget(_error!);
+    }
+
+    if (_useHtmlPlayer) {
+      return HtmlPlayerWidget(
+        url: _currentStream!.url,
+        k1: _currentStream!.k1,
+        k2: _currentStream!.k2,
+        onReady: () {
+          if (mounted) {
+            _safeSetState(() {
+              _isLoading = false;
+              _isInitializing = false;
+            });
+            _fadeController.forward();
+          }
+        },
+        onError: (error) {
+          debugPrint('❌ HtmlPlayer Error: $error');
+          _handleServerFailure();
+        },
+        onPlayingChanged: (isPlaying) {
+          // Sync state if needed
+        },
+      );
     }
 
     return _buildNativePlayer();
@@ -1060,9 +891,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Widget _buildNativePlayer() {
     Widget playerWidget;
 
-    if (_mpdController != null) {
-      playerWidget = Video(controller: _mpdController!);
-    } else if (_videoPlayerController != null &&
+    if (_videoPlayerController != null &&
         _videoPlayerController!.value.isInitialized) {
       playerWidget = AspectRatio(
         aspectRatio: _getAspectRatio(),
@@ -1098,9 +927,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   UnifiedVideoController _createUnifiedController() {
-    if (_mpdPlayer != null) {
-      return UnifiedVideoController.fromMediaKit(_mpdPlayer!);
-    }
     return UnifiedVideoController.fromVideoPlayer(_videoPlayerController!);
   }
 

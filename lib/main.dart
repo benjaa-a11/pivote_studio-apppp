@@ -16,11 +16,9 @@ import 'package:pivote/features/home/presentation/screens/main_screen.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:pivote/shared/widgets/connectivity_wrapper.dart';
-import 'package:media_kit/media_kit.dart';
 
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   // Initialize Firebase

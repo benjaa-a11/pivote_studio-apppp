@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Pivote Player</title>
+    
+    <!-- Shaka Player CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.0/controls.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #video-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: #000;
+        }
+        
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+        
+        #iframe-container {
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+        
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="video-container">
+        <video id="video" autoplay playsinline></video>
+        <div id="loading">Cargando...</div>
+    </div>
+    <div id="iframe-container"></div>
+
+    <!-- Shaka Player JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.0/shaka-player.compiled.min.js"></script>
+    
+    <script>
+        let player = null;
+        let video = document.getElementById('video');
+        let currentType = null;
+        
+        // Initialize Shaka Player
+        shaka.polyfill.installAll();
+        
+        // Check browser support
+        if (!shaka.Player.isBrowserSupported()) {
+            console.error('Browser not supported!');
+            notifyFlutter({ event: 'error', message: 'Browser not supported' });
+        }
+        
+        /**
+         * Load stream based on configuration
+         * @param {Object} config - Stream configuration
+         * @param {string} config.url - Stream URL
+         * @param {string} config.k1 - DRM Key ID (hex)
+         * @param {string} config.k2 - DRM Key (hex)
+         * @param {string} config.type - Stream type (mpd, m3u8, iframe)
+         */
+        async function loadStream(config) {
+            try {
+                console.log('Loading stream:', config);
+                const { url, k1, k2, type } = config;
+                currentType = type;
+                
+                // Handle iframe type
+                if (type === 'iframe') {
+                    document.getElementById('video-container').style.display = 'none';
+                    document.getElementById('iframe-container').style.display = 'block';
+                    document.getElementById('iframe-container').innerHTML = 
+                        `<iframe src="${url}" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>`;
+                    notifyFlutter({ event: 'loaded' });
+                    return;
+                }
+                
+                // Show video container
+                document.getElementById('video-container').style.display = 'block';
+                document.getElementById('iframe-container').style.display = 'none';
+                
+                // Create player if needed
+                if (!player) {
+                    player = new shaka.Player(video);
+                    
+                    // Error handling
+                    player.addEventListener('error', onPlayerError);
+                    
+                    // Video events
+                    video.addEventListener('playing', () => {
+                        console.log('Video playing');
+                        notifyFlutter({ event: 'playing' });
+                    });
+                    
+                    video.addEventListener('pause', () => {
+                        console.log('Video paused');
+                        notifyFlutter({ event: 'paused' });
+                    });
+                    
+                    video.addEventListener('ended', () => {
+                        console.log('Video ended');
+                        notifyFlutter({ event: 'ended' });
+                    });
+                    
+                    video.addEventListener('waiting', () => {
+                        console.log('Video buffering');
+                        notifyFlutter({ event: 'buffering' });
+                    });
+                    
+                    video.addEventListener('timeupdate', () => {
+                        notifyFlutter({ 
+                            event: 'progress',
+                            position: video.currentTime,
+                            duration: video.duration
+                        });
+                    });
+                }
+                
+                // Configure DRM if provided
+                if (k1 && k2) {
+                    console.log('Configuring ClearKey DRM');
+                    player.configure({
+                        drm: {
+                            clearKeys: {
+                                [k1]: k2
+                            }
+                        }
+                    });
+                }
+                
+                // Load the stream
+                console.log('Loading URL:', url);
+                await player.load(url);
+                
+                // Auto-play
+                try {
+                    await video.play();
+                } catch (e) {
+                    console.warn('Autoplay failed:', e);
+                }
+                
+                notifyFlutter({ event: 'loaded' });
+                console.log('Stream loaded successfully');
+                
+            } catch (error) {
+                console.error('Error loading stream:', error);
+                notifyFlutter({ 
+                    event: 'error', 
+                    message: error.message || 'Unknown error'
+                });
+            }
+        }
+        
+        /**
+         * Handle player errors
+         */
+        function onPlayerError(event) {
+            const error = event.detail;
+            console.error('Player error:', error);
+            
+            let message = 'Error de reproducción';
+            
+            if (error.code === shaka.util.Error.Code.HTTP_ERROR) {
+                message = `Error HTTP: ${error.data[1]}`;
+            } else if (error.code === shaka.util.Error.Code.UNABLE_TO_GUESS_MANIFEST_TYPE) {
+                message = 'Formato de stream no soportado';
+            } else if (error.category === shaka.util.Error.Category.DRM) {
+                message = 'Error de DRM: Verifica las claves k1 y k2';
+            } else if (error.category === shaka.util.Error.Category.NETWORK) {
+                message = 'Error de red: Verifica tu conexión';
+            }
+            
+            notifyFlutter({ event: 'error', message });
+        }
+        
+        /**
+         * Player controls
+         */
+        function play() {
+            if (video) video.play();
+        }
+        
+        function pause() {
+            if (video) video.pause();
+        }
+        
+        function setVolume(v) {
+            if (video) video.volume = Math.max(0, Math.min(1, v));
+        }
+        
+        function seek(seconds) {
+            if (video) video.currentTime = seconds;
+        }
+        
+        function destroy() {
+            if (player) {
+                player.destroy();
+                player = null;
+            }
+            currentType = null;
+        }
+        
+        /**
+         * Get current state
+         */
+        function getState() {
+            if (!video) return null;
+            return {
+                playing: !video.paused,
+                position: video.currentTime,
+                duration: video.duration,
+                buffered: video.buffered.length > 0 ? video.buffered.end(0) : 0
+            };
+        }
+        
+        /**
+         * Communicate with Flutter
+         */
+        function notifyFlutter(data) {
+            if (window.FlutterChannel) {
+                window.FlutterChannel.postMessage(JSON.stringify(data));
+            }
+        }
+        
+        // Expose functions to Flutter
+        window.loadStream = loadStream;
+        window.play = play;
+        window.pause = pause;
+        window.setVolume = setVolume;
+        window.seek = seek;
+        window.destroy = destroy;
+        window.getState = getState;
+        
+        console.log('Pivote Player initialized');
+    </script>
+</body>
+</html>
