@@ -54,7 +54,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   // State
   // ═══════════════════════════════════════
   StreamSource? _currentStream;
-  StreamType? _streamType;
 
   bool _isLoading = true;
   String? _error;
@@ -203,7 +202,21 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     // Check MediaKit (DASH)
     if (_mpdPlayer != null) {
-      if (_mpdPlayer!.state.buffering) {
+      final state = _mpdPlayer!.state;
+
+      // Check if stream is completely stuck (possible DRM error)
+      if (!state.playing && !state.buffering && state.position.inSeconds == 0) {
+        _stuckCounter++;
+        debugPrint(
+            '⚠️ Watchdog: DASH not starting (${_stuckCounter * 5}s) - possible DRM error');
+
+        if (_stuckCounter >= 2) {
+          // 10 seconds
+          debugPrint('🔄 Watchdog: DASH failed to start, switching server');
+          _stuckCounter = 0;
+          _handleServerFailure();
+        }
+      } else if (state.buffering) {
         _stuckCounter++;
         debugPrint('⚠️ Watchdog: MediaKit buffering (${_stuckCounter * 5}s)');
 
@@ -212,7 +225,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           _stuckCounter = 0;
           _handleServerFailure();
         }
-      } else if (_mpdPlayer!.state.playing) {
+      } else if (state.playing) {
         _stuckCounter = 0;
       }
     }
@@ -258,13 +271,23 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _currentStream = widget.channel.streamUrl[_currentServerIndex];
     String url = _currentStream!.url.trim();
 
-    // Detect stream type
-    _streamType = widget.channel.getStreamType(url);
+    // Detect stream type inline
+    final isDash = url.toLowerCase().contains('.mpd');
+    final isHls = url.toLowerCase().contains('.m3u8') ||
+        url.toLowerCase().contains('m3u');
 
     debugPrint('───────────────────────────────────────');
     debugPrint(
         '🔄 Servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}');
-    debugPrint('📡 Tipo: $_streamType');
+    debugPrint('📡 Tipo: ${isDash ? "DASH" : isHls ? "HLS" : "UNKNOWN"}');
+    debugPrint('🔐 DRM Required: ${_currentStream!.hasDrm}');
+    if (_currentStream!.hasDrm) {
+      debugPrint('   Valid DRM: ${_currentStream!.hasValidDrm}');
+    }
+    debugPrint('📋 Custom Headers: ${_currentStream!.headers != null}');
+    if (_currentStream!.headers != null) {
+      debugPrint('   Headers: ${_currentStream!.headers!.keys.join(", ")}');
+    }
     debugPrint('🔗 URL: ${url.substring(0, min(60, url.length))}...');
     debugPrint('───────────────────────────────────────');
 
@@ -500,23 +523,69 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     try {
       await _disposeExistingControllers();
 
-      debugPrint('🎬 Inicializando DASH + DRM');
+      debugPrint('🎬 Inicializando DASH Player');
+
+      // Build HTTP headers
+      final headers = <String, String>{
+        'User-Agent':
+            'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
+        'Accept': '*/*',
+        'Connection': 'keep-alive',
+      };
+
+      // Add custom headers if present
+      if (_currentStream!.headers != null) {
+        headers.addAll(_currentStream!.headers!);
+        debugPrint('📋 Custom Headers Added:');
+        _currentStream!.headers!.forEach((key, value) {
+          debugPrint('   $key: $value');
+        });
+      }
 
       _mpdPlayer = Player();
       _mpdController = VideoController(_mpdPlayer!);
 
+      // Build extras dynamically
+      final extras = <String, String>{
+        'demuxer-lavf-format': 'dash',
+      };
+
+      // Add DRM configuration if valid
+      if (_currentStream!.hasDrm) {
+        if (_currentStream!.hasValidDrm) {
+          final clearKeyConfig = _currentStream!.clearKeyConfig!;
+          extras['clearkey-key'] = clearKeyConfig;
+          debugPrint('🔐 DRM ClearKey Applied');
+          debugPrint('   KeyID: ${_currentStream!.k1}');
+          debugPrint('   Key: ${_currentStream!.k2!.substring(0, 8)}...');
+        } else {
+          // Has DRM keys but they're invalid
+          debugPrint('❌ DRM keys are invalid (must be hexadecimal)');
+          throw Exception(
+              'DRM keys are invalid. Keys must be in hexadecimal format.');
+        }
+      } else {
+        debugPrint('ℹ️ No DRM required for this stream');
+      }
+
+      // Open media with configuration
       await _mpdPlayer!.open(
         Media(
           url,
-          httpHeaders: {"User-Agent": "Mozilla/5.0"},
-          extras: {
-            "clearkey-key":
-                "7c1f50e3f51216bdd1efcc99d3a27217=3441c930277d824402aafee446ba8f90",
-            "demuxer-lavf-format": "dash",
-          },
+          httpHeaders: headers,
+          extras: extras,
         ),
       );
 
+      // Listen for errors
+      _mpdPlayer!.stream.error.listen((error) {
+        if (!_isDisposed && mounted) {
+          debugPrint('❌ MediaKit Error: $error');
+          _handleDashError(error);
+        }
+      });
+
+      _serverTimeoutTimer?.cancel();
       _fadeController.forward();
 
       _safeSetState(() {
@@ -526,11 +595,58 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _stuckCounter = 0;
       });
 
-      debugPrint('✅ DASH listo');
+      debugPrint('✅ DASH Player Ready');
     } catch (e, st) {
-      debugPrint('❌ Error DASH: $e\n$st');
-      await _handleServerFailure();
+      debugPrint('❌ DASH Error: $e\n$st');
+
+      // Check if it's a DRM validation error
+      if (e.toString().contains('DRM keys are invalid')) {
+        _safeSetState(() {
+          _isLoading = false;
+          _error =
+              'Error de DRM: Las claves de desencriptación son inválidas.\n\nVerifica que k1 y k2 estén en formato hexadecimal.';
+          _isInitializing = false;
+        });
+      } else {
+        await _handleServerFailure();
+      }
     }
+  }
+
+  /// Handle DASH-specific errors with user-friendly messages
+  void _handleDashError(String error) {
+    final errorLower = error.toLowerCase();
+
+    String userMessage;
+
+    if (errorLower.contains('drm') ||
+        errorLower.contains('decrypt') ||
+        errorLower.contains('clearkey')) {
+      userMessage =
+          'Error de DRM: Las claves de desencriptación son incorrectas.\n\nVerifica que k1 y k2 sean correctos.';
+    } else if (errorLower.contains('403') || errorLower.contains('forbidden')) {
+      userMessage =
+          'Acceso bloqueado (403): El servidor rechazó la conexión.\n\nVerifica que los headers (Referer/Origin) sean correctos.';
+    } else if (errorLower.contains('404')) {
+      userMessage =
+          'Stream no encontrado (404).\n\nLa URL puede estar incorrecta o el contenido no existe.';
+    } else if (errorLower.contains('timeout') ||
+        errorLower.contains('timed out')) {
+      userMessage =
+          'Timeout: El servidor no responde.\n\nIntenta nuevamente más tarde.';
+    } else if (errorLower.contains('network') ||
+        errorLower.contains('connection')) {
+      userMessage =
+          'Error de conexión: No se pudo conectar al servidor.\n\nVerifica tu conexión a internet.';
+    } else {
+      userMessage = 'Error de reproducción DASH.\n\n$error';
+    }
+
+    _safeSetState(() {
+      _isLoading = false;
+      _error = userMessage;
+      _isInitializing = false;
+    });
   }
 
   // ═══════════════════════════════════════
