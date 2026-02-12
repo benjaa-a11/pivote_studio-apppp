@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../services/cache_manager_service.dart';
 import '../../config/app_animations.dart';
-import '../../widgets/common/custom_dialogs.dart';
+import '../../widgets/common/app_dialogs.dart';
 
 class StorageManagerScreen extends StatefulWidget {
   const StorageManagerScreen({super.key});
@@ -50,14 +50,14 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
       message = 'Se restablecerán los datos temporales de la aplicación.';
     }
 
-    final confirmed = await CustomDialogs.showConfirmDialog(
-      context,
+    final confirmed = await AppDialogs.showConfirm(
+      context: context,
       title: title,
       message: message,
       confirmLabel: 'LIMPIAR AHORA',
       cancelLabel: 'CANCELAR',
       isDestructive: true,
-      type: DialogType.error,
+      type: AppDialogType.error,
     );
 
     if (confirmed != true) return;

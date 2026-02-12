@@ -8,7 +8,7 @@ import '../../models/channel.dart';
 import '../../config/app_animations.dart';
 import '../../widgets/app_notifications.dart';
 import '../player_screen.dart';
-import '../../widgets/common/custom_dialogs.dart';
+import '../../widgets/common/app_dialogs.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -55,15 +55,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   void _showClearHistoryDialog(BuildContext context) async {
-    final confirmed = await CustomDialogs.showConfirmDialog(
-      context,
+    final confirmed = await AppDialogs.showConfirm(
+      context: context,
       title: '¿Limpiar Historial?',
       message:
           'Esta acción borrará todos los canales que has visto recientemente. ¿Deseas continuar?',
       confirmLabel: 'Borrar',
       cancelLabel: 'Cancelar',
       isDestructive: true,
-      type: DialogType.error,
+      type: AppDialogType.error,
     );
 
     if (confirmed == true) {
@@ -101,14 +101,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
         centerTitle: true,
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface.withValues(alpha: 0.5),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-              onPressed: () => Navigator.pop(context),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.zero,
+                ),
+              ),
             ),
           ),
         ),

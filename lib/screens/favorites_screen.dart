@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:provider/provider.dart';
 import '../providers/channel_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../widgets/channel_card.dart';
-import '../widgets/common/custom_dialogs.dart';
+import '../widgets/common/app_dialogs.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class FavoritesScreen extends StatelessWidget {
@@ -32,8 +33,32 @@ class FavoritesScreen extends StatelessWidget {
                   elevation: 0,
                   backgroundColor: theme.scaffoldBackgroundColor,
                   automaticallyImplyLeading: false,
+                  leading: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface
+                                .withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.1)),
+                          ),
+                          child: IconButton(
+                            icon:
+                                const Icon(Icons.arrow_back_ios_new, size: 18),
+                            onPressed: () => Navigator.pop(context),
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   centerTitle: false,
-                  titleSpacing: 20,
+                  titleSpacing: 8,
                   title: Text(
                     'Favoritos',
                     style: GoogleFonts.montserrat(
@@ -46,18 +71,29 @@ class FavoritesScreen extends StatelessWidget {
                   actions: [
                     if (favoriteChannels.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: IconButton(
-                            onPressed: () =>
-                                _showClearDialog(context, favoritesProvider),
-                            icon: Icon(
-                              Icons.delete_sweep_rounded,
-                              color: theme.colorScheme.primary,
-                              size: 28,
+                        padding: const EdgeInsets.all(8.0),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE7714D)
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: const Color(0xFFE7714D)
+                                        .withValues(alpha: 0.2)),
+                              ),
+                              child: IconButton(
+                                onPressed: () => _showClearDialog(
+                                    context, favoritesProvider),
+                                icon: const Icon(Icons.delete_outline_rounded,
+                                    color: Color(0xFFE7714D)),
+                                padding: EdgeInsets.zero,
+                                tooltip: 'Limpiar favoritos',
+                              ),
                             ),
-                            tooltip: 'Limpiar favoritos',
                           ),
                         ),
                       ),
@@ -222,15 +258,15 @@ class FavoritesScreen extends StatelessWidget {
   void _showClearDialog(
       BuildContext context, FavoritesProvider favoritesProvider) async {
     final theme = Theme.of(context);
-    final confirmed = await CustomDialogs.showConfirmDialog(
-      context,
+    final confirmed = await AppDialogs.showConfirm(
+      context: context,
       title: '¿Limpiar favoritos?',
       message:
           'Esta acción eliminará todos los canales de tu lista de acceso rápido.',
       confirmLabel: 'Eliminar',
       cancelLabel: 'Cancelar',
       isDestructive: true,
-      type: DialogType.error,
+      type: AppDialogType.error,
     );
 
     if (confirmed == true) {
