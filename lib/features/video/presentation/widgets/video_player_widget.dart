@@ -8,9 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-import '../features/video/data/models/channel.dart';
-import '../features/video/presentation/widgets/custom_video_controls.dart';
-import '../features/video/presentation/widgets/unified_video_controller.dart';
+import 'package:pivote/features/video/data/models/channel.dart';
+import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
+import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 
 /// Professional video player widget with support for:
 /// - HLS (M3U8) streams via VideoPlayer

@@ -8,7 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pivote/main.dart';
-import 'package:pivote/providers/audio_manager.dart';
+import 'package:pivote/features/radio/presentation/providers/audio_manager.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
