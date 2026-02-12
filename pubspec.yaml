@@ -18,6 +18,9 @@ dependencies:
   video_player: ^2.8.0
   flutter_inappwebview: ^6.0.0
   wakelock_plus: ^1.2.0
+  media_kit: ^1.1.10
+  media_kit_video: ^1.2.4
+  media_kit_libs_video: ^1.0.4
 
   # Audio Player para Radio
   just_audio: ^0.9.36

@@ -11,6 +11,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 
 /// Professional video player widget with support for:
 /// - HLS (M3U8) streams via VideoPlayer
@@ -45,6 +47,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   // Controllers
   // ═══════════════════════════════════════
   VideoPlayerController? _videoPlayerController;
+  Player? _mpdPlayer;
+  VideoController? _mpdController;
 
   // ═══════════════════════════════════════
   // State
@@ -196,6 +200,22 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _stuckCounter = 0;
       }
     }
+
+    // Check MediaKit (DASH)
+    if (_mpdPlayer != null) {
+      if (_mpdPlayer!.state.buffering) {
+        _stuckCounter++;
+        debugPrint('⚠️ Watchdog: MediaKit buffering (${_stuckCounter * 5}s)');
+
+        if (_stuckCounter >= _watchdogThreshold) {
+          debugPrint('🔄 Watchdog: DASH stream stalled, switching server');
+          _stuckCounter = 0;
+          _handleServerFailure();
+        }
+      } else if (_mpdPlayer!.state.playing) {
+        _stuckCounter = 0;
+      }
+    }
   }
 
   // ═══════════════════════════════════════
@@ -275,6 +295,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _tryCurrentServer();
       }
     });
+
+    // Detect DASH (.mpd)
+    if (url.toLowerCase().endsWith('.mpd')) {
+      await _initializeDashPlayer(url);
+      return;
+    }
 
     // Always use VideoPlayer for HLS
     await _initializeVideoPlayer(url);
@@ -465,6 +491,49 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   // ═══════════════════════════════════════
+  // MediaKit (DASH + DRM)
+  // ═══════════════════════════════════════
+
+  Future<void> _initializeDashPlayer(String url) async {
+    if (_isDisposed) return;
+
+    try {
+      await _disposeExistingControllers();
+
+      debugPrint('🎬 Inicializando DASH + DRM');
+
+      _mpdPlayer = Player();
+      _mpdController = VideoController(_mpdPlayer!);
+
+      await _mpdPlayer!.open(
+        Media(
+          url,
+          httpHeaders: {"User-Agent": "Mozilla/5.0"},
+          extras: {
+            "clearkey-key":
+                "7c1f50e3f51216bdd1efcc99d3a27217=3441c930277d824402aafee446ba8f90",
+            "demuxer-lavf-format": "dash",
+          },
+        ),
+      );
+
+      _fadeController.forward();
+
+      _safeSetState(() {
+        _isLoading = false;
+        _isInitializing = false;
+        _retryCount = 0;
+        _stuckCounter = 0;
+      });
+
+      debugPrint('✅ DASH listo');
+    } catch (e, st) {
+      debugPrint('❌ Error DASH: $e\n$st');
+      await _handleServerFailure();
+    }
+  }
+
+  // ═══════════════════════════════════════
   // Error Handling & Server Failover
   // ═══════════════════════════════════════
 
@@ -479,6 +548,18 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         debugPrint('⚠️ Error disposing VideoPlayer: $e');
       }
       _videoPlayerController = null;
+    }
+
+    // MediaKit
+    if (_mpdPlayer != null) {
+      try {
+        await _mpdPlayer!.pause();
+        await _mpdPlayer!.dispose();
+      } catch (e) {
+        debugPrint('⚠️ Error disposing MediaKit: $e');
+      }
+      _mpdPlayer = null;
+      _mpdController = null;
     }
   }
 
@@ -599,6 +680,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     });
 
     _videoPlayerController?.setVolume(_isMuted ? 0.0 : 1.0);
+    _mpdPlayer?.setVolume(_isMuted ? 0.0 : 100.0);
   }
 
   // ═══════════════════════════════════════
@@ -860,13 +942,19 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Widget _buildNativePlayer() {
-    Widget playerWidget = _videoPlayerController != null &&
-            _videoPlayerController!.value.isInitialized
-        ? AspectRatio(
-            aspectRatio: _getAspectRatio(),
-            child: VideoPlayer(_videoPlayerController!),
-          )
-        : Container(color: Colors.black);
+    Widget playerWidget;
+
+    if (_mpdController != null) {
+      playerWidget = Video(controller: _mpdController!);
+    } else if (_videoPlayerController != null &&
+        _videoPlayerController!.value.isInitialized) {
+      playerWidget = AspectRatio(
+        aspectRatio: _getAspectRatio(),
+        child: VideoPlayer(_videoPlayerController!),
+      );
+    } else {
+      playerWidget = Container(color: Colors.black);
+    }
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -894,6 +982,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   UnifiedVideoController _createUnifiedController() {
+    if (_mpdPlayer != null) {
+      return UnifiedVideoController.fromMediaKit(_mpdPlayer!);
+    }
     return UnifiedVideoController.fromVideoPlayer(_videoPlayerController!);
   }
 
