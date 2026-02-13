@@ -22,6 +22,7 @@ class HtmlPlayerWidget extends StatefulWidget {
   final VoidCallback? onReady;
   final Function(String)? onError;
   final Function(bool)? onPlayingChanged;
+  final VoidCallback? onFailover;
 
   const HtmlPlayerWidget({
     super.key,
@@ -31,6 +32,7 @@ class HtmlPlayerWidget extends StatefulWidget {
     this.onReady,
     this.onError,
     this.onPlayingChanged,
+    this.onFailover,
   });
 
   @override
@@ -153,14 +155,23 @@ class _HtmlPlayerWidgetState extends State<HtmlPlayerWidget> {
 
         case 'error':
           final errorMessage = data['message'] ?? 'Error desconocido';
-          debugPrint('❌ Player error: $errorMessage');
+          final shouldFailover = data['fileserver'] == true;
+
+          debugPrint(
+              '❌ Player error: $errorMessage (Failover: $shouldFailover)');
+
           if (mounted) {
             setState(() {
               _error = errorMessage;
               _isLoading = false;
             });
           }
-          widget.onError?.call(errorMessage);
+
+          if (shouldFailover) {
+            widget.onFailover?.call();
+          } else {
+            widget.onError?.call(errorMessage);
+          }
           break;
 
         case 'progress':

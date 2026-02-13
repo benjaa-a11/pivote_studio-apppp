@@ -274,15 +274,29 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     });
 
-    // Use HTML player for all streams (MPD, M3U8, iframe)
-    setState(() {
-      _useHtmlPlayer = true;
-      _isLoading = false;
-      _isInitializing = false;
-    });
+    // Hybrid Player Strategy:
+    // - HLS (.m3u8): Use Native VideoPlayer (Better stability for unstable connections)
+    // - DASH (.mpd) / Iframe: Use HtmlPlayerWidget (DRM support & flexibility)
 
-    _serverTimeoutTimer?.cancel();
-    _fadeController.forward();
+    final isHls = url.toLowerCase().contains('.m3u8') ||
+        url.toLowerCase().contains('m3u');
+
+    if (isHls) {
+      debugPrint('📱 Mode: Native HLS Player');
+      setState(() {
+        _useHtmlPlayer = false;
+      });
+      await _initializeVideoPlayer(url);
+    } else {
+      debugPrint('🌐 Mode: Web DASH/Iframe Player');
+      setState(() {
+        _useHtmlPlayer = true;
+        _isLoading = false;
+        _isInitializing = false;
+      });
+      _serverTimeoutTimer?.cancel();
+      _fadeController.forward();
+    }
   }
 
   /// Enhanced URL resolver - handles tokens, redirects, and dynamic URLs
@@ -709,6 +723,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         },
         onPlayingChanged: (isPlaying) {
           // Sync state if needed
+        },
+        onFailover: () {
+          debugPrint('🔄 HtmlPlayer requested failover');
+          _handleServerFailure();
         },
       );
     }
