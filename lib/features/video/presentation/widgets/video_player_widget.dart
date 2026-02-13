@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
@@ -45,8 +46,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   // ═══════════════════════════════════════
   // Controllers
-  // ═══════════════════════════════════════
   VideoPlayerController? _videoPlayerController;
+  WebViewController? _webViewController;
+  UnifiedVideoController? _unifiedController;
+  final VideoState _webVideoState = VideoState();
 
   // ═══════════════════════════════════════
   // State
@@ -102,7 +105,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     WakelockPlus.enable();
 
     debugPrint('═══════════════════════════════════════');
-    debugPrint('🎬 VideoPlayerWidget v2.2 (HLS Enhanced)');
+    debugPrint('🎬 VideoPlayerWidget v3.1 (Unified Hybrid)');
     debugPrint('📺 Canal: ${widget.channel.name}');
     debugPrint('🔢 Servidores: ${widget.channel.streamUrl.length}');
     debugPrint('═══════════════════════════════════════');
@@ -119,10 +122,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       debugPrint('⏸️ App en background - pausando');
-      _videoPlayerController?.pause();
+      _unifiedController?.pause();
     } else if (state == AppLifecycleState.resumed) {
       debugPrint('▶️ App en foreground - resumiendo');
-      _videoPlayerController?.play();
+      _unifiedController?.play();
     }
   }
 
@@ -182,19 +185,18 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   void _checkStreamHealth() {
-    // Check VideoPlayer
-    if (_videoPlayerController != null) {
-      if (_videoPlayerController!.value.isBuffering) {
+    // Check Unified Controller buffering state
+    if (_unifiedController != null) {
+      if (_unifiedController!.isBuffering) {
         _stuckCounter++;
-        debugPrint(
-            '⚠️ Watchdog: VideoPlayer buffering (${_stuckCounter * 5}s)');
+        debugPrint('⚠️ Watchdog: Buffering (${_stuckCounter * 5}s)');
 
         if (_stuckCounter >= _watchdogThreshold) {
           debugPrint('🔄 Watchdog: Stream stalled, switching server');
           _stuckCounter = 0;
           _handleServerFailure();
         }
-      } else if (_videoPlayerController!.value.isPlaying) {
+      } else if (_unifiedController!.isPlaying) {
         _stuckCounter = 0;
       }
     }
@@ -276,7 +278,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     // Hybrid Player Strategy:
     // - HLS (.m3u8): Use Native VideoPlayer (Better stability for unstable connections)
-    // - DASH (.mpd) / Iframe: Use HtmlPlayerWidget (DRM support & flexibility)
+    // - DASH (.mpd) / Iframe / Web: Use WebView with Unified Controls
 
     final isHls = url.toLowerCase().contains('.m3u8') ||
         url.toLowerCase().contains('m3u');
@@ -288,14 +290,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       });
       await _initializeVideoPlayer(url);
     } else {
-      debugPrint('🌐 Mode: Web DASH/Iframe Player');
+      debugPrint('🌐 Mode: Web Player (External/DASH)');
       setState(() {
         _useHtmlPlayer = true;
-        _isLoading = false;
-        _isInitializing = false;
       });
-      _serverTimeoutTimer?.cancel();
-      _fadeController.forward();
+      await _initializeWebPlayer(url);
     }
   }
 
@@ -431,6 +430,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       if (_isDisposed || !mounted) return;
 
+      _unifiedController =
+          UnifiedVideoController.fromVideoPlayer(_videoPlayerController!);
+
       _serverTimeoutTimer?.cancel();
 
       await _videoPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
@@ -484,6 +486,117 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   // ═══════════════════════════════════════
+  // Web Player (External)
+  // ═══════════════════════════════════════
+
+  Future<void> _initializeWebPlayer(String url) async {
+    if (_isDisposed) return;
+
+    try {
+      await _disposeExistingControllers();
+      debugPrint('🎬 Inicializando WebView Player');
+
+      _webViewController = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.black)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageFinished: (url) {
+              debugPrint('📄 Web Page Loaded');
+              _injectControlScript();
+              _safeSetState(() {
+                _isLoading = false;
+                _isInitializing = false;
+              });
+              _fadeController.forward();
+            },
+            onWebResourceError: (error) {
+              debugPrint('❌ WebView Resource Error: ${error.description}');
+              // Only failover on main frame errors if needed, but resource errors are common
+            },
+          ),
+        )
+        ..addJavaScriptChannel(
+          'FlutterChannel',
+          onMessageReceived: (JavaScriptMessage message) {
+            _handleWebMessage(message.message);
+          },
+        )
+        ..loadRequest(Uri.parse(url));
+
+      _unifiedController =
+          UnifiedVideoController.fromWeb(_webViewController!, _webVideoState);
+
+      // Auto-play attempt
+      _serverTimeoutTimer?.cancel();
+    } catch (e) {
+      debugPrint('❌ Error WebPlayer: $e');
+      await _handleServerFailure();
+    }
+  }
+
+  void _injectControlScript() {
+    const script = '''
+      (function() {
+        console.log("💉 Injecting Video Control Script");
+        
+        function findVideo() {
+          return document.querySelector('video') || document.querySelector('iframe')?.contentDocument?.querySelector('video');
+        }
+
+        function notify(video) {
+          if (!video) return;
+          try {
+            window.FlutterChannel.postMessage(JSON.stringify({
+              playing: !video.paused,
+              position: video.currentTime,
+              duration: video.duration,
+              buffering: video.readyState < 3
+            }));
+          } catch(e) {}
+        }
+        
+        var checkInterval = setInterval(function() {
+          var video = findVideo();
+          if (video) {
+             clearInterval(checkInterval);
+             console.log("✅ Video element found");
+             
+             // Initial state
+             notify(video);
+             
+             // Listeners
+             video.addEventListener('play', function() { notify(video); });
+             video.addEventListener('pause', function() { notify(video); });
+             video.addEventListener('timeupdate', function() { notify(video); });
+             video.addEventListener('waiting', function() { notify(video); });
+             video.addEventListener('playing', function() { notify(video); });
+             
+             // Force play
+             video.play().catch(e => console.log("Autoplay blocked: " + e));
+          }
+        }, 500);
+      })();
+    ''';
+    _webViewController?.runJavaScript(script);
+  }
+
+  void _handleWebMessage(String message) {
+    try {
+      final data = jsonDecode(message);
+      _webVideoState.update(
+        playing: data['playing'],
+        buffering: data['buffering'],
+        pos: (data['position'] as num?)?.toDouble(),
+        dur: (data['duration'] as num?)?.toDouble(),
+      );
+      _safeSetState(() {});
+    } catch (e) {
+      // debugPrint('Error parsing web message: $e');
+    }
+  }
+
+  // ═══════════════════════════════════════
   // Error Handling & Server Failover
   // ═══════════════════════════════════════
 
@@ -499,6 +612,19 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
       _videoPlayerController = null;
     }
+
+    // WebPlayer
+    if (_webViewController != null) {
+      try {
+        _webViewController!.loadRequest(Uri.parse('about:blank'));
+        _webViewController!.runJavaScript('document.body.innerHTML = "";');
+      } catch (e) {
+        debugPrint('⚠️ Error cleaning up WebView: $e');
+      }
+      _webViewController = null;
+    }
+
+    _unifiedController = null;
   }
 
   Future<void> _handleServerFailure() async {
@@ -703,35 +829,65 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       return _buildErrorWidget(_error!);
     }
 
-    if (_useHtmlPlayer) {
-      return HtmlPlayerWidget(
-        url: _currentStream!.url,
-        k1: _currentStream!.k1,
-        k2: _currentStream!.k2,
-        onReady: () {
-          if (mounted) {
-            _safeSetState(() {
-              _isLoading = false;
-              _isInitializing = false;
-            });
-            _fadeController.forward();
-          }
-        },
-        onError: (error) {
-          debugPrint('❌ HtmlPlayer Error: $error');
-          _handleServerFailure();
-        },
-        onPlayingChanged: (isPlaying) {
-          // Sync state if needed
-        },
-        onFailover: () {
-          debugPrint('🔄 HtmlPlayer requested failover');
-          _handleServerFailure();
-        },
-      );
-    }
+    // Unified Player Interface
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Stack(
+        children: [
+          // 1. Player Surface (Video or Web)
+          Container(
+            color: Colors.black,
+            child: _buildPlayerSurface(),
+          ),
 
-    return _buildNativePlayer();
+          // 2. Customized Controls Overlay
+          if (_unifiedController != null)
+            CustomVideoControls(
+              controller: _unifiedController!,
+              onFullScreenToggle: _toggleFullScreen,
+              onAspectRatioChange: _changeAspectRatio,
+              aspectRatioLabel: _getAspectRatioLabel(),
+              isFullScreen: _isFullScreen,
+              onMuteToggle: _toggleMute,
+              isMuted: _isMuted,
+              channelName: widget.channel.name,
+              currentServer: _currentServerIndex + 1,
+              totalServers: widget.channel.streamUrl.length,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlayerSurface() {
+    if (_useHtmlPlayer) {
+      if (_webViewController != null) {
+        return HtmlPlayerWidget(controller: _webViewController!);
+      }
+      return const SizedBox();
+    } else {
+      // Native Video Player
+      if (_videoPlayerController != null &&
+          _videoPlayerController!.value.isInitialized) {
+        return Center(
+          child: AspectRatio(
+            aspectRatio: _getAspectRatio(),
+            child: VideoPlayer(_videoPlayerController!),
+          ),
+        );
+      }
+      return const SizedBox();
+    }
+  }
+
+  // Helper methods like _createUnifiedController are no longer needed
+  // as we use _unifiedController directly.
+
+  // Helper methods
+  void _safeSetState(VoidCallback fn) {
+    if (mounted && !_isDisposed) {
+      setState(fn);
+    }
   }
 
   Widget _buildLoadingWidget() {
@@ -762,37 +918,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 letterSpacing: 0.15,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              widget.channel.name,
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 0.25,
-              ),
-            ),
-            if (_currentServerIndex > 0 || _retryCount > 0) ...[
+            if (_retryCount > 0) ...[
               const SizedBox(height: 10),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _retryCount > 0
-                      ? 'Reintentando $_retryCount/$_maxRetries...'
-                      : 'Servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.4,
-                  ),
+              Text(
+                'Reintentando $_retryCount/$_maxRetries...',
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 12,
                 ),
               ),
             ],
@@ -811,146 +944,32 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.error_outline,
-                  color: Colors.white,
-                  size: 56,
-                ),
+              const Icon(
+                Icons.error_outline,
+                color: Colors.red,
+                size: 48,
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'Problemas de conexión',
-                style: TextStyle(
-                  fontFamily: 'Roboto',
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
-                  letterSpacing: 0.15,
-                ),
-              ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
               Text(
                 errorMessage,
                 style: const TextStyle(
-                  fontFamily: 'Roboto',
-                  color: Colors.white70,
+                  color: Colors.white,
                   fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: 0.25,
-                  height: 1.5,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 28),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      _currentServerIndex = 0;
-                      _retryCount = 0;
-                      _serverAttempt = 0;
-                      _initializePlayer();
-                    },
-                    icon: const Icon(Icons.refresh),
-                    label: const Text(
-                      'Reintentar',
-                      style: TextStyle(
-                        fontFamily: 'Roboto',
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back),
-                    label: const Text(
-                      'Volver',
-                      style: TextStyle(
-                        fontFamily: 'Roboto',
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white54),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  _initializePlayer();
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
               ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  Widget _buildNativePlayer() {
-    Widget playerWidget;
-
-    if (_videoPlayerController != null &&
-        _videoPlayerController!.value.isInitialized) {
-      playerWidget = AspectRatio(
-        aspectRatio: _getAspectRatio(),
-        child: VideoPlayer(_videoPlayerController!),
-      );
-    } else {
-      playerWidget = Container(color: Colors.black);
-    }
-
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: Stack(
-        children: [
-          Container(
-            color: Colors.black,
-            child: Center(child: playerWidget),
-          ),
-          CustomVideoControls(
-            controller: _createUnifiedController(),
-            onFullScreenToggle: _toggleFullScreen,
-            onAspectRatioChange: _changeAspectRatio,
-            aspectRatioLabel: _getAspectRatioLabel(),
-            isFullScreen: _isFullScreen,
-            onMuteToggle: _toggleMute,
-            isMuted: _isMuted,
-            channelName: widget.channel.name,
-            currentServer: _currentServerIndex + 1,
-            totalServers: widget.channel.streamUrl.length,
-          ),
-        ],
-      ),
-    );
-  }
-
-  UnifiedVideoController _createUnifiedController() {
-    return UnifiedVideoController.fromVideoPlayer(_videoPlayerController!);
-  }
-
-  void _safeSetState(VoidCallback fn) {
-    if (mounted && !_isDisposed) {
-      setState(fn);
-    }
   }
 }

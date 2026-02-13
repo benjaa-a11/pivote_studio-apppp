@@ -82,7 +82,6 @@ flutter:
     - assets/logo.svg
     - assets/logo.png
     - assets/icons/
-    - assets/html/
     - assets/icons/player/
     - assets/FWC-26/
 
