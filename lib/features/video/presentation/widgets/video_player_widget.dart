@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
@@ -15,14 +14,13 @@ import 'package:pivote/features/video/presentation/widgets/unified_video_control
 import 'package:pivote/features/video/presentation/widgets/pivo_pro_player.dart';
 
 /// Professional video player widget with support for:
-/// - MPD (DASH) streams with DRM ClearKey via WebView + Shaka Player
-/// - M3U8 (HLS) streams via WebView + Shaka Player
-/// - Iframe embeds via WebView
+/// - M3U8 (HLS) streams via native VideoPlayer
+/// - MPD (DASH) / Iframe / External streams via WebView + PivoProPlayer
 /// - Automatic server failover
 /// - Intelligent error recovery
 /// - Stream health monitoring
 ///
-/// @version 3.0 (WebView + HTML Player)
+/// @version 3.2 (Ultra Optimized)
 enum AspectRatioType {
   auto,
   ratio16_9,
@@ -46,10 +44,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   // ═══════════════════════════════════════
   // Controllers
+  // ═══════════════════════════════════════
   VideoPlayerController? _videoPlayerController;
-  WebViewController? _webViewController;
   UnifiedVideoController? _unifiedController;
-  final VideoState _webVideoState = VideoState();
 
   // ═══════════════════════════════════════
   // State
@@ -68,10 +65,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   int _retryCount = 0;
   int _serverAttempt = 0;
   int _stuckCounter = 0;
-  bool _useHtmlPlayer = false; // Use HTML player for all streams
+  bool _useHtmlPlayer = false;
 
   static const int _maxRetries = 2;
-  static const int _watchdogThreshold = 3; // 15 seconds (3 * 5s checks)
+  static const int _watchdogThreshold = 3;
 
   // ═══════════════════════════════════════
   // Timers
@@ -105,7 +102,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     WakelockPlus.enable();
 
     debugPrint('═══════════════════════════════════════');
-    debugPrint('🎬 VideoPlayerWidget v3.1 (Unified Hybrid)');
+    debugPrint('🎬 VideoPlayerWidget v3.2 (Ultra Optimized)');
     debugPrint('📺 Canal: ${widget.channel.name}');
     debugPrint('🔢 Servidores: ${widget.channel.streamUrl.length}');
     debugPrint('═══════════════════════════════════════');
@@ -130,7 +127,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   // ═══════════════════════════════════════
-  // Orientation Monitor - Fix fullscreen bugs
+  // Orientation Monitor
   // ═══════════════════════════════════════
 
   void _startOrientationMonitor() {
@@ -141,7 +138,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         timer.cancel();
         return;
       }
-
       _checkOrientation();
     });
   }
@@ -152,24 +148,17 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     final currentOrientation = MediaQuery.of(context).orientation;
     final isLandscape = currentOrientation == Orientation.landscape;
 
-    // Si la orientación cambió a portrait pero el estado dice fullscreen
     if (!isLandscape && _isFullScreen) {
-      debugPrint('🔄 Detectado cambio a portrait - saliendo de fullscreen');
-      _safeSetState(() {
-        _isFullScreen = false;
-      });
-    }
-    // Si la orientación cambió a landscape pero el estado dice no fullscreen
-    else if (isLandscape && !_isFullScreen) {
-      debugPrint('🔄 Detectado cambio a landscape - entrando a fullscreen');
-      _safeSetState(() {
-        _isFullScreen = true;
-      });
+      debugPrint('🔄 Portrait detectado - saliendo de fullscreen');
+      _safeSetState(() => _isFullScreen = false);
+    } else if (isLandscape && !_isFullScreen) {
+      debugPrint('🔄 Landscape detectado - entrando a fullscreen');
+      _safeSetState(() => _isFullScreen = true);
     }
   }
 
   // ═══════════════════════════════════════
-  // Watchdog - Stream Health Monitoring
+  // Watchdog
   // ═══════════════════════════════════════
 
   void _startWatchdog() {
@@ -179,20 +168,18 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         timer.cancel();
         return;
       }
-
       _checkStreamHealth();
     });
   }
 
   void _checkStreamHealth() {
-    // Check Unified Controller buffering state
-    if (_unifiedController != null) {
+    if (_unifiedController != null && !_useHtmlPlayer) {
       if (_unifiedController!.isBuffering) {
         _stuckCounter++;
         debugPrint('⚠️ Watchdog: Buffering (${_stuckCounter * 5}s)');
 
         if (_stuckCounter >= _watchdogThreshold) {
-          debugPrint('🔄 Watchdog: Stream stalled, switching server');
+          debugPrint('🔄 Watchdog: Stream stalled');
           _stuckCounter = 0;
           _handleServerFailure();
         }
@@ -248,7 +235,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     debugPrint('🔗 URL: ${url.substring(0, min(60, url.length))}...');
     debugPrint('───────────────────────────────────────');
 
-    // Resolve URLs with tokens or redirects
+    // Resolve URLs
     try {
       final resolvedUrl = await _resolveStreamUrl(url);
       if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
@@ -263,46 +250,40 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       throw Exception('URL vacía');
     }
 
-    // Server timeout (10 seconds)
+    // Server timeout
     _serverTimeoutTimer = Timer(const Duration(seconds: 10), () {
       if (mounted &&
           !_isDisposed &&
           _isLoading &&
           _currentServerIndex < widget.channel.streamUrl.length - 1) {
-        debugPrint(
-            '⏱️ Timeout servidor ${_currentServerIndex + 1}, siguiente...');
+        debugPrint('⏱️ Timeout servidor ${_currentServerIndex + 1}');
         _currentServerIndex++;
         _tryCurrentServer();
       }
     });
 
-    // Hybrid Player Strategy:
-    // - HLS (.m3u8): Use Native VideoPlayer (Better stability for unstable connections)
-    // - DASH (.mpd) / Iframe / Web: Use WebView with Unified Controls
-
+    // Strategy: HLS = Native, Others = WebView
     final isHls = url.toLowerCase().contains('.m3u8') ||
         url.toLowerCase().contains('m3u');
 
     if (isHls) {
       debugPrint('📱 Mode: Native HLS Player');
-      setState(() {
-        _useHtmlPlayer = false;
-      });
+      setState(() => _useHtmlPlayer = false);
       await _initializeVideoPlayer(url);
     } else {
-      debugPrint('🌐 Mode: Web Player (External/DASH)');
-      setState(() {
-        _useHtmlPlayer = true;
+      debugPrint('🌐 Mode: WebView Player');
+      setState(() => _useHtmlPlayer = true);
+      // WebView player maneja su propio loading
+      _safeSetState(() {
+        _isLoading = false;
+        _isInitializing = false;
       });
-      await _initializeWebPlayer(url);
     }
   }
 
-  /// Enhanced URL resolver - handles tokens, redirects, and dynamic URLs
   Future<String?> _resolveStreamUrl(String url) async {
     debugPrint('🔍 Resolviendo URL...');
 
-    // If it already ends with .m3u8, no need to resolve
     if (url.toLowerCase().endsWith('.m3u8')) {
       debugPrint('✓ URL ya es .m3u8');
       return url;
@@ -320,72 +301,57 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       final request = await httpClient.getUrl(uri);
       request.headers.set(
         'User-Agent',
-        'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
+        'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
       );
       request.headers.set('Accept', '*/*');
       request.headers.set('Connection', 'keep-alive');
 
       final response = await request.close();
 
-      // Follow redirects
       if (response.redirects.isNotEmpty) {
         final finalUrl = response.redirects.last.location.toString();
-        debugPrint(
-            '🔀 Redirect encontrado: ${finalUrl.substring(0, min(80, finalUrl.length))}');
+        debugPrint('🔀 Redirect: ${finalUrl.substring(0, min(80, finalUrl.length))}');
 
-        // If the final URL is an m3u8, return it
         if (finalUrl.toLowerCase().endsWith('.m3u8')) {
           return finalUrl;
         }
 
-        // Otherwise, check if we can extract m3u8 from response
         final body = await response.transform(const Utf8Decoder()).join();
         if (body.contains('.m3u8')) {
-          // Try to extract m3u8 URL from response body
-          final m3u8Match =
-              RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
+          final m3u8Match = RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
           if (m3u8Match != null) {
-            final extractedUrl = m3u8Match.group(0)!;
-            debugPrint('📎 URL .m3u8 extraída del body');
-            return extractedUrl;
+            debugPrint('📎 URL .m3u8 extraída');
+            return m3u8Match.group(0)!;
           }
         }
-
         return finalUrl;
       }
 
-      // Check response headers for Location or m3u8
       final location = response.headers.value('location');
       if (location != null) {
         debugPrint('📍 Location header encontrado');
         return location;
       }
 
-      // If status is 200, read body to check for m3u8
       if (response.statusCode == 200) {
         final contentType = response.headers.contentType;
-
-        // If content type suggests it's an m3u8
         if (contentType?.mimeType == 'application/vnd.apple.mpegurl' ||
             contentType?.mimeType == 'application/x-mpegURL') {
           debugPrint('✓ Content-Type indica m3u8');
           return url;
         }
 
-        // Try reading body for m3u8 URL
         final body = await response.transform(const Utf8Decoder()).join();
         if (body.contains('.m3u8')) {
-          final m3u8Match =
-              RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
+          final m3u8Match = RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
           if (m3u8Match != null) {
-            final extractedUrl = m3u8Match.group(0)!;
             debugPrint('📎 URL .m3u8 extraída del body');
-            return extractedUrl;
+            return m3u8Match.group(0)!;
           }
         }
       }
 
-      debugPrint('⚠️ No se encontró .m3u8, usando URL original');
+      debugPrint('⚠️ No se encontró .m3u8');
       return url;
     } catch (e) {
       debugPrint('❌ Error resolviendo URL: $e');
@@ -409,7 +375,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       final headers = <String, String>{
         'User-Agent':
-            'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
+            'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
         'Accept': '*/*',
         'Accept-Encoding': 'gzip, deflate',
         'Connection': 'keep-alive',
@@ -425,7 +391,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       );
 
       _videoPlayerController!.addListener(_videoListener);
-
       await _videoPlayerController!.initialize();
 
       if (_isDisposed || !mounted) return;
@@ -486,122 +451,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   // ═══════════════════════════════════════
-  // Web Player (External)
-  // ═══════════════════════════════════════
-
-  Future<void> _initializeWebPlayer(String url) async {
-    if (_isDisposed) return;
-
-    try {
-      await _disposeExistingControllers();
-      debugPrint('🎬 Inicializando WebView Player');
-
-      _webViewController = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..setBackgroundColor(Colors.black)
-        ..setNavigationDelegate(
-          NavigationDelegate(
-            onPageFinished: (url) {
-              debugPrint('📄 Web Page Loaded');
-              _injectControlScript();
-              _safeSetState(() {
-                _isLoading = false;
-                _isInitializing = false;
-              });
-              _fadeController.forward();
-            },
-            onWebResourceError: (error) {
-              debugPrint('❌ WebView Resource Error: ${error.description}');
-              // Only failover on main frame errors if needed, but resource errors are common
-            },
-          ),
-        )
-        ..addJavaScriptChannel(
-          'FlutterChannel',
-          onMessageReceived: (JavaScriptMessage message) {
-            _handleWebMessage(message.message);
-          },
-        )
-        ..loadRequest(Uri.parse(url));
-
-      _unifiedController =
-          UnifiedVideoController.fromWeb(_webViewController!, _webVideoState);
-
-      // Auto-play attempt
-      _serverTimeoutTimer?.cancel();
-    } catch (e) {
-      debugPrint('❌ Error WebPlayer: $e');
-      await _handleServerFailure();
-    }
-  }
-
-  void _injectControlScript() {
-    const script = '''
-      (function() {
-        console.log("💉 Injecting Video Control Script");
-        
-        function findVideo() {
-          return document.querySelector('video') || document.querySelector('iframe')?.contentDocument?.querySelector('video');
-        }
-
-        function notify(video) {
-          if (!video) return;
-          try {
-            window.FlutterChannel.postMessage(JSON.stringify({
-              playing: !video.paused,
-              position: video.currentTime,
-              duration: video.duration,
-              buffering: video.readyState < 3
-            }));
-          } catch(e) {}
-        }
-        
-        var checkInterval = setInterval(function() {
-          var video = findVideo();
-          if (video) {
-             clearInterval(checkInterval);
-             console.log("✅ Video element found");
-             
-             // Initial state
-             notify(video);
-             
-             // Listeners
-             video.addEventListener('play', function() { notify(video); });
-             video.addEventListener('pause', function() { notify(video); });
-             video.addEventListener('timeupdate', function() { notify(video); });
-             video.addEventListener('waiting', function() { notify(video); });
-             video.addEventListener('playing', function() { notify(video); });
-             
-             // Force play
-             video.play().catch(e => console.log("Autoplay blocked: " + e));
-          }
-        }, 500);
-      })();
-    ''';
-    _webViewController?.runJavaScript(script);
-  }
-
-  void _handleWebMessage(String message) {
-    try {
-      final data = jsonDecode(message);
-      _webVideoState.update(
-        playing: data['playing'],
-        buffering: data['buffering'],
-        pos: (data['position'] as num?)?.toDouble(),
-        dur: (data['duration'] as num?)?.toDouble(),
-      );
-      _safeSetState(() {});
-    } catch (e) {
-      // debugPrint('Error parsing web message: $e');
-    }
-  }
-
-  // ═══════════════════════════════════════
   // Error Handling & Server Failover
   // ═══════════════════════════════════════
 
   Future<void> _disposeExistingControllers() async {
-    // VideoPlayer
     if (_videoPlayerController != null) {
       _videoPlayerController!.removeListener(_videoListener);
       try {
@@ -612,18 +465,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
       _videoPlayerController = null;
     }
-
-    // WebPlayer
-    if (_webViewController != null) {
-      try {
-        _webViewController!.loadRequest(Uri.parse('about:blank'));
-        _webViewController!.runJavaScript('document.body.innerHTML = "";');
-      } catch (e) {
-        debugPrint('⚠️ Error cleaning up WebView: $e');
-      }
-      _webViewController = null;
-    }
-
     _unifiedController = null;
   }
 
@@ -665,9 +506,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   void _toggleFullScreen() {
     if (_isDisposed) return;
 
-    setState(() {
-      _isFullScreen = !_isFullScreen;
-    });
+    setState(() => _isFullScreen = !_isFullScreen);
 
     if (_isFullScreen) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -739,10 +578,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   void _toggleMute() {
     if (_isDisposed) return;
 
-    setState(() {
-      _isMuted = !_isMuted;
-    });
-
+    setState(() => _isMuted = !_isMuted);
     _videoPlayerController?.setVolume(_isMuted ? 0.0 : 1.0);
   }
 
@@ -765,7 +601,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     _disposeExistingControllers();
 
-    // Reset system UI state strictly
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
@@ -782,24 +617,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   @override
   Widget build(BuildContext context) {
-    // The player must always be in dark mode
     return Theme(
       data: ThemeData.dark().copyWith(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Theme.of(context).colorScheme.primary,
           brightness: Brightness.dark,
-        ),
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.w300,
-            letterSpacing: -0.5,
-          ),
-          displayMedium: TextStyle(
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.w400,
-            letterSpacing: -0.25,
-          ),
         ),
       ),
       child: Scaffold(
@@ -808,20 +630,21 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           children: [
             // 1. Video Layer
             Center(
-              child: AspectRatio(
-                aspectRatio: _getAspectRatio(),
-                child: _useHtmlPlayer
-                    ? PivoProPlayer(
-                        // Uses the exact URL from the active stream
-                        url: _currentStream!.url,
-                        channelName: widget.channel.name,
-                        onRefresh: _handleServerFailure,
-                      )
-                    : (_videoPlayerController != null &&
-                            _videoPlayerController!.value.isInitialized)
-                        ? VideoPlayer(_videoPlayerController!)
-                        : Container(color: Colors.black),
-              ),
+              child: _useHtmlPlayer
+                  ? PivoProPlayer(
+                      url: _currentStream!.url,
+                      channelName: widget.channel.name,
+                      onRefresh: _handleServerFailure,
+                      currentServer: _currentServerIndex + 1,
+                      totalServers: widget.channel.streamUrl.length,
+                    )
+                  : AspectRatio(
+                      aspectRatio: _getAspectRatio(),
+                      child: (_videoPlayerController != null &&
+                              _videoPlayerController!.value.isInitialized)
+                          ? VideoPlayer(_videoPlayerController!)
+                          : Container(color: Colors.black),
+                    ),
             ),
 
             // 2. Controls Layer (Only for Native Player)
@@ -842,7 +665,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               ),
 
             // 3. Loading Indicator (Only for Native Player)
-            // PivoProPlayer handles its own loading state
             if (!_useHtmlPlayer &&
                 (_isLoading ||
                     (_unifiedController != null &&
@@ -853,7 +675,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             if (!_useHtmlPlayer && _error != null && !_isLoading)
               _buildErrorWidget(_error!),
 
-            // 5. Fade Animation (Optional, mostly for native)
+            // 5. Fade Animation
             if (!_useHtmlPlayer)
               IgnorePointer(
                 child: FadeTransition(
@@ -868,7 +690,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     );
   }
 
-  // Helper methods
   void _safeSetState(VoidCallback fn) {
     if (mounted && !_isDisposed) {
       setState(fn);
@@ -945,9 +766,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: () {
-                  _initializePlayer();
-                },
+                onPressed: _initializePlayer,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Reintentar'),
               ),

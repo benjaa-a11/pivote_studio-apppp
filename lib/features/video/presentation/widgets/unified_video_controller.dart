@@ -13,6 +13,7 @@ abstract class UnifiedVideoController {
   Future<void> play();
   Future<void> pause();
   Future<void> setVolume(double volume);
+  Future<void> setMuted(bool muted);
 
   void addListener(void Function() listener);
   void removeListener(void Function() listener);
@@ -32,6 +33,7 @@ abstract class UnifiedVideoController {
 class VideoState {
   bool isPlaying = false;
   bool isBuffering = false;
+  bool isMuted = false;
   Duration position = Duration.zero;
   Duration duration = Duration.zero;
 
@@ -51,9 +53,16 @@ class VideoState {
     listeners.remove(listener);
   }
 
-  void update({bool? playing, bool? buffering, double? pos, double? dur}) {
+  void update({
+    bool? playing,
+    bool? buffering,
+    bool? muted,
+    double? pos,
+    double? dur,
+  }) {
     if (playing != null) isPlaying = playing;
     if (buffering != null) isBuffering = buffering;
+    if (muted != null) isMuted = muted;
     if (pos != null) position = Duration(milliseconds: (pos * 1000).toInt());
     if (dur != null) duration = Duration(milliseconds: (dur * 1000).toInt());
     notify();
@@ -91,6 +100,9 @@ class HLSControllerAdapter implements UnifiedVideoController {
   Future<void> setVolume(double volume) => controller.setVolume(volume);
 
   @override
+  Future<void> setMuted(bool muted) => controller.setVolume(muted ? 0.0 : 1.0);
+
+  @override
   void addListener(void Function() listener) =>
       controller.addListener(listener);
 
@@ -123,15 +135,27 @@ class WebControllerAdapter implements UnifiedVideoController {
 
   @override
   Future<void> play() => controller.runJavaScript(
-      "try { document.querySelector('video').play(); } catch(e) {}");
+      "try { window.play(); } catch(e) { console.log('Play error:', e); }");
 
   @override
   Future<void> pause() => controller.runJavaScript(
-      "try { document.querySelector('video').pause(); } catch(e) {}");
+      "try { window.pause(); } catch(e) { console.log('Pause error:', e); }");
 
   @override
   Future<void> setVolume(double volume) => controller.runJavaScript(
       "try { document.querySelector('video').volume = $volume; } catch(e) {}");
+
+  @override
+  Future<void> setMuted(bool muted) {
+    state.isMuted = muted;
+    if (muted) {
+      return controller
+          .runJavaScript("try { window.mute(); } catch(e) { console.log('Mute error:', e); }");
+    } else {
+      return controller
+          .runJavaScript("try { window.unmute(); } catch(e) { console.log('Unmute error:', e); }");
+    }
+  }
 
   @override
   void addListener(void Function() listener) => state.addListener(listener);

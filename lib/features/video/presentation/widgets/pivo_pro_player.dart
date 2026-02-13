@@ -8,16 +8,27 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 
+enum AspectRatioType {
+  auto,
+  ratio16_9,
+  ratio4_3,
+  stretch,
+}
+
 class PivoProPlayer extends StatefulWidget {
   final String url;
   final String channelName;
   final VoidCallback? onRefresh;
+  final int currentServer;
+  final int totalServers;
 
   const PivoProPlayer({
     super.key,
     required this.url,
     required this.channelName,
     this.onRefresh,
+    this.currentServer = 1,
+    this.totalServers = 1,
   });
 
   @override
@@ -29,23 +40,35 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
   late final UnifiedVideoController _unifiedController;
   final VideoState _videoState = VideoState();
 
-  // Estados locales
-  bool isLoading = true;
-  bool isFullscreen = false;
-  bool audioActivado = false;
-  String? errorMessage;
-  int currentServer = 1;
-  int totalServers = 1;
+  // Estados
+  bool _isLoading = true;
+  bool _isFullscreen = false;
+  bool _isMuted = false;
+  // bool _audioActivado = false; // Removed unused field
+  String? _errorMessage;
+  AspectRatioType _aspectRatioType = AspectRatioType.ratio16_9;
+
+  // Timers
+  Timer? _loadingTimer;
+  Timer? _bufferingDebounce;
+  bool _isReallyBuffering = false;
 
   @override
   void initState() {
     super.initState();
     _initializeWebView();
+
+    // Safety timeout - si no carga en 10s, quitar loading
+    _loadingTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted && _isLoading) {
+        setState(() => _isLoading = false);
+      }
+    });
   }
 
   void _initializeWebView() {
-    // Parámetros de plataforma
     late final PlatformWebViewControllerCreationParams params;
+
     if (WebViewPlatform.instance is WebKitWebViewPlatform) {
       params = WebKitWebViewControllerCreationParams(
         allowsInlineMediaPlayback: true,
@@ -57,11 +80,19 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
 
     _webViewController = WebViewController.fromPlatformCreationParams(params);
 
+    // CONFIGURACIÓN ANDROID ULTRA-OPTIMIZADA
     if (_webViewController.platform is AndroidWebViewController) {
+      final androidController =
+          _webViewController.platform as AndroidWebViewController;
+
       // CRÍTICO: Permitir autoplay
-      (_webViewController.platform as AndroidWebViewController)
-          .setMediaPlaybackRequiresUserGesture(false);
+      androidController.setMediaPlaybackRequiresUserGesture(false);
     }
+
+    // Optimizaciones de rendimiento (User Agent en el controlador general)
+    _webViewController.setUserAgent(
+      'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
+    );
 
     _webViewController
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -69,13 +100,29 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
-            if (mounted) setState(() => isLoading = true);
+            if (mounted) {
+              setState(() {
+                _isLoading = true;
+                _errorMessage = null;
+              });
+            }
           },
           onPageFinished: (_) {
-            if (mounted) setState(() => isLoading = false);
+            // NO quitar loading aquí - esperar evento del HTML
+            debugPrint('📄 WebView Page Finished');
           },
           onWebResourceError: (error) {
-            // debugPrint('WebResourceError: ${error.description}');
+            // Solo errores críticos
+            if (error.errorType == WebResourceErrorType.hostLookup ||
+                error.errorType == WebResourceErrorType.timeout) {
+              debugPrint('❌ Critical WebView Error: ${error.description}');
+              if (mounted && _isLoading) {
+                setState(() {
+                  _errorMessage = 'Error de conexión';
+                  _isLoading = false;
+                });
+              }
+            }
           },
         ),
       )
@@ -85,60 +132,91 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
       )
       ..loadRequest(Uri.parse(widget.url));
 
-    // Inicializar UnifiedController para usar CustomVideoControls
     _unifiedController =
         UnifiedVideoController.fromWeb(_webViewController, _videoState);
   }
 
   void _handleMessageFromHtml(JavaScriptMessage message) {
     if (!mounted) return;
+
     try {
       final data = jsonDecode(message.message);
       final eventType = data['type'] as String?;
 
       switch (eventType) {
         case 'playerReady':
-          _getPlayerState();
+          debugPrint('✅ Player listo');
           break;
 
         case 'loadingStart':
+          // Nuevo servidor cargando
           if (mounted) {
-            setState(() {
-              isLoading = true;
-              currentServer = data['serverIndex'] ?? 1;
-              totalServers = data['totalServers'] ?? 1;
-            });
+            setState(() => _isLoading = true);
           }
           break;
 
-        case 'playingMuted':
-          // Video reproduciendo MUTEADO. Actualizamos estado pero esperamos tap.
-          _videoState.update(playing: true, buffering: false);
-          if (mounted) {
-            setState(() {
-              isLoading = false;
-              audioActivado = false;
-              // isMuted (en videoState) debería ser true, pero UnifiedController no expone isMuted directo en interface?
-              // CustomVideoControls usa isMuted como prop externa.
-            });
-          }
-          break;
-
+        case 'playingStarted':
         case 'iframeLoaded':
+          // Video empezó a reproducir - QUITAR LOADING
+          _loadingTimer?.cancel();
           _videoState.update(playing: true, buffering: false);
-          if (mounted) setState(() => isLoading = false);
+
+          final isMuted = data['muted'] as bool? ?? false;
+
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _isMuted = isMuted;
+              _isReallyBuffering = false;
+            });
+          }
+          debugPrint('✅ Reproduciendo - Loading OFF');
+          break;
+
+        case 'canPlay':
+          // Puede reproducir pero aún no comenzó
+          // NO quitar loading hasta que realmente reproduzca
+          break;
+
+        case 'buffering':
+          final state = data['state'] as String?;
+
+          // Debounce buffering events para evitar flickers
+          _bufferingDebounce?.cancel();
+
+          if (state == 'waiting') {
+            // Solo mostrar buffering después de 500ms
+            _bufferingDebounce = Timer(const Duration(milliseconds: 500), () {
+              if (mounted && !_isLoading) {
+                setState(() => _isReallyBuffering = true);
+                _videoState.update(buffering: true);
+              }
+            });
+          } else if (state == 'ready') {
+            // Inmediatamente quitar buffering
+            if (mounted) {
+              setState(() => _isReallyBuffering = false);
+              _videoState.update(buffering: false);
+            }
+          }
           break;
 
         case 'audioEnabled':
-          if (mounted) setState(() => audioActivado = true);
+          if (mounted) {
+            setState(() {
+              _isMuted = false;
+            });
+          }
           break;
 
         case 'audioDisabled':
-          // Audio desactivado
+          if (mounted) {
+            setState(() => _isMuted = true);
+          }
           break;
 
         case 'playbackStarted':
-          _videoState.update(playing: true, buffering: false);
+          _videoState.update(playing: true);
           break;
 
         case 'playbackPaused':
@@ -146,33 +224,25 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
           break;
 
         case 'serverChange':
+          // Cambiando servidor
           if (mounted) {
-            setState(() {
-              isLoading = true;
-              currentServer = data['serverIndex'] ?? 1;
-              totalServers = data['totalServers'] ?? 1;
-            });
+            setState(() => _isLoading = true);
           }
-          break;
-
-        case 'buffering':
-          _videoState.update(buffering: true);
           break;
 
         case 'error':
           if (mounted) {
             setState(() {
-              errorMessage = data['message'] ?? 'Error desconocido';
-              isLoading = false;
+              _errorMessage = data['message'] ?? 'Error desconocido';
+              _isLoading = false;
             });
           }
           break;
       }
 
-      // Actualizar UI si hubo cambios en VideoState que requieran rebuild de controles
       if (mounted) setState(() {});
     } catch (e) {
-      debugPrint('Error msg HTML: $e');
+      debugPrint('❌ Error procesando mensaje HTML: $e');
     }
   }
 
@@ -180,29 +250,15 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
   // CONTROLES
   // ========================================
 
-  Future<void> _unmute() async {
-    await _webViewController.runJavaScript('window.unmute()');
-    if (mounted) setState(() => audioActivado = true);
-  }
-
   Future<void> _toggleMute() async {
-    // Si aún no se activó el audio (está muteado por autoplay), intentar desmutear
-    if (!audioActivado) {
-      await _unmute();
-    } else {
-      await _webViewController.runJavaScript('window.toggleMute()');
-      // El estado de mute real debería venir del callback de JS,
-      // pero por latencia podemos asumir toggle en UI localmente o esperar evento
-    }
+    await _webViewController.runJavaScript('window.toggleMute()');
+    // El estado se actualiza con el callback
   }
 
   Future<void> _toggleFullscreen() async {
-    await _webViewController.runJavaScript('window.toggleFullscreen()');
-    if (mounted) {
-      setState(() => isFullscreen = !isFullscreen);
-    }
+    setState(() => _isFullscreen = !_isFullscreen);
 
-    if (isFullscreen) {
+    if (_isFullscreen) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
@@ -217,17 +273,50 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
     }
   }
 
-  // ========================================
-  // TAP HANDLER (CRÍTICO)
-  // ========================================
-  void _handleFirstTap() {
-    if (_unifiedController.isPlaying && !audioActivado) {
-      _unmute();
+  void _changeAspectRatio() {
+    setState(() {
+      switch (_aspectRatioType) {
+        case AspectRatioType.auto:
+          _aspectRatioType = AspectRatioType.ratio16_9;
+          break;
+        case AspectRatioType.ratio16_9:
+          _aspectRatioType = AspectRatioType.ratio4_3;
+          break;
+        case AspectRatioType.ratio4_3:
+          _aspectRatioType = AspectRatioType.stretch;
+          break;
+        case AspectRatioType.stretch:
+          _aspectRatioType = AspectRatioType.auto;
+          break;
+      }
+    });
+  }
+
+  String _getAspectRatioLabel() {
+    switch (_aspectRatioType) {
+      case AspectRatioType.auto:
+        return 'Original';
+      case AspectRatioType.ratio16_9:
+        return '16:9';
+      case AspectRatioType.ratio4_3:
+        return '4:3';
+      case AspectRatioType.stretch:
+        return 'Estirar';
     }
   }
 
-  Future<void> _getPlayerState() async {
-    // Implementación opcional para sincronizar estado inicial
+  double _getAspectRatio() {
+    switch (_aspectRatioType) {
+      case AspectRatioType.auto:
+        return 16 / 9; // Default para web
+      case AspectRatioType.ratio16_9:
+        return 16 / 9;
+      case AspectRatioType.ratio4_3:
+        return 4 / 3;
+      case AspectRatioType.stretch:
+        final size = MediaQuery.of(context).size;
+        return size.width / size.height;
+    }
   }
 
   @override
@@ -236,77 +325,177 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. WebView
-          GestureDetector(
-            onTap: _handleFirstTap, // Detectar tap en área de video
-            child: WebViewWidget(controller: _webViewController),
+          // 1. WebView con AspectRatio
+          Center(
+            child: AspectRatio(
+              aspectRatio: _getAspectRatio(),
+              child: WebViewWidget(controller: _webViewController),
+            ),
           ),
 
-          // 2. Controles Nativos (CustomVideoControls)
+          // 2. Controles Nativos (siempre visibles)
           Positioned.fill(
             child: CustomVideoControls(
               controller: _unifiedController,
               channelName: widget.channelName,
               onFullScreenToggle: _toggleFullscreen,
-              isFullScreen: isFullscreen,
-              aspectRatioLabel: 'Original', // Web maneja su ratio
-              onAspectRatioChange: () {}, // No soportado en web por ahora
-              // CustomVideoControls espera 'onMuteToggle' y 'isMuted'
-              onMuteToggle: () {
-                _handleFirstTap();
-                _toggleMute();
-              },
-              isMuted:
-                  !audioActivado, // Simplificación: si no activado, asumo muteado
-              currentServer: currentServer,
-              totalServers: totalServers,
+              isFullScreen: _isFullscreen,
+              aspectRatioLabel: _getAspectRatioLabel(),
+              onAspectRatioChange: _changeAspectRatio,
+              onMuteToggle: _toggleMute,
+              isMuted: _isMuted,
+              currentServer: widget.currentServer,
+              totalServers: widget.totalServers,
             ),
           ),
 
-          // 3. Loading
-          if (isLoading)
-            const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
+          // 3. Loading Indicator (UNIFICADO - igual al de VideoPlayer)
+          if (_isLoading) _buildLoadingWidget(),
 
-          // 4. Error
-          if (errorMessage != null && !isLoading)
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                  const SizedBox(height: 16),
-                  Text(errorMessage!,
-                      style: const TextStyle(color: Colors.white)),
-                  const SizedBox(height: 16),
-                  if (widget.onRefresh != null)
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          errorMessage = null;
-                          isLoading = true;
-                        });
-                        _webViewController.reload();
-                        widget.onRefresh!();
-                      },
-                      child: const Text('Reintentar'),
-                    ),
-                ],
+          // 4. Buffering Indicator (solo si NO está cargando)
+          if (!_isLoading && _isReallyBuffering) _buildBufferingWidget(),
+
+          // 5. Error Message
+          if (_errorMessage != null && !_isLoading) _buildErrorWidget(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingWidget() {
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 50,
+              height: 50,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).colorScheme.primary,
+                ),
               ),
             ),
-        ],
+            const SizedBox(height: 20),
+            const Text(
+              'Conectando...',
+              style: TextStyle(
+                fontFamily: 'Roboto',
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBufferingWidget() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.black.withAlpha(204),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(102),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Cargando...',
+              style: TextStyle(
+                fontFamily: 'Roboto',
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget() {
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                color: Colors.red,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              if (widget.onRefresh != null)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _errorMessage = null;
+                      _isLoading = true;
+                    });
+                    _webViewController.reload();
+                    widget.onRefresh!();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reintentar'),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   @override
   void dispose() {
+    _loadingTimer?.cancel();
+    _bufferingDebounce?.cancel();
+
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
     );
+
     super.dispose();
   }
 }
