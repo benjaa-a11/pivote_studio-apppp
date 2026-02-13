@@ -35,15 +35,14 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
   }
 
   Future<void> _handleClearCache(String type) async {
-    String title = '¿Limpiar cache?';
+    String title = '¿Limpiar caché?';
     String message = 'Esta acción liberará espacio en tu dispositivo.';
 
     if (type == 'all') {
-      title = '¿Limpiar todo?';
-      message =
-          'Se eliminarán todos los datos almacenados en cache, incluyendo imágenes y preferencias temporales.';
+      title = '¿Liberar todo?';
+      message = 'Borraremos todos los datos temporales para que tu app vuele.';
     } else if (type == 'images') {
-      title = '¿Limpiar imágenes?';
+      title = '¿Borrar imágenes?';
       message = 'Se eliminarán las miniaturas y portadas descargadas.';
     } else if (type == 'app') {
       title = '¿Limpiar datos?';
@@ -54,7 +53,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
       context: context,
       title: title,
       message: message,
-      confirmLabel: 'Limpiar Todo',
+      confirmLabel: 'Liberar espacio',
       cancelLabel: 'Cancelar',
       isDestructive: true,
       type: AppDialogType.error,

@@ -57,11 +57,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void _showClearHistoryDialog(BuildContext context) async {
     final confirmed = await AppDialogs.showConfirm(
       context: context,
-      title: '¿Limpiar Historial?',
-      message:
-          'Esta acción borrará todos los canales que has visto recientemente. ¿Deseas continuar?',
-      confirmLabel: 'Limpiar Todo',
-      cancelLabel: 'Cancelar',
+      title: '¿Borrar historial?',
+      message: 'Se eliminarán los canales que viste recientemente.',
+      confirmLabel: 'Borrar todo',
+      cancelLabel: 'No, esperar',
       isDestructive: true,
       type: AppDialogType.error,
     );
