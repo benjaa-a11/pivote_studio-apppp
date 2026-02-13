@@ -12,7 +12,10 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
-import 'package:pivote/features/video/presentation/widgets/html_player_widget.dart';
+import 'package:pivote/features/video/presentation/widgets/pivo_pro_player.dart';
+
+
+const String kPivoProPlayerUrl = 'https://pivo-pro.vercel.app/';
 
 /// Professional video player widget with support for:
 /// - MPD (DASH) streams with DRM ClearKey via WebView + Shaka Player
@@ -798,90 +801,73 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           displayMedium: TextStyle(
             fontFamily: 'Roboto',
             fontWeight: FontWeight.w400,
-          ),
-          bodyLarge: TextStyle(
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.w400,
-            letterSpacing: 0.15,
-          ),
-          bodyMedium: TextStyle(
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.w400,
-            letterSpacing: 0.25,
-          ),
-          labelLarge: TextStyle(
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.5,
+            letterSpacing: -0.25,
           ),
         ),
       ),
-      child: _buildContent(),
-    );
-  }
-
-  Widget _buildContent() {
-    if (_isLoading) {
-      return _buildLoadingWidget();
-    }
-
-    if (_error != null) {
-      return _buildErrorWidget(_error!);
-    }
-
-    // Unified Player Interface
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: Stack(
-        children: [
-          // 1. Player Surface (Video or Web)
-          Container(
-            color: Colors.black,
-            child: _buildPlayerSurface(),
-          ),
-
-          // 2. Customized Controls Overlay
-          if (_unifiedController != null)
-            CustomVideoControls(
-              controller: _unifiedController!,
-              onFullScreenToggle: _toggleFullScreen,
-              onAspectRatioChange: _changeAspectRatio,
-              aspectRatioLabel: _getAspectRatioLabel(),
-              isFullScreen: _isFullScreen,
-              onMuteToggle: _toggleMute,
-              isMuted: _isMuted,
-              channelName: widget.channel.name,
-              currentServer: _currentServerIndex + 1,
-              totalServers: widget.channel.streamUrl.length,
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            // 1. Video Layer
+            Center(
+              child: AspectRatio(
+                aspectRatio: _getAspectRatio(),
+                child: _useHtmlPlayer
+                    ? PivoProPlayer(
+                        channelId: widget.channel.id,
+                        playerHtmlUrl: kPivoProPlayerUrl,
+                      )
+                    : (_videoPlayerController != null &&
+                            _videoPlayerController!.value.isInitialized)
+                        ? VideoPlayer(_videoPlayerController!)
+                        : Container(color: Colors.black),
+              ),
             ),
-        ],
+
+            // 2. Controls Layer (Only for Native Player)
+            if (!_useHtmlPlayer && _unifiedController != null)
+              Positioned.fill(
+                child: CustomVideoControls(
+                  controller: _unifiedController!,
+                  channelName: widget.channel.name,
+                  onFullScreenToggle: _toggleFullScreen,
+                  isFullScreen: _isFullScreen,
+                  aspectRatioLabel: _getAspectRatioLabel(),
+                  onAspectRatioChange: _changeAspectRatio,
+                  onMuteToggle: _toggleMute,
+                  isMuted: _isMuted,
+                  currentServer: _currentServerIndex + 1,
+                  totalServers: widget.channel.streamUrl.length,
+                ),
+              ),
+
+            // 3. Loading Indicator (Only for Native Player)
+            // PivoProPlayer handles its own loading state
+            if (!_useHtmlPlayer &&
+                (_isLoading ||
+                    (_unifiedController != null &&
+                        _unifiedController!.isBuffering)))
+              _buildLoadingWidget(),
+
+            // 4. Error Message (Only for Native Player)
+            if (!_useHtmlPlayer && _error != null && !_isLoading)
+              _buildErrorWidget(_error!),
+
+            // 5. Fade Animation (Optional, mostly for native)
+            if (!_useHtmlPlayer)
+              IgnorePointer(
+                child: FadeTransition(
+                  opacity: Tween<double>(begin: 1.0, end: 0.0)
+                      .animate(_fadeAnimation),
+                  child: Container(color: Colors.black),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
-
-  Widget _buildPlayerSurface() {
-    if (_useHtmlPlayer) {
-      if (_webViewController != null) {
-        return HtmlPlayerWidget(controller: _webViewController!);
-      }
-      return const SizedBox();
-    } else {
-      // Native Video Player
-      if (_videoPlayerController != null &&
-          _videoPlayerController!.value.isInitialized) {
-        return Center(
-          child: AspectRatio(
-            aspectRatio: _getAspectRatio(),
-            child: VideoPlayer(_videoPlayerController!),
-          ),
-        );
-      }
-      return const SizedBox();
-    }
-  }
-
-  // Helper methods like _createUnifiedController are no longer needed
-  // as we use _unifiedController directly.
 
   // Helper methods
   void _safeSetState(VoidCallback fn) {
