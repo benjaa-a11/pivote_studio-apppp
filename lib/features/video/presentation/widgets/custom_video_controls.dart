@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
+import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CustomVideoControls extends StatefulWidget {
   final UnifiedVideoController controller;
@@ -175,45 +177,9 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         builder: (context, value, child) {
           return Opacity(
             opacity: value,
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(204),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(102),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Cargando...',
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.15,
-                    ),
-                  ),
-                ],
-              ),
+            child: const VideoLoadingWidget(
+              message: 'Cargando...',
+              isBuffering: true,
             ),
           );
         },
@@ -253,11 +219,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               const SizedBox(width: 10),
               Text(
                 widget.aspectRatioLabel,
-                style: const TextStyle(
-                  fontFamily: 'Roboto',
-                  color: Colors.white,
-                  fontSize: 15,
+                style: GoogleFonts.montserrat(
                   fontWeight: FontWeight.w500,
+                  fontSize: 15,
+                  color: Colors.white,
                   letterSpacing: 0.5,
                 ),
               ),
@@ -324,11 +289,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 children: [
                   Text(
                     widget.channelName,
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      color: Colors.white,
+                    style: GoogleFonts.montserrat(
                       fontSize: widget.isFullScreen ? 17 : 16,
                       fontWeight: FontWeight.w500,
+                      color: Colors.white,
                       letterSpacing: 0.15,
                     ),
                     maxLines: 1,
@@ -352,13 +316,12 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                         ),
                       ),
                       const SizedBox(width: 7),
-                      const Text(
+                      Text(
                         'EN VIVO',
-                        style: TextStyle(
-                          fontFamily: 'Roboto',
-                          color: Colors.white70,
+                        style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.w700,
                           fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                          color: Colors.white70,
                           letterSpacing: 1.0,
                         ),
                       ),
@@ -382,11 +345,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                           ),
                           child: Text(
                             '${widget.currentServer}/${widget.totalServers}',
-                            style: const TextStyle(
-                              fontFamily: 'Roboto',
-                              color: Colors.white,
-                              fontSize: 11,
+                            style: GoogleFonts.montserrat(
                               fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                              color: Colors.white,
                               letterSpacing: 0.4,
                             ),
                           ),
@@ -500,11 +462,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   const SizedBox(width: 6),
                   Text(
                     label,
-                    style: const TextStyle(
-                      fontFamily: 'Roboto',
-                      color: Colors.white,
-                      fontSize: 12,
+                    style: GoogleFonts.montserrat(
                       fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                      color: Colors.white,
                       letterSpacing: 0.5,
                     ),
                   ),

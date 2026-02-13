@@ -4,7 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/home/presentation/screens/home_screen.dart';
 import 'package:pivote/features/soccer/presentation/screens/futbol_screen.dart';
-import 'package:pivote/features/cinema/presentation/screens/cinema_screen.dart';
+import 'package:pivote/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:pivote/features/radio/presentation/screens/radios_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/profile_screen.dart';
 
@@ -21,7 +21,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const FutbolScreen(),
-    const CinemaScreen(),
+    const FavoritesScreen(),
     const RadiosScreen(),
     const ProfileScreen(),
   ];
@@ -127,7 +127,7 @@ class _MainScreenState extends State<MainScreen> {
               icon: AppAnimations.pulseIcon(
                 isSelected: false,
                 child: Icon(
-                  Icons.movie_creation_outlined,
+                  Icons.favorite_outline_rounded,
                   size: 22,
                   color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
                       Colors.grey,
@@ -136,12 +136,12 @@ class _MainScreenState extends State<MainScreen> {
               selectedIcon: AppAnimations.pulseIcon(
                 isSelected: _selectedIndex == 2,
                 child: Icon(
-                  Icons.movie_creation,
+                  Icons.favorite_rounded,
                   size: 22,
                   color: selectedColor,
                 ),
               ),
-              label: 'Cine',
+              label: 'Favoritos',
             ),
             NavigationDestination(
               icon: AppAnimations.pulseIcon(

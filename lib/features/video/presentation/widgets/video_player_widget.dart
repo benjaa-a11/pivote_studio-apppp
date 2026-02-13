@@ -11,7 +11,9 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
+import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/pivo_pro_player.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Professional video player widget with support for:
 /// - M3U8 (HLS) streams via native VideoPlayer
@@ -310,7 +312,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       if (response.redirects.isNotEmpty) {
         final finalUrl = response.redirects.last.location.toString();
-        debugPrint('🔀 Redirect: ${finalUrl.substring(0, min(80, finalUrl.length))}');
+        debugPrint(
+            '🔀 Redirect: ${finalUrl.substring(0, min(80, finalUrl.length))}');
 
         if (finalUrl.toLowerCase().endsWith('.m3u8')) {
           return finalUrl;
@@ -318,7 +321,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
         final body = await response.transform(const Utf8Decoder()).join();
         if (body.contains('.m3u8')) {
-          final m3u8Match = RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
+          final m3u8Match =
+              RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
           if (m3u8Match != null) {
             debugPrint('📎 URL .m3u8 extraída');
             return m3u8Match.group(0)!;
@@ -343,7 +347,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
         final body = await response.transform(const Utf8Decoder()).join();
         if (body.contains('.m3u8')) {
-          final m3u8Match = RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
+          final m3u8Match =
+              RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
           if (m3u8Match != null) {
             debugPrint('📎 URL .m3u8 extraída del body');
             return m3u8Match.group(0)!;
@@ -374,8 +379,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       debugPrint('🎬 Inicializando VideoPlayer (HLS)');
 
       final headers = <String, String>{
-        'User-Agent':
-            'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
         'Accept': '*/*',
         'Accept-Encoding': 'gzip, deflate',
         'Connection': 'keep-alive',
@@ -697,47 +701,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Widget _buildLoadingWidget() {
-    return Container(
-      color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 50,
-              height: 50,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Conectando...',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.15,
-              ),
-            ),
-            if (_retryCount > 0) ...[
-              const SizedBox(height: 10),
-              Text(
-                'Reintentando $_retryCount/$_maxRetries...',
-                style: TextStyle(
-                  fontFamily: 'Roboto',
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+    return VideoLoadingWidget(
+      message: 'Conectando...',
+      subMessage:
+          _retryCount > 0 ? 'Reintentando $_retryCount/$_maxRetries...' : null,
     );
   }
 
@@ -758,7 +725,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               const SizedBox(height: 16),
               Text(
                 errorMessage,
-                style: const TextStyle(
+                style: GoogleFonts.montserrat(
                   color: Colors.white,
                   fontSize: 14,
                 ),
@@ -768,7 +735,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               ElevatedButton.icon(
                 onPressed: _initializePlayer,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Reintentar'),
+                label: Text(
+                  'Reintentar',
+                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),

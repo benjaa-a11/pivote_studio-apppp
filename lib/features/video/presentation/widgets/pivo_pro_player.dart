@@ -7,6 +7,8 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
+import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 enum AspectRatioType {
   auto,
@@ -363,81 +365,15 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
   }
 
   Widget _buildLoadingWidget() {
-    return Container(
-      color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 50,
-              height: 50,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Conectando...',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.15,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const VideoLoadingWidget(
+      message: 'Conectando...',
     );
   }
 
   Widget _buildBufferingWidget() {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.black.withAlpha(204),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(102),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(
-                strokeWidth: 3,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  Theme.of(context).colorScheme.primary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Cargando...',
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.15,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const VideoLoadingWidget(
+      message: 'Cargando...',
+      isBuffering: true,
     );
   }
 
@@ -458,7 +394,7 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
               const SizedBox(height: 16),
               Text(
                 _errorMessage!,
-                style: const TextStyle(
+                style: GoogleFonts.montserrat(
                   color: Colors.white,
                   fontSize: 14,
                 ),
@@ -476,7 +412,10 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
                     widget.onRefresh!();
                   },
                   icon: const Icon(Icons.refresh),
-                  label: const Text('Reintentar'),
+                  label: Text(
+                    'Reintentar',
+                    style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+                  ),
                 ),
             ],
           ),
