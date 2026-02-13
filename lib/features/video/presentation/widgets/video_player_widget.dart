@@ -14,9 +14,6 @@ import 'package:pivote/features/video/presentation/widgets/custom_video_controls
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/pivo_pro_player.dart';
 
-
-const String kPivoProPlayerUrl = 'https://pivo-pro.vercel.app/';
-
 /// Professional video player widget with support for:
 /// - MPD (DASH) streams with DRM ClearKey via WebView + Shaka Player
 /// - M3U8 (HLS) streams via WebView + Shaka Player
@@ -815,8 +812,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 aspectRatio: _getAspectRatio(),
                 child: _useHtmlPlayer
                     ? PivoProPlayer(
-                        channelId: widget.channel.id,
-                        playerHtmlUrl: kPivoProPlayerUrl,
+                        // Uses the exact URL from the active stream
+                        url: _currentStream!.url,
+                        channelName: widget.channel.name,
+                        onRefresh: _handleServerFailure,
                       )
                     : (_videoPlayerController != null &&
                             _videoPlayerController!.value.isInitialized)
