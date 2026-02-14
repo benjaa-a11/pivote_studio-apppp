@@ -240,12 +240,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
             if (_showAspectRatioToast && widget.isFullScreen)
               _buildAspectRatioToast(),
 
-            // Buffer health indicator (low buffer warning)
-            if (widget.controller.bufferHealth < 30 &&
-                widget.controller.isPlaying &&
-                !widget.controller.isBuffering)
-              _buildLowBufferWarning(),
-
             // Controls with fade animation
             FadeTransition(
               opacity: _fadeAnimation,
@@ -269,45 +263,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         child: const VideoLoadingWidget(
           message: 'Cargando...',
           isBuffering: true,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLowBufferWarning() {
-    return Positioned(
-      top: widget.isFullScreen ? 80 : 70,
-      right: 16,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.orange.withAlpha(200),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(77),
-              blurRadius: 8,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.signal_cellular_alt_outlined,
-              color: Colors.white,
-              size: 14,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Buffer: ${widget.controller.bufferHealth}%',
-              style: GoogleFonts.montserrat(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
         ),
       ),
     );

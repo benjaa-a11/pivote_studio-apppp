@@ -7,6 +7,8 @@ import 'package:pivote/features/soccer/presentation/screens/futbol_screen.dart';
 import 'package:pivote/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:pivote/features/radio/presentation/screens/radios_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/profile_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -15,7 +17,7 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
@@ -29,11 +31,26 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('🔄 App resumida - Actualizando datos de fútbol');
+      try {
+        final soccerProvider = context.read<SoccerProvider>();
+        soccerProvider.fetchData(silent: true);
+      } catch (e) {
+        debugPrint('⚠️ Error al refrescar datos de fútbol: $e');
+      }
+    }
   }
 
   void _onNavItemTapped(int index) {

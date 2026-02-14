@@ -46,7 +46,6 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  
   // ═══════════════════════════════════════
   // Controllers
   // ═══════════════════════════════════════
@@ -183,25 +182,27 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _checkStreamHealth() {
     if (_useHtmlPlayer) return; // HTML player has its own monitoring
-    
+
     if (_unifiedController != null) {
       final bufferHealth = _unifiedController!.bufferHealth;
-      
+
       // Critical buffer health
       if (bufferHealth < 10 && _unifiedController!.isPlaying) {
         _stuckCounter++;
-        debugPrint('⚠️ Critical buffer: $bufferHealth% (${_stuckCounter * 5}s)');
-        
+        debugPrint(
+            '⚠️ Critical buffer: $bufferHealth% (${_stuckCounter * 5}s)');
+
         if (_stuckCounter >= _watchdogThreshold) {
           debugPrint('🔄 Watchdog: Stream stalled - recovering');
           _stuckCounter = 0;
           _handleStreamStall();
         }
-      } else if (_unifiedController!.isPlaying && !_unifiedController!.isBuffering) {
+      } else if (_unifiedController!.isPlaying &&
+          !_unifiedController!.isBuffering) {
         _stuckCounter = 0;
         _consecutiveErrors = 0; // Reset error counter on healthy stream
       }
-      
+
       // Monitor buffering time
       if (_unifiedController!.isBuffering) {
         _stuckCounter++;
@@ -215,9 +216,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   Future<void> _handleStreamStall() async {
     if (_useHtmlPlayer) return;
-    
+
     _consecutiveErrors++;
-    
+
     if (_consecutiveErrors >= _maxConsecutiveErrors) {
       debugPrint('❌ Demasiados errores consecutivos - failover forzado');
       await _handleServerFailure();
@@ -307,10 +308,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
 
     // Server timeout with progressive increase
-    final timeoutDuration = Duration(
-      seconds: 10 + (_serverAttempt * 2).clamp(0, 10)
-    );
-    
+    final timeoutDuration =
+        Duration(seconds: 10 + (_serverAttempt * 2).clamp(0, 10));
+
     _serverTimeoutTimer = Timer(timeoutDuration, () {
       if (mounted &&
           !_isDisposed &&
@@ -367,7 +367,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       if (response.redirects.isNotEmpty) {
         final finalUrl = response.redirects.last.location.toString();
-        
+
         if (finalUrl.toLowerCase().endsWith('.m3u8')) {
           return finalUrl;
         }
@@ -444,7 +444,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       );
 
       _videoPlayerController!.addListener(_videoListener);
-      
+
       // Initialize with timeout
       await _videoPlayerController!.initialize().timeout(
         const Duration(seconds: 10),
@@ -492,7 +492,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         !value.hasError) {
       _stuckCounter = 0;
       _consecutiveErrors = 0;
-      
+
       if (_isLoading) {
         _loadingFailsafe?.cancel();
         _safeSetState(() => _isLoading = false);
@@ -508,11 +508,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       _errorRecoveryTimer = Timer(const Duration(seconds: 1), () async {
         if (_isDisposed || !mounted) return;
-        
+
         _consecutiveErrors++;
         _retryCount++;
-        
-        debugPrint('🔄 Recuperación $_retryCount/$_maxRetries (Errores consecutivos: $_consecutiveErrors)');
+
+        debugPrint(
+            '🔄 Recuperación $_retryCount/$_maxRetries (Errores consecutivos: $_consecutiveErrors)');
 
         if (_consecutiveErrors >= _maxConsecutiveErrors) {
           debugPrint('❌ Demasiados errores - failover forzado');
@@ -566,7 +567,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _loadingFailsafe?.cancel();
         _safeSetState(() {
           _isLoading = false;
-          _error = 'No se pudo conectar a ningún servidor.\n\nVerifica tu conexión e intenta nuevamente.';
+          _error =
+              'No se pudo conectar a ningún servidor.\n\nVerifica tu conexión e intenta nuevamente.';
           _isInitializing = false;
         });
       }
@@ -745,17 +747,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 ),
               ),
 
-            // 3. Loading Indicator (Only for Native Player)
-            if (!_useHtmlPlayer &&
-                (_isLoading ||
-                    (_unifiedController != null &&
-                        _unifiedController!.isBuffering)))
-              _buildLoadingWidget(),
-
-            // 4. Error Message (Only for Native Player)
-            if (!_useHtmlPlayer && _error != null && !_isLoading)
-              _buildErrorWidget(_error!),
-
             // 5. Fade Animation
             if (!_useHtmlPlayer)
               IgnorePointer(
@@ -765,6 +756,17 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                   child: Container(color: Colors.black),
                 ),
               ),
+
+            // 6. Loading Indicator (Only for Native Player) - Rendered on TOP
+            if (!_useHtmlPlayer &&
+                (_isLoading ||
+                    (_unifiedController != null &&
+                        _unifiedController!.isBuffering)))
+              _buildLoadingWidget(),
+
+            // 7. Error Message (Only for Native Player)
+            if (!_useHtmlPlayer && _error != null && !_isLoading)
+              _buildErrorWidget(_error!),
           ],
         ),
       ),
@@ -794,8 +796,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       message: message,
       serverInfo:
           '${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
-      subMessage:
-          _retryCount > 0 ? 'Intento $_retryCount/$_maxRetries' : null,
+      subMessage: _retryCount > 0 ? 'Intento $_retryCount/$_maxRetries' : null,
     );
   }
 

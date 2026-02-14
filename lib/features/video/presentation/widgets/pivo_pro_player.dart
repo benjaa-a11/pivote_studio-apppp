@@ -599,12 +599,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
           // 5. Error Message
           if (_videoState.hasError && !_videoState.isLoading)
             _buildErrorWidget(),
-
-          // 6. Buffer Health Indicator (Debug)
-          if (!_videoState.isLoading &&
-              !_videoState.hasError &&
-              _videoState.bufferHealth < 30)
-            _buildBufferHealthIndicator(),
         ],
       ),
     );
@@ -662,38 +656,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
         ),
       ),
     );
-  }
-
-  Widget _buildBufferHealthIndicator() {
-    return Positioned(
-      top: 60,
-      right: 16,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: _getBufferHealthColor(),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          'Buffer: ${_videoState.bufferHealth}%',
-          style: GoogleFonts.montserrat(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Color _getBufferHealthColor() {
-    if (_videoState.bufferHealth >= 50) {
-      return Colors.green.withAlpha(180);
-    } else if (_videoState.bufferHealth >= 30) {
-      return Colors.orange.withAlpha(180);
-    } else {
-      return Colors.red.withAlpha(180);
-    }
   }
 
   // ═══════════════════════════════════════
