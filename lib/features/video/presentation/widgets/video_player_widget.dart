@@ -410,7 +410,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _fadeController.forward();
 
       _safeSetState(() {
-        _isLoading = false;
         _isInitializing = false;
         _retryCount = 0;
         _stuckCounter = 0;
@@ -428,8 +427,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     final value = _videoPlayerController!.value;
 
-    if (value.isInitialized && value.isPlaying && !value.hasError) {
+    // Reset stuck counter if playing
+    if (value.isInitialized &&
+        value.isPlaying &&
+        !value.isBuffering &&
+        !value.hasError) {
       _stuckCounter = 0;
+      if (_isLoading) {
+        _safeSetState(() => _isLoading = false);
+      }
     }
 
     if (value.hasError && !_isLoading && !_isInitializing) {
@@ -701,8 +707,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Widget _buildLoadingWidget() {
+    final isBuffering = !_isLoading &&
+        _unifiedController != null &&
+        _unifiedController!.isBuffering;
+
     return VideoLoadingWidget(
-      message: 'Conectando...',
+      isBuffering: isBuffering,
+      message: isBuffering ? 'Buffering...' : 'Conectando...',
+      serverInfo:
+          '${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
       subMessage:
           _retryCount > 0 ? 'Reintentando $_retryCount/$_maxRetries...' : null,
     );

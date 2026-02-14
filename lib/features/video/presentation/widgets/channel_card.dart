@@ -215,6 +215,16 @@ class _ChannelCardState extends State<ChannelCard>
       imageUrl: logoUrl,
       fit: BoxFit.contain,
       alignment: Alignment.center,
+      filterQuality: FilterQuality.medium,
+      imageBuilder: (context, imageProvider) => Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: imageProvider,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+          ),
+        ),
+      ),
       placeholder: (context, url) => _buildLoadingShimmer(context),
       errorWidget: (context, url, error) => _buildPlaceholder(context),
       fadeInDuration: const Duration(milliseconds: 300),

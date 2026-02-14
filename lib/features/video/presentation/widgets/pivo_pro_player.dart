@@ -365,15 +365,17 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
   }
 
   Widget _buildLoadingWidget() {
-    return const VideoLoadingWidget(
+    return VideoLoadingWidget(
       message: 'Conectando...',
+      serverInfo: '${widget.currentServer}/${widget.totalServers}',
     );
   }
 
   Widget _buildBufferingWidget() {
-    return const VideoLoadingWidget(
+    return VideoLoadingWidget(
       message: 'Cargando...',
       isBuffering: true,
+      serverInfo: '${widget.currentServer}/${widget.totalServers}',
     );
   }
 
