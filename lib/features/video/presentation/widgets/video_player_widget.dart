@@ -2,14 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:pivote/features/video/data/models/channel.dart';
-import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
+import 'package:pivote/features/video/presentation/widgets/tv_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/pivo_pro_player.dart';
@@ -733,7 +732,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             // 2. Controls Layer (Only for Native Player)
             if (!_useHtmlPlayer && _unifiedController != null)
               Positioned.fill(
-                child: CustomVideoControls(
+                child: TvVideoControls(
                   controller: _unifiedController!,
                   channelName: widget.channel.name,
                   onFullScreenToggle: _toggleFullScreen,

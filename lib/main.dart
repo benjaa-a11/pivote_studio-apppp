@@ -12,7 +12,7 @@ import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/services/firebase_service.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
-import 'package:pivote/features/home/presentation/screens/main_screen.dart';
+import 'package:pivote/features/home/presentation/screens/tv_main_screen.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:pivote/shared/widgets/connectivity_wrapper.dart';
@@ -128,7 +128,7 @@ class _AuthenticationWrapper extends StatelessWidget {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 FlutterNativeSplash.remove();
               });
-              return const MainScreen();
+              return const TvMainScreen();
             }
 
             // Show a themed loading state if it's taking too long
