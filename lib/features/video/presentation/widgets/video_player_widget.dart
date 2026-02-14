@@ -18,11 +18,13 @@ import 'package:google_fonts/google_fonts.dart';
 /// Professional video player widget with support for:
 /// - M3U8 (HLS) streams via native VideoPlayer
 /// - MPD (DASH) / Iframe / External streams via WebView + PivoProPlayer
-/// - Automatic server failover
-/// - Intelligent error recovery
-/// - Stream health monitoring
+/// - Automatic intelligent server failover
+/// - Advanced error recovery with exponential backoff
+/// - Stream health monitoring and auto-healing
+/// - Professional UX with smooth transitions
 ///
-/// @version 3.2 (Ultra Optimized)
+/// @version 4.0 (Professional Edition)
+
 enum AspectRatioType {
   auto,
   ratio16_9,
@@ -44,11 +46,14 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  
   // ═══════════════════════════════════════
   // Controllers
   // ═══════════════════════════════════════
   VideoPlayerController? _videoPlayerController;
   UnifiedVideoController? _unifiedController;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   // ═══════════════════════════════════════
   // State
@@ -67,10 +72,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   int _retryCount = 0;
   int _serverAttempt = 0;
   int _stuckCounter = 0;
+  int _consecutiveErrors = 0;
   bool _useHtmlPlayer = false;
 
-  static const int _maxRetries = 2;
+  static const int _maxRetries = 3;
   static const int _watchdogThreshold = 3;
+  static const int _maxConsecutiveErrors = 5;
 
   // ═══════════════════════════════════════
   // Timers
@@ -79,12 +86,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Timer? _errorRecoveryTimer;
   Timer? _stateCheckTimer;
   Timer? _orientationCheckTimer;
-
-  // ═══════════════════════════════════════
-  // Animation
-  // ═══════════════════════════════════════
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
+  Timer? _loadingFailsafe;
 
   @override
   void initState() {
@@ -92,7 +94,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _isDisposed = false;
 
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     );
     _fadeAnimation = CurvedAnimation(
@@ -104,7 +106,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     WakelockPlus.enable();
 
     debugPrint('═══════════════════════════════════════');
-    debugPrint('🎬 VideoPlayerWidget v3.2 (Ultra Optimized)');
+    debugPrint('🎬 VideoPlayerWidget v4.0 Professional');
     debugPrint('📺 Canal: ${widget.channel.name}');
     debugPrint('🔢 Servidores: ${widget.channel.streamUrl.length}');
     debugPrint('═══════════════════════════════════════');
@@ -112,19 +114,26 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _initializePlayer();
     _startWatchdog();
     _startOrientationMonitor();
+    _startLoadingFailsafe();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_isDisposed) return;
 
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      debugPrint('⏸️ App en background - pausando');
-      _unifiedController?.pause();
-    } else if (state == AppLifecycleState.resumed) {
-      debugPrint('▶️ App en foreground - resumiendo');
-      _unifiedController?.play();
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        debugPrint('⏸️ App en background - pausando');
+        _unifiedController?.pause();
+        break;
+      case AppLifecycleState.resumed:
+        debugPrint('▶️ App en foreground - resumiendo');
+        _unifiedController?.play();
+        _checkStreamHealth(); // Health check on resume
+        break;
+      default:
+        break;
     }
   }
 
@@ -151,16 +160,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     final isLandscape = currentOrientation == Orientation.landscape;
 
     if (!isLandscape && _isFullScreen) {
-      debugPrint('🔄 Portrait detectado - saliendo de fullscreen');
       _safeSetState(() => _isFullScreen = false);
     } else if (isLandscape && !_isFullScreen) {
-      debugPrint('🔄 Landscape detectado - entrando a fullscreen');
       _safeSetState(() => _isFullScreen = true);
     }
   }
 
   // ═══════════════════════════════════════
-  // Watchdog
+  // Watchdog & Health Monitoring
   // ═══════════════════════════════════════
 
   void _startWatchdog() {
@@ -175,20 +182,64 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   void _checkStreamHealth() {
-    if (_unifiedController != null && !_useHtmlPlayer) {
+    if (_useHtmlPlayer) return; // HTML player has its own monitoring
+    
+    if (_unifiedController != null) {
+      final bufferHealth = _unifiedController!.bufferHealth;
+      
+      // Critical buffer health
+      if (bufferHealth < 10 && _unifiedController!.isPlaying) {
+        _stuckCounter++;
+        debugPrint('⚠️ Critical buffer: $bufferHealth% (${_stuckCounter * 5}s)');
+        
+        if (_stuckCounter >= _watchdogThreshold) {
+          debugPrint('🔄 Watchdog: Stream stalled - recovering');
+          _stuckCounter = 0;
+          _handleStreamStall();
+        }
+      } else if (_unifiedController!.isPlaying && !_unifiedController!.isBuffering) {
+        _stuckCounter = 0;
+        _consecutiveErrors = 0; // Reset error counter on healthy stream
+      }
+      
+      // Monitor buffering time
       if (_unifiedController!.isBuffering) {
         _stuckCounter++;
-        debugPrint('⚠️ Watchdog: Buffering (${_stuckCounter * 5}s)');
-
-        if (_stuckCounter >= _watchdogThreshold) {
-          debugPrint('🔄 Watchdog: Stream stalled');
-          _stuckCounter = 0;
-          _handleServerFailure();
+        if (_stuckCounter >= _watchdogThreshold * 2) {
+          debugPrint('⚠️ Extended buffering detected');
+          _handleStreamStall();
         }
-      } else if (_unifiedController!.isPlaying) {
-        _stuckCounter = 0;
       }
     }
+  }
+
+  Future<void> _handleStreamStall() async {
+    if (_useHtmlPlayer) return;
+    
+    _consecutiveErrors++;
+    
+    if (_consecutiveErrors >= _maxConsecutiveErrors) {
+      debugPrint('❌ Demasiados errores consecutivos - failover forzado');
+      await _handleServerFailure();
+    } else {
+      debugPrint('🔄 Intentando recuperar stream actual');
+      _retryCount++;
+      if (_retryCount <= _maxRetries) {
+        await _initializeVideoPlayer(_currentStream!.url);
+      } else {
+        await _handleServerFailure();
+      }
+    }
+  }
+
+  void _startLoadingFailsafe() {
+    _loadingFailsafe?.cancel();
+    _loadingFailsafe = Timer(const Duration(seconds: 15), () {
+      if (!_isDisposed && mounted && _isLoading) {
+        debugPrint('⏱️ Loading failsafe triggered');
+        _safeSetState(() => _isLoading = false);
+      }
+    });
   }
 
   // ═══════════════════════════════════════
@@ -205,6 +256,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _retryCount = 0;
       _serverAttempt = 0;
       _stuckCounter = 0;
+      _consecutiveErrors = 0;
     });
 
     try {
@@ -223,6 +275,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_isDisposed) return;
 
     _serverTimeoutTimer?.cancel();
+    _loadingFailsafe?.cancel();
+    _startLoadingFailsafe();
 
     if (_currentServerIndex >= widget.channel.streamUrl.length) {
       throw Exception('No hay más servidores disponibles');
@@ -252,8 +306,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       throw Exception('URL vacía');
     }
 
-    // Server timeout
-    _serverTimeoutTimer = Timer(const Duration(seconds: 10), () {
+    // Server timeout with progressive increase
+    final timeoutDuration = Duration(
+      seconds: 10 + (_serverAttempt * 2).clamp(0, 10)
+    );
+    
+    _serverTimeoutTimer = Timer(timeoutDuration, () {
       if (mounted &&
           !_isDisposed &&
           _isLoading &&
@@ -269,17 +327,17 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         url.toLowerCase().contains('m3u');
 
     if (isNative) {
-      debugPrint('📱 Mode: Native Player');
-      setState(() => _useHtmlPlayer = false);
+      debugPrint('📱 Mode: Native Player (HLS)');
+      _safeSetState(() => _useHtmlPlayer = false);
       await _initializeVideoPlayer(url);
     } else {
-      debugPrint('🌐 Mode: WebView Player');
-      setState(() => _useHtmlPlayer = true);
-      // WebView player maneja su propio loading
+      debugPrint('🌐 Mode: WebView Player (DASH/Iframe)');
       _safeSetState(() {
+        _useHtmlPlayer = true;
         _isLoading = false;
         _isInitializing = false;
       });
+      _loadingFailsafe?.cancel();
     }
   }
 
@@ -287,7 +345,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     debugPrint('🔍 Resolviendo URL...');
 
     if (url.toLowerCase().endsWith('.m3u8')) {
-      debugPrint('✓ URL ya es .m3u8');
       return url;
     }
 
@@ -297,8 +354,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       httpClient = HttpClient()
         ..connectionTimeout = const Duration(seconds: 8)
         ..badCertificateCallback = (cert, host, port) => true;
-
-      debugPrint('📡 Siguiendo redirects para: ${uri.host}');
 
       final request = await httpClient.getUrl(uri);
       request.headers.set(
@@ -312,9 +367,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       if (response.redirects.isNotEmpty) {
         final finalUrl = response.redirects.last.location.toString();
-        debugPrint(
-            '🔀 Redirect: ${finalUrl.substring(0, min(80, finalUrl.length))}');
-
+        
         if (finalUrl.toLowerCase().endsWith('.m3u8')) {
           return finalUrl;
         }
@@ -324,7 +377,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           final m3u8Match =
               RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
           if (m3u8Match != null) {
-            debugPrint('📎 URL .m3u8 extraída');
             return m3u8Match.group(0)!;
           }
         }
@@ -333,7 +385,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       final location = response.headers.value('location');
       if (location != null) {
-        debugPrint('📍 Location header encontrado');
         return location;
       }
 
@@ -341,7 +392,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         final contentType = response.headers.contentType;
         if (contentType?.mimeType == 'application/vnd.apple.mpegurl' ||
             contentType?.mimeType == 'application/x-mpegURL') {
-          debugPrint('✓ Content-Type indica m3u8');
           return url;
         }
 
@@ -350,13 +400,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           final m3u8Match =
               RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
           if (m3u8Match != null) {
-            debugPrint('📎 URL .m3u8 extraída del body');
             return m3u8Match.group(0)!;
           }
         }
       }
 
-      debugPrint('⚠️ No se encontró .m3u8');
       return url;
     } catch (e) {
       debugPrint('❌ Error resolviendo URL: $e');
@@ -367,7 +415,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   // ═══════════════════════════════════════
-  // VideoPlayer (HLS)
+  // VideoPlayer (HLS) - Enhanced
   // ═══════════════════════════════════════
 
   Future<void> _initializeVideoPlayer(String url) async {
@@ -383,6 +431,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         'Accept': '*/*',
         'Accept-Encoding': 'gzip, deflate',
         'Connection': 'keep-alive',
+        'Referer': Uri.parse(url).origin,
       };
 
       _videoPlayerController = VideoPlayerController.networkUrl(
@@ -395,7 +444,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       );
 
       _videoPlayerController!.addListener(_videoListener);
-      await _videoPlayerController!.initialize();
+      
+      // Initialize with timeout
+      await _videoPlayerController!.initialize().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Timeout inicializando player');
+        },
+      );
 
       if (_isDisposed || !mounted) return;
 
@@ -403,6 +459,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           UnifiedVideoController.fromVideoPlayer(_videoPlayerController!);
 
       _serverTimeoutTimer?.cancel();
+      _loadingFailsafe?.cancel();
 
       await _videoPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
       await _videoPlayerController!.play();
@@ -413,6 +470,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _isInitializing = false;
         _retryCount = 0;
         _stuckCounter = 0;
+        _consecutiveErrors = 0;
       });
 
       debugPrint('✅ VideoPlayer listo');
@@ -427,29 +485,39 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     final value = _videoPlayerController!.value;
 
-    // Reset stuck counter if playing
+    // Reset counters on healthy playback
     if (value.isInitialized &&
         value.isPlaying &&
         !value.isBuffering &&
         !value.hasError) {
       _stuckCounter = 0;
+      _consecutiveErrors = 0;
+      
       if (_isLoading) {
+        _loadingFailsafe?.cancel();
         _safeSetState(() => _isLoading = false);
       }
     }
 
+    // Handle errors with debounce
     if (value.hasError && !_isLoading && !_isInitializing) {
       final errorDesc = value.errorDescription ?? 'Error desconocido';
       debugPrint('⚠️ Error VideoPlayer: $errorDesc');
 
       if (_errorRecoveryTimer?.isActive ?? false) return;
 
-      _errorRecoveryTimer = Timer(const Duration(milliseconds: 800), () async {
+      _errorRecoveryTimer = Timer(const Duration(seconds: 1), () async {
         if (_isDisposed || !mounted) return;
+        
+        _consecutiveErrors++;
         _retryCount++;
-        debugPrint('🔄 Recuperación $_retryCount/$_maxRetries');
+        
+        debugPrint('🔄 Recuperación $_retryCount/$_maxRetries (Errores consecutivos: $_consecutiveErrors)');
 
-        if (_retryCount <= _maxRetries) {
+        if (_consecutiveErrors >= _maxConsecutiveErrors) {
+          debugPrint('❌ Demasiados errores - failover forzado');
+          await _handleServerFailure();
+        } else if (_retryCount <= _maxRetries) {
           await _initializeVideoPlayer(_currentStream!.url);
         } else {
           await _handleServerFailure();
@@ -495,9 +563,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     } else {
       debugPrint('❌ No quedan más servidores');
       if (mounted && !_isDisposed) {
+        _loadingFailsafe?.cancel();
         _safeSetState(() {
           _isLoading = false;
-          _error = 'No se pudo conectar a ningún servidor.\nIntenta más tarde.';
+          _error = 'No se pudo conectar a ningún servidor.\n\nVerifica tu conexión e intenta nuevamente.';
           _isInitializing = false;
         });
       }
@@ -505,6 +574,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Duration _backoffDurationForAttempt(int attempt) {
+    // Exponential backoff: 500ms, 1s, 2s, 4s, max 6s
     final ms = min(6000, (500 * pow(2, attempt)).toInt());
     return Duration(milliseconds: ms);
   }
@@ -607,6 +677,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _errorRecoveryTimer?.cancel();
     _stateCheckTimer?.cancel();
     _orientationCheckTimer?.cancel();
+    _loadingFailsafe?.cancel();
     _fadeController.dispose();
 
     _disposeExistingControllers();
@@ -711,13 +782,20 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _unifiedController != null &&
         _unifiedController!.isBuffering;
 
+    String message = 'Conectando...';
+    if (isBuffering) {
+      message = 'Cargando...';
+    } else if (_retryCount > 0) {
+      message = 'Reintentando...';
+    }
+
     return VideoLoadingWidget(
       isBuffering: isBuffering,
-      message: isBuffering ? 'Buffering...' : 'Conectando...',
+      message: message,
       serverInfo:
           '${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
       subMessage:
-          _retryCount > 0 ? 'Reintentando $_retryCount/$_maxRetries...' : null,
+          _retryCount > 0 ? 'Intento $_retryCount/$_maxRetries' : null,
     );
   }
 
@@ -733,24 +811,41 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               const Icon(
                 Icons.error_outline,
                 color: Colors.red,
-                size: 48,
+                size: 56,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Text(
                 errorMessage,
                 style: GoogleFonts.montserrat(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: 15,
+                  height: 1.5,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               ElevatedButton.icon(
-                onPressed: _initializePlayer,
+                onPressed: () {
+                  _currentServerIndex = 0;
+                  _consecutiveErrors = 0;
+                  _initializePlayer();
+                },
                 icon: const Icon(Icons.refresh),
                 label: Text(
                   'Reintentar',
-                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+                  style: GoogleFonts.montserrat(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ],

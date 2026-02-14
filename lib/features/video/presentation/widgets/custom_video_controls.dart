@@ -39,9 +39,12 @@ class CustomVideoControls extends StatefulWidget {
 class _CustomVideoControlsState extends State<CustomVideoControls>
     with TickerProviderStateMixin {
   bool _showControls = true;
-  Timer? _hideTimer;
   bool _showAspectRatioToast = false;
+  bool _controlsLocked = false;
+
+  Timer? _hideTimer;
   Timer? _aspectRatioToastTimer;
+  Timer? _controlsInteractionTimer;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
@@ -49,13 +52,15 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   late AnimationController _toastController;
   late Animation<double> _toastAnimation;
 
+  late AnimationController _bufferingController;
+
   @override
   void initState() {
     super.initState();
 
-    // Animación de fade para controles
+    // Fade animation for controls
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     _fadeAnimation = CurvedAnimation(
@@ -63,14 +68,20 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       curve: Curves.easeInOut,
     );
 
-    // Animación para toast
+    // Toast animation
     _toastController = AnimationController(
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 250),
       vsync: this,
     );
     _toastAnimation = CurvedAnimation(
       parent: _toastController,
       curve: Curves.easeOutBack,
+    );
+
+    // Buffering animation
+    _bufferingController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
     );
 
     widget.controller.addListener(_videoListener);
@@ -80,6 +91,27 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
 
   void _videoListener() {
     if (mounted) {
+      // Handle buffering animation
+      if (widget.controller.isBuffering) {
+        if (!_bufferingController.isAnimating &&
+            _bufferingController.value < 1.0) {
+          _bufferingController.forward();
+        }
+      } else {
+        if (_bufferingController.value > 0.0) {
+          _bufferingController.stop();
+          _bufferingController.reset();
+        }
+      }
+
+      // Auto-hide controls when playing and not buffering
+      if (widget.controller.isPlaying &&
+          !widget.controller.isBuffering &&
+          _showControls &&
+          !_controlsLocked) {
+        _startHideTimer();
+      }
+
       setState(() {});
     }
   }
@@ -88,14 +120,23 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   void dispose() {
     _hideTimer?.cancel();
     _aspectRatioToastTimer?.cancel();
+    _controlsInteractionTimer?.cancel();
     _fadeController.dispose();
     _toastController.dispose();
+    _bufferingController.dispose();
     widget.controller.removeListener(_videoListener);
     super.dispose();
   }
 
+  // ═══════════════════════════════════════
+  // Control Visibility
+  // ═══════════════════════════════════════
+
   void _toggleControls() {
+    if (_controlsLocked) return;
+
     HapticFeedback.selectionClick();
+
     setState(() {
       _showControls = !_showControls;
       if (_showControls) {
@@ -110,8 +151,17 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
 
   void _startHideTimer() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted && widget.controller.isPlaying && _showControls) {
+
+    if (!widget.controller.isPlaying || widget.controller.isBuffering) {
+      return; // Don't hide if not playing or buffering
+    }
+
+    _hideTimer = Timer(const Duration(seconds: 5), () {
+      if (mounted &&
+          widget.controller.isPlaying &&
+          !widget.controller.isBuffering &&
+          _showControls &&
+          !_controlsLocked) {
         setState(() {
           _showControls = false;
           _fadeController.reverse();
@@ -120,15 +170,39 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     });
   }
 
+  void _onControlInteraction() {
+    _controlsInteractionTimer?.cancel();
+
+    if (!_showControls) {
+      setState(() {
+        _showControls = true;
+        _fadeController.forward();
+      });
+    }
+
+    _startHideTimer();
+
+    // Lock controls briefly to prevent accidental toggle
+    _controlsLocked = true;
+    _controlsInteractionTimer = Timer(const Duration(milliseconds: 300), () {
+      _controlsLocked = false;
+    });
+  }
+
+  // ═══════════════════════════════════════
+  // Toast Notifications
+  // ═══════════════════════════════════════
+
   void _showAspectRatioChangeToast() {
+    _aspectRatioToastTimer?.cancel();
+
     setState(() {
       _showAspectRatioToast = true;
     });
 
     _toastController.forward(from: 0.0);
 
-    _aspectRatioToastTimer?.cancel();
-    _aspectRatioToastTimer = Timer(const Duration(milliseconds: 1500), () {
+    _aspectRatioToastTimer = Timer(const Duration(milliseconds: 1800), () {
       if (mounted) {
         _toastController.reverse().then((_) {
           if (mounted) {
@@ -141,6 +215,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     });
   }
 
+  // ═══════════════════════════════════════
+  // Build
+  // ═══════════════════════════════════════
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -150,14 +228,25 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         color: Colors.transparent,
         child: Stack(
           children: [
-            // Indicador de buffering mejorado
-            if (widget.controller.isBuffering) _buildBufferingIndicator(),
+            // Buffering indicator with smooth transition
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: widget.controller.isBuffering
+                  ? _buildBufferingIndicator()
+                  : const SizedBox.shrink(),
+            ),
 
-            // Toast de aspect ratio con animación (solo en fullscreen)
+            // Aspect ratio toast (only in fullscreen)
             if (_showAspectRatioToast && widget.isFullScreen)
               _buildAspectRatioToast(),
 
-            // Controles con fade
+            // Buffer health indicator (low buffer warning)
+            if (widget.controller.bufferHealth < 30 &&
+                widget.controller.isPlaying &&
+                !widget.controller.isBuffering)
+              _buildLowBufferWarning(),
+
+            // Controls with fade animation
             FadeTransition(
               opacity: _fadeAnimation,
               child: IgnorePointer(
@@ -173,18 +262,53 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
 
   Widget _buildBufferingIndicator() {
     return Center(
-      child: TweenAnimationBuilder<double>(
-        duration: const Duration(milliseconds: 300),
-        tween: Tween(begin: 0.0, end: 1.0),
-        builder: (context, value, child) {
-          return Opacity(
-            opacity: value,
-            child: const VideoLoadingWidget(
-              message: 'Cargando...',
-              isBuffering: true,
+      child: FadeTransition(
+        opacity: _bufferingController.drive(
+          CurveTween(curve: Curves.easeIn),
+        ),
+        child: const VideoLoadingWidget(
+          message: 'Cargando...',
+          isBuffering: true,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLowBufferWarning() {
+    return Positioned(
+      top: widget.isFullScreen ? 80 : 70,
+      right: 16,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.orange.withAlpha(200),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(77),
+              blurRadius: 8,
             ),
-          );
-        },
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.signal_cellular_alt_outlined,
+              color: Colors.white,
+              size: 14,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Buffer: ${widget.controller.bufferHealth}%',
+              style: GoogleFonts.montserrat(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -222,7 +346,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               Text(
                 widget.aspectRatioLabel,
                 style: GoogleFonts.montserrat(
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                   fontSize: 15,
                   color: Colors.white,
                   letterSpacing: 0.5,
@@ -247,14 +371,13 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
             Colors.transparent,
             Colors.black.withValues(alpha: 0.8),
           ],
-          stops: const [0.0, 0.2, 0.8, 1.0],
+          stops: const [0.0, 0.2, 0.75, 1.0],
         ),
       ),
       child: Column(
         children: [
           _buildHeader(),
           const Spacer(),
-          // Center controls removed - live channels don't need play/pause
           const Spacer(),
           _buildBottomControls(),
         ],
@@ -272,19 +395,20 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         ),
         child: Row(
           children: [
-            // Botón de volver SOLO en fullscreen
+            // Back button only in fullscreen
             if (widget.isFullScreen && widget.onFullScreenToggle != null) ...[
               _buildControlButton(
                 icon: Icons.arrow_back_rounded,
                 onPressed: () {
+                  _onControlInteraction();
                   widget.onFullScreenToggle!();
-                  _startHideTimer();
                 },
                 size: 22,
                 padding: const EdgeInsets.all(8),
               ),
               const SizedBox(width: 12),
             ],
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,28 +417,34 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                     widget.channelName,
                     style: GoogleFonts.montserrat(
                       fontSize: widget.isFullScreen ? 17 : 16,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       color: Colors.white,
                       letterSpacing: 0.15,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   Row(
                     children: [
+                      // Live indicator
                       Container(
                         width: 7,
                         height: 7,
                         decoration: BoxDecoration(
-                          color: Colors.red,
+                          color: widget.controller.isPlaying
+                              ? Colors.red
+                              : Colors.grey,
                           shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withAlpha(128),
-                              blurRadius: 4,
-                            ),
-                          ],
+                          boxShadow: widget.controller.isPlaying
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.red.withAlpha(128),
+                                    blurRadius: 4,
+                                    spreadRadius: 1,
+                                  ),
+                                ]
+                              : null,
                         ),
                       ),
                       const SizedBox(width: 7),
@@ -323,10 +453,14 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                         style: GoogleFonts.montserrat(
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
-                          color: Colors.white70,
+                          color: widget.controller.isPlaying
+                              ? Colors.white
+                              : Colors.white60,
                           letterSpacing: 1.0,
                         ),
                       ),
+
+                      // Server indicator
                       if (widget.totalServers > 1) ...[
                         const SizedBox(width: 12),
                         Container(
@@ -348,12 +482,22 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                           child: Text(
                             '${widget.currentServer}/${widget.totalServers}',
                             style: GoogleFonts.montserrat(
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                               fontSize: 11,
                               color: Colors.white,
                               letterSpacing: 0.4,
                             ),
                           ),
+                        ),
+                      ],
+
+                      // Error indicator
+                      if (widget.controller.hasError) ...[
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 16,
                         ),
                       ],
                     ],
@@ -374,44 +518,47 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
         child: Row(
           children: [
-            // Botón de mute/unmute
+            // Mute/Unmute button
             _buildControlSvg(
               assetPath: widget.isMuted
                   ? 'assets/icons/volume_off_16.svg'
                   : 'assets/icons/volume_16.svg',
               onPressed: () {
+                _onControlInteraction();
                 HapticFeedback.mediumImpact();
                 widget.onMuteToggle?.call();
-                _startHideTimer();
               },
               size: 20,
             ),
-            // Botón de aspect ratio SOLO en fullscreen
+
+            // Aspect ratio button (only in fullscreen)
             if (widget.isFullScreen) ...[
               const SizedBox(width: 12),
               _buildControlButton(
                 icon: Icons.aspect_ratio_rounded,
                 label: widget.aspectRatioLabel,
                 onPressed: () {
+                  _onControlInteraction();
                   HapticFeedback.mediumImpact();
                   widget.onAspectRatioChange?.call();
                   _showAspectRatioChangeToast();
-                  _startHideTimer();
                 },
                 size: 19,
               ),
             ],
+
             const Spacer(),
-            // Botón de fullscreen (siempre visible)
+
+            // Fullscreen button
             if (widget.onFullScreenToggle != null)
               _buildControlSvg(
                 assetPath: widget.isFullScreen
                     ? 'assets/icons/player/salir-pantalla-completa.svg'
                     : 'assets/icons/player/pantalla-completa.svg',
                 onPressed: () {
+                  _onControlInteraction();
                   HapticFeedback.mediumImpact();
                   widget.onFullScreenToggle!();
-                  _startHideTimer();
                 },
                 size: 20,
               ),
@@ -449,6 +596,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(10),
+          splashColor: Colors.white.withAlpha(51),
+          highlightColor: Colors.white.withAlpha(26),
           child: Padding(
             padding: padding ??
                 EdgeInsets.symmetric(
@@ -468,7 +617,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   Text(
                     label,
                     style: GoogleFonts.montserrat(
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       fontSize: 12,
                       color: Colors.white,
                       letterSpacing: 0.5,
@@ -510,6 +659,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(10),
+          splashColor: Colors.white.withAlpha(51),
+          highlightColor: Colors.white.withAlpha(26),
           child: Padding(
             padding: padding ??
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

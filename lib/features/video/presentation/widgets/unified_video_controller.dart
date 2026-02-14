@@ -1,22 +1,30 @@
 import 'package:flutter/foundation.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:video_player/video_player.dart';
+import 'dart:async';
 
-/// Unified interface for all video controllers
+/// Unified interface for all video controllers with professional state management
 abstract class UnifiedVideoController {
   bool get isPlaying;
   bool get isBuffering;
   bool get isInitialized;
+  bool get isMuted;
   Duration get position;
   Duration get duration;
+  double get volume;
+  int get bufferHealth; // 0-100
+  bool get hasError;
+  String? get errorMessage;
 
   Future<void> play();
   Future<void> pause();
   Future<void> setVolume(double volume);
   Future<void> setMuted(bool muted);
+  Future<void> retry();
 
   void addListener(void Function() listener);
   void removeListener(void Function() listener);
+  void dispose();
 
   factory UnifiedVideoController.fromVideoPlayer(
       VideoPlayerController controller) {
@@ -29,24 +37,48 @@ abstract class UnifiedVideoController {
   }
 }
 
-/// State object to share data between JS channel and Adapter
+/// Enhanced State object with complete video information
 class VideoState {
   bool isPlaying = false;
   bool isBuffering = false;
   bool isMuted = false;
+  bool isLoading = true;
+  bool hasError = false;
+  String? errorMessage;
+  
   Duration position = Duration.zero;
   Duration duration = Duration.zero;
+  double volume = 1.0;
+  
+  int bufferHealth = 100;
+  bool stallDetected = false;
+  int serverIndex = 0;
+  int totalServers = 0;
+  String? channelId;
+  
+  DateTime lastUpdate = DateTime.now();
 
   final List<VoidCallback> listeners = [];
+  final StreamController<VideoStateChange> _stateChangeController = 
+      StreamController<VideoStateChange>.broadcast();
+
+  Stream<VideoStateChange> get stateChanges => _stateChangeController.stream;
 
   void notify() {
+    lastUpdate = DateTime.now();
     for (var listener in listeners) {
-      listener();
+      try {
+        listener();
+      } catch (e) {
+        debugPrint('⚠️ Error en listener: $e');
+      }
     }
   }
 
   void addListener(VoidCallback listener) {
-    listeners.add(listener);
+    if (!listeners.contains(listener)) {
+      listeners.add(listener);
+    }
   }
 
   void removeListener(VoidCallback listener) {
@@ -57,23 +89,148 @@ class VideoState {
     bool? playing,
     bool? buffering,
     bool? muted,
+    bool? loading,
+    bool? error,
+    String? errorMsg,
     double? pos,
     double? dur,
+    double? vol,
+    int? bufHealth,
+    bool? stalled,
+    int? servIndex,
+    int? totalServ,
+    String? chanId,
   }) {
-    if (playing != null) isPlaying = playing;
-    if (buffering != null) isBuffering = buffering;
-    if (muted != null) isMuted = muted;
-    if (pos != null) position = Duration(milliseconds: (pos * 1000).toInt());
-    if (dur != null) duration = Duration(milliseconds: (dur * 1000).toInt());
+    final changes = <String, dynamic>{};
+
+    if (playing != null && playing != isPlaying) {
+      changes['isPlaying'] = playing;
+      isPlaying = playing;
+    }
+    if (buffering != null && buffering != isBuffering) {
+      changes['isBuffering'] = buffering;
+      isBuffering = buffering;
+    }
+    if (muted != null && muted != isMuted) {
+      changes['isMuted'] = muted;
+      isMuted = muted;
+    }
+    if (loading != null && loading != isLoading) {
+      changes['isLoading'] = loading;
+      isLoading = loading;
+    }
+    if (error != null && error != hasError) {
+      changes['hasError'] = error;
+      hasError = error;
+    }
+    if (errorMsg != null) {
+      changes['errorMessage'] = errorMsg;
+      errorMessage = errorMsg;
+    }
+    if (pos != null) {
+      position = Duration(milliseconds: (pos * 1000).toInt());
+    }
+    if (dur != null) {
+      duration = Duration(milliseconds: (dur * 1000).toInt());
+    }
+    if (vol != null && vol != volume) {
+      changes['volume'] = vol;
+      volume = vol;
+    }
+    if (bufHealth != null && bufHealth != bufferHealth) {
+      changes['bufferHealth'] = bufHealth;
+      bufferHealth = bufHealth;
+    }
+    if (stalled != null && stalled != stallDetected) {
+      changes['stallDetected'] = stalled;
+      stallDetected = stalled;
+    }
+    if (servIndex != null) serverIndex = servIndex;
+    if (totalServ != null) totalServers = totalServ;
+    if (chanId != null) channelId = chanId;
+
+    if (changes.isNotEmpty) {
+      _stateChangeController.add(VideoStateChange(changes));
+    }
+
     notify();
+  }
+
+  void reset() {
+    update(
+      playing: false,
+      buffering: false,
+      loading: true,
+      error: false,
+      errorMsg: null,
+      pos: 0,
+      dur: 0,
+      bufHealth: 100,
+      stalled: false,
+    );
+  }
+
+  void dispose() {
+    listeners.clear();
+    _stateChangeController.close();
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'isPlaying': isPlaying,
+      'isBuffering': isBuffering,
+      'isMuted': isMuted,
+      'isLoading': isLoading,
+      'hasError': hasError,
+      'errorMessage': errorMessage,
+      'position': position.inMilliseconds,
+      'duration': duration.inMilliseconds,
+      'volume': volume,
+      'bufferHealth': bufferHealth,
+      'stallDetected': stallDetected,
+      'serverIndex': serverIndex,
+      'totalServers': totalServers,
+      'channelId': channelId,
+      'lastUpdate': lastUpdate.toIso8601String(),
+    };
   }
 }
 
-/// Adapter for HLS VideoPlayerController
+/// State change event
+class VideoStateChange {
+  final Map<String, dynamic> changes;
+  final DateTime timestamp;
+
+  VideoStateChange(this.changes) : timestamp = DateTime.now();
+
+  bool hasChanged(String key) => changes.containsKey(key);
+  
+  T? getValue<T>(String key) => changes[key] as T?;
+}
+
+/// Adapter for HLS VideoPlayerController with enhanced error handling
 class HLSControllerAdapter implements UnifiedVideoController {
   final VideoPlayerController controller;
+  Timer? _errorCheckTimer;
+  bool _disposed = false;
 
-  HLSControllerAdapter(this.controller);
+  HLSControllerAdapter(this.controller) {
+    _startErrorMonitoring();
+  }
+
+  void _startErrorMonitoring() {
+    _errorCheckTimer?.cancel();
+    _errorCheckTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (_disposed) {
+        timer.cancel();
+        return;
+      }
+      // Monitor for errors
+      if (controller.value.hasError) {
+        debugPrint('⚠️ HLS Error detected: ${controller.value.errorDescription}');
+      }
+    });
+  }
 
   @override
   bool get isPlaying => controller.value.isPlaying;
@@ -85,10 +242,45 @@ class HLSControllerAdapter implements UnifiedVideoController {
   bool get isInitialized => controller.value.isInitialized;
 
   @override
+  bool get isMuted => controller.value.volume == 0.0;
+
+  @override
   Duration get position => controller.value.position;
 
   @override
   Duration get duration => controller.value.duration;
+
+  @override
+  double get volume => controller.value.volume;
+
+  @override
+  int get bufferHealth {
+    // Estimate buffer health from buffered ranges
+    try {
+      if (!controller.value.isInitialized) return 0;
+      
+      final buffered = controller.value.buffered;
+      if (buffered.isEmpty) return 0;
+      
+      final currentPos = position.inMilliseconds / 1000.0;
+      for (final range in buffered) {
+        if (range.start.inSeconds <= currentPos && 
+            currentPos <= range.end.inSeconds) {
+          final bufferAhead = range.end.inSeconds - currentPos;
+          return ((bufferAhead / 10.0) * 100).clamp(0, 100).toInt();
+        }
+      }
+      return 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  @override
+  bool get hasError => controller.value.hasError;
+
+  @override
+  String? get errorMessage => controller.value.errorDescription;
 
   @override
   Future<void> play() => controller.play();
@@ -97,10 +289,19 @@ class HLSControllerAdapter implements UnifiedVideoController {
   Future<void> pause() => controller.pause();
 
   @override
-  Future<void> setVolume(double volume) => controller.setVolume(volume);
+  Future<void> setVolume(double volume) => 
+      controller.setVolume(volume.clamp(0.0, 1.0));
 
   @override
-  Future<void> setMuted(bool muted) => controller.setVolume(muted ? 0.0 : 1.0);
+  Future<void> setMuted(bool muted) => 
+      controller.setVolume(muted ? 0.0 : 1.0);
+
+  @override
+  Future<void> retry() async {
+    // For HLS, we need to reinitialize
+    debugPrint('🔄 HLS Retry requested');
+    // This should be handled at widget level
+  }
 
   @override
   void addListener(void Function() listener) =>
@@ -109,14 +310,49 @@ class HLSControllerAdapter implements UnifiedVideoController {
   @override
   void removeListener(void Function() listener) =>
       controller.removeListener(listener);
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _errorCheckTimer?.cancel();
+  }
 }
 
-/// Adapter for WebViewController
+/// Enhanced Adapter for WebViewController with better sync
 class WebControllerAdapter implements UnifiedVideoController {
   final WebViewController controller;
   final VideoState state;
+  Timer? _syncTimer;
+  bool _disposed = false;
 
-  WebControllerAdapter(this.controller, this.state);
+  WebControllerAdapter(this.controller, this.state) {
+    _startPeriodicSync();
+  }
+
+  void _startPeriodicSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (_disposed) {
+        timer.cancel();
+        return;
+      }
+      _requestStateUpdate();
+    });
+  }
+
+  Future<void> _requestStateUpdate() async {
+    try {
+      await controller.runJavaScript('''
+        (function() {
+          if (window.FlutterBridge && window.getPlayerState) {
+            window.FlutterBridge.sendStateUpdate();
+          }
+        })();
+      ''');
+    } catch (e) {
+      debugPrint('⚠️ Error requesting state update: $e');
+    }
+  }
 
   @override
   bool get isPlaying => state.isPlaying;
@@ -125,7 +361,10 @@ class WebControllerAdapter implements UnifiedVideoController {
   bool get isBuffering => state.isBuffering;
 
   @override
-  bool get isInitialized => true;
+  bool get isInitialized => !state.isLoading;
+
+  @override
+  bool get isMuted => state.isMuted;
 
   @override
   Duration get position => state.position;
@@ -134,26 +373,67 @@ class WebControllerAdapter implements UnifiedVideoController {
   Duration get duration => state.duration;
 
   @override
-  Future<void> play() => controller.runJavaScript(
-      "try { window.play(); } catch(e) { console.log('Play error:', e); }");
+  double get volume => state.volume;
 
   @override
-  Future<void> pause() => controller.runJavaScript(
-      "try { window.pause(); } catch(e) { console.log('Pause error:', e); }");
+  int get bufferHealth => state.bufferHealth;
 
   @override
-  Future<void> setVolume(double volume) => controller.runJavaScript(
-      "try { document.querySelector('video').volume = $volume; } catch(e) {}");
+  bool get hasError => state.hasError;
+
+  @override
+  String? get errorMessage => state.errorMessage;
+
+  @override
+  Future<void> play() => _executeJS(
+      "window.play()", 
+      "Play error"
+  );
+
+  @override
+  Future<void> pause() => _executeJS(
+      "window.pause()", 
+      "Pause error"
+  );
+
+  @override
+  Future<void> setVolume(double volume) {
+    final clampedVolume = volume.clamp(0.0, 1.0);
+    state.volume = clampedVolume;
+    return _executeJS(
+        "window.setVolume($clampedVolume)", 
+        "SetVolume error"
+    );
+  }
 
   @override
   Future<void> setMuted(bool muted) {
     state.isMuted = muted;
-    if (muted) {
-      return controller
-          .runJavaScript("try { window.mute(); } catch(e) { console.log('Mute error:', e); }");
-    } else {
-      return controller
-          .runJavaScript("try { window.unmute(); } catch(e) { console.log('Unmute error:', e); }");
+    return _executeJS(
+        muted ? "window.mute()" : "window.unmute()",
+        "SetMuted error"
+    );
+  }
+
+  @override
+  Future<void> retry() => _executeJS(
+      "window.retryCurrentServer()",
+      "Retry error"
+  );
+
+  Future<void> _executeJS(String script, String errorContext) async {
+    try {
+      await controller.runJavaScript('''
+        (function() {
+          try {
+            $script;
+          } catch(e) {
+            console.log('$errorContext:', e);
+          }
+        })();
+      ''');
+    } catch (e) {
+      debugPrint('❌ $errorContext: $e');
     }
   }
 
@@ -161,6 +441,12 @@ class WebControllerAdapter implements UnifiedVideoController {
   void addListener(void Function() listener) => state.addListener(listener);
 
   @override
-  void removeListener(void Function() listener) =>
+  void removeListener(void Function() listener) => 
       state.removeListener(listener);
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _syncTimer?.cancel();
+  }
 }

@@ -37,36 +37,70 @@ class PivoProPlayer extends StatefulWidget {
   State<PivoProPlayer> createState() => _PivoProPlayerState();
 }
 
-class _PivoProPlayerState extends State<PivoProPlayer> {
+class _PivoProPlayerState extends State<PivoProPlayer>
+    with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
+  // ═══════════════════════════════════════
+  // Controllers
+  // ═══════════════════════════════════════
   late final WebViewController _webViewController;
   late final UnifiedVideoController _unifiedController;
   final VideoState _videoState = VideoState();
 
-  // Estados
-  bool _isLoading = true;
+  // ═══════════════════════════════════════
+  // States
+  // ═══════════════════════════════════════
   bool _isFullscreen = false;
-  bool _isMuted = false;
-  // bool _audioActivado = false; // Removed unused field
-  String? _errorMessage;
   AspectRatioType _aspectRatioType = AspectRatioType.ratio16_9;
+  bool _isDisposed = false;
 
-  // Timers
-  Timer? _loadingTimer;
-  Timer? _bufferingDebounce;
-  bool _isReallyBuffering = false;
+  // ═══════════════════════════════════════
+  // Timers & Monitoring
+  // ═══════════════════════════════════════
+  Timer? _stateMonitor;
+  Timer? _loadingFailsafe;
+  StreamSubscription? _stateSubscription;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    _initializeWebView();
+    WidgetsBinding.instance.addObserver(this);
 
-    // Safety timeout - si no carga en 10s, quitar loading
-    _loadingTimer = Timer(const Duration(seconds: 10), () {
-      if (mounted && _isLoading) {
-        setState(() => _isLoading = false);
-      }
-    });
+    debugPrint('═══════════════════════════════════════');
+    debugPrint('🌐 PivoProPlayer v4.0 Iniciando');
+    debugPrint('📺 Canal: ${widget.channelName}');
+    debugPrint('🔗 URL: ${widget.url}');
+    debugPrint('═══════════════════════════════════════');
+
+    _initializeWebView();
+    _startStateMonitoring();
+    _startLoadingFailsafe();
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_isDisposed) return;
+
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        debugPrint('⏸️ App en background');
+        _executeJS('window.pause()');
+        break;
+      case AppLifecycleState.resumed:
+        debugPrint('▶️ App en foreground');
+        _executeJS('window.play()');
+        break;
+      default:
+        break;
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // WebView Initialization
+  // ═══════════════════════════════════════
 
   void _initializeWebView() {
     late final PlatformWebViewControllerCreationParams params;
@@ -82,16 +116,24 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
 
     _webViewController = WebViewController.fromPlatformCreationParams(params);
 
-    // CONFIGURACIÓN ANDROID ULTRA-OPTIMIZADA
+    // Android Optimizations
     if (_webViewController.platform is AndroidWebViewController) {
       final androidController =
           _webViewController.platform as AndroidWebViewController;
 
-      // CRÍTICO: Permitir autoplay
       androidController.setMediaPlaybackRequiresUserGesture(false);
+
+      // Enable hardware acceleration
+      androidController.setGeolocationPermissionsPromptCallbacks(
+        onShowPrompt: (request) async {
+          return const GeolocationPermissionsResponse(
+            allow: false,
+            retain: false,
+          );
+        },
+      );
     }
 
-    // Optimizaciones de rendimiento (User Agent en el controlador general)
     _webViewController.setUserAgent(
       'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
     );
@@ -101,31 +143,9 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
       ..setBackgroundColor(Colors.black)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageStarted: (_) {
-            if (mounted) {
-              setState(() {
-                _isLoading = true;
-                _errorMessage = null;
-              });
-            }
-          },
-          onPageFinished: (_) {
-            // NO quitar loading aquí - esperar evento del HTML
-            debugPrint('📄 WebView Page Finished');
-          },
-          onWebResourceError: (error) {
-            // Solo errores críticos
-            if (error.errorType == WebResourceErrorType.hostLookup ||
-                error.errorType == WebResourceErrorType.timeout) {
-              debugPrint('❌ Critical WebView Error: ${error.description}');
-              if (mounted && _isLoading) {
-                setState(() {
-                  _errorMessage = 'Error de conexión';
-                  _isLoading = false;
-                });
-              }
-            }
-          },
+          onPageStarted: _onPageStarted,
+          onPageFinished: _onPageFinished,
+          onWebResourceError: _onWebResourceError,
         ),
       )
       ..addJavaScriptChannel(
@@ -136,139 +156,319 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
 
     _unifiedController =
         UnifiedVideoController.fromWeb(_webViewController, _videoState);
+
+    // Listen to state changes
+    _stateSubscription = _videoState.stateChanges.listen(_onStateChange);
   }
 
-  void _handleMessageFromHtml(JavaScriptMessage message) {
-    if (!mounted) return;
+  // ═══════════════════════════════════════
+  // Navigation Callbacks
+  // ═══════════════════════════════════════
 
-    try {
-      final data = jsonDecode(message.message);
-      final eventType = data['type'] as String?;
-
-      switch (eventType) {
-        case 'playerReady':
-          debugPrint('✅ Player listo');
-          break;
-
-        case 'loadingStart':
-          // Nuevo servidor cargando
-          if (mounted) {
-            setState(() => _isLoading = true);
-          }
-          break;
-
-        case 'playingStarted':
-        case 'iframeLoaded':
-          // Video empezó a reproducir - QUITAR LOADING
-          _loadingTimer?.cancel();
-          _videoState.update(playing: true, buffering: false);
-
-          final isMuted = data['muted'] as bool? ?? false;
-
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _isMuted = isMuted;
-              _isReallyBuffering = false;
-            });
-          }
-          debugPrint('✅ Reproduciendo - Loading OFF');
-          break;
-
-        case 'canPlay':
-          // Puede reproducir pero aún no comenzó
-          // NO quitar loading hasta que realmente reproduzca
-          break;
-
-        case 'buffering':
-          final state = data['state'] as String?;
-
-          // Debounce buffering events para evitar flickers
-          _bufferingDebounce?.cancel();
-
-          if (state == 'waiting') {
-            // Solo mostrar buffering después de 500ms
-            _bufferingDebounce = Timer(const Duration(milliseconds: 500), () {
-              if (mounted && !_isLoading) {
-                setState(() => _isReallyBuffering = true);
-                _videoState.update(buffering: true);
-              }
-            });
-          } else if (state == 'ready') {
-            // Inmediatamente quitar buffering
-            if (mounted) {
-              setState(() => _isReallyBuffering = false);
-              _videoState.update(buffering: false);
-            }
-          }
-          break;
-
-        case 'audioEnabled':
-          if (mounted) {
-            setState(() {
-              _isMuted = false;
-            });
-          }
-          break;
-
-        case 'audioDisabled':
-          if (mounted) {
-            setState(() => _isMuted = true);
-          }
-          break;
-
-        case 'playbackStarted':
-          _videoState.update(playing: true);
-          break;
-
-        case 'playbackPaused':
-          _videoState.update(playing: false);
-          break;
-
-        case 'serverChange':
-          // Cambiando servidor
-          if (mounted) {
-            setState(() => _isLoading = true);
-          }
-          break;
-
-        case 'error':
-          if (mounted) {
-            setState(() {
-              _errorMessage = data['message'] ?? 'Error desconocido';
-              _isLoading = false;
-            });
-          }
-          break;
-      }
-
-      if (mounted) setState(() {});
-    } catch (e) {
-      debugPrint('❌ Error procesando mensaje HTML: $e');
+  void _onPageStarted(String url) {
+    debugPrint('📄 Page Started: $url');
+    if (!_isDisposed && mounted) {
+      setState(() {
+        _videoState.update(loading: true, error: false, errorMsg: null);
+      });
     }
   }
 
-  // ========================================
-  // CONTROLES
-  // ========================================
+  void _onPageFinished(String url) {
+    debugPrint('✅ Page Finished: $url');
+    // Don't remove loading here - wait for player events
+  }
+
+  void _onWebResourceError(WebResourceError error) {
+    // Only handle critical errors
+    final isCritical = error.errorType == WebResourceErrorType.hostLookup ||
+        error.errorType == WebResourceErrorType.timeout ||
+        error.errorType == WebResourceErrorType.connect;
+
+    if (isCritical) {
+      debugPrint('❌ Critical WebView Error: ${error.description}');
+      if (!_isDisposed && mounted) {
+        setState(() {
+          _videoState.update(
+            loading: false,
+            error: true,
+            errorMsg: 'Error de conexión: ${error.description}',
+          );
+        });
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // Message Handling (Enhanced)
+  // ═══════════════════════════════════════
+
+  void _handleMessageFromHtml(JavaScriptMessage message) {
+    if (_isDisposed || !mounted) return;
+
+    try {
+      final data = jsonDecode(message.message) as Map<String, dynamic>;
+      final eventType = data['type'] as String?;
+
+      debugPrint('📨 HTML Event: $eventType');
+
+      // Update state from HTML player state
+      if (data.containsKey('state')) {
+        _syncStateFromHtml(data['state'] as Map<String, dynamic>);
+      }
+
+      switch (eventType) {
+        case 'playerReady':
+          _onPlayerReady(data);
+          break;
+
+        case 'loadingStart':
+          _onLoadingStart(data);
+          break;
+
+        case 'playingStarted':
+          _onPlayingStarted(data);
+          break;
+
+        case 'stateUpdate':
+          _onStateUpdate(data);
+          break;
+
+        case 'buffering':
+          _onBuffering(data);
+          break;
+
+        case 'audioEnabled':
+        case 'audioDisabled':
+          _onAudioChange(data);
+          break;
+
+        case 'serverChange':
+          _onServerChange(data);
+          break;
+
+        case 'streamStalled':
+          _onStreamStalled(data);
+          break;
+
+        case 'error':
+          _onError(data);
+          break;
+
+        default:
+          debugPrint('⚠️ Unknown event: $eventType');
+      }
+    } catch (e, st) {
+      debugPrint('❌ Error procesando mensaje HTML: $e\n$st');
+    }
+  }
+
+  void _syncStateFromHtml(Map<String, dynamic> htmlState) {
+    _videoState.update(
+      playing: htmlState['isPlaying'] as bool?,
+      buffering: htmlState['isBuffering'] as bool?,
+      muted: htmlState['isMuted'] as bool?,
+      loading: htmlState['isLoading'] as bool?,
+      bufHealth: htmlState['bufferHealth'] as int?,
+      stalled: htmlState['stallDetected'] as bool?,
+      servIndex: htmlState['serverIndex'] as int?,
+      totalServ: htmlState['totalServers'] as int?,
+      chanId: htmlState['channelId'] as String?,
+    );
+  }
+
+  void _onPlayerReady(Map<String, dynamic> data) {
+    debugPrint('✅ Player Ready');
+    debugPrint('Version: ${data['version']}');
+  }
+
+  void _onLoadingStart(Map<String, dynamic> data) {
+    _loadingFailsafe?.cancel();
+    _startLoadingFailsafe();
+
+    if (mounted) {
+      setState(() {
+        _videoState.update(loading: true, error: false);
+      });
+    }
+  }
+
+  void _onPlayingStarted(Map<String, dynamic> data) {
+    _loadingFailsafe?.cancel();
+
+    final isMuted = data['muted'] as bool? ?? false;
+
+    if (mounted) {
+      setState(() {
+        _videoState.update(
+          loading: false,
+          playing: true,
+          buffering: false,
+          muted: isMuted,
+          error: false,
+        );
+      });
+    }
+
+    debugPrint('✅ Reproduciendo - Muted: $isMuted');
+  }
+
+  void _onStateUpdate(Map<String, dynamic> data) {
+    // Full state sync from HTML
+    if (data.containsKey('state')) {
+      _syncStateFromHtml(data['state'] as Map<String, dynamic>);
+    }
+  }
+
+  void _onBuffering(Map<String, dynamic> data) {
+    final state = data['state'] as String?;
+
+    if (mounted) {
+      setState(() {
+        if (state == 'waiting') {
+          _videoState.update(buffering: true);
+        } else if (state == 'ready') {
+          _videoState.update(buffering: false);
+        }
+      });
+    }
+  }
+
+  void _onAudioChange(Map<String, dynamic> data) {
+    final isMuted = data['type'] == 'audioDisabled';
+
+    if (mounted) {
+      setState(() {
+        _videoState.update(muted: isMuted);
+      });
+    }
+  }
+
+  void _onServerChange(Map<String, dynamic> data) {
+    final serverIndex = data['serverIndex'] as int?;
+    final totalServers = data['totalServers'] as int?;
+    final attempt = data['attempt'] as int?;
+
+    debugPrint('🔄 Servidor $serverIndex/$totalServers (Intento $attempt)');
+
+    if (mounted) {
+      setState(() {
+        _videoState.update(
+          loading: true,
+          servIndex: (serverIndex ?? 1) - 1,
+          totalServ: totalServers,
+        );
+      });
+    }
+  }
+
+  void _onStreamStalled(Map<String, dynamic> data) {
+    debugPrint('⚠️ Stream Stalled');
+
+    if (mounted) {
+      setState(() {
+        _videoState.update(stalled: true);
+      });
+    }
+
+    // Auto retry after stall
+    Future.delayed(const Duration(seconds: 2), () {
+      if (!_isDisposed && mounted && _videoState.stallDetected) {
+        debugPrint('🔄 Auto-retry después de stall');
+        _executeJS('window.nextServer()');
+      }
+    });
+  }
+
+  void _onError(Map<String, dynamic> data) {
+    final code = data['code'] as String?;
+    final message = data['message'] as String?;
+
+    debugPrint('❌ Error: $code - $message');
+
+    if (mounted) {
+      setState(() {
+        _videoState.update(
+          loading: false,
+          error: true,
+          errorMsg: message ?? 'Error desconocido',
+        );
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // State Monitoring
+  // ═══════════════════════════════════════
+
+  void _startStateMonitoring() {
+    _stateMonitor?.cancel();
+    _stateMonitor = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (_isDisposed || !mounted) {
+        timer.cancel();
+        return;
+      }
+
+      // Request state update from HTML
+      _executeJS('window.FlutterBridge.sendStateUpdate()');
+    });
+  }
+
+  void _startLoadingFailsafe() {
+    _loadingFailsafe?.cancel();
+    _loadingFailsafe = Timer(const Duration(seconds: 12), () {
+      if (!_isDisposed && mounted && _videoState.isLoading) {
+        debugPrint('⏱️ Loading failsafe triggered');
+        setState(() {
+          _videoState.update(loading: false);
+        });
+      }
+    });
+  }
+
+  void _onStateChange(VideoStateChange change) {
+    if (_isDisposed || !mounted) return;
+
+    // Log significant changes
+    if (change.hasChanged('isPlaying')) {
+      debugPrint('▶️ isPlaying: ${change.getValue('isPlaying')}');
+    }
+    if (change.hasChanged('isBuffering')) {
+      debugPrint('⏳ isBuffering: ${change.getValue('isBuffering')}');
+    }
+    if (change.hasChanged('hasError')) {
+      debugPrint('❌ hasError: ${change.getValue('hasError')}');
+    }
+
+    // Force rebuild on important changes
+    if (change.hasChanged('isLoading') ||
+        change.hasChanged('hasError') ||
+        change.hasChanged('isPlaying')) {
+      setState(() {});
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // Controls
+  // ═══════════════════════════════════════
 
   Future<void> _toggleMute() async {
-    await _webViewController.runJavaScript('window.toggleMute()');
-    // El estado se actualiza con el callback
+    await _executeJS('window.toggleMute()');
   }
 
   Future<void> _toggleFullscreen() async {
     setState(() => _isFullscreen = !_isFullscreen);
 
     if (_isFullscreen) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      SystemChrome.setPreferredOrientations([
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      await SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
     } else {
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-      SystemChrome.setEnabledSystemUIMode(
+      await SystemChrome.setPreferredOrientations(
+          [DeviceOrientation.portraitUp]);
+      await SystemChrome.setEnabledSystemUIMode(
         SystemUiMode.manual,
         overlays: SystemUiOverlay.values,
       );
@@ -310,7 +510,7 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
   double _getAspectRatio() {
     switch (_aspectRatioType) {
       case AspectRatioType.auto:
-        return 16 / 9; // Default para web
+        return 16 / 9;
       case AspectRatioType.ratio16_9:
         return 16 / 9;
       case AspectRatioType.ratio4_3:
@@ -321,8 +521,46 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
     }
   }
 
+  Future<void> _executeJS(String script) async {
+    if (_isDisposed) return;
+
+    try {
+      await _webViewController.runJavaScript('''
+        (function() {
+          try {
+            $script;
+          } catch(e) {
+            console.error('JS Error:', e);
+          }
+        })();
+      ''');
+    } catch (e) {
+      debugPrint('❌ Error ejecutando JS: $e');
+    }
+  }
+
+  Future<void> _handleRefresh() async {
+    debugPrint('🔄 Refresh solicitado');
+
+    setState(() {
+      _videoState.reset();
+    });
+
+    _loadingFailsafe?.cancel();
+    _startLoadingFailsafe();
+
+    await _webViewController.reload();
+    widget.onRefresh?.call();
+  }
+
+  // ═══════════════════════════════════════
+  // Build
+  // ═══════════════════════════════════════
+
   @override
   Widget build(BuildContext context) {
+    super.build(context); // For AutomaticKeepAliveClientMixin
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -335,7 +573,7 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
             ),
           ),
 
-          // 2. Controles Nativos (siempre visibles)
+          // 2. Controles Nativos
           Positioned.fill(
             child: CustomVideoControls(
               controller: _unifiedController,
@@ -345,20 +583,28 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
               aspectRatioLabel: _getAspectRatioLabel(),
               onAspectRatioChange: _changeAspectRatio,
               onMuteToggle: _toggleMute,
-              isMuted: _isMuted,
-              currentServer: widget.currentServer,
-              totalServers: widget.totalServers,
+              isMuted: _videoState.isMuted,
+              currentServer: _videoState.serverIndex + 1,
+              totalServers: _videoState.totalServers,
             ),
           ),
 
-          // 3. Loading Indicator (UNIFICADO - igual al de VideoPlayer)
-          if (_isLoading) _buildLoadingWidget(),
+          // 3. Loading Indicator
+          if (_videoState.isLoading) _buildLoadingWidget(),
 
-          // 4. Buffering Indicator (solo si NO está cargando)
-          if (!_isLoading && _isReallyBuffering) _buildBufferingWidget(),
+          // 4. Buffering Indicator
+          if (!_videoState.isLoading && _videoState.isBuffering)
+            _buildBufferingWidget(),
 
           // 5. Error Message
-          if (_errorMessage != null && !_isLoading) _buildErrorWidget(),
+          if (_videoState.hasError && !_videoState.isLoading)
+            _buildErrorWidget(),
+
+          // 6. Buffer Health Indicator (Debug)
+          if (!_videoState.isLoading &&
+              !_videoState.hasError &&
+              _videoState.bufferHealth < 30)
+            _buildBufferHealthIndicator(),
         ],
       ),
     );
@@ -367,15 +613,15 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
   Widget _buildLoadingWidget() {
     return VideoLoadingWidget(
       message: 'Conectando...',
-      serverInfo: '${widget.currentServer}/${widget.totalServers}',
+      serverInfo: '${_videoState.serverIndex + 1}/${_videoState.totalServers}',
     );
   }
 
   Widget _buildBufferingWidget() {
     return VideoLoadingWidget(
-      message: 'Cargando...',
+      message: _videoState.stallDetected ? 'Reconectando...' : 'Cargando...',
       isBuffering: true,
-      serverInfo: '${widget.currentServer}/${widget.totalServers}',
+      serverInfo: '${_videoState.serverIndex + 1}/${_videoState.totalServers}',
     );
   }
 
@@ -395,7 +641,7 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
               ),
               const SizedBox(height: 16),
               Text(
-                _errorMessage!,
+                _videoState.errorMessage ?? 'Error desconocido',
                 style: GoogleFonts.montserrat(
                   color: Colors.white,
                   fontSize: 14,
@@ -403,22 +649,14 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              if (widget.onRefresh != null)
-                ElevatedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _errorMessage = null;
-                      _isLoading = true;
-                    });
-                    _webViewController.reload();
-                    widget.onRefresh!();
-                  },
-                  icon: const Icon(Icons.refresh),
-                  label: Text(
-                    'Reintentar',
-                    style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
-                  ),
+              ElevatedButton.icon(
+                onPressed: _handleRefresh,
+                icon: const Icon(Icons.refresh),
+                label: Text(
+                  'Reintentar',
+                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
                 ),
+              ),
             ],
           ),
         ),
@@ -426,10 +664,54 @@ class _PivoProPlayerState extends State<PivoProPlayer> {
     );
   }
 
+  Widget _buildBufferHealthIndicator() {
+    return Positioned(
+      top: 60,
+      right: 16,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: _getBufferHealthColor(),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          'Buffer: ${_videoState.bufferHealth}%',
+          style: GoogleFonts.montserrat(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getBufferHealthColor() {
+    if (_videoState.bufferHealth >= 50) {
+      return Colors.green.withAlpha(180);
+    } else if (_videoState.bufferHealth >= 30) {
+      return Colors.orange.withAlpha(180);
+    } else {
+      return Colors.red.withAlpha(180);
+    }
+  }
+
+  // ═══════════════════════════════════════
+  // Lifecycle
+  // ═══════════════════════════════════════
+
   @override
   void dispose() {
-    _loadingTimer?.cancel();
-    _bufferingDebounce?.cancel();
+    debugPrint('🗑️ Disposing PivoProPlayer');
+    _isDisposed = true;
+
+    WidgetsBinding.instance.removeObserver(this);
+
+    _stateMonitor?.cancel();
+    _loadingFailsafe?.cancel();
+    _stateSubscription?.cancel();
+    _unifiedController.dispose();
+    _videoState.dispose();
 
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(
