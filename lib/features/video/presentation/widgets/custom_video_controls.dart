@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:async';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
@@ -94,6 +95,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   }
 
   void _toggleControls() {
+    HapticFeedback.selectionClick();
     setState(() {
       _showControls = !_showControls;
       if (_showControls) {
@@ -108,8 +110,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
 
   void _startHideTimer() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && widget.controller.isPlaying) {
+    _hideTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && widget.controller.isPlaying && _showControls) {
         setState(() {
           _showControls = false;
           _fadeController.reverse();
@@ -159,7 +161,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
             FadeTransition(
               opacity: _fadeAnimation,
               child: IgnorePointer(
-                ignoring: _fadeAnimation.value < 0.1,
+                ignoring: !_showControls,
                 child: _buildControls(),
               ),
             ),
@@ -378,6 +380,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   ? 'assets/icons/volume_off_16.svg'
                   : 'assets/icons/volume_16.svg',
               onPressed: () {
+                HapticFeedback.mediumImpact();
                 widget.onMuteToggle?.call();
                 _startHideTimer();
               },
@@ -390,6 +393,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 icon: Icons.aspect_ratio_rounded,
                 label: widget.aspectRatioLabel,
                 onPressed: () {
+                  HapticFeedback.mediumImpact();
                   widget.onAspectRatioChange?.call();
                   _showAspectRatioChangeToast();
                   _startHideTimer();
@@ -405,6 +409,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                     ? 'assets/icons/player/salir-pantalla-completa.svg'
                     : 'assets/icons/player/pantalla-completa.svg',
                 onPressed: () {
+                  HapticFeedback.mediumImpact();
                   widget.onFullScreenToggle!();
                   _startHideTimer();
                 },

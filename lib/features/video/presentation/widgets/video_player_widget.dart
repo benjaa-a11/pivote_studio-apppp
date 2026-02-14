@@ -265,11 +265,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     });
 
     // Strategy: HLS = Native, Others = WebView
-    final isHls = url.toLowerCase().contains('.m3u8') ||
+    final isNative = url.toLowerCase().contains('.m3u8') ||
         url.toLowerCase().contains('m3u');
 
-    if (isHls) {
-      debugPrint('📱 Mode: Native HLS Player');
+    if (isNative) {
+      debugPrint('📱 Mode: Native Player');
       setState(() => _useHtmlPlayer = false);
       await _initializeVideoPlayer(url);
     } else {

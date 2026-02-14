@@ -268,7 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            user != null ? '${user.name}' : 'Cargando...',
+                            user != null ? user.name : 'Cargando...',
                             style: theme.textTheme.headlineMedium?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,

@@ -20,28 +20,17 @@ class VideoLoadingWidget extends StatelessWidget {
     if (isBuffering) {
       return Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.black.withAlpha(204),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withAlpha(204),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(204),
-                blurRadius: 20,
-                spreadRadius: 5,
-              ),
-            ],
+            color: Colors.black.withAlpha(160),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(
@@ -49,14 +38,14 @@ class VideoLoadingWidget extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Text(
                 message,
                 style: GoogleFonts.montserrat(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
+                  color: Colors.white.withAlpha(230),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.3,
                 ),
               ),
             ],
@@ -71,29 +60,13 @@ class VideoLoadingWidget extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo animado o Loading moderno
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color:
-                        Theme.of(context).colorScheme.primary.withAlpha(204),
-                    blurRadius: 30,
-                    spreadRadius: 10,
-                  ),
-                ],
-              ),
-              child: SizedBox(
-                width: 48,
-                height: 48,
-                child: CircularProgressIndicator(
-                  strokeWidth: 4,
-                  backgroundColor: Colors.white.withAlpha(204),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Theme.of(context).colorScheme.primary,
-                  ),
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -102,17 +75,17 @@ class VideoLoadingWidget extends StatelessWidget {
               message,
               style: GoogleFonts.montserrat(
                 color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.5,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.2,
               ),
             ),
             if (subMessage != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
                 subMessage!,
                 style: GoogleFonts.montserrat(
-                  color: Colors.white.withAlpha(204),
+                  color: Colors.white70,
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
                 ),
@@ -120,27 +93,23 @@ class VideoLoadingWidget extends StatelessWidget {
             ],
             if (onRetry != null) ...[
               const SizedBox(height: 32),
-              ElevatedButton.icon(
+              TextButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh, size: 18),
                 label: Text(
-                  'Reintentar',
+                  'Reintentar'.toUpperCase(),
                   style: GoogleFonts.montserrat(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    letterSpacing: 1.0,
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.primary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
                     vertical: 12,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 0,
                 ),
               ),
             ],
