@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pivote/features/auth/data/models/user_model.dart';
+import 'package:pivote/core/services/notification_service.dart';
 
 /// Service to manage user authentication and session using Firebase Auth
 class AuthService {
@@ -74,6 +75,8 @@ class AuthService {
         );
       }
 
+      debugPrint('✅ Google tokens obtained successfully');
+
       // 5. Create credential
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
@@ -110,6 +113,13 @@ class AuthService {
         lastName: lastName,
         photoUrl: user.photoURL,
       );
+
+      // 9. Initialize notifications for this user
+      try {
+        await NotificationService.initialize();
+      } catch (e) {
+        debugPrint('⚠️ Error initializing notifications: $e');
+      }
 
       return user;
     } on FirebaseAuthException {
@@ -154,6 +164,13 @@ class AuthService {
         // Update display name in Auth
         final fullName = '${name.trim()} ${lastName.trim()}';
         await user.updateDisplayName(fullName);
+
+        // Initialize notifications for new user
+        try {
+          await NotificationService.initialize();
+        } catch (e) {
+          debugPrint('⚠️ Error initializing notifications: $e');
+        }
 
         debugPrint('✅ Sign-up completed successfully');
       }

@@ -16,6 +16,15 @@ import 'package:pivote/features/home/presentation/screens/main_screen.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:pivote/shared/widgets/connectivity_wrapper.dart';
+import 'package:pivote/core/services/notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+// Background message handler (must be top-level)
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await FirebaseService.initialize();
+  debugPrint('🔔 Background message: ${message.messageId}');
+}
 
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +32,10 @@ void main() async {
 
   // Initialize Firebase
   await FirebaseService.initialize();
+
+  // Initialize Notifications
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await NotificationService.initialize();
 
   // AudioManager will be initialized lazily or via the Provider
   final audioManager = AudioManager();

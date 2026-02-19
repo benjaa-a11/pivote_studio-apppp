@@ -19,6 +19,9 @@
     
     <!-- Controles de medios -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    
+    <!-- Vibración para notificaciones -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
         android:label="Pivote"
@@ -98,6 +101,32 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        
+        <!-- ========================================== -->
+        <!-- FIREBASE CLOUD MESSAGING -->
+        <!-- ========================================== -->
+        <service
+            android:name="com.google.firebase.messaging.FirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        
+        <!-- Canal de notificaciones por defecto -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="pivote_notifications" />
+        
+        <!-- Icono de notificación por defecto -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+        
+        <!-- Color de notificación por defecto -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
     </application>
     
     <!-- ========================================== -->

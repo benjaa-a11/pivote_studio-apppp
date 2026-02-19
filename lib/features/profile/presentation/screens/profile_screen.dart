@@ -17,6 +17,7 @@ import 'package:pivote/features/profile/presentation/screens/storage_manager_scr
 import 'package:pivote/features/profile/presentation/screens/history_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/support_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/privacy_security_screen.dart';
+import 'package:pivote/features/profile/presentation/screens/notifications_settings_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
@@ -92,6 +93,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: 'Apariencia',
                   icon: Icons.palette_outlined,
                   children: [_buildAppearanceSection(context)],
+                ),
+
+                _buildSection(
+                  context,
+                  title: 'Notificaciones',
+                  icon: Icons.notifications_outlined,
+                  children: [_buildNotificationsSection(context)],
                 ),
 
                 _buildSection(
@@ -418,6 +426,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         value: themeProvider.isDarkMode,
         onChanged: (v) => themeProvider.toggleTheme(),
         activeThumbColor: Theme.of(context).colorScheme.primary,
+      ),
+    );
+  }
+
+  Widget _buildNotificationsSection(BuildContext context) {
+    return _buildOptionTile(
+      context,
+      icon: Icons.notifications_outlined,
+      title: 'Configurar notificaciones',
+      subtitle: 'Gestiona tus preferencias de notificaciones',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const NotificationsSettingsScreen(),
+        ),
       ),
     );
   }
