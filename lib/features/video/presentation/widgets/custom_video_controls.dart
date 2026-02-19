@@ -6,6 +6,54 @@ import 'package:pivote/features/video/presentation/widgets/unified_video_control
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// ════════════════════════════════════════
+// SERVER INFO MODEL
+// ════════════════════════════════════════
+
+enum ServerType { hls, dash, web, unknown }
+
+class ServerInfo {
+  final int index;
+  final String label;
+  final ServerType type;
+
+  const ServerInfo({
+    required this.index,
+    required this.label,
+    required this.type,
+  });
+
+  String get typeLabel {
+    switch (type) {
+      case ServerType.hls:
+        return 'HLS';
+      case ServerType.dash:
+        return 'DASH';
+      case ServerType.web:
+        return 'WEB';
+      case ServerType.unknown:
+        return 'AUTO';
+    }
+  }
+
+  Color typeColor(BuildContext context) {
+    switch (type) {
+      case ServerType.hls:
+        return Colors.greenAccent.shade400;
+      case ServerType.dash:
+        return Colors.blueAccent.shade200;
+      case ServerType.web:
+        return Colors.orangeAccent.shade200;
+      case ServerType.unknown:
+        return Colors.grey.shade400;
+    }
+  }
+}
+
+// ════════════════════════════════════════
+// CUSTOM VIDEO CONTROLS v5.0
+// ════════════════════════════════════════
+
 class CustomVideoControls extends StatefulWidget {
   final UnifiedVideoController controller;
   final String channelName;
@@ -17,6 +65,8 @@ class CustomVideoControls extends StatefulWidget {
   final VoidCallback? onMuteToggle;
   final int currentServer;
   final int totalServers;
+  final List<ServerInfo>? serverList;
+  final ValueChanged<int>? onServerSelect;
 
   const CustomVideoControls({
     super.key,
@@ -30,6 +80,8 @@ class CustomVideoControls extends StatefulWidget {
     this.onMuteToggle,
     this.currentServer = 1,
     this.totalServers = 1,
+    this.serverList,
+    this.onServerSelect,
   });
 
   @override
@@ -48,19 +100,16 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-
   late AnimationController _toastController;
   late Animation<double> _toastAnimation;
-
   late AnimationController _bufferingController;
 
   @override
   void initState() {
     super.initState();
 
-    // Fade animation for controls
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 250),
       vsync: this,
     );
     _fadeAnimation = CurvedAnimation(
@@ -68,7 +117,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       curve: Curves.easeInOut,
     );
 
-    // Toast animation
     _toastController = AnimationController(
       duration: const Duration(milliseconds: 250),
       vsync: this,
@@ -78,7 +126,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       curve: Curves.easeOutBack,
     );
 
-    // Buffering animation
     _bufferingController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
@@ -90,30 +137,28 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   }
 
   void _videoListener() {
-    if (mounted) {
-      // Handle buffering animation
-      if (widget.controller.isBuffering) {
-        if (!_bufferingController.isAnimating &&
-            _bufferingController.value < 1.0) {
-          _bufferingController.forward();
-        }
-      } else {
-        if (_bufferingController.value > 0.0) {
-          _bufferingController.stop();
-          _bufferingController.reset();
-        }
-      }
+    if (!mounted) return;
 
-      // Auto-hide controls when playing and not buffering
-      if (widget.controller.isPlaying &&
-          !widget.controller.isBuffering &&
-          _showControls &&
-          !_controlsLocked) {
-        _startHideTimer();
+    if (widget.controller.isBuffering) {
+      if (!_bufferingController.isAnimating &&
+          _bufferingController.value < 1.0) {
+        _bufferingController.forward();
       }
-
-      setState(() {});
+    } else {
+      if (_bufferingController.value > 0.0) {
+        _bufferingController.stop();
+        _bufferingController.reset();
+      }
     }
+
+    if (widget.controller.isPlaying &&
+        !widget.controller.isBuffering &&
+        _showControls &&
+        !_controlsLocked) {
+      _startHideTimer();
+    }
+
+    setState(() {});
   }
 
   @override
@@ -129,14 +174,12 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   }
 
   // ═══════════════════════════════════════
-  // Control Visibility
+  // Visibility
   // ═══════════════════════════════════════
 
   void _toggleControls() {
     if (_controlsLocked) return;
-
     HapticFeedback.selectionClick();
-
     setState(() {
       _showControls = !_showControls;
       if (_showControls) {
@@ -151,10 +194,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
 
   void _startHideTimer() {
     _hideTimer?.cancel();
-
-    if (!widget.controller.isPlaying || widget.controller.isBuffering) {
-      return; // Don't hide if not playing or buffering
-    }
+    if (!widget.controller.isPlaying || widget.controller.isBuffering) return;
 
     _hideTimer = Timer(const Duration(seconds: 5), () {
       if (mounted &&
@@ -172,47 +212,56 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
 
   void _onControlInteraction() {
     _controlsInteractionTimer?.cancel();
-
     if (!_showControls) {
       setState(() {
         _showControls = true;
         _fadeController.forward();
       });
     }
-
     _startHideTimer();
-
-    // Lock controls briefly to prevent accidental toggle
     _controlsLocked = true;
     _controlsInteractionTimer = Timer(const Duration(milliseconds: 300), () {
       _controlsLocked = false;
     });
   }
 
-  // ═══════════════════════════════════════
-  // Toast Notifications
-  // ═══════════════════════════════════════
-
   void _showAspectRatioChangeToast() {
     _aspectRatioToastTimer?.cancel();
-
-    setState(() {
-      _showAspectRatioToast = true;
-    });
-
+    setState(() => _showAspectRatioToast = true);
     _toastController.forward(from: 0.0);
-
     _aspectRatioToastTimer = Timer(const Duration(milliseconds: 1800), () {
       if (mounted) {
         _toastController.reverse().then((_) {
-          if (mounted) {
-            setState(() {
-              _showAspectRatioToast = false;
-            });
-          }
+          if (mounted) setState(() => _showAspectRatioToast = false);
         });
       }
     });
+  }
+
+  // ═══════════════════════════════════════
+  // Server Picker
+  // ═══════════════════════════════════════
+
+  void _openServerPicker() {
+    if (widget.serverList == null || widget.serverList!.isEmpty) return;
+
+    HapticFeedback.mediumImpact();
+    _hideTimer?.cancel();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _ServerPickerSheet(
+        servers: widget.serverList!,
+        currentIndex: widget.currentServer - 1,
+        onSelect: (idx) {
+          Navigator.pop(ctx);
+          widget.onServerSelect?.call(idx);
+          _onControlInteraction();
+        },
+      ),
+    ).then((_) => _startHideTimer());
   }
 
   // ═══════════════════════════════════════
@@ -228,7 +277,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         color: Colors.transparent,
         child: Stack(
           children: [
-            // Buffering indicator with smooth transition
+            // Buffering overlay
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               child: widget.controller.isBuffering
@@ -236,11 +285,11 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   : const SizedBox.shrink(),
             ),
 
-            // Aspect ratio toast (only in fullscreen)
+            // Aspect ratio toast
             if (_showAspectRatioToast && widget.isFullScreen)
               _buildAspectRatioToast(),
 
-            // Controls with fade animation
+            // Controls
             FadeTransition(
               opacity: _fadeAnimation,
               child: IgnorePointer(
@@ -257,9 +306,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   Widget _buildBufferingIndicator() {
     return Center(
       child: FadeTransition(
-        opacity: _bufferingController.drive(
-          CurveTween(curve: Curves.easeIn),
-        ),
+        opacity:
+            _bufferingController.drive(CurveTween(curve: Curves.easeIn)),
         child: const VideoLoadingWidget(
           message: 'Cargando...',
           isBuffering: true,
@@ -273,7 +321,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       child: ScaleTransition(
         scale: _toastAnimation,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.black.withAlpha(230),
             borderRadius: BorderRadius.circular(12),
@@ -283,7 +332,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
             ),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withAlpha(77),
+                color: Theme.of(context)
+                    .colorScheme
+                    .primary
+                    .withAlpha(77),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -321,10 +373,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withValues(alpha: 0.7),
+            Colors.black.withValues(alpha: 0.75),
             Colors.transparent,
             Colors.transparent,
-            Colors.black.withValues(alpha: 0.8),
+            Colors.black.withValues(alpha: 0.85),
           ],
           stops: const [0.0, 0.2, 0.75, 1.0],
         ),
@@ -350,7 +402,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         ),
         child: Row(
           children: [
-            // Back button only in fullscreen
             if (widget.isFullScreen && widget.onFullScreenToggle != null) ...[
               _buildControlButton(
                 icon: Icons.arrow_back_rounded,
@@ -364,6 +415,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               const SizedBox(width: 12),
             ],
 
+            // Channel name + live indicator + server badge
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,7 +434,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      // Live indicator
+                      // Live dot
                       Container(
                         width: 7,
                         height: 7,
@@ -414,8 +466,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                           letterSpacing: 1.0,
                         ),
                       ),
-
-                      // Server indicator
+                      // Server badge
                       if (widget.totalServers > 1) ...[
                         const SizedBox(width: 12),
                         Container(
@@ -445,7 +496,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                           ),
                         ),
                       ],
-
                       // Error indicator
                       if (widget.controller.hasError) ...[
                         const SizedBox(width: 8),
@@ -460,7 +510,51 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 ],
               ),
             ),
+
+            // 3-dot server menu
+            if (widget.totalServers > 1 && widget.serverList != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: _buildServerMenuButton(),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildServerMenuButton() {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Container(
+      decoration: BoxDecoration(
+        color: primary.withAlpha(180),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: primary.withAlpha(255), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: primary.withAlpha(80),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            _onControlInteraction();
+            _openServerPicker();
+          },
+          borderRadius: BorderRadius.circular(10),
+          splashColor: Colors.white.withAlpha(51),
+          child: const Padding(
+            padding: EdgeInsets.all(8),
+            child: Icon(
+              Icons.more_vert_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
         ),
       ),
     );
@@ -473,7 +567,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
         child: Row(
           children: [
-            // Mute/Unmute button
             _buildControlSvg(
               assetPath: widget.isMuted
                   ? 'assets/icons/volume_off_16.svg'
@@ -485,8 +578,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               },
               size: 20,
             ),
-
-            // Aspect ratio button (only in fullscreen)
             if (widget.isFullScreen) ...[
               const SizedBox(width: 12),
               _buildControlButton(
@@ -501,10 +592,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 size: 19,
               ),
             ],
-
             const Spacer(),
-
-            // Fullscreen button
             if (widget.onFullScreenToggle != null)
               _buildControlSvg(
                 assetPath: widget.isFullScreen
@@ -534,10 +622,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       decoration: BoxDecoration(
         color: Colors.black.withAlpha(140),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: Colors.white.withAlpha(64),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withAlpha(64), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(77),
@@ -555,18 +640,14 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
           highlightColor: Colors.white.withAlpha(26),
           child: Padding(
             padding: padding ??
-                EdgeInsets.symmetric(
-                  horizontal: label != null ? 10 : 10,
+                const EdgeInsets.symmetric(
+                  horizontal: 10,
                   vertical: 8,
                 ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  icon,
-                  color: Colors.white,
-                  size: size,
-                ),
+                Icon(icon, color: Colors.white, size: size),
                 if (label != null) ...[
                   const SizedBox(width: 6),
                   Text(
@@ -597,10 +678,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       decoration: BoxDecoration(
         color: Colors.black.withAlpha(140),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: Colors.white.withAlpha(64),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withAlpha(64), width: 1),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(77),
@@ -627,6 +705,235 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 Colors.white,
                 BlendMode.srcIn,
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════
+// SERVER PICKER BOTTOM SHEET
+// ════════════════════════════════════════
+
+class _ServerPickerSheet extends StatelessWidget {
+  final List<ServerInfo> servers;
+  final int currentIndex;
+  final ValueChanged<int> onSelect;
+
+  const _ServerPickerSheet({
+    required this.servers,
+    required this.currentIndex,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.52,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(60),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Title
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.dns_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Seleccionar Servidor',
+                  style: GoogleFonts.montserrat(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withAlpha(40),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withAlpha(80),
+                    ),
+                  ),
+                  child: Text(
+                    '${servers.length} servidores',
+                    style: GoogleFonts.montserrat(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(
+            height: 1,
+            color: Colors.white.withAlpha(15),
+          ),
+          // Server list
+          Flexible(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              shrinkWrap: true,
+              itemCount: servers.length,
+              itemBuilder: (ctx, i) => _ServerTile(
+                server: servers[i],
+                isActive: servers[i].index == currentIndex,
+                onTap: () => onSelect(servers[i].index),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ServerTile extends StatelessWidget {
+  final ServerInfo server;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _ServerTile({
+    required this.server,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final typeColor = server.typeColor(context);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      decoration: BoxDecoration(
+        color: isActive ? primary.withAlpha(30) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive ? primary.withAlpha(100) : Colors.transparent,
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          splashColor: primary.withAlpha(40),
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                // Number circle
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: isActive ? primary : Colors.white.withAlpha(15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${server.index + 1}',
+                      style: GoogleFonts.montserrat(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Label
+                Expanded(
+                  child: Text(
+                    server.label,
+                    style: GoogleFonts.montserrat(
+                      color: isActive ? Colors.white : Colors.white70,
+                      fontSize: 14,
+                      fontWeight:
+                          isActive ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Type badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: typeColor.withAlpha(30),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: typeColor.withAlpha(120),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    server.typeLabel,
+                    style: GoogleFonts.montserrat(
+                      color: typeColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Active checkmark
+                if (isActive)
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: primary,
+                    size: 18,
+                  )
+                else
+                  const SizedBox(width: 18),
+              ],
             ),
           ),
         ),
