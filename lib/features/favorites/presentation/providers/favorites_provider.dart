@@ -122,7 +122,10 @@ class FavoritesProvider extends ChangeNotifier {
       _isSyncing = true;
       notifyListeners();
 
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+      await FirebaseFirestore.instance
+          .collection('usuarios-pivote')
+          .doc(uid)
+          .set({
         'favorites': _favoriteIds.toList(),
       }, SetOptions(merge: true));
 
@@ -145,8 +148,10 @@ class FavoritesProvider extends ChangeNotifier {
       _isSyncing = true;
       notifyListeners();
 
-      final doc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('usuarios-pivote')
+          .doc(uid)
+          .get();
 
       if (doc.exists) {
         final data = doc.data();
