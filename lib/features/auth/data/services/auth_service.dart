@@ -5,15 +5,17 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pivote/features/auth/data/models/user_model.dart';
-import 'package:pivote/core/services/notification_service.dart';
 
 /// Service to manage user authentication and session using Firebase Auth
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  // Simplificado: Usar configuración por defecto de google-services.json
-  // Esto evita errores de mismatch en Android (ApiException 10)
-  static final GoogleSignIn _googleSignIn = GoogleSignIn();
+  // Use the web client ID from google-services.json (client_type: 3)
+  // This is required for Android to obtain the idToken correctly
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId:
+        '451817571128-ch6b02prjtv8njpek34v233bv3itfpjn.apps.googleusercontent.com',
+  );
 
   static const String _usersCollection = 'usuarios-pivote';
 
@@ -114,13 +116,6 @@ class AuthService {
         photoUrl: user.photoURL,
       );
 
-      // 9. Initialize notifications for this user
-      try {
-        await NotificationService.initialize();
-      } catch (e) {
-        debugPrint('⚠️ Error initializing notifications: $e');
-      }
-
       return user;
     } on FirebaseAuthException {
       rethrow;
@@ -164,13 +159,6 @@ class AuthService {
         // Update display name in Auth
         final fullName = '${name.trim()} ${lastName.trim()}';
         await user.updateDisplayName(fullName);
-
-        // Initialize notifications for new user
-        try {
-          await NotificationService.initialize();
-        } catch (e) {
-          debugPrint('⚠️ Error initializing notifications: $e');
-        }
 
         debugPrint('✅ Sign-up completed successfully');
       }

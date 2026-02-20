@@ -94,9 +94,7 @@ class _ChannelCardState extends State<ChannelCard>
                 border: Border.all(
                   color: _isPressed
                       ? Theme.of(context).colorScheme.primary.withAlpha(128)
-                      : (isDark
-                          ? AppTheme.darkBorder
-                          : Colors.black.withAlpha(13)),
+                      : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
                   width: _isPressed ? 2 : 1,
                 ),
                 boxShadow: _isPressed
@@ -126,9 +124,7 @@ class _ChannelCardState extends State<ChannelCard>
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? AppTheme.darkCard
-                            : const Color(0xFFF8F9FA),
+                        color: isDark ? AppTheme.darkCard : AppTheme.lightBg2,
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(15),
                         ),
@@ -143,8 +139,9 @@ class _ChannelCardState extends State<ChannelCard>
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color:
-                          isDark ? theme.scaffoldBackgroundColor : Colors.white,
+                      color: isDark
+                          ? theme.scaffoldBackgroundColor
+                          : AppTheme.lightBg1,
                       borderRadius: const BorderRadius.vertical(
                         bottom: Radius.circular(15),
                       ),

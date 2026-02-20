@@ -1,30 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 
 class AppNotifications {
   static void showSuccess(BuildContext context, String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     _show(
       context,
       message,
-      const Color(0xFF00C853), // Deep Android Green
+      isDark ? AppTheme.darkSuccess : AppTheme.lightSuccess,
       Icons.check_circle_outline_rounded,
     );
   }
 
   static void showError(BuildContext context, String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     _show(
       context,
       message,
-      const Color(0xFFD32F2F), // Deep Material Red
+      isDark ? AppTheme.darkDanger : AppTheme.lightDanger,
       Icons.error_outline_rounded,
     );
   }
 
   static void showWarning(BuildContext context, String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     _show(
       context,
       message,
-      const Color(0xFFFFA000), // Amber 700
+      isDark ? AppTheme.darkWarning : AppTheme.lightWarning,
       Icons.warning_amber_rounded,
     );
   }

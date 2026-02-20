@@ -6,6 +6,7 @@ import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:pivote/features/soccer/presentation/widgets/world_cup_countdown.dart';
 import 'package:pivote/features/soccer/presentation/widgets/soccer_match_card.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 
 class FutbolScreen extends StatefulWidget {
   const FutbolScreen({super.key});
@@ -130,7 +131,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
               shape: BoxShape.circle,
               color: isSelected
                   ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                  : (isDark ? const Color(0xFF1A1D24) : Colors.white),
+                  : (isDark ? AppTheme.darkBg2 : AppTheme.lightBg1),
               border: Border.all(
                 color: isSelected
                     ? theme.colorScheme.primary
@@ -245,7 +246,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF13161C) : Colors.white,
+        color: isDark ? AppTheme.darkBg1 : AppTheme.lightBg1,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: theme.dividerColor.withValues(alpha: 0.05),

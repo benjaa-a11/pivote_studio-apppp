@@ -68,7 +68,7 @@ class _SearchScreenState extends State<SearchScreen>
         }
       },
       child: Scaffold(
-        backgroundColor: isDark ? AppTheme.darkBackground : Colors.white,
+        backgroundColor: isDark ? AppTheme.darkBg : Colors.white,
         body: Column(
           children: [
             // Glassmorphic Header (Not Positioned anymore to avoid overlap)

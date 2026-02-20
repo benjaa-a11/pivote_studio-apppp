@@ -54,18 +54,18 @@ class FavoritesScreen extends StatelessWidget {
                             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE7714D)
+                                color: theme.colorScheme.error
                                     .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                    color: const Color(0xFFE7714D)
+                                    color: theme.colorScheme.error
                                         .withValues(alpha: 0.2)),
                               ),
                               child: IconButton(
                                 onPressed: () => _showClearDialog(
                                     context, favoritesProvider),
-                                icon: const Icon(Icons.delete_outline_rounded,
-                                    color: Color(0xFFE7714D)),
+                                icon: Icon(Icons.delete_outline_rounded,
+                                    color: theme.colorScheme.error),
                                 padding: EdgeInsets.zero,
                                 tooltip: 'Limpiar favoritos',
                               ),

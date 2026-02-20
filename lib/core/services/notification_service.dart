@@ -17,7 +17,31 @@ class NotificationService {
   static const String _channelDescription =
       'Notificaciones de la aplicación Pivote';
 
-  /// Initialize notification service
+  /// Initialize notification service WITHOUT requesting permission.
+  /// Call this at app startup to only set up listeners for already-authorized users.
+  static Future<void> initializeWithoutPermission() async {
+    try {
+      debugPrint(
+          '🔔 Initializing Notification Service (without permission request)...');
+
+      final settings = await _messaging.getNotificationSettings();
+      debugPrint(
+          '🔔 Current permission status: ${settings.authorizationStatus}');
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        await _setupNotificationHandlers();
+        debugPrint('✅ Notification Service initialized (already authorized)');
+      } else {
+        debugPrint(
+            'ℹ️ Notifications not yet authorized — skipping handler setup');
+      }
+    } catch (e) {
+      debugPrint('❌ Error initializing Notification Service: $e');
+    }
+  }
+
+  /// Full initialization: request permission AND set up handlers.
+  /// Call this only after the user has been shown a contextual prompt.
   static Future<void> initialize() async {
     try {
       debugPrint('🔔 Initializing Notification Service...');
@@ -35,31 +59,7 @@ class NotificationService {
 
       if (notificationSettings.authorizationStatus ==
           AuthorizationStatus.authorized) {
-        // Initialize local notifications
-        await _initializeLocalNotifications();
-
-        // Get FCM token
-        final token = await getToken();
-        if (token != null) {
-          debugPrint('🔔 FCM Token obtained: ${token.substring(0, 20)}...');
-          await _saveTokenToFirestore(token);
-        }
-
-        // Configure foreground notification handler
-        FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-        // Configure background notification handler
-        FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
-
-        // Handle notification when app is opened from terminated state
-        final initialMessage = await _messaging.getInitialMessage();
-        if (initialMessage != null) {
-          _handleNotificationTap(initialMessage);
-        }
-
-        // Listen for token refresh
-        _messaging.onTokenRefresh.listen(_saveTokenToFirestore);
-
+        await _setupNotificationHandlers();
         debugPrint('✅ Notification Service initialized successfully');
       } else {
         debugPrint('⚠️ Notification permission denied');
@@ -67,6 +67,34 @@ class NotificationService {
     } catch (e) {
       debugPrint('❌ Error initializing Notification Service: $e');
     }
+  }
+
+  /// Internal: sets up local notifications, FCM token, and message listeners.
+  static Future<void> _setupNotificationHandlers() async {
+    // Initialize local notifications
+    await _initializeLocalNotifications();
+
+    // Get FCM token
+    final token = await getToken();
+    if (token != null) {
+      debugPrint('🔔 FCM Token obtained: ${token.substring(0, 20)}...');
+      await _saveTokenToFirestore(token);
+    }
+
+    // Configure foreground notification handler
+    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+
+    // Configure background notification handler
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+    // Handle notification when app is opened from terminated state
+    final initialMessage = await _messaging.getInitialMessage();
+    if (initialMessage != null) {
+      _handleNotificationTap(initialMessage);
+    }
+
+    // Listen for token refresh
+    _messaging.onTokenRefresh.listen(_saveTokenToFirestore);
   }
 
   /// Initialize local notifications plugin
@@ -174,13 +202,15 @@ class NotificationService {
   static void _handleNotificationTap(RemoteMessage message) {
     debugPrint('🔔 Notification tapped: ${message.messageId}');
     debugPrint('🔔 Data: ${message.data}');
-    // TODO: Navigate to specific screen based on message.data
+    // Navigation to specific screen based on message.data will be implemented here
+    // when deep linking logic is established.
   }
 
   /// Handle local notification tap
   static void _onNotificationTapped(NotificationResponse response) {
     debugPrint('🔔 Local notification tapped: ${response.payload}');
-    // TODO: Navigate to specific screen based on payload
+    // Navigation to specific screen based on payload will be implemented here
+    // when deep linking logic is established.
   }
 
   /// Check if notifications are enabled

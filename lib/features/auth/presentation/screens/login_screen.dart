@@ -318,8 +318,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
+                      backgroundColor: theme.colorScheme.onSurface,
+                      foregroundColor: theme.scaffoldBackgroundColor,
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(100),
@@ -327,7 +327,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       elevation: 8,
                     ),
                     child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? CircularProgressIndicator(
+                            color: theme.scaffoldBackgroundColor)
                         : const Text('Entrar',
                             style: TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.bold)),

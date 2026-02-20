@@ -41,7 +41,7 @@ class _RadiosScreenState extends State<RadiosScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black;
+    final textColor = theme.colorScheme.onSurface;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -97,7 +97,7 @@ class _RadiosScreenState extends State<RadiosScreen>
             itemBuilder: (context, index) {
               final category = categories[index];
               final isSelected = provider.activeCategory == category;
-              final textColor = isDark ? Colors.white : Colors.black;
+              final textColor = Theme.of(context).colorScheme.onSurface;
 
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -108,10 +108,8 @@ class _RadiosScreenState extends State<RadiosScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? (isDark ? Colors.white : Colors.black)
-                          : (isDark
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.05)),
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isSelected
@@ -205,7 +203,7 @@ class _RadiosScreenState extends State<RadiosScreen>
   Widget _buildRadioItem(BuildContext context, radio_model.Radio radio,
       AudioManager audioManager, bool isDark) {
     final isCurrent = audioManager.currentRadio?.id == radio.id;
-    final textColor = isDark ? Colors.white : Colors.black;
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
     return GestureDetector(
       onTap: () {

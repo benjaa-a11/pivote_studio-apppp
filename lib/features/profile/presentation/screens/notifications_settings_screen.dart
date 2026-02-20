@@ -139,7 +139,6 @@ class _NotificationsSettingsScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -218,8 +217,8 @@ class _NotificationsSettingsScreenState
                                     : 'No recibirás notificaciones',
                                 style: GoogleFonts.montserrat(
                                   fontSize: 13,
-                                  color:
-                                      theme.colorScheme.onSurface.withAlpha(128),
+                                  color: theme.colorScheme.onSurface
+                                      .withAlpha(128),
                                 ),
                               ),
                             ],
@@ -228,7 +227,7 @@ class _NotificationsSettingsScreenState
                         Switch(
                           value: _notificationsEnabled,
                           onChanged: _toggleNotifications,
-                          activeColor: theme.colorScheme.primary,
+                          activeThumbColor: theme.colorScheme.primary,
                         ),
                       ],
                     ),
@@ -267,8 +266,7 @@ class _NotificationsSettingsScreenState
                     context,
                     icon: Icons.update,
                     title: 'Actualizaciones',
-                    description:
-                        'Información sobre nuevas funciones y mejoras',
+                    description: 'Información sobre nuevas funciones y mejoras',
                   ),
                   const SizedBox(height: 32),
 

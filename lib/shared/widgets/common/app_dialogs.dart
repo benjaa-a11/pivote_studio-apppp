@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 
 enum AppDialogType { success, error, warning, info }
 
@@ -170,33 +171,38 @@ class _ModernDialog extends StatelessWidget {
   }
 
   Widget _buildIcon() {
-    Color color;
-    IconData icon;
-    switch (type) {
-      case AppDialogType.success:
-        color = const Color(0xFF00C853);
-        icon = Icons.check_circle_outline_rounded;
-        break;
-      case AppDialogType.error:
-        color = const Color(0xFFD32F2F);
-        icon = Icons.error_outline_rounded;
-        break;
-      case AppDialogType.warning:
-        color = const Color(0xFFFFA000);
-        icon = Icons.warning_amber_rounded;
-        break;
-      case AppDialogType.info:
-        color = const Color(0xFF2196F3);
-        icon = Icons.info_outline_rounded;
-    }
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        Color color;
+        IconData icon;
+        switch (type) {
+          case AppDialogType.success:
+            color = isDark ? AppTheme.darkSuccess : AppTheme.lightSuccess;
+            icon = Icons.check_circle_outline_rounded;
+            break;
+          case AppDialogType.error:
+            color = isDark ? AppTheme.darkDanger : AppTheme.lightDanger;
+            icon = Icons.error_outline_rounded;
+            break;
+          case AppDialogType.warning:
+            color = isDark ? AppTheme.darkWarning : AppTheme.lightWarning;
+            icon = Icons.warning_amber_rounded;
+            break;
+          case AppDialogType.info:
+            color = isDark ? AppTheme.darkAccent : AppTheme.lightAccent;
+            icon = Icons.info_outline_rounded;
+        }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(icon, color: color, size: 40),
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 40),
+        );
+      },
     );
   }
 

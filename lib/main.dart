@@ -33,9 +33,11 @@ void main() async {
   // Initialize Firebase
   await FirebaseService.initialize();
 
-  // Initialize Notifications
+  // Register background message handler (permission request deferred to post-login)
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  await NotificationService.initialize();
+
+  // Initialize notification handlers for already-authorized users (no permission prompt)
+  await NotificationService.initializeWithoutPermission();
 
   // AudioManager will be initialized lazily or via the Provider
   final audioManager = AudioManager();
@@ -148,10 +150,10 @@ class _AuthenticationWrapper extends StatelessWidget {
             return const Scaffold(
               body: Center(
                 child: CircularProgressIndicator(
-                  color: Colors.white,
+                  color: AppTheme.darkAccent,
                 ),
               ),
-              backgroundColor: Color(0xFF0F172A), // Match splash/app background
+              backgroundColor: AppTheme.darkBg,
             );
           },
         );

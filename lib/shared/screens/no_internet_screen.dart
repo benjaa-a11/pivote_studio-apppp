@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 
 class NoInternetScreen extends StatelessWidget {
   final VoidCallback onRetry;
@@ -22,8 +23,8 @@ class NoInternetScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: isDark
-                    ? [const Color(0xFF020617), const Color(0xFF0F172A)]
-                    : [const Color(0xFFF8FAFC), const Color(0xFFE2E8F0)],
+                    ? [AppTheme.darkBg, AppTheme.darkBg1]
+                    : [AppTheme.lightBg, AppTheme.lightBg2],
               ),
             ),
           ),
