@@ -37,7 +37,7 @@ class FavoritesScreen extends StatelessWidget {
                   titleSpacing: 20,
                   title: Text(
                     'Favoritos',
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.syne(
                       fontSize: 28,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -1,
@@ -142,7 +142,7 @@ class FavoritesScreen extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               '$count ${count == 1 ? 'CANAL' : 'CANALES'}',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 fontWeight: FontWeight.w800,
                 color: theme.colorScheme.primary,
                 fontSize: 11,
@@ -180,7 +180,7 @@ class FavoritesScreen extends StatelessWidget {
             const SizedBox(height: 32),
             Text(
               'Aún no tienes favoritos',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.syne(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: theme.colorScheme.onSurface,
@@ -189,7 +189,7 @@ class FavoritesScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               'Agrega tus canales preferidos para acceder rápidamente a ellos en cualquier momento.',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 color: isDark ? Colors.grey[500] : Colors.grey[600],
                 fontSize: 14,
                 height: 1.5,
@@ -218,7 +218,7 @@ class FavoritesScreen extends StatelessWidget {
               ),
               child: Text(
                 'EXPLORAR CANALES',
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.dmSans(
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                   letterSpacing: 0.5,
@@ -252,7 +252,7 @@ class FavoritesScreen extends StatelessWidget {
           SnackBar(
             content: Text(
               'Lista de favoritos limpia',
-              style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
             ),
             backgroundColor: theme.colorScheme.primary,
             behavior: SnackBarBehavior.floating,

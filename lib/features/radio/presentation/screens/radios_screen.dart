@@ -59,14 +59,43 @@ class _RadiosScreenState extends State<RadiosScreen>
               backgroundColor: theme.scaffoldBackgroundColor,
               automaticallyImplyLeading: false,
               titleSpacing: 24,
-              title: Text(
-                'Radio',
-                style: GoogleFonts.montserrat(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: textColor,
-                  letterSpacing: -0.5,
-                ),
+              title: Row(
+                children: [
+                  Text(
+                    'Radio',
+                    style: GoogleFonts.syne(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Consumer<RadioProvider>(
+                    builder: (context, provider, _) {
+                      if (provider.isLoading || provider.radios.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${provider.radios.length}',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(60),
@@ -85,6 +114,7 @@ class _RadiosScreenState extends State<RadiosScreen>
   Widget _buildCategoryFilters(BuildContext context, bool isDark) {
     return Consumer<RadioProvider>(
       builder: (context, provider, _) {
+        final theme = Theme.of(context);
         final categories = provider.categories;
 
         return Container(
@@ -108,7 +138,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? Theme.of(context).colorScheme.onSurface
+                          ? theme.colorScheme.primary
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
@@ -121,11 +151,11 @@ class _RadiosScreenState extends State<RadiosScreen>
                     alignment: Alignment.center,
                     child: Text(
                       category.toUpperCase(),
-                      style: GoogleFonts.montserrat(
+                      style: GoogleFonts.dmSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: isSelected
-                            ? Theme.of(context).colorScheme.surface
+                            ? Colors.white
                             : textColor.withValues(alpha: 0.6),
                         letterSpacing: 1.2,
                       ),
@@ -170,9 +200,10 @@ class _RadiosScreenState extends State<RadiosScreen>
                   const SizedBox(height: 16),
                   Text(
                     'No se encontraron radios',
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.dmSans(
                       color: isDark ? Colors.white38 : Colors.black38,
                       fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -276,11 +307,11 @@ class _RadiosScreenState extends State<RadiosScreen>
                 children: [
                   Text(
                     radio.name,
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.syne(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: isCurrent
-                          ? Theme.of(context).primaryColor
+                          ? Theme.of(context).colorScheme.primary
                           : textColor,
                       letterSpacing: -0.2,
                     ),
@@ -290,7 +321,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                   const SizedBox(height: 3),
                   Text(
                     radio.frequency,
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.dmSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
                       color: textColor.withValues(alpha: 0.5),
@@ -301,12 +332,29 @@ class _RadiosScreenState extends State<RadiosScreen>
                 ],
               ),
             ),
-            // Play/Chevron Icon
-            Icon(
-              Icons.chevron_right_rounded,
-              color: textColor.withValues(alpha: 0.3),
-              size: 28,
-            ),
+            // Play indicator or Chevron
+            if (isCurrent && audioManager.isPlaying)
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.graphic_eq_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 22,
+                ),
+              )
+            else
+              Icon(
+                Icons.chevron_right_rounded,
+                color: textColor.withValues(alpha: 0.3),
+                size: 28,
+              ),
           ],
         ),
       ),

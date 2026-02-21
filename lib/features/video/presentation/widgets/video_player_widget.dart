@@ -171,7 +171,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _startWatchdog() {
     _stateCheckTimer?.cancel();
-    _stateCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _stateCheckTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (_isDisposed || !mounted) {
         timer.cancel();
         return;
@@ -235,7 +235,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _startLoadingFailsafe() {
     _loadingFailsafe?.cancel();
-    _loadingFailsafe = Timer(const Duration(seconds: 15), () {
+    _loadingFailsafe = Timer(const Duration(seconds: 10), () {
       if (!_isDisposed && mounted && _isLoading) {
         debugPrint('⏱️ Loading failsafe triggered');
         _safeSetState(() => _isLoading = false);
@@ -307,9 +307,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       throw Exception('URL vacía');
     }
 
-    // Server timeout with progressive increase
+    // Server timeout with progressive increase (faster)
     final timeoutDuration =
-        Duration(seconds: 10 + (_serverAttempt * 2).clamp(0, 10));
+        Duration(seconds: 8 + (_serverAttempt * 2).clamp(0, 6));
 
     _serverTimeoutTimer = Timer(timeoutDuration, () {
       if (mounted &&
@@ -436,6 +436,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       _videoPlayerController = VideoPlayerController.networkUrl(
         Uri.parse(url),
+        formatHint: VideoFormat.hls,
         videoPlayerOptions: VideoPlayerOptions(
           mixWithOthers: false,
           allowBackgroundPlayback: false,
@@ -447,7 +448,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       // Initialize with timeout
       await _videoPlayerController!.initialize().timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 8),
         onTimeout: () {
           throw TimeoutException('Timeout inicializando player');
         },
@@ -576,8 +577,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   }
 
   Duration _backoffDurationForAttempt(int attempt) {
-    // Exponential backoff: 500ms, 1s, 2s, 4s, max 6s
-    final ms = min(6000, (500 * pow(2, attempt)).toInt());
+    // Exponential backoff: 300ms, 600ms, 1.2s, 2.4s, max 4s
+    final ms = min(4000, (300 * pow(2, attempt)).toInt());
     return Duration(milliseconds: ms);
   }
 
@@ -744,6 +745,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                   isMuted: _isMuted,
                   currentServer: _currentServerIndex + 1,
                   totalServers: widget.channel.streamUrl.length,
+                  onServerSelect: (idx) {
+                    _currentServerIndex = idx;
+                    _retryCount = 0;
+                    _consecutiveErrors = 0;
+                    _tryCurrentServer();
+                  },
                 ),
               ),
 
@@ -817,12 +824,21 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               const SizedBox(height: 24),
               Text(
                 errorMessage,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.dmSans(
                   color: Colors.white,
                   fontSize: 15,
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
+                style: GoogleFonts.dmSans(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 32),
               ElevatedButton.icon(
@@ -834,7 +850,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 icon: const Icon(Icons.refresh),
                 label: Text(
                   'Reintentar',
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.dmSans(
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                   ),

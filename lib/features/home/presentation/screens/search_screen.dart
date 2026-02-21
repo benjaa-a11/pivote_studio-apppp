@@ -130,7 +130,7 @@ class _SearchScreenState extends State<SearchScreen>
                   const SizedBox(width: 16),
                   Text(
                     'Buscar',
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.syne(
                       fontSize: 26,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -1,
@@ -157,13 +157,13 @@ class _SearchScreenState extends State<SearchScreen>
                   controller: _searchController,
                   focusNode: _searchFocusNode,
                   onChanged: _onSearch,
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.dmSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Encuentra canales por nombre...',
-                    hintStyle: GoogleFonts.montserrat(
+                    hintStyle: GoogleFonts.dmSans(
                       fontSize: 14,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                       fontWeight: FontWeight.w500,
@@ -284,7 +284,7 @@ class _SearchScreenState extends State<SearchScreen>
               const SizedBox(width: 8),
               Text(
                 label,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.dmSans(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
                   color: theme.colorScheme.onSurface,
@@ -304,7 +304,7 @@ class _SearchScreenState extends State<SearchScreen>
       children: [
         Text(
           title,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.dmSans(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: theme.colorScheme.onSurface,
@@ -319,7 +319,7 @@ class _SearchScreenState extends State<SearchScreen>
             ),
             child: Text(
               'Limpiar',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
@@ -360,7 +360,7 @@ class _SearchScreenState extends State<SearchScreen>
             const SizedBox(width: 8),
             Text(
               query,
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
@@ -421,7 +421,7 @@ class _SearchScreenState extends State<SearchScreen>
                 const SizedBox(height: 24),
                 Text(
                   'No hay resultados',
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.syne(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                     color: theme.colorScheme.onSurface,
@@ -430,7 +430,7 @@ class _SearchScreenState extends State<SearchScreen>
                 const SizedBox(height: 12),
                 Text(
                   'Intenta con palabras diferentes o revisa la ortografía para encontrar el canal.',
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.dmSans(
                     fontSize: 14,
                     height: 1.5,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),

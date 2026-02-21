@@ -248,7 +248,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
             children: [
               Text(
                 'RADIO EN VIVO',
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.syne(
                   color: textColor.withValues(alpha: 0.4),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -275,47 +275,66 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   Widget _buildPlayerArt(BuildContext context, Size size) {
     final artSize = size.width * 0.8;
     return Center(
-      child: Hero(
-        tag: 'radio_tile_logo_${widget.radio.id}',
-        child: Container(
-          width: artSize,
-          height: artSize,
-          decoration: ShapeDecoration(
-            shape: ContinuousRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                  96), // Higher value for Continuous gives better squircle
-            ),
-            shadows: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 40,
-                offset: const Offset(0, 20),
-                spreadRadius: -10,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Subtle radial glow behind album art
+          Container(
+            width: artSize * 1.15,
+            height: artSize * 1.15,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                  Colors.transparent,
+                ],
               ),
-            ],
+            ),
           ),
-          child: ClipPath(
-            clipper: ShapeBorderClipper(
-              shape: ContinuousRectangleBorder(
-                borderRadius: BorderRadius.circular(96),
+          Hero(
+            tag: 'radio_tile_logo_${widget.radio.id}',
+            child: Container(
+              width: artSize,
+              height: artSize,
+              decoration: ShapeDecoration(
+                shape: ContinuousRectangleBorder(
+                  borderRadius: BorderRadius.circular(96),
+                ),
+                shadows: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 40,
+                    offset: const Offset(0, 20),
+                    spreadRadius: -10,
+                  ),
+                ],
               ),
-            ),
-            child: CachedNetworkImage(
-              imageUrl: widget.radio.logoUrl,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: Colors.grey[900],
-                child: const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
+              child: ClipPath(
+                clipper: ShapeBorderClipper(
+                  shape: ContinuousRectangleBorder(
+                    borderRadius: BorderRadius.circular(96),
+                  ),
+                ),
+                child: CachedNetworkImage(
+                  imageUrl: widget.radio.logoUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: Colors.grey[900],
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: Colors.grey[900],
+                    child: const Icon(Icons.radio,
+                        color: Colors.white24, size: 64),
+                  ),
                 ),
               ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.grey[900],
-                child: const Icon(Icons.radio, color: Colors.white24, size: 64),
-              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -328,7 +347,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
         Text(
           widget.radio.name,
           textAlign: TextAlign.center,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.syne(
             color: textColor,
             fontSize: 28,
             fontWeight: FontWeight.w700,
@@ -339,7 +358,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
         Text(
           widget.radio.frequency,
           textAlign: TextAlign.center,
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.dmSans(
             color: isDark
                 ? Theme.of(context).textTheme.bodyMedium?.color
                 : textColor.withValues(alpha: 0.5),
@@ -384,23 +403,26 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                 height: 84,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isDark ? Colors.white : Colors.black,
+                  color: Theme.of(context).colorScheme.primary,
                   boxShadow: [
                     BoxShadow(
-                      color: (isDark ? Colors.white : Colors.black)
-                          .withValues(alpha: 0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.35),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                      spreadRadius: -2,
                     ),
                   ],
                 ),
                 child: Center(
                   child: isLoading
-                      ? SizedBox(
+                      ? const SizedBox(
                           width: 32,
                           height: 32,
                           child: CircularProgressIndicator(
-                            color: isDark ? Colors.black : Colors.white,
+                            color: Colors.white,
                             strokeWidth: 3,
                           ),
                         )
@@ -408,7 +430,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                           isPlaying
                               ? Icons.pause_rounded
                               : Icons.play_arrow_rounded,
-                          color: isDark ? Colors.black : Colors.white,
+                          color: Colors.white,
                           size: 52,
                         ),
                 ),

@@ -401,12 +401,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 size: 20, color: theme.colorScheme.primary.withAlpha(179)),
             const SizedBox(height: 12),
             Text(value,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.syne(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 )),
             Text(label,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.dmSans(
                     fontSize: 11,
                     color: theme.colorScheme.onSurface.withAlpha(128))),
           ],
@@ -587,11 +587,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             side: BorderSide(color: theme.dividerColor.withAlpha(13))),
         leading: Icon(icon, color: theme.colorScheme.primary),
         title: Text(title,
-            style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w600, fontSize: 15)),
+            style:
+                GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15)),
         subtitle: subtitle != null
             ? Text(subtitle,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.dmSans(
                     fontSize: 12,
                     color: theme.colorScheme.onSurface.withAlpha(153)))
             : null,
@@ -657,7 +657,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 24),
             Text(
               'Pivote Studio',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.syne(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
                 color: theme.colorScheme.onSurface,
@@ -667,7 +667,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 8),
             Text(
               'Versión $_appVersion',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 fontSize: 14,
                 color: theme.colorScheme.onSurface.withAlpha(128),
                 fontWeight: FontWeight.w500,
@@ -698,7 +698,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 48),
             Text(
               '© 2026 Pivote. Todos los derechos reservados.',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 fontSize: 12,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
               ),
@@ -737,7 +737,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Expanded(
                   child: Text(
                     title,
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.dmSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,

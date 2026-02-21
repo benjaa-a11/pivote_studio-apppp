@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 
@@ -76,19 +77,36 @@ class AppDialogs {
         canPop: false,
         child: Center(
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 16),
+                SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 20),
                 Text(
                   message,
-                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
               ],
             ),
@@ -99,7 +117,7 @@ class AppDialogs {
   }
 }
 
-class _ModernDialog extends StatelessWidget {
+class _ModernDialog extends StatefulWidget {
   final String title;
   final String message;
   final String? confirmLabel;
@@ -119,51 +137,97 @@ class _ModernDialog extends StatelessWidget {
   });
 
   @override
+  State<_ModernDialog> createState() => _ModernDialogState();
+}
+
+class _ModernDialogState extends State<_ModernDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    );
+    _animController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
+      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 40,
+                    offset: const Offset(0, 16),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildIcon(),
+                  const SizedBox(height: 20),
+                  Text(
+                    widget.title,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.syne(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.message,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  widget.isConfirm
+                      ? _buildConfirmActions(context)
+                      : _buildAlertActions(context),
+                ],
+              ),
             ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildIcon(),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(
-                  fontSize: 14,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 32),
-              isConfirm
-                  ? _buildConfirmActions(context)
-                  : _buildAlertActions(context),
-            ],
           ),
         ),
       ),
@@ -176,7 +240,7 @@ class _ModernDialog extends StatelessWidget {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         Color color;
         IconData icon;
-        switch (type) {
+        switch (widget.type) {
           case AppDialogType.success:
             color = isDark ? AppTheme.darkSuccess : AppTheme.lightSuccess;
             icon = Icons.check_circle_outline_rounded;
@@ -220,8 +284,8 @@ class _ModernDialog extends StatelessWidget {
               ),
             ),
             child: Text(
-              cancelLabel ?? 'Cancelar',
-              style: GoogleFonts.montserrat(
+              widget.cancelLabel ?? 'Cancelar',
+              style: GoogleFonts.dmSans(
                 fontWeight: FontWeight.w700,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
@@ -231,9 +295,12 @@ class _ModernDialog extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              Navigator.pop(context, true);
+            },
             style: ElevatedButton.styleFrom(
-              backgroundColor: isDestructive
+              backgroundColor: widget.isDestructive
                   ? theme.colorScheme.error
                   : theme.colorScheme.primary,
               foregroundColor: Colors.white,
@@ -244,8 +311,8 @@ class _ModernDialog extends StatelessWidget {
               ),
             ),
             child: Text(
-              confirmLabel ?? 'Confirmar',
-              style: GoogleFonts.montserrat(fontWeight: FontWeight.w700),
+              widget.confirmLabel ?? 'Confirmar',
+              style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
             ),
           ),
         ),
@@ -270,7 +337,7 @@ class _ModernDialog extends StatelessWidget {
         ),
         child: Text(
           'Aceptar',
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.w700),
+          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
         ),
       ),
     );

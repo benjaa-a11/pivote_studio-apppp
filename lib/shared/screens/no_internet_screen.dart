@@ -95,7 +95,7 @@ class NoInternetScreen extends StatelessWidget {
                   // Title
                   Text(
                     'Sin Conexión',
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.syne(
                       fontSize: 32,
                       fontWeight: FontWeight.w900,
                       color: theme.colorScheme.onSurface,
@@ -108,7 +108,7 @@ class NoInternetScreen extends StatelessWidget {
                   Text(
                     'No detectamos una conexión a internet activa. Comprueba tu red WiFi o datos móviles e inténtalo de nuevo.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.dmSans(
                       fontSize: 15,
                       height: 1.6,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -155,7 +155,7 @@ class NoInternetScreen extends StatelessWidget {
                           const SizedBox(width: 12),
                           Text(
                             'REINTENTAR',
-                            style: GoogleFonts.montserrat(
+                            style: GoogleFonts.dmSans(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,

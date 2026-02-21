@@ -403,7 +403,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   void _startStateMonitoring() {
     _stateMonitor?.cancel();
-    _stateMonitor = Timer.periodic(const Duration(seconds: 3), (timer) {
+    _stateMonitor = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (_isDisposed || !mounted) {
         timer.cancel();
         return;
@@ -416,7 +416,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   void _startLoadingFailsafe() {
     _loadingFailsafe?.cancel();
-    _loadingFailsafe = Timer(const Duration(seconds: 12), () {
+    _loadingFailsafe = Timer(const Duration(seconds: 8), () {
       if (!_isDisposed && mounted && _videoState.isLoading) {
         debugPrint('⏱️ Loading failsafe triggered');
         setState(() {
@@ -586,6 +586,9 @@ class _PivoProPlayerState extends State<PivoProPlayer>
               isMuted: _videoState.isMuted,
               currentServer: _videoState.serverIndex + 1,
               totalServers: _videoState.totalServers,
+              onServerSelect: (idx) {
+                _executeJS('window.switchToServer($idx)');
+              },
             ),
           ),
 
@@ -636,11 +639,21 @@ class _PivoProPlayerState extends State<PivoProPlayer>
               const SizedBox(height: 16),
               Text(
                 _videoState.errorMessage ?? 'Error desconocido',
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.dmSans(
                   color: Colors.white,
                   fontSize: 14,
+                  height: 1.5,
                 ),
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Servidor ${_videoState.serverIndex + 1}/${_videoState.totalServers}',
+                style: GoogleFonts.dmSans(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
@@ -648,7 +661,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
                 icon: const Icon(Icons.refresh),
                 label: Text(
                   'Reintentar',
-                  style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
                 ),
               ),
             ],

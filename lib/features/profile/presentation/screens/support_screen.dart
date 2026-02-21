@@ -16,7 +16,7 @@ class SupportScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Ayuda y Soporte',
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+          style: GoogleFonts.syne(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -31,7 +31,7 @@ class SupportScreen extends StatelessWidget {
             const SizedBox(height: 40),
             Text(
               'Preguntas Frecuentes',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.syne(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
@@ -90,7 +90,7 @@ class SupportScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               '¿Necesitas ayuda?',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 color: Colors.white,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -100,7 +100,7 @@ class SupportScreen extends StatelessWidget {
             Text(
               'Nuestro equipo está disponible para ayudarte con cualquier problema o duda.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 color: Colors.white.withValues(alpha: 0.9),
                 fontSize: 14,
               ),
@@ -155,7 +155,7 @@ class SupportScreen extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               label,
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
@@ -179,7 +179,7 @@ class SupportScreen extends StatelessWidget {
         child: ExpansionTile(
           title: Text(
             question,
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.dmSans(
               fontWeight: FontWeight.w600,
               fontSize: 15,
             ),
@@ -190,7 +190,7 @@ class SupportScreen extends StatelessWidget {
           children: [
             Text(
               answer,
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 fontSize: 14,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 height: 1.5,
@@ -208,7 +208,7 @@ class SupportScreen extends StatelessWidget {
         Center(
           child: Text(
             'Síguenos',
-            style: GoogleFonts.montserrat(
+            style: GoogleFonts.dmSans(
               fontWeight: FontWeight.bold,
               color: Colors.grey,
             ),

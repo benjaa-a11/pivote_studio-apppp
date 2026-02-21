@@ -128,7 +128,7 @@ class _VideoLoadingWidgetState extends State<VideoLoadingWidget>
               const SizedBox(width: 14),
               Text(
                 widget.message,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.dmSans(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -141,17 +141,15 @@ class _VideoLoadingWidgetState extends State<VideoLoadingWidget>
         if (widget.serverInfo != null) ...[
           const SizedBox(height: 10),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
               color: primary.withAlpha(180),
               borderRadius: BorderRadius.circular(20),
-              border:
-                  Border.all(color: Colors.white.withAlpha(30), width: 0.5),
+              border: Border.all(color: Colors.white.withAlpha(30), width: 0.5),
             ),
             child: Text(
               'Servidor ${widget.serverInfo}',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 color: Colors.white,
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
@@ -214,7 +212,7 @@ class _VideoLoadingWidgetState extends State<VideoLoadingWidget>
                 ),
                 child: Text(
                   widget.message,
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.dmSans(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -235,7 +233,7 @@ class _VideoLoadingWidgetState extends State<VideoLoadingWidget>
                   ),
                   child: Text(
                     'Servidor ${widget.serverInfo}',
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.dmSans(
                       color: Colors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
@@ -248,7 +246,7 @@ class _VideoLoadingWidgetState extends State<VideoLoadingWidget>
                 const SizedBox(height: 10),
                 Text(
                   widget.subMessage!,
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.dmSans(
                     color: Colors.white54,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -279,7 +277,7 @@ class _VideoLoadingWidgetState extends State<VideoLoadingWidget>
                         const SizedBox(width: 8),
                         Text(
                           'REINTENTAR',
-                          style: GoogleFonts.montserrat(
+                          style: GoogleFonts.dmSans(
                             color: primary,
                             fontSize: 13,
                             fontWeight: FontWeight.w800,

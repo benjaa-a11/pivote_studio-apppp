@@ -133,7 +133,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             const SizedBox(height: 20),
             Text(
               '¡Mantente al día!',
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.syne(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 color: theme.colorScheme.onSurface,
@@ -143,7 +143,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             Text(
               'Activa las notificaciones para recibir alertas de partidos en vivo, nuevos canales y contenido exclusivo.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
+              style: GoogleFonts.dmSans(
                 fontSize: 14,
                 height: 1.5,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -169,7 +169,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 ),
                 child: Text(
                   'ACTIVAR NOTIFICACIONES',
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.dmSans(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
                     letterSpacing: 0.5,
@@ -185,7 +185,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               },
               child: Text(
                 'Ahora no',
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.dmSans(
                   fontWeight: FontWeight.w600,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 ),

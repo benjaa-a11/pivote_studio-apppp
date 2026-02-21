@@ -85,16 +85,16 @@ class _NotificationsSettingsScreenState
       builder: (context) => AlertDialog(
         title: Text(
           'Permiso requerido',
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+          style: GoogleFonts.syne(fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Para recibir notificaciones, necesitas habilitar los permisos en la configuración de tu dispositivo.',
-          style: GoogleFonts.montserrat(),
+          style: GoogleFonts.dmSans(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.montserrat()),
+            child: Text('Cancelar', style: GoogleFonts.dmSans()),
           ),
           TextButton(
             onPressed: () {
@@ -102,7 +102,7 @@ class _NotificationsSettingsScreenState
               openAppSettings();
             },
             child: Text('Abrir Configuración',
-                style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -145,7 +145,7 @@ class _NotificationsSettingsScreenState
       appBar: AppBar(
         title: Text(
           'Notificaciones',
-          style: GoogleFonts.montserrat(
+          style: GoogleFonts.syne(
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -205,7 +205,7 @@ class _NotificationsSettingsScreenState
                             children: [
                               Text(
                                 'Notificaciones Push',
-                                style: GoogleFonts.montserrat(
+                                style: GoogleFonts.dmSans(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -215,7 +215,7 @@ class _NotificationsSettingsScreenState
                                 _notificationsEnabled
                                     ? 'Recibirás notificaciones'
                                     : 'No recibirás notificaciones',
-                                style: GoogleFonts.montserrat(
+                                style: GoogleFonts.dmSans(
                                   fontSize: 13,
                                   color: theme.colorScheme.onSurface
                                       .withAlpha(128),
@@ -237,7 +237,7 @@ class _NotificationsSettingsScreenState
                   // Information Section
                   Text(
                     '¿Qué notificaciones recibirás?',
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.dmSans(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -279,7 +279,7 @@ class _NotificationsSettingsScreenState
                         icon: const Icon(Icons.send),
                         label: Text(
                           'Enviar notificación de prueba',
-                          style: GoogleFonts.montserrat(
+                          style: GoogleFonts.dmSans(
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -339,7 +339,7 @@ class _NotificationsSettingsScreenState
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.dmSans(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -347,7 +347,7 @@ class _NotificationsSettingsScreenState
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: GoogleFonts.montserrat(
+                  style: GoogleFonts.dmSans(
                     fontSize: 12,
                     color: theme.colorScheme.onSurface.withAlpha(128),
                   ),

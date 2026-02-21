@@ -243,7 +243,18 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   // ═══════════════════════════════════════
 
   void _openServerPicker() {
-    if (widget.serverList == null || widget.serverList!.isEmpty) return;
+    // Auto-generate server list if not provided
+    final servers = widget.serverList ??
+        List.generate(
+          widget.totalServers,
+          (i) => ServerInfo(
+            index: i,
+            label: 'Servidor ${i + 1}',
+            type: ServerType.unknown,
+          ),
+        );
+
+    if (servers.isEmpty) return;
 
     HapticFeedback.mediumImpact();
     _hideTimer?.cancel();
@@ -253,7 +264,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => _ServerPickerSheet(
-        servers: widget.serverList!,
+        servers: servers,
         currentIndex: widget.currentServer - 1,
         onSelect: (idx) {
           Navigator.pop(ctx);
@@ -306,8 +317,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   Widget _buildBufferingIndicator() {
     return Center(
       child: FadeTransition(
-        opacity:
-            _bufferingController.drive(CurveTween(curve: Curves.easeIn)),
+        opacity: _bufferingController.drive(CurveTween(curve: Curves.easeIn)),
         child: const VideoLoadingWidget(
           message: 'Cargando...',
           isBuffering: true,
@@ -321,8 +331,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       child: ScaleTransition(
         scale: _toastAnimation,
         child: Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             color: Colors.black.withAlpha(230),
             borderRadius: BorderRadius.circular(12),
@@ -332,10 +341,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
             ),
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primary
-                    .withAlpha(77),
+                color: Theme.of(context).colorScheme.primary.withAlpha(77),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -352,7 +358,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               const SizedBox(width: 10),
               Text(
                 widget.aspectRatioLabel,
-                style: GoogleFonts.montserrat(
+                style: GoogleFonts.dmSans(
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                   color: Colors.white,
@@ -422,11 +428,11 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 children: [
                   Text(
                     widget.channelName,
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.syne(
                       fontSize: widget.isFullScreen ? 17 : 16,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: Colors.white,
-                      letterSpacing: 0.15,
+                      letterSpacing: -0.02 * (widget.isFullScreen ? 17 : 16),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -457,13 +463,13 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                       const SizedBox(width: 7),
                       Text(
                         'EN VIVO',
-                        style: GoogleFonts.montserrat(
+                        style: GoogleFonts.dmSans(
                           fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                          fontSize: 11,
                           color: widget.controller.isPlaying
                               ? Colors.white
                               : Colors.white60,
-                          letterSpacing: 1.0,
+                          letterSpacing: 1.2,
                         ),
                       ),
                       // Server badge
@@ -487,7 +493,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                           ),
                           child: Text(
                             '${widget.currentServer}/${widget.totalServers}',
-                            style: GoogleFonts.montserrat(
+                            style: GoogleFonts.dmSans(
                               fontWeight: FontWeight.w700,
                               fontSize: 11,
                               color: Colors.white,
@@ -511,8 +517,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               ),
             ),
 
-            // 3-dot server menu
-            if (widget.totalServers > 1 && widget.serverList != null)
+            // 3-dot server menu — always show when multiple servers
+            if (widget.totalServers > 1)
               Padding(
                 padding: const EdgeInsets.only(left: 8),
                 child: _buildServerMenuButton(),
@@ -652,7 +658,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   const SizedBox(width: 6),
                   Text(
                     label,
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.dmSans(
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                       color: Colors.white,
@@ -734,9 +740,11 @@ class _ServerPickerSheet extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.52,
       ),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF121212)
+            : const Color(0xFFF5F5F5),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -753,8 +761,7 @@ class _ServerPickerSheet extends StatelessWidget {
           ),
           // Title
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Row(
               children: [
                 Icon(
@@ -765,11 +772,11 @@ class _ServerPickerSheet extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   'Seleccionar Servidor',
-                  style: GoogleFonts.montserrat(
-                    color: Colors.white,
-                    fontSize: 15,
+                  style: GoogleFonts.syne(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
+                    letterSpacing: -0.02 * 16,
                   ),
                 ),
                 const Spacer(),
@@ -779,21 +786,16 @@ class _ServerPickerSheet extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withAlpha(40),
+                    color: Theme.of(context).colorScheme.primary.withAlpha(40),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withAlpha(80),
+                      color:
+                          Theme.of(context).colorScheme.primary.withAlpha(80),
                     ),
                   ),
                   child: Text(
                     '${servers.length} servidores',
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.dmSans(
                       color: Theme.of(context).colorScheme.primary,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -860,8 +862,7 @@ class _ServerTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           splashColor: primary.withAlpha(40),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
                 // Number circle
@@ -875,7 +876,7 @@ class _ServerTile extends StatelessWidget {
                   child: Center(
                     child: Text(
                       '${server.index + 1}',
-                      style: GoogleFonts.montserrat(
+                      style: GoogleFonts.dmSans(
                         color: Colors.white,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -888,11 +889,15 @@ class _ServerTile extends StatelessWidget {
                 Expanded(
                   child: Text(
                     server.label,
-                    style: GoogleFonts.montserrat(
-                      color: isActive ? Colors.white : Colors.white70,
+                    style: GoogleFonts.dmSans(
+                      color: isActive
+                          ? Theme.of(context).colorScheme.onSurface
+                          : Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withAlpha(180),
                       fontSize: 14,
-                      fontWeight:
-                          isActive ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -915,7 +920,7 @@ class _ServerTile extends StatelessWidget {
                   ),
                   child: Text(
                     server.typeLabel,
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.dmSans(
                       color: typeColor,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,

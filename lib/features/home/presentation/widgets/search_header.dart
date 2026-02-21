@@ -135,7 +135,7 @@ class _SearchHeaderState extends State<SearchHeader> {
                   const SizedBox(height: 4),
                   Text(
                     _getFormattedDate(),
-                    style: GoogleFonts.montserrat(
+                    style: GoogleFonts.dmSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.primary,
