@@ -150,18 +150,32 @@ class AppAnimations {
   static Widget staggeredSlideIn({
     required int index,
     required Widget child,
-    Duration delay = const Duration(milliseconds: 60),
-    Duration duration = const Duration(milliseconds: 450),
+    Duration delay = const Duration(milliseconds: 50),
+    Duration duration = const Duration(milliseconds: 500),
+  }) {
+    return _StaggeredAnimation(
+      index: index,
+      delay: delay,
+      duration: duration,
+      child: child,
+    );
+  }
+
+  // Smooth Fade and Scale In - for a more premium look
+  static Widget smoothFadeInScale({
+    required Widget child,
+    Duration? duration,
+    double beginScale = 0.95,
   }) {
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
-      duration: duration,
-      curve: Curves.easeOutCubic,
+      duration: duration ?? slow,
+      curve: smoothCurve,
       builder: (context, value, child) {
         return Opacity(
           opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 30 * (1 - value)),
+          child: Transform.scale(
+            scale: beginScale + ((1 - beginScale) * value),
             child: child,
           ),
         );
@@ -202,6 +216,72 @@ class AppAnimations {
         return FadeTransition(opacity: animation, child: child);
       },
       transitionDuration: fast,
+    );
+  }
+}
+
+// Internal helper for staggered animations to handle individual delays
+class _StaggeredAnimation extends StatefulWidget {
+  final int index;
+  final Widget child;
+  final Duration delay;
+  final Duration duration;
+
+  const _StaggeredAnimation({
+    required this.index,
+    required this.child,
+    required this.delay,
+    required this.duration,
+  });
+
+  @override
+  State<_StaggeredAnimation> createState() => _StaggeredAnimationState();
+}
+
+class _StaggeredAnimationState extends State<_StaggeredAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _opacity;
+  late Animation<Offset> _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+
+    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _offset = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    _startAnimation();
+  }
+
+  void _startAnimation() async {
+    await Future.delayed(widget.delay * widget.index);
+    if (mounted) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(
+        position: _offset,
+        child: widget.child,
+      ),
     );
   }
 }
@@ -250,7 +330,7 @@ class _ShimmerAnimationState extends State<_ShimmerAnimation>
               colors: [
                 Colors.transparent,
                 (isDark
-                    ? Colors.white10
+                    ? Colors.white.withValues(alpha: 0.07)
                     : Colors.black.withValues(alpha: 0.05)),
                 Colors.transparent,
               ],

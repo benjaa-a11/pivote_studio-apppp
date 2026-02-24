@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -21,6 +22,7 @@ import 'package:pivote/features/profile/presentation/screens/notifications_setti
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:pivote/core/services/greeting_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -48,26 +50,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _cacheSize = size;
         _historyCount = count;
       });
-    }
-  }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    final day = DateTime.now().weekday;
-
-    // Special day-based greetings (Friday)
-    if (day == DateTime.friday) {
-      return '¡Excelente viernes!';
-    } else if (day == DateTime.monday) {
-      return '¡Lindo inicio de semana!';
-    }
-
-    if (hour < 12) {
-      return '¡Buenos días!';
-    } else if (hour < 20) {
-      return '¡Buenas tardes!';
-    } else {
-      return '¡Buenas noches!';
     }
   }
 
@@ -165,177 +147,222 @@ class _ProfileScreenState extends State<ProfileScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius:
-                const BorderRadius.vertical(bottom: Radius.circular(50)),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(50),
+              bottomRight: Radius.circular(50),
+            ),
           ),
           child: Stack(
             children: [
-              // Decorative Blobs
+              // Decorative Blobs with improved animation/depth
               Positioned(
-                top: -30,
-                right: -30,
+                top: -50,
+                right: -40,
                 child: Container(
-                  width: 160,
-                  height: 160,
+                  width: 200,
+                  height: 200,
                   decoration: BoxDecoration(
-                    color: (isDark
-                            ? theme.colorScheme.tertiary
-                            : theme.colorScheme.secondary)
-                        .withAlpha(76),
+                    color: (isDark ? Colors.black : theme.colorScheme.secondary)
+                        .withAlpha(isDark ? 50 : 76),
                     shape: BoxShape.circle,
                   ),
                 ),
               ),
               Positioned(
-                bottom: 40,
-                left: -50,
+                bottom: 80,
+                left: -70,
                 child: Container(
-                  width: 200,
-                  height: 200,
+                  width: 250,
+                  height: 250,
                   decoration: BoxDecoration(
-                    color: (isDark
-                            ? theme.colorScheme.secondary
-                            : theme.colorScheme.tertiary)
-                        .withAlpha(51),
+                    color: (isDark ? Colors.black : theme.colorScheme.tertiary)
+                        .withAlpha(isDark ? 40 : 51),
                     shape: BoxShape.circle,
                   ),
                 ),
               ),
 
               // Header Content
+              // Header Content with Glassmorphism Card
               SafeArea(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-                    // Profile Image with Edit Button
-                    Center(
-                      child: Stack(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withAlpha(51),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: CircleAvatar(
-                              radius: 65,
-                              backgroundColor: Colors.white.withAlpha(51),
-                              backgroundImage: imagePath != null
-                                  ? FileImage(File(imagePath))
-                                  : null,
-                              child: imagePath == null
-                                  ? const Icon(Icons.person,
-                                      size: 70, color: Colors.white)
-                                  : null,
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 4,
-                            right: 4,
-                            child: GestureDetector(
-                              onTap: () {
-                                HapticFeedback.mediumImpact();
-                                userProvider.updateProfileImage();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? theme.colorScheme.surface
-                                      : Colors.black,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.camera_alt,
-                                    color: Colors.white, size: 20),
-                              ),
-                            ),
-                          ),
-                        ],
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 10),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(40),
+                        bottomRight: Radius.circular(40),
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    // User Details
-                    AppAnimations.smoothFadeIn(
-                      child: Column(
-                        children: [
-                          Text(
-                            _getGreeting(),
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white.withAlpha(179),
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.5,
+                      child: BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 32, horizontal: 24),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.black.withAlpha(128)
+                                : Colors.white.withAlpha(51),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withAlpha(38)
+                                  : Colors.white.withAlpha(102),
+                              width: 1.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            user != null ? user.name : 'Cargando...',
-                            style: theme.textTheme.headlineMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            user?.email ?? '',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withAlpha(204),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(38),
-                              borderRadius: BorderRadius.circular(100),
-                              border:
-                                  Border.all(color: Colors.white.withAlpha(76)),
-                            ),
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            const EditProfileScreen()));
-                              },
-                              borderRadius: BorderRadius.circular(100),
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Profile Image with Edit Button
+                              Stack(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: Colors.white, width: 3),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withAlpha(51),
+                                          blurRadius: 15,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                      ],
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 60,
+                                      backgroundColor:
+                                          Colors.white.withAlpha(51),
+                                      backgroundImage: imagePath != null
+                                          ? FileImage(File(imagePath))
+                                          : null,
+                                      child: imagePath == null
+                                          ? const Icon(Icons.person,
+                                              size: 60, color: Colors.white)
+                                          : null,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 2,
+                                    right: 2,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.mediumImpact();
+                                        userProvider.updateProfileImage();
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: theme.colorScheme.primary,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: Colors.white, width: 2),
+                                        ),
+                                        child: Icon(
+                                          Icons.camera_alt,
+                                          color: isDark
+                                              ? Colors.black
+                                              : Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              // User Details
+                              AppAnimations.smoothFadeIn(
+                                child: Column(
                                   children: [
-                                    const Icon(Icons.edit_rounded,
-                                        color: Colors.white, size: 14),
-                                    const SizedBox(width: 6),
                                     Text(
-                                      'Editar Perfil',
+                                      GreetingService.getGreeting(),
                                       style:
-                                          theme.textTheme.labelSmall?.copyWith(
+                                          theme.textTheme.titleMedium?.copyWith(
+                                        color: Colors.white.withAlpha(179),
+                                        fontWeight: FontWeight.w500,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      user != null ? user.name : 'Cargando...',
+                                      style: theme.textTheme.headlineMedium
+                                          ?.copyWith(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
+                                        letterSpacing: -0.5,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      user?.email ?? '',
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
+                                        color: Colors.white.withAlpha(204),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 24),
+                                    Material(
+                                      color: Colors.white.withAlpha(38),
+                                      borderRadius: BorderRadius.circular(100),
+                                      child: InkWell(
+                                        onTap: () {
+                                          Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      const EditProfileScreen()));
+                                        },
+                                        borderRadius:
+                                            BorderRadius.circular(100),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 20, vertical: 10),
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(100),
+                                            border: Border.all(
+                                                color:
+                                                    Colors.white.withAlpha(76)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.edit_rounded,
+                                                  color: Colors.white,
+                                                  size: 16),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Editar Perfil',
+                                                style: theme
+                                                    .textTheme.labelMedium
+                                                    ?.copyWith(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -675,24 +702,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 48),
 
-            // Actions
             _buildModernActionTile(
               context,
               'Verificar Actualizaciones',
               Icons.system_update_rounded,
               () => _checkUpdates(context),
-            ),
-            _buildModernActionTile(
-              context,
-              'Términos y Condiciones',
-              Icons.description_outlined,
-              () {},
-            ),
-            _buildModernActionTile(
-              context,
-              'Política de Privacidad',
-              Icons.privacy_tip_outlined,
-              () {},
             ),
 
             const SizedBox(height: 48),
