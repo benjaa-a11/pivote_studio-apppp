@@ -18,6 +18,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:pivote/shared/widgets/connectivity_wrapper.dart';
 import 'package:pivote/core/services/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 
 // Background message handler (must be top-level)
 @pragma('vm:entry-point')
@@ -146,14 +147,44 @@ class _AuthenticationWrapper extends StatelessWidget {
               return const MainScreen();
             }
 
-            // Show a themed loading state if it's taking too long
-            return const Scaffold(
+            // Show a themed, premium loading state
+            return Scaffold(
+              backgroundColor: AppTheme.darkBg,
               body: Center(
-                child: CircularProgressIndicator(
-                  color: AppTheme.darkAccent,
+                child: AppAnimations.smoothFadeInScale(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppTheme.darkAccent.withAlpha(20),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Image.asset(
+                          'assets/logo.png',
+                          errorBuilder: (context, _, __) => const Icon(
+                            Icons.play_circle_fill,
+                            size: 60,
+                            color: AppTheme.darkAccent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      const SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          color: AppTheme.darkAccent,
+                          strokeWidth: 3,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              backgroundColor: AppTheme.darkBg,
             );
           },
         );
