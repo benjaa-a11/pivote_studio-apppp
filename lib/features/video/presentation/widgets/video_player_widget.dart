@@ -708,12 +708,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     _disposeExistingControllers();
 
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: SystemUiOverlay.values,
-    );
-
     WakelockPlus.disable();
     super.dispose();
   }

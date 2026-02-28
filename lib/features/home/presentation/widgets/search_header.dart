@@ -15,6 +15,18 @@ class SearchHeader extends StatefulWidget {
 }
 
 class _SearchHeaderState extends State<SearchHeader> {
+  late String _subtitle;
+  late String _greeting;
+  late String _date;
+
+  @override
+  void initState() {
+    super.initState();
+    _subtitle = GreetingService.getSubtitle();
+    _greeting = GreetingService.getGreeting();
+    _date = GreetingService.getFormattedDate();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -35,80 +47,109 @@ class _SearchHeaderState extends State<SearchHeader> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Consumer<UserProvider>(
-            builder: (context, userProvider, child) {
-              final isLoading =
-                  userProvider.isLoading || userProvider.user == null;
-              final name = userProvider.user?.name ?? 'Usuario Pro';
+          Expanded(
+            child: Consumer<UserProvider>(
+              builder: (context, userProvider, child) {
+                final isLoading =
+                    userProvider.isLoading || userProvider.user == null;
+                final name = userProvider.user?.name ?? 'Usuario Pro';
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AppAnimations.staggeredSlideIn(
-                    index: 0,
-                    child: Row(
-                      children: [
-                        Text(
-                          GreetingService.getGreeting(),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppAnimations.staggeredSlideIn(
+                      index: 0,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _greeting,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.7),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          '👋',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Skeletonizer(
-                    enabled: isLoading,
-                    child: Text(
-                      name,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: theme.colorScheme.onSurface,
-                        fontSize: 26,
-                        letterSpacing: -0.8,
-                        height: 1.1,
+                          const SizedBox(width: 4),
+                          const Text(
+                            '👋',
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  AppAnimations.staggeredSlideIn(
-                    index: 1,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            shape: BoxShape.circle,
-                          ),
+                    const SizedBox(height: 2),
+                    Skeletonizer(
+                      enabled: isLoading,
+                      child: Text(
+                        name,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: theme.colorScheme.onSurface,
+                          fontSize: 26,
+                          letterSpacing: -0.8,
+                          height: 1.1,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          GreetingService.getSubtitle(),
-                          style: GoogleFonts.dmSans(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
-              );
-            },
+                    const SizedBox(height: 6),
+                    AppAnimations.staggeredSlideIn(
+                      index: 1,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _subtitle,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: theme.colorScheme.primary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    AppAnimations.staggeredSlideIn(
+                      index: 2,
+                      child: Text(
+                        _date,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.5),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
+          const SizedBox(width: 16),
 
           // High-End Search Button (Glassmorphic)
           Material(

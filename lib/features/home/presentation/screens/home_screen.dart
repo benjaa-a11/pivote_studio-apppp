@@ -6,7 +6,6 @@ import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 import 'package:pivote/features/home/presentation/widgets/search_header.dart';
 import 'package:pivote/features/soccer/presentation/widgets/matches_hero.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
-import 'package:pivote/core/animations/app_animations.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -77,12 +76,7 @@ class HomeScreen extends StatelessWidget {
                         final card = ChannelCard(channel: channels[index]);
                         return Skeletonizer(
                           enabled: isLoading,
-                          child: isLoading
-                              ? card
-                              : AppAnimations.staggeredSlideIn(
-                                  index: index,
-                                  child: card,
-                                ),
+                          child: card,
                         );
                       },
                       childCount: channels.length,

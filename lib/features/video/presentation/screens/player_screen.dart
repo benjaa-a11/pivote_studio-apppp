@@ -19,7 +19,7 @@ class PlayerScreen extends StatefulWidget {
 
 class _PlayerScreenState extends State<PlayerScreen> {
   // Key para preservar el estado del video player al re-inicializar
-  Key _videoPlayerKey = UniqueKey();
+  Key _videoPlayerKey = GlobalKey();
   late Channel _currentChannel;
   int _selectedCameraId = -1; // -1 represents the main stream
 
@@ -453,7 +453,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         setState(() {
           _selectedCameraId = id;
           // Forzar la creación de un nuevo widget de reproductor
-          _videoPlayerKey = UniqueKey();
+          _videoPlayerKey = GlobalKey();
           // Modificar la URL del canal actual temporalmente
           _currentChannel = widget.channel.copyWith(
             name: "${widget.channel.name} - $nombre",
