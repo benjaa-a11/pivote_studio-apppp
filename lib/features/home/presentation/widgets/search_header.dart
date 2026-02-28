@@ -15,25 +15,19 @@ class SearchHeader extends StatefulWidget {
 }
 
 class _SearchHeaderState extends State<SearchHeader> {
-  late String _subtitle;
-  late String _greeting;
-  late String _date;
-
-  @override
-  void initState() {
-    super.initState();
-    _subtitle = GreetingService.getSubtitle();
-    _greeting = GreetingService.getGreeting();
-    _date = GreetingService.getFormattedDate();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Calculate greetings and date during build to ensure they are current
+    // but stay stable due to deterministic GreetingService.
+    final greeting = GreetingService.getGreeting();
+    final subtitle = GreetingService.getSubtitle();
+    final date = GreetingService.getFormattedDate();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
         border: Border(
@@ -45,7 +39,7 @@ class _SearchHeaderState extends State<SearchHeader> {
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Consumer<UserProvider>(
@@ -56,8 +50,10 @@ class _SearchHeaderState extends State<SearchHeader> {
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Greeting Row
                     AppAnimations.staggeredSlideIn(
                       index: 0,
                       child: Row(
@@ -65,12 +61,12 @@ class _SearchHeaderState extends State<SearchHeader> {
                         children: [
                           Flexible(
                             child: Text(
-                              _greeting,
+                              greeting,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurface
                                     .withValues(alpha: 0.7),
                                 fontWeight: FontWeight.w600,
-                                fontSize: 14,
+                                fontSize: 13,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -79,12 +75,13 @@ class _SearchHeaderState extends State<SearchHeader> {
                           const SizedBox(width: 4),
                           const Text(
                             '👋',
-                            style: TextStyle(fontSize: 14),
+                            style: TextStyle(fontSize: 13),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
+                    // User Name
                     Skeletonizer(
                       enabled: isLoading,
                       child: Text(
@@ -92,7 +89,7 @@ class _SearchHeaderState extends State<SearchHeader> {
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w900,
                           color: theme.colorScheme.onSurface,
-                          fontSize: 26,
+                          fontSize: 24,
                           letterSpacing: -0.8,
                           height: 1.1,
                         ),
@@ -100,14 +97,15 @@ class _SearchHeaderState extends State<SearchHeader> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
+                    // Subtitle / Soccer Phrase
                     AppAnimations.staggeredSlideIn(
                       index: 1,
                       child: Row(
                         children: [
                           Container(
-                            width: 4,
-                            height: 4,
+                            width: 3,
+                            height: 3,
                             decoration: BoxDecoration(
                               color: theme.colorScheme.primary,
                               shape: BoxShape.circle,
@@ -116,9 +114,9 @@ class _SearchHeaderState extends State<SearchHeader> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              _subtitle,
+                              subtitle,
                               style: GoogleFonts.dmSans(
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: theme.colorScheme.primary,
                               ),
@@ -129,16 +127,17 @@ class _SearchHeaderState extends State<SearchHeader> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
+                    // Date
                     AppAnimations.staggeredSlideIn(
                       index: 2,
                       child: Text(
-                        _date,
+                        date,
                         style: GoogleFonts.dmSans(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.5),
+                              .withValues(alpha: 0.4),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -149,9 +148,9 @@ class _SearchHeaderState extends State<SearchHeader> {
               },
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
 
-          // High-End Search Button (Glassmorphic)
+          // High-End Search Button
           Material(
             color: Colors.transparent,
             child: InkWell(

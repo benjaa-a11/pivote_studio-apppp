@@ -27,7 +27,7 @@ class HomeScreen extends StatelessWidget {
               elevation: 0,
               backgroundColor: theme.scaffoldBackgroundColor,
               automaticallyImplyLeading: false,
-              toolbarHeight: 80,
+              toolbarHeight: 110,
               flexibleSpace: const FlexibleSpaceBar(
                 background: SearchHeader(),
               ),

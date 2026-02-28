@@ -1,10 +1,6 @@
-import 'dart:math';
-
 /// Service to provide professional and culturally relevant (Argentine soccer-themed)
 /// greetings throughout the application.
 class GreetingService {
-  static final Random _random = Random();
-
   static const List<String> _suffixes = [
     'crack',
     'genio',
@@ -42,7 +38,8 @@ class GreetingService {
   /// Returns a dynamic greeting based on the current time and Argentine flair.
   /// Example: "¡Buenos días, crack!"
   static String getGreeting() {
-    final hour = DateTime.now().hour;
+    final now = DateTime.now();
+    final hour = now.hour;
     String base;
 
     if (hour >= 6 && hour < 12) {
@@ -53,7 +50,9 @@ class GreetingService {
       base = '¡Buenas noches';
     }
 
-    final suffix = _suffixes[_random.nextInt(_suffixes.length)];
+    // Deterministic suffix based on day of month and hour
+    final index = (now.day + now.hour) % _suffixes.length;
+    final suffix = _suffixes[index];
     return '$base, $suffix!';
   }
 
@@ -61,13 +60,15 @@ class GreetingService {
   static String getSubtitle() {
     final now = DateTime.now();
 
-    // 40% chance of day-specific message, 60% chance of soccer-themed phrase
-    if (_random.nextDouble() < 0.4) {
+    // Use day of year to alternate between day message and soccer phrase
+    final dayOfYear = now.difference(DateTime(now.year, 1, 1)).inDays;
+
+    if (dayOfYear % 2 == 0) {
       return _dayMessages[now.weekday] ??
-          _soccerPhrases[_random.nextInt(_soccerPhrases.length)];
+          _soccerPhrases[dayOfYear % _soccerPhrases.length];
     }
 
-    return _soccerPhrases[_random.nextInt(_soccerPhrases.length)];
+    return _soccerPhrases[dayOfYear % _soccerPhrases.length];
   }
 
   /// Helper to get formatted date in Spanish

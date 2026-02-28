@@ -546,22 +546,18 @@ class _PivoProPlayerState extends State<PivoProPlayer>
             ),
           ),
 
-          // 3. Loading Indicator
-          if (_videoState.isLoading)
+          // 3. Loading/Buffering Indicator (Simplified)
+          if (_videoState.isLoading || _videoState.isBuffering)
             VideoLoadingWidget(
-              message: 'Conectando...',
-              serverInfo:
-                  '${_videoState.serverIndex + 1}/${_videoState.totalServers}',
-            ),
-
-          // 4. Buffering Indicator
-          if (!_videoState.isLoading && _videoState.isBuffering)
-            VideoLoadingWidget(
-              message:
-                  _videoState.stallDetected ? 'Reconectando...' : 'Cargando...',
-              isBuffering: true,
-              serverInfo:
-                  '${_videoState.serverIndex + 1}/${_videoState.totalServers}',
+              message: _videoState.isBuffering
+                  ? (_videoState.stallDetected
+                      ? 'Reconectando...'
+                      : 'Cargando...')
+                  : 'Conectando...',
+              isBuffering: _videoState.isBuffering,
+              serverInfo: _videoState.totalServers > 1
+                  ? '${_videoState.serverIndex + 1}/${_videoState.totalServers}'
+                  : null,
             ),
 
           // 5. Error Widget — Unified style with M3U8 player

@@ -334,8 +334,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       final resolvedUrl = await _resolveStreamUrl(url);
       if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
         url = resolvedUrl;
-        debugPrint(
-            '✅ URL resolved: ${url.substring(0, min(80, url.length))}');
+        debugPrint('✅ URL resolved: ${url.substring(0, min(80, url.length))}');
       }
     } catch (e) {
       debugPrint('⚠️ URL resolution error: $e — using original URL');
@@ -345,10 +344,21 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       throw Exception('Empty URL after resolution');
     }
 
+    // ── Step 2: HTTP Stabilizer ──────────────────────
+    // Upgrade HTTP to HTTPS for unstable connections
+    if (url.startsWith('http://')) {
+      final httpsUrl = url.replaceFirst('http://', 'https://');
+      debugPrint(
+          '🔒 HTTP → HTTPS upgrade: ${httpsUrl.substring(0, min(60, httpsUrl.length))}...');
+      // Try HTTPS first, fall back to HTTP if it fails
+      url = httpsUrl;
+    }
+
     // ── Step 2: Server timeout ───────────────────────
     final timeoutDuration = Duration(
       seconds: PlayerConfig.baseServerTimeout.inSeconds +
-          (_serverAttempt * 2).clamp(0, PlayerConfig.maxTimeoutExtensionSeconds),
+          (_serverAttempt * 2)
+              .clamp(0, PlayerConfig.maxTimeoutExtensionSeconds),
     );
 
     _serverTimeoutTimer = Timer(timeoutDuration, () {
@@ -370,11 +380,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     // Also check URL patterns for additional safety
     final urlLower = url.toLowerCase();
-    final looksLikeHls =
-        urlLower.contains('.m3u8') || urlLower.contains('m3u');
+    final looksLikeHls = urlLower.contains('.m3u8') || urlLower.contains('m3u');
     final looksLikeWeb = urlLower.contains('iframe') ||
         urlLower.contains('embed') ||
+        urlLower.contains('pivo-pro') ||
         urlLower.contains('pivopro') ||
+        urlLower.contains('vercel.app') ||
         urlLower.contains('.html');
 
     final useNative = (isNative || looksLikeHls) && !looksLikeWeb;
@@ -408,11 +419,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       return url;
     }
 
-    // If it's an iframe/embed/html URL, don't try to resolve
+    // If it's an iframe/embed/external player URL, don't try to resolve
     if (urlLower.contains('iframe') ||
         urlLower.contains('embed') ||
         urlLower.contains('.html') ||
-        urlLower.contains('pivopro')) {
+        urlLower.contains('pivo-pro') ||
+        urlLower.contains('pivopro') ||
+        urlLower.contains('vercel.app')) {
       debugPrint('🌐 External URL — no resolution needed');
       return url;
     }
@@ -443,8 +456,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         request.headers.set('Accept', '*/*');
         request.headers.set('Connection', 'keep-alive');
 
-        final response =
-            await request.close().timeout(timeout);
+        final response = await request.close().timeout(timeout);
 
         // Server error → don't retry resolution, failover later
         if (response.statusCode >= 500) {
@@ -495,12 +507,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
           // Extract M3U8 URL from body (HTML page or JSON response)
           if (body.contains('.m3u8')) {
-            final m3u8Match =
-                RegExp(r"""https?://[^\s<>"']+\.m3u8[^\s<>"']*""")
-                    .firstMatch(body);
+            final m3u8Match = RegExp(r"""https?://[^\s<>"']+\.m3u8[^\s<>"']*""")
+                .firstMatch(body);
             if (m3u8Match != null) {
               final extracted = m3u8Match.group(0)!;
-              debugPrint('✅ Extracted M3U8 from body: ${extracted.substring(0, min(80, extracted.length))}');
+              debugPrint(
+                  '✅ Extracted M3U8 from body: ${extracted.substring(0, min(80, extracted.length))}');
               return extracted;
             }
           }
@@ -929,36 +941,18 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     final bool isBuffering = _playerState == PlayerState.buffering ||
         (_unifiedController != null && _unifiedController!.isBuffering);
 
-    String message;
-    String? subMessage;
-
-    switch (_playerState) {
-      case PlayerState.connecting:
-        message = 'Buscando servidor...';
-        break;
-      case PlayerState.resolvingUrl:
-        message = 'Resolviendo enlace...';
-        break;
-      case PlayerState.initializing:
-        message = 'Preparando transmisión...';
-        break;
-      case PlayerState.retrying:
-        message = 'Reintentando...';
-        subMessage =
-            'Intento $_retryCount/${PlayerConfig.maxRetriesPerServer}';
-        break;
-      case PlayerState.buffering:
-        message = 'Cargando...';
-        break;
-      default:
-        message = 'Conectando...';
-    }
+    // Simple, clean messages like major streaming platforms
+    final String message = isBuffering ? 'Cargando...' : 'Conectando...';
+    final String? subMessage = _playerState == PlayerState.retrying
+        ? 'Intento $_retryCount/${PlayerConfig.maxRetriesPerServer}'
+        : null;
 
     return VideoLoadingWidget(
       isBuffering: isBuffering,
       message: message,
-      serverInfo:
-          '${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
+      serverInfo: widget.channel.streamUrl.length > 1
+          ? '${_currentServerIndex + 1}/${widget.channel.streamUrl.length}'
+          : null,
       subMessage: subMessage,
     );
   }
@@ -1055,10 +1049,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withAlpha(80),
+                        color:
+                            Theme.of(context).colorScheme.primary.withAlpha(80),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),

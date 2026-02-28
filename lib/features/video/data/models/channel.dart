@@ -144,7 +144,9 @@ class Channel {
       return StreamType.mp4;
     } else if (url.contains('iframe') ||
         url.contains('embed') ||
-        url.contains('pivopro.vercel.app')) {
+        url.contains('pivo-pro.vercel.app') ||
+        url.contains('pivopro.vercel.app') ||
+        url.contains('vercel.app')) {
       return StreamType.iframe;
     }
     // Default to m3u8 for live streams
