@@ -8,14 +8,17 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
+import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-enum AspectRatioType {
-  auto,
-  ratio16_9,
-  ratio4_3,
-  stretch,
-}
+/// ═══════════════════════════════════════════════════════════════
+/// PivoProPlayer v5.0 — WebView-based Player
+/// ═══════════════════════════════════════════════════════════════
+///
+/// Handles DASH, Iframe, and external HTML-based streams via WebView.
+/// Uses the same shared enums and unified loading/error UI as the
+/// native M3U8 player for visual consistency.
+///
 
 class PivoProPlayer extends StatefulWidget {
   final String url;
@@ -69,8 +72,8 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     WidgetsBinding.instance.addObserver(this);
 
     debugPrint('═══════════════════════════════════════');
-    debugPrint('🌐 PivoProPlayer v4.0 Iniciando');
-    debugPrint('📺 Canal: ${widget.channelName}');
+    debugPrint('🌐 PivoProPlayer v5.0 Starting');
+    debugPrint('📺 Channel: ${widget.channelName}');
     debugPrint('🔗 URL: ${widget.url}');
     debugPrint('═══════════════════════════════════════');
 
@@ -86,11 +89,11 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
-        debugPrint('⏸️ App en background');
+        debugPrint('⏸️ App background');
         _executeJS('window.pause()');
         break;
       case AppLifecycleState.resumed:
-        debugPrint('▶️ App en foreground');
+        debugPrint('▶️ App foreground');
         _executeJS('window.play()');
         break;
       default:
@@ -123,7 +126,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
       androidController.setMediaPlaybackRequiresUserGesture(false);
 
-      // Enable hardware acceleration
       androidController.setGeolocationPermissionsPromptCallbacks(
         onShowPrompt: (request) async {
           return const GeolocationPermissionsResponse(
@@ -134,9 +136,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
       );
     }
 
-    _webViewController.setUserAgent(
-      'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.45 Mobile Safari/537.36',
-    );
+    _webViewController.setUserAgent(PlayerConfig.userAgent);
 
     _webViewController
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -157,7 +157,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     _unifiedController =
         UnifiedVideoController.fromWeb(_webViewController, _videoState);
 
-    // Listen to state changes
     _stateSubscription = _videoState.stateChanges.listen(_onStateChange);
   }
 
@@ -176,11 +175,9 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   void _onPageFinished(String url) {
     debugPrint('✅ Page Finished: $url');
-    // Don't remove loading here - wait for player events
   }
 
   void _onWebResourceError(WebResourceError error) {
-    // Only handle critical errors
     final isCritical = error.errorType == WebResourceErrorType.hostLookup ||
         error.errorType == WebResourceErrorType.timeout ||
         error.errorType == WebResourceErrorType.connect;
@@ -200,7 +197,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   }
 
   // ═══════════════════════════════════════
-  // Message Handling (Enhanced)
+  // Message Handling
   // ═══════════════════════════════════════
 
   void _handleMessageFromHtml(JavaScriptMessage message) {
@@ -212,7 +209,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
       debugPrint('📨 HTML Event: $eventType');
 
-      // Update state from HTML player state
       if (data.containsKey('state')) {
         _syncStateFromHtml(data['state'] as Map<String, dynamic>);
       }
@@ -221,45 +217,36 @@ class _PivoProPlayerState extends State<PivoProPlayer>
         case 'playerReady':
           _onPlayerReady(data);
           break;
-
         case 'loadingStart':
           _onLoadingStart(data);
           break;
-
         case 'playingStarted':
           _onPlayingStarted(data);
           break;
-
         case 'stateUpdate':
           _onStateUpdate(data);
           break;
-
         case 'buffering':
           _onBuffering(data);
           break;
-
         case 'audioEnabled':
         case 'audioDisabled':
           _onAudioChange(data);
           break;
-
         case 'serverChange':
           _onServerChange(data);
           break;
-
         case 'streamStalled':
           _onStreamStalled(data);
           break;
-
         case 'error':
           _onError(data);
           break;
-
         default:
           debugPrint('⚠️ Unknown event: $eventType');
       }
     } catch (e, st) {
-      debugPrint('❌ Error procesando mensaje HTML: $e\n$st');
+      debugPrint('❌ Error processing HTML message: $e\n$st');
     }
   }
 
@@ -278,8 +265,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   }
 
   void _onPlayerReady(Map<String, dynamic> data) {
-    debugPrint('✅ Player Ready');
-    debugPrint('Version: ${data['version']}');
+    debugPrint('✅ Player Ready — Version: ${data['version']}');
   }
 
   void _onLoadingStart(Map<String, dynamic> data) {
@@ -310,11 +296,10 @@ class _PivoProPlayerState extends State<PivoProPlayer>
       });
     }
 
-    debugPrint('✅ Reproduciendo - Muted: $isMuted');
+    debugPrint('✅ Playing — Muted: $isMuted');
   }
 
   void _onStateUpdate(Map<String, dynamic> data) {
-    // Full state sync from HTML
     if (data.containsKey('state')) {
       _syncStateFromHtml(data['state'] as Map<String, dynamic>);
     }
@@ -349,7 +334,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     final totalServers = data['totalServers'] as int?;
     final attempt = data['attempt'] as int?;
 
-    debugPrint('🔄 Servidor $serverIndex/$totalServers (Intento $attempt)');
+    debugPrint('🔄 Server $serverIndex/$totalServers (Attempt $attempt)');
 
     if (mounted) {
       setState(() {
@@ -371,10 +356,9 @@ class _PivoProPlayerState extends State<PivoProPlayer>
       });
     }
 
-    // Auto retry after stall
     Future.delayed(const Duration(seconds: 2), () {
       if (!_isDisposed && mounted && _videoState.stallDetected) {
-        debugPrint('🔄 Auto-retry después de stall');
+        debugPrint('🔄 Auto-retry after stall');
         _executeJS('window.nextServer()');
       }
     });
@@ -384,7 +368,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     final code = data['code'] as String?;
     final message = data['message'] as String?;
 
-    debugPrint('❌ Error: $code - $message');
+    debugPrint('❌ Error: $code — $message');
 
     if (mounted) {
       setState(() {
@@ -408,15 +392,13 @@ class _PivoProPlayerState extends State<PivoProPlayer>
         timer.cancel();
         return;
       }
-
-      // Request state update from HTML
       _executeJS('window.FlutterBridge.sendStateUpdate()');
     });
   }
 
   void _startLoadingFailsafe() {
     _loadingFailsafe?.cancel();
-    _loadingFailsafe = Timer(const Duration(seconds: 8), () {
+    _loadingFailsafe = Timer(PlayerConfig.loadingFailsafeTimeout, () {
       if (!_isDisposed && mounted && _videoState.isLoading) {
         debugPrint('⏱️ Loading failsafe triggered');
         setState(() {
@@ -429,7 +411,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   void _onStateChange(VideoStateChange change) {
     if (_isDisposed || !mounted) return;
 
-    // Log significant changes
     if (change.hasChanged('isPlaying')) {
       debugPrint('▶️ isPlaying: ${change.getValue('isPlaying')}');
     }
@@ -440,7 +421,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
       debugPrint('❌ hasError: ${change.getValue('hasError')}');
     }
 
-    // Force rebuild on important changes
     if (change.hasChanged('isLoading') ||
         change.hasChanged('hasError') ||
         change.hasChanged('isPlaying')) {
@@ -477,34 +457,8 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   void _changeAspectRatio() {
     setState(() {
-      switch (_aspectRatioType) {
-        case AspectRatioType.auto:
-          _aspectRatioType = AspectRatioType.ratio16_9;
-          break;
-        case AspectRatioType.ratio16_9:
-          _aspectRatioType = AspectRatioType.ratio4_3;
-          break;
-        case AspectRatioType.ratio4_3:
-          _aspectRatioType = AspectRatioType.stretch;
-          break;
-        case AspectRatioType.stretch:
-          _aspectRatioType = AspectRatioType.auto;
-          break;
-      }
+      _aspectRatioType = _aspectRatioType.next;
     });
-  }
-
-  String _getAspectRatioLabel() {
-    switch (_aspectRatioType) {
-      case AspectRatioType.auto:
-        return 'Original';
-      case AspectRatioType.ratio16_9:
-        return '16:9';
-      case AspectRatioType.ratio4_3:
-        return '4:3';
-      case AspectRatioType.stretch:
-        return 'Estirar';
-    }
   }
 
   double _getAspectRatio() {
@@ -535,12 +489,12 @@ class _PivoProPlayerState extends State<PivoProPlayer>
         })();
       ''');
     } catch (e) {
-      debugPrint('❌ Error ejecutando JS: $e');
+      debugPrint('❌ JS execution error: $e');
     }
   }
 
   Future<void> _handleRefresh() async {
-    debugPrint('🔄 Refresh solicitado');
+    debugPrint('🔄 Refresh requested');
 
     setState(() {
       _videoState.reset();
@@ -559,13 +513,13 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // For AutomaticKeepAliveClientMixin
+    super.build(context);
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. WebView con AspectRatio
+          // 1. WebView
           Center(
             child: AspectRatio(
               aspectRatio: _getAspectRatio(),
@@ -573,14 +527,14 @@ class _PivoProPlayerState extends State<PivoProPlayer>
             ),
           ),
 
-          // 2. Controles Nativos
+          // 2. Native Controls
           Positioned.fill(
             child: CustomVideoControls(
               controller: _unifiedController,
               channelName: widget.channelName,
               onFullScreenToggle: _toggleFullscreen,
               isFullScreen: _isFullscreen,
-              aspectRatioLabel: _getAspectRatioLabel(),
+              aspectRatioLabel: _aspectRatioType.label,
               onAspectRatioChange: _changeAspectRatio,
               onMuteToggle: _toggleMute,
               isMuted: _videoState.isMuted,
@@ -593,13 +547,24 @@ class _PivoProPlayerState extends State<PivoProPlayer>
           ),
 
           // 3. Loading Indicator
-          if (_videoState.isLoading) _buildLoadingWidget(),
+          if (_videoState.isLoading)
+            VideoLoadingWidget(
+              message: 'Conectando...',
+              serverInfo:
+                  '${_videoState.serverIndex + 1}/${_videoState.totalServers}',
+            ),
 
           // 4. Buffering Indicator
           if (!_videoState.isLoading && _videoState.isBuffering)
-            _buildBufferingWidget(),
+            VideoLoadingWidget(
+              message:
+                  _videoState.stallDetected ? 'Reconectando...' : 'Cargando...',
+              isBuffering: true,
+              serverInfo:
+                  '${_videoState.serverIndex + 1}/${_videoState.totalServers}',
+            ),
 
-          // 5. Error Message
+          // 5. Error Widget — Unified style with M3U8 player
           if (_videoState.hasError && !_videoState.isLoading)
             _buildErrorWidget(),
         ],
@@ -607,21 +572,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     );
   }
 
-  Widget _buildLoadingWidget() {
-    return VideoLoadingWidget(
-      message: 'Conectando...',
-      serverInfo: '${_videoState.serverIndex + 1}/${_videoState.totalServers}',
-    );
-  }
-
-  Widget _buildBufferingWidget() {
-    return VideoLoadingWidget(
-      message: _videoState.stallDetected ? 'Reconectando...' : 'Cargando...',
-      isBuffering: true,
-      serverInfo: '${_videoState.serverIndex + 1}/${_videoState.totalServers}',
-    );
-  }
-
+  /// Unified error widget matching the M3U8 player style
   Widget _buildErrorWidget() {
     return Container(
       color: Colors.black,
@@ -631,37 +582,106 @@ class _PivoProPlayerState extends State<PivoProPlayer>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                color: Colors.red,
-                size: 48,
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.red.withAlpha(20),
+                  border: Border.all(
+                    color: Colors.red.withAlpha(60),
+                    width: 1.5,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.signal_wifi_connected_no_internet_4_rounded,
+                  color: Colors.red,
+                  size: 40,
+                ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
+              Text(
+                'No se pudo conectar',
+                style: GoogleFonts.dmSans(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
               Text(
                 _videoState.errorMessage ?? 'Error desconocido',
                 style: GoogleFonts.dmSans(
-                  color: Colors.white,
-                  fontSize: 14,
+                  color: Colors.white54,
+                  fontSize: 13,
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Servidor ${_videoState.serverIndex + 1}/${_videoState.totalServers}',
-                style: GoogleFonts.dmSans(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(10),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withAlpha(20),
+                    width: 0.5,
+                  ),
+                ),
+                child: Text(
+                  'Servidor ${_videoState.serverIndex + 1}/${_videoState.totalServers}',
+                  style: GoogleFonts.dmSans(
+                    color: Colors.white38,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _handleRefresh,
-                icon: const Icon(Icons.refresh),
-                label: Text(
-                  'Reintentar',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+              const SizedBox(height: 28),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  _handleRefresh();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            Theme.of(context).colorScheme.primary.withAlpha(80),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.refresh_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Reintentar',
+                        style: GoogleFonts.dmSans(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

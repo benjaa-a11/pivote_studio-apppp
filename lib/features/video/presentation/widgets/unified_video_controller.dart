@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:video_player/video_player.dart';
+import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
 import 'dart:async';
 
 /// Unified interface for all video controllers with professional state management
@@ -45,21 +46,21 @@ class VideoState {
   bool isLoading = true;
   bool hasError = false;
   String? errorMessage;
-  
+
   Duration position = Duration.zero;
   Duration duration = Duration.zero;
   double volume = 1.0;
-  
+
   int bufferHealth = 100;
   bool stallDetected = false;
   int serverIndex = 0;
   int totalServers = 0;
   String? channelId;
-  
+
   DateTime lastUpdate = DateTime.now();
 
   final List<VoidCallback> listeners = [];
-  final StreamController<VideoStateChange> _stateChangeController = 
+  final StreamController<VideoStateChange> _stateChangeController =
       StreamController<VideoStateChange>.broadcast();
 
   Stream<VideoStateChange> get stateChanges => _stateChangeController.stream;
@@ -204,7 +205,7 @@ class VideoStateChange {
   VideoStateChange(this.changes) : timestamp = DateTime.now();
 
   bool hasChanged(String key) => changes.containsKey(key);
-  
+
   T? getValue<T>(String key) => changes[key] as T?;
 }
 
@@ -227,7 +228,8 @@ class HLSControllerAdapter implements UnifiedVideoController {
       }
       // Monitor for errors
       if (controller.value.hasError) {
-        debugPrint('⚠️ HLS Error detected: ${controller.value.errorDescription}');
+        debugPrint(
+            '⚠️ HLS Error detected: ${controller.value.errorDescription}');
       }
     });
   }
@@ -255,24 +257,49 @@ class HLSControllerAdapter implements UnifiedVideoController {
 
   @override
   int get bufferHealth {
-    // Estimate buffer health from buffered ranges
     try {
       if (!controller.value.isInitialized) return 0;
-      
+
       final buffered = controller.value.buffered;
       if (buffered.isEmpty) return 0;
-      
-      final currentPos = position.inMilliseconds / 1000.0;
+
+      final currentPosMs = position.inMilliseconds;
       for (final range in buffered) {
-        if (range.start.inSeconds <= currentPos && 
-            currentPos <= range.end.inSeconds) {
-          final bufferAhead = range.end.inSeconds - currentPos;
-          return ((bufferAhead / 10.0) * 100).clamp(0, 100).toInt();
+        if (range.start.inMilliseconds <= currentPosMs &&
+            currentPosMs <= range.end.inMilliseconds) {
+          final bufferAheadSeconds =
+              (range.end.inMilliseconds - currentPosMs) / 1000.0;
+          // Map buffer seconds to 0-100 health score
+          // healthyBufferSeconds (5s) = 100%, 0s = 0%
+          return ((bufferAheadSeconds / PlayerConfig.healthyBufferSeconds) *
+                  100)
+              .clamp(0, 100)
+              .toInt();
         }
       }
       return 0;
     } catch (e) {
       return 0;
+    }
+  }
+
+  /// Real seconds of buffer ahead of current position
+  Duration get bufferAhead {
+    try {
+      if (!controller.value.isInitialized) return Duration.zero;
+      final buffered = controller.value.buffered;
+      if (buffered.isEmpty) return Duration.zero;
+      final currentPosMs = position.inMilliseconds;
+      for (final range in buffered) {
+        if (range.start.inMilliseconds <= currentPosMs &&
+            currentPosMs <= range.end.inMilliseconds) {
+          return Duration(
+              milliseconds: range.end.inMilliseconds - currentPosMs);
+        }
+      }
+      return Duration.zero;
+    } catch (e) {
+      return Duration.zero;
     }
   }
 
@@ -289,12 +316,11 @@ class HLSControllerAdapter implements UnifiedVideoController {
   Future<void> pause() => controller.pause();
 
   @override
-  Future<void> setVolume(double volume) => 
+  Future<void> setVolume(double volume) =>
       controller.setVolume(volume.clamp(0.0, 1.0));
 
   @override
-  Future<void> setMuted(bool muted) => 
-      controller.setVolume(muted ? 0.0 : 1.0);
+  Future<void> setMuted(bool muted) => controller.setVolume(muted ? 0.0 : 1.0);
 
   @override
   Future<void> retry() async {
@@ -385,41 +411,28 @@ class WebControllerAdapter implements UnifiedVideoController {
   String? get errorMessage => state.errorMessage;
 
   @override
-  Future<void> play() => _executeJS(
-      "window.play()", 
-      "Play error"
-  );
+  Future<void> play() => _executeJS("window.play()", "Play error");
 
   @override
-  Future<void> pause() => _executeJS(
-      "window.pause()", 
-      "Pause error"
-  );
+  Future<void> pause() => _executeJS("window.pause()", "Pause error");
 
   @override
   Future<void> setVolume(double volume) {
     final clampedVolume = volume.clamp(0.0, 1.0);
     state.volume = clampedVolume;
-    return _executeJS(
-        "window.setVolume($clampedVolume)", 
-        "SetVolume error"
-    );
+    return _executeJS("window.setVolume($clampedVolume)", "SetVolume error");
   }
 
   @override
   Future<void> setMuted(bool muted) {
     state.isMuted = muted;
     return _executeJS(
-        muted ? "window.mute()" : "window.unmute()",
-        "SetMuted error"
-    );
+        muted ? "window.mute()" : "window.unmute()", "SetMuted error");
   }
 
   @override
-  Future<void> retry() => _executeJS(
-      "window.retryCurrentServer()",
-      "Retry error"
-  );
+  Future<void> retry() =>
+      _executeJS("window.retryCurrentServer()", "Retry error");
 
   Future<void> _executeJS(String script, String errorContext) async {
     try {
@@ -441,7 +454,7 @@ class WebControllerAdapter implements UnifiedVideoController {
   void addListener(void Function() listener) => state.addListener(listener);
 
   @override
-  void removeListener(void Function() listener) => 
+  void removeListener(void Function() listener) =>
       state.removeListener(listener);
 
   @override

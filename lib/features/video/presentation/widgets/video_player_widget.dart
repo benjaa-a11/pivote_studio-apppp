@@ -13,24 +13,23 @@ import 'package:pivote/features/video/presentation/widgets/custom_video_controls
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/pivo_pro_player.dart';
+import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Professional video player widget with support for:
+/// ═══════════════════════════════════════════════════════════════
+/// Pivote Professional Video Player v5.0
+/// ═══════════════════════════════════════════════════════════════
+///
+/// Professional-grade live TV channel player with:
 /// - M3U8 (HLS) streams via native VideoPlayer
 /// - MPD (DASH) / Iframe / External streams via WebView + PivoProPlayer
-/// - Automatic intelligent server failover
-/// - Advanced error recovery with exponential backoff
-/// - Stream health monitoring and auto-healing
-/// - Professional UX with smooth transitions
+/// - Intelligent URL resolution with HEAD-first strategy
+/// - Adaptive watchdog with grace period for slow servers
+/// - Mutex-protected initialization (no race conditions)
+/// - Categorized error recovery with exponential backoff
+/// - Seamless fullscreen transitions (video never stops)
+/// - State machine for clean loading/error UX
 ///
-/// @version 4.0 (Professional Edition)
-
-enum AspectRatioType {
-  auto,
-  ratio16_9,
-  ratio4_3,
-  stretch,
-}
 
 class VideoPlayerWidget extends StatefulWidget {
   final Channel channel;
@@ -55,18 +54,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   late Animation<double> _fadeAnimation;
 
   // ═══════════════════════════════════════
-  // State
+  // State Machine
   // ═══════════════════════════════════════
+  PlayerState _playerState = PlayerState.idle;
   StreamSource? _currentStream;
 
-  bool _isLoading = true;
-  String? _error;
   bool _isFullScreen = false;
   AspectRatioType _aspectRatioType = AspectRatioType.ratio16_9;
   int _currentServerIndex = 0;
 
   bool _isMuted = false;
-  bool _isInitializing = false;
   bool _isDisposed = false;
   int _retryCount = 0;
   int _serverAttempt = 0;
@@ -74,9 +71,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   int _consecutiveErrors = 0;
   bool _useHtmlPlayer = false;
 
-  static const int _maxRetries = 3;
-  static const int _watchdogThreshold = 3;
-  static const int _maxConsecutiveErrors = 5;
+  /// Mutex to prevent concurrent initialization
+  Completer<void>? _initLock;
+
+  /// Timestamp when playback started (for watchdog grace)
+  DateTime? _playbackStartTime;
 
   // ═══════════════════════════════════════
   // Timers
@@ -105,7 +104,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     WakelockPlus.enable();
 
     debugPrint('═══════════════════════════════════════');
-    debugPrint('🎬 VideoPlayerWidget v4.0 Professional');
+    debugPrint('🎬 VideoPlayerWidget v5.0 Professional');
     debugPrint('📺 Canal: ${widget.channel.name}');
     debugPrint('🔢 Servidores: ${widget.channel.streamUrl.length}');
     debugPrint('═══════════════════════════════════════');
@@ -123,13 +122,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
-        debugPrint('⏸️ App en background - pausando');
+        debugPrint('⏸️ App en background — pausando');
         _unifiedController?.pause();
         break;
       case AppLifecycleState.resumed:
-        debugPrint('▶️ App en foreground - resumiendo');
+        debugPrint('▶️ App en foreground — resumiendo');
         _unifiedController?.play();
-        _checkStreamHealth(); // Health check on resume
+        _checkStreamHealth();
         break;
       default:
         break;
@@ -142,21 +141,23 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _startOrientationMonitor() {
     _orientationCheckTimer?.cancel();
-    _orientationCheckTimer =
-        Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      if (_isDisposed || !mounted) {
-        timer.cancel();
-        return;
-      }
-      _checkOrientation();
-    });
+    _orientationCheckTimer = Timer.periodic(
+      PlayerConfig.orientationCheckInterval,
+      (timer) {
+        if (_isDisposed || !mounted) {
+          timer.cancel();
+          return;
+        }
+        _syncOrientationState();
+      },
+    );
   }
 
-  void _checkOrientation() {
+  void _syncOrientationState() {
     if (!mounted) return;
 
-    final currentOrientation = MediaQuery.of(context).orientation;
-    final isLandscape = currentOrientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     if (!isLandscape && _isFullScreen) {
       _safeSetState(() => _isFullScreen = false);
@@ -171,61 +172,80 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _startWatchdog() {
     _stateCheckTimer?.cancel();
-    _stateCheckTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (_isDisposed || !mounted) {
-        timer.cancel();
-        return;
-      }
-      _checkStreamHealth();
-    });
+    _stateCheckTimer = Timer.periodic(
+      PlayerConfig.watchdogInterval,
+      (timer) {
+        if (_isDisposed || !mounted) {
+          timer.cancel();
+          return;
+        }
+        _checkStreamHealth();
+      },
+    );
   }
 
   void _checkStreamHealth() {
-    if (_useHtmlPlayer) return; // HTML player has its own monitoring
+    if (_useHtmlPlayer) return;
+    if (_unifiedController == null) return;
 
-    if (_unifiedController != null) {
-      final bufferHealth = _unifiedController!.bufferHealth;
+    // Grace period: don't watchdog during initial connection
+    if (_playbackStartTime != null) {
+      final elapsed = DateTime.now().difference(_playbackStartTime!);
+      if (elapsed < PlayerConfig.watchdogGracePeriod) return;
+    }
 
-      // Critical buffer health
-      if (bufferHealth < 10 && _unifiedController!.isPlaying) {
-        _stuckCounter++;
-        debugPrint(
-            '⚠️ Critical buffer: $bufferHealth% (${_stuckCounter * 5}s)');
+    final bufferHealth = _unifiedController!.bufferHealth;
+    final isPlaying = _unifiedController!.isPlaying;
+    final isBuffering = _unifiedController!.isBuffering;
 
-        if (_stuckCounter >= _watchdogThreshold) {
-          debugPrint('🔄 Watchdog: Stream stalled - recovering');
-          _stuckCounter = 0;
-          _handleStreamStall();
-        }
-      } else if (_unifiedController!.isPlaying &&
-          !_unifiedController!.isBuffering) {
+    // Healthy playback — reset counters
+    if (isPlaying && !isBuffering && bufferHealth > 20) {
+      _stuckCounter = 0;
+      _consecutiveErrors = 0;
+      return;
+    }
+
+    // Critical buffer health while supposedly playing
+    if (bufferHealth < 10 && isPlaying) {
+      _stuckCounter++;
+      debugPrint(
+          '⚠️ Low buffer: $bufferHealth% (tick $_stuckCounter/${PlayerConfig.watchdogStallThreshold})');
+
+      if (_stuckCounter >= PlayerConfig.watchdogStallThreshold) {
+        debugPrint('🔄 Watchdog: stream stalled — initiating recovery');
         _stuckCounter = 0;
-        _consecutiveErrors = 0; // Reset error counter on healthy stream
+        _handleStreamStall();
       }
+      return;
+    }
 
-      // Monitor buffering time
-      if (_unifiedController!.isBuffering) {
-        _stuckCounter++;
-        if (_stuckCounter >= _watchdogThreshold * 2) {
-          debugPrint('⚠️ Extended buffering detected');
-          _handleStreamStall();
-        }
+    // Extended buffering detection
+    if (isBuffering) {
+      _stuckCounter++;
+      if (_stuckCounter >= PlayerConfig.extendedBufferingThreshold) {
+        debugPrint(
+            '⚠️ Extended buffering (${_stuckCounter * 5}s) — initiating recovery');
+        _stuckCounter = 0;
+        _handleStreamStall();
       }
     }
   }
 
   Future<void> _handleStreamStall() async {
-    if (_useHtmlPlayer) return;
+    if (_useHtmlPlayer || _isDisposed) return;
 
     _consecutiveErrors++;
 
-    if (_consecutiveErrors >= _maxConsecutiveErrors) {
-      debugPrint('❌ Demasiados errores consecutivos - failover forzado');
+    if (_consecutiveErrors >= PlayerConfig.maxConsecutiveErrors) {
+      debugPrint('❌ Too many consecutive errors — forced failover');
       await _handleServerFailure();
     } else {
-      debugPrint('🔄 Intentando recuperar stream actual');
       _retryCount++;
-      if (_retryCount <= _maxRetries) {
+      if (_retryCount <= PlayerConfig.maxRetriesPerServer &&
+          _currentStream != null) {
+        debugPrint(
+            '🔄 Retry $_retryCount/${PlayerConfig.maxRetriesPerServer} on current server');
+        _setPlayerState(PlayerState.retrying);
         await _initializeVideoPlayer(_currentStream!.url);
       } else {
         await _handleServerFailure();
@@ -235,40 +255,56 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _startLoadingFailsafe() {
     _loadingFailsafe?.cancel();
-    _loadingFailsafe = Timer(const Duration(seconds: 10), () {
-      if (!_isDisposed && mounted && _isLoading) {
-        debugPrint('⏱️ Loading failsafe triggered');
-        _safeSetState(() => _isLoading = false);
+    _loadingFailsafe = Timer(PlayerConfig.loadingFailsafeTimeout, () {
+      if (!_isDisposed && mounted && _playerState.isLoading) {
+        debugPrint('⏱️ Loading failsafe triggered — forcing UI visible');
+        _setPlayerState(PlayerState.playing);
       }
     });
   }
 
   // ═══════════════════════════════════════
-  // Player Initialization
+  // Player State Machine
+  // ═══════════════════════════════════════
+
+  void _setPlayerState(PlayerState newState) {
+    if (_isDisposed || !mounted) return;
+    if (_playerState == newState) return;
+
+    debugPrint('📊 State: ${_playerState.name} → ${newState.name}');
+    _safeSetState(() => _playerState = newState);
+  }
+
+  // ═══════════════════════════════════════
+  // Player Initialization (Mutex-Protected)
   // ═══════════════════════════════════════
 
   Future<void> _initializePlayer() async {
-    if (_isInitializing || _isDisposed) return;
+    // Mutex: prevent concurrent initialization
+    if (_initLock != null && !_initLock!.isCompleted) {
+      debugPrint('⚠️ Initialization already in progress — skipping');
+      return;
+    }
+    if (_isDisposed) return;
 
-    _safeSetState(() {
-      _isInitializing = true;
-      _isLoading = true;
-      _error = null;
-      _retryCount = 0;
-      _serverAttempt = 0;
-      _stuckCounter = 0;
-      _consecutiveErrors = 0;
-    });
+    _initLock = Completer<void>();
+
+    _setPlayerState(PlayerState.connecting);
+    _retryCount = 0;
+    _serverAttempt = 0;
+    _stuckCounter = 0;
+    _consecutiveErrors = 0;
+    _playbackStartTime = null;
 
     try {
       await _tryCurrentServer();
     } catch (e, st) {
-      debugPrint('❌ Error en initializePlayer: $e\n$st');
-      _safeSetState(() {
-        _isLoading = false;
-        _error = 'Error al cargar el canal';
-        _isInitializing = false;
-      });
+      debugPrint('❌ Error in initializePlayer: $e\n$st');
+      _setPlayerState(PlayerState.error);
+    } finally {
+      if (!_initLock!.isCompleted) {
+        _initLock!.complete();
+      }
     }
   }
 
@@ -280,7 +316,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _startLoadingFailsafe();
 
     if (_currentServerIndex >= widget.channel.streamUrl.length) {
-      throw Exception('No hay más servidores disponibles');
+      throw Exception('No more servers available');
     }
 
     _currentStream = widget.channel.streamUrl[_currentServerIndex];
@@ -288,157 +324,228 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     debugPrint('───────────────────────────────────────');
     debugPrint(
-        '🔄 Servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}');
+        '🔄 Server ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}');
     debugPrint('🔗 URL: ${url.substring(0, min(60, url.length))}...');
     debugPrint('───────────────────────────────────────');
 
-    // Resolve URLs
+    // ── Step 1: Resolve URL ──────────────────────────
+    _setPlayerState(PlayerState.resolvingUrl);
     try {
       final resolvedUrl = await _resolveStreamUrl(url);
       if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
         url = resolvedUrl;
-        debugPrint('✅ URL resuelta: ${url.substring(0, min(80, url.length))}');
+        debugPrint(
+            '✅ URL resolved: ${url.substring(0, min(80, url.length))}');
       }
     } catch (e) {
-      debugPrint('⚠️ Error resolviendo URL: $e');
+      debugPrint('⚠️ URL resolution error: $e — using original URL');
     }
 
     if (url.isEmpty) {
-      throw Exception('URL vacía');
+      throw Exception('Empty URL after resolution');
     }
 
-    // Server timeout with progressive increase (faster)
-    final timeoutDuration =
-        Duration(seconds: 8 + (_serverAttempt * 2).clamp(0, 6));
+    // ── Step 2: Server timeout ───────────────────────
+    final timeoutDuration = Duration(
+      seconds: PlayerConfig.baseServerTimeout.inSeconds +
+          (_serverAttempt * 2).clamp(0, PlayerConfig.maxTimeoutExtensionSeconds),
+    );
 
     _serverTimeoutTimer = Timer(timeoutDuration, () {
       if (mounted &&
           !_isDisposed &&
-          _isLoading &&
+          _playerState.isLoading &&
           _currentServerIndex < widget.channel.streamUrl.length - 1) {
-        debugPrint('⏱️ Timeout servidor ${_currentServerIndex + 1}');
+        debugPrint(
+            '⏱️ Server ${_currentServerIndex + 1} timeout after ${timeoutDuration.inSeconds}s');
         _currentServerIndex++;
         _tryCurrentServer();
       }
     });
 
-    // Strategy: HLS = Native, Others = WebView
-    final isNative = url.toLowerCase().contains('.m3u8') ||
-        url.toLowerCase().contains('m3u');
+    // ── Step 3: Detect stream type ───────────────────
+    final streamType = widget.channel.getStreamType(url);
+    final isNative =
+        streamType == StreamType.m3u8 || streamType == StreamType.mp4;
 
-    if (isNative) {
+    // Also check URL patterns for additional safety
+    final urlLower = url.toLowerCase();
+    final looksLikeHls =
+        urlLower.contains('.m3u8') || urlLower.contains('m3u');
+    final looksLikeWeb = urlLower.contains('iframe') ||
+        urlLower.contains('embed') ||
+        urlLower.contains('pivopro') ||
+        urlLower.contains('.html');
+
+    final useNative = (isNative || looksLikeHls) && !looksLikeWeb;
+
+    if (useNative) {
       debugPrint('📱 Mode: Native Player (HLS)');
       _safeSetState(() => _useHtmlPlayer = false);
+      _setPlayerState(PlayerState.initializing);
       await _initializeVideoPlayer(url);
     } else {
-      debugPrint('🌐 Mode: WebView Player (DASH/Iframe)');
-      _safeSetState(() {
-        _useHtmlPlayer = true;
-        _isLoading = false;
-        _isInitializing = false;
-      });
+      debugPrint('🌐 Mode: WebView Player (DASH/Iframe/External)');
+      _safeSetState(() => _useHtmlPlayer = true);
+      _setPlayerState(PlayerState.playing);
       _loadingFailsafe?.cancel();
     }
   }
 
-  Future<String?> _resolveStreamUrl(String url) async {
-    debugPrint('🔍 Resolviendo URL...');
+  // ═══════════════════════════════════════
+  // URL Resolution — HEAD-first Strategy
+  // ═══════════════════════════════════════
 
-    if (url.toLowerCase().endsWith('.m3u8')) {
+  Future<String?> _resolveStreamUrl(String url) async {
+    debugPrint('🔍 Resolving URL...');
+
+    // Fast path: if URL is clearly an M3U8, don't resolve
+    final urlLower = url.toLowerCase();
+    if (urlLower.endsWith('.m3u8') ||
+        urlLower.contains('.m3u8?') ||
+        urlLower.contains('.m3u8#')) {
+      debugPrint('✅ Direct M3U8 URL — no resolution needed');
+      return url;
+    }
+
+    // If it's an iframe/embed/html URL, don't try to resolve
+    if (urlLower.contains('iframe') ||
+        urlLower.contains('embed') ||
+        urlLower.contains('.html') ||
+        urlLower.contains('pivopro')) {
+      debugPrint('🌐 External URL — no resolution needed');
       return url;
     }
 
     int resolveRetries = 0;
-    const maxResolveRetries = 3;
 
-    while (resolveRetries <= maxResolveRetries) {
+    while (resolveRetries <= PlayerConfig.maxUrlResolveRetries) {
       if (_isDisposed) return url;
 
       HttpClient? httpClient;
       try {
         final uri = Uri.parse(url);
+        final timeout = Duration(
+          seconds: PlayerConfig.urlResolveTimeout.inSeconds +
+              (resolveRetries * PlayerConfig.urlResolveTimeoutExtensionSeconds),
+        );
+
         httpClient = HttpClient()
-          ..connectionTimeout = Duration(seconds: 5 + (resolveRetries * 2))
+          ..connectionTimeout = timeout
+          ..idleTimeout = timeout
           ..badCertificateCallback = (cert, host, port) => true;
 
+        // ── Strategy: Use GET but follow redirects carefully ──
         final request = await httpClient.getUrl(uri);
-        request.headers.set(
-          'User-Agent',
-          'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
-        );
+        request.followRedirects = true;
+        request.maxRedirects = 5;
+        request.headers.set('User-Agent', PlayerConfig.userAgent);
         request.headers.set('Accept', '*/*');
         request.headers.set('Connection', 'keep-alive');
 
-        final response = await request.close();
+        final response =
+            await request.close().timeout(timeout);
 
-        if (response.statusCode >= 500 && response.statusCode <= 599) {
-          throw Exception('Server error: ${response.statusCode}');
+        // Server error → don't retry resolution, failover later
+        if (response.statusCode >= 500) {
+          debugPrint('⚠️ Server ${response.statusCode} during resolution');
+          await response.drain();
+          return url;
         }
 
+        // Check if we were redirected to an M3U8
         if (response.redirects.isNotEmpty) {
           final finalUrl = response.redirects.last.location.toString();
-
-          if (finalUrl.toLowerCase().endsWith('.m3u8')) {
+          if (finalUrl.toLowerCase().contains('.m3u8')) {
+            await response.drain();
             return finalUrl;
           }
+        }
 
-          final body = await response.transform(const Utf8Decoder()).join();
-          if (body.contains('.m3u8')) {
-            final m3u8Match =
-                RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
-            if (m3u8Match != null) {
-              return m3u8Match.group(0)!;
+        // Check content-type header for HLS MIME type
+        final contentType = response.headers.contentType;
+        if (contentType != null) {
+          final mime = contentType.mimeType.toLowerCase();
+          if (mime == 'application/vnd.apple.mpegurl' ||
+              mime == 'application/x-mpegurl' ||
+              mime == 'audio/mpegurl' ||
+              mime == 'audio/x-mpegurl') {
+            debugPrint('✅ Content-Type indicates HLS');
+            // The URL itself serves the M3U8
+            await response.drain();
+            if (response.redirects.isNotEmpty) {
+              return response.redirects.last.location.toString();
             }
+            return url;
           }
-          return finalUrl;
         }
 
-        final location = response.headers.value('location');
-        if (location != null) {
-          return location;
-        }
-
+        // If we got a 200, read the body to search for M3U8 links
         if (response.statusCode == 200) {
-          final contentType = response.headers.contentType;
-          if (contentType?.mimeType == 'application/vnd.apple.mpegurl' ||
-              contentType?.mimeType == 'application/x-mpegURL') {
+          final body = await response.transform(const Utf8Decoder()).join();
+
+          // Check if body IS an M3U8 playlist
+          if (body.trimLeft().startsWith('#EXTM3U')) {
+            debugPrint('✅ Body is M3U8 playlist');
+            if (response.redirects.isNotEmpty) {
+              return response.redirects.last.location.toString();
+            }
             return url;
           }
 
-          final body = await response.transform(const Utf8Decoder()).join();
+          // Extract M3U8 URL from body (HTML page or JSON response)
           if (body.contains('.m3u8')) {
             final m3u8Match =
-                RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
+                RegExp(r"""https?://[^\s<>"']+\.m3u8[^\s<>"']*""")
+                    .firstMatch(body);
             if (m3u8Match != null) {
-              return m3u8Match.group(0)!;
+              final extracted = m3u8Match.group(0)!;
+              debugPrint('✅ Extracted M3U8 from body: ${extracted.substring(0, min(80, extracted.length))}');
+              return extracted;
             }
           }
+
+          // Check for redirect URL in Location header
+          final location = response.headers.value('location');
+          if (location != null && location.isNotEmpty) {
+            return location;
+          }
+
+          // If redirected, use the final redirect URL
+          if (response.redirects.isNotEmpty) {
+            return response.redirects.last.location.toString();
+          }
+        } else {
+          await response.drain();
         }
 
         return url;
       } catch (e) {
         resolveRetries++;
         debugPrint(
-            '⚠️ Intento $resolveRetries/$maxResolveRetries para resolver URL fallido: $e');
+            '⚠️ Resolve attempt $resolveRetries/${PlayerConfig.maxUrlResolveRetries}: $e');
 
-        if (resolveRetries <= maxResolveRetries) {
-          // Exponential backoff
-          final waitMs = 500 * pow(2, resolveRetries).toInt();
+        if (resolveRetries <= PlayerConfig.maxUrlResolveRetries) {
+          final waitMs = min(
+            PlayerConfig.backoffMaxMs,
+            PlayerConfig.backoffBaseMs * pow(2, resolveRetries).toInt(),
+          );
           await Future.delayed(Duration(milliseconds: waitMs));
         } else {
-          debugPrint(
-              '❌ Falla definitiva en resolución URL después de $maxResolveRetries intentos.');
+          debugPrint('❌ URL resolution failed after all retries');
           return url;
         }
       } finally {
-        httpClient?.close(force: true);
+        try {
+          httpClient?.close(force: true);
+        } catch (_) {}
       }
     }
     return url;
   }
 
   // ═══════════════════════════════════════
-  // VideoPlayer (HLS) - Enhanced
+  // VideoPlayer (HLS) — Enhanced
   // ═══════════════════════════════════════
 
   Future<void> _initializeVideoPlayer(String url) async {
@@ -447,15 +554,22 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     try {
       await _disposeExistingControllers();
 
-      debugPrint('🎬 Inicializando VideoPlayer (HLS)');
+      debugPrint('🎬 Initializing VideoPlayer (HLS)');
 
       final headers = <String, String>{
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
+        'User-Agent': PlayerConfig.userAgent,
         'Accept': '*/*',
         'Accept-Encoding': 'gzip, deflate',
         'Connection': 'keep-alive',
-        'Referer': Uri.parse(url).origin,
       };
+
+      // Add Referer if URL has a valid origin
+      try {
+        final origin = Uri.parse(url).origin;
+        if (origin.isNotEmpty && origin != 'null') {
+          headers['Referer'] = origin;
+        }
+      } catch (_) {}
 
       _videoPlayerController = VideoPlayerController.networkUrl(
         Uri.parse(url),
@@ -469,11 +583,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
       _videoPlayerController!.addListener(_videoListener);
 
-      // Initialize with timeout
+      // Initialize with generous timeout for slow servers
       await _videoPlayerController!.initialize().timeout(
-        const Duration(seconds: 8),
+        PlayerConfig.initializeTimeout,
         onTimeout: () {
-          throw TimeoutException('Timeout inicializando player');
+          throw TimeoutException('Player initialization timeout');
         },
       );
 
@@ -488,18 +602,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       await _videoPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
       await _videoPlayerController!.play();
 
+      _playbackStartTime = DateTime.now();
       _fadeController.forward();
 
-      _safeSetState(() {
-        _isInitializing = false;
-        _retryCount = 0;
-        _stuckCounter = 0;
-        _consecutiveErrors = 0;
-      });
+      _retryCount = 0;
+      _stuckCounter = 0;
+      _consecutiveErrors = 0;
 
-      debugPrint('✅ VideoPlayer listo');
+      debugPrint('✅ VideoPlayer ready — playback started');
     } catch (e, st) {
-      debugPrint('❌ Error VideoPlayer: $e\n$st');
+      debugPrint('❌ VideoPlayer error: $e\n$st');
       await _handleServerFailure();
     }
   }
@@ -509,7 +621,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     final value = _videoPlayerController!.value;
 
-    // Reset counters on healthy playback
+    // ── Healthy playback: reset everything ──
     if (value.isInitialized &&
         value.isPlaying &&
         !value.isBuffering &&
@@ -517,16 +629,33 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _stuckCounter = 0;
       _consecutiveErrors = 0;
 
-      if (_isLoading) {
+      if (_playerState != PlayerState.playing) {
         _loadingFailsafe?.cancel();
-        _safeSetState(() => _isLoading = false);
+        _setPlayerState(PlayerState.playing);
       }
     }
 
-    // Handle errors with debounce
-    if (value.hasError && !_isLoading && !_isInitializing) {
-      final errorDesc = value.errorDescription ?? 'Error desconocido';
-      debugPrint('⚠️ Error VideoPlayer: $errorDesc');
+    // ── Buffering state ──
+    if (value.isInitialized && value.isBuffering && !value.hasError) {
+      if (_playerState == PlayerState.playing) {
+        _setPlayerState(PlayerState.buffering);
+      }
+    }
+
+    // ── Back from buffering to playing ──
+    if (value.isInitialized &&
+        value.isPlaying &&
+        !value.isBuffering &&
+        _playerState == PlayerState.buffering) {
+      _setPlayerState(PlayerState.playing);
+    }
+
+    // ── Error handling with debounce ──
+    if (value.hasError &&
+        _playerState != PlayerState.retrying &&
+        _playerState != PlayerState.connecting) {
+      final errorDesc = value.errorDescription ?? 'Unknown error';
+      debugPrint('⚠️ VideoPlayer error: $errorDesc');
 
       if (_errorRecoveryTimer?.isActive ?? false) return;
 
@@ -537,12 +666,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _retryCount++;
 
         debugPrint(
-            '🔄 Recuperación $_retryCount/$_maxRetries (Errores consecutivos: $_consecutiveErrors)');
+            '🔄 Recovery $_retryCount/${PlayerConfig.maxRetriesPerServer} '
+            '(consecutive: $_consecutiveErrors)');
 
-        if (_consecutiveErrors >= _maxConsecutiveErrors) {
-          debugPrint('❌ Demasiados errores - failover forzado');
+        if (_consecutiveErrors >= PlayerConfig.maxConsecutiveErrors) {
+          debugPrint('❌ Too many errors — forced failover');
           await _handleServerFailure();
-        } else if (_retryCount <= _maxRetries) {
+        } else if (_retryCount <= PlayerConfig.maxRetriesPerServer &&
+            _currentStream != null) {
+          _setPlayerState(PlayerState.retrying);
           await _initializeVideoPlayer(_currentStream!.url);
         } else {
           await _handleServerFailure();
@@ -550,6 +682,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       });
     }
 
+    // Rebuild for visual updates (buffering indicator etc)
     _safeSetState(() {});
   }
 
@@ -574,34 +707,37 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Future<void> _handleServerFailure() async {
     if (_isDisposed) return;
 
-    debugPrint('⚠️ Servidor ${_currentServerIndex + 1} falló');
+    debugPrint('⚠️ Server ${_currentServerIndex + 1} failed');
 
     if (_currentServerIndex < widget.channel.streamUrl.length - 1) {
       _currentServerIndex++;
+      _retryCount = 0;
+
       debugPrint(
-          '🔄 Intentando servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}');
+          '🔄 Trying server ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}');
+
+      _setPlayerState(PlayerState.connecting);
 
       await Future.delayed(_backoffDurationForAttempt(_serverAttempt));
       _serverAttempt++;
 
       await _tryCurrentServer();
     } else {
-      debugPrint('❌ No quedan más servidores');
+      debugPrint('❌ All servers exhausted');
       if (mounted && !_isDisposed) {
         _loadingFailsafe?.cancel();
         _safeSetState(() {
-          _isLoading = false;
-          _error =
-              'No se pudo conectar a ningún servidor.\n\nVerifica tu conexión e intenta nuevamente.';
-          _isInitializing = false;
+          _playerState = PlayerState.error;
         });
       }
     }
   }
 
   Duration _backoffDurationForAttempt(int attempt) {
-    // Exponential backoff: 300ms, 600ms, 1.2s, 2.4s, max 4s
-    final ms = min(4000, (300 * pow(2, attempt)).toInt());
+    final ms = min(
+      PlayerConfig.backoffMaxMs,
+      (PlayerConfig.backoffBaseMs * pow(2, attempt)).toInt(),
+    );
     return Duration(milliseconds: ms);
   }
 
@@ -631,36 +767,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _changeAspectRatio() {
     if (_isDisposed) return;
-
     setState(() {
-      switch (_aspectRatioType) {
-        case AspectRatioType.auto:
-          _aspectRatioType = AspectRatioType.ratio16_9;
-          break;
-        case AspectRatioType.ratio16_9:
-          _aspectRatioType = AspectRatioType.ratio4_3;
-          break;
-        case AspectRatioType.ratio4_3:
-          _aspectRatioType = AspectRatioType.stretch;
-          break;
-        case AspectRatioType.stretch:
-          _aspectRatioType = AspectRatioType.auto;
-          break;
-      }
+      _aspectRatioType = _aspectRatioType.next;
     });
-  }
-
-  String _getAspectRatioLabel() {
-    switch (_aspectRatioType) {
-      case AspectRatioType.auto:
-        return 'Auto';
-      case AspectRatioType.ratio16_9:
-        return '16:9';
-      case AspectRatioType.ratio4_3:
-        return '4:3';
-      case AspectRatioType.stretch:
-        return 'Estirar';
-    }
   }
 
   double _getAspectRatio() {
@@ -756,7 +865,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                   channelName: widget.channel.name,
                   onFullScreenToggle: _toggleFullScreen,
                   isFullScreen: _isFullScreen,
-                  aspectRatioLabel: _getAspectRatioLabel(),
+                  aspectRatioLabel: _aspectRatioType.label,
                   onAspectRatioChange: _changeAspectRatio,
                   onMuteToggle: _toggleMute,
                   isMuted: _isMuted,
@@ -766,12 +875,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                     _currentServerIndex = idx;
                     _retryCount = 0;
                     _consecutiveErrors = 0;
+                    _stuckCounter = 0;
+                    _setPlayerState(PlayerState.connecting);
                     _tryCurrentServer();
                   },
                 ),
               ),
 
-            // 5. Fade Animation
+            // 3. Fade Animation (entrance)
             if (!_useHtmlPlayer)
               IgnorePointer(
                 child: FadeTransition(
@@ -781,20 +892,27 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 ),
               ),
 
-            // 6. Loading Indicator (Only for Native Player) - Rendered on TOP
-            if (!_useHtmlPlayer &&
-                (_isLoading ||
-                    (_unifiedController != null &&
-                        _unifiedController!.isBuffering)))
+            // 4. Loading / Buffering State
+            if (!_useHtmlPlayer && _shouldShowLoadingOverlay())
               _buildLoadingWidget(),
 
-            // 7. Error Message (Only for Native Player)
-            if (!_useHtmlPlayer && _error != null && !_isLoading)
-              _buildErrorWidget(_error!),
+            // 5. Error State
+            if (!_useHtmlPlayer && _playerState == PlayerState.error)
+              _buildErrorWidget(),
           ],
         ),
       ),
     );
+  }
+
+  bool _shouldShowLoadingOverlay() {
+    if (_playerState.isLoading) return true;
+    if (_playerState == PlayerState.buffering) return true;
+    // Also show if the native controller reports buffering
+    if (_unifiedController != null && _unifiedController!.isBuffering) {
+      return true;
+    }
+    return false;
   }
 
   void _safeSetState(VoidCallback fn) {
@@ -803,16 +921,37 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
   }
 
-  Widget _buildLoadingWidget() {
-    final isBuffering = !_isLoading &&
-        _unifiedController != null &&
-        _unifiedController!.isBuffering;
+  // ═══════════════════════════════════════
+  // Loading Widget
+  // ═══════════════════════════════════════
 
-    String message = 'Conectando...';
-    if (isBuffering) {
-      message = 'Cargando...';
-    } else if (_retryCount > 0) {
-      message = 'Reintentando...';
+  Widget _buildLoadingWidget() {
+    final bool isBuffering = _playerState == PlayerState.buffering ||
+        (_unifiedController != null && _unifiedController!.isBuffering);
+
+    String message;
+    String? subMessage;
+
+    switch (_playerState) {
+      case PlayerState.connecting:
+        message = 'Buscando servidor...';
+        break;
+      case PlayerState.resolvingUrl:
+        message = 'Resolviendo enlace...';
+        break;
+      case PlayerState.initializing:
+        message = 'Preparando transmisión...';
+        break;
+      case PlayerState.retrying:
+        message = 'Reintentando...';
+        subMessage =
+            'Intento $_retryCount/${PlayerConfig.maxRetriesPerServer}';
+        break;
+      case PlayerState.buffering:
+        message = 'Cargando...';
+        break;
+      default:
+        message = 'Conectando...';
     }
 
     return VideoLoadingWidget(
@@ -820,11 +959,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       message: message,
       serverInfo:
           '${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
-      subMessage: _retryCount > 0 ? 'Intento $_retryCount/$_maxRetries' : null,
+      subMessage: subMessage,
     );
   }
 
-  Widget _buildErrorWidget(String errorMessage) {
+  // ═══════════════════════════════════════
+  // Error Widget
+  // ═══════════════════════════════════════
+
+  Widget _buildErrorWidget() {
     return Container(
       color: Colors.black,
       child: Center(
@@ -833,52 +976,112 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                color: Colors.red,
-                size: 56,
+              // Error icon with glow
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.red.withAlpha(20),
+                  border: Border.all(
+                    color: Colors.red.withAlpha(60),
+                    width: 1.5,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.signal_wifi_connected_no_internet_4_rounded,
+                  color: Colors.red,
+                  size: 40,
+                ),
               ),
               const SizedBox(height: 24),
               Text(
-                errorMessage,
+                'No se pudo conectar',
                 style: GoogleFonts.dmSans(
                   color: Colors.white,
-                  fontSize: 15,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Verifica tu conexión e intenta nuevamente.\n'
+                'Si el problema persiste, el servidor puede estar temporalmente fuera de servicio.',
+                style: GoogleFonts.dmSans(
+                  color: Colors.white54,
+                  fontSize: 13,
                   height: 1.5,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
-                style: GoogleFonts.dmSans(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(10),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withAlpha(20),
+                    width: 0.5,
+                  ),
+                ),
+                child: Text(
+                  'Servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
+                  style: GoogleFonts.dmSans(
+                    color: Colors.white38,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: () {
+              const SizedBox(height: 28),
+              // Retry button
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.mediumImpact();
                   _currentServerIndex = 0;
                   _consecutiveErrors = 0;
                   _initializePlayer();
                 },
-                icon: const Icon(Icons.refresh),
-                label: Text(
-                  'Reintentar',
-                  style: GoogleFonts.dmSans(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
+                child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
-                    vertical: 16,
+                    vertical: 14,
                   ),
-                  shape: RoundedRectangleBorder(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withAlpha(80),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.refresh_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Reintentar',
+                        style: GoogleFonts.dmSans(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
