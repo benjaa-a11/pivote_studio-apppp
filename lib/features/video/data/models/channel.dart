@@ -1,3 +1,35 @@
+class EventCamera {
+  final int id;
+  final String nombre;
+  final String url;
+  final String tipo;
+
+  EventCamera({
+    required this.id,
+    required this.nombre,
+    required this.url,
+    required this.tipo,
+  });
+
+  factory EventCamera.fromJson(Map<String, dynamic> json) {
+    return EventCamera(
+      id: json['id'] ?? 0,
+      nombre: json['nombre'] ?? '',
+      url: json['url'] ?? '',
+      tipo: json['tipo'] ?? 'exclusiva',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nombre': nombre,
+      'url': url,
+      'tipo': tipo,
+    };
+  }
+}
+
 class Channel {
   final String id;
   final String name;
@@ -8,8 +40,10 @@ class Channel {
   final bool isHidden;
   final int order;
   bool isFavorite;
-  final String? type; // 'dash' or 'hls' to override detection
+  final String? type; // 'dash' or 'hls' to override detection o 'evento'
   final String? quality;
+  final String? evento; // Nombre del evento ("Gran Hermano 2026")
+  final List<EventCamera>? camaras; // Arreglo de cámaras
 
   Channel({
     required this.id,
@@ -23,6 +57,8 @@ class Channel {
     this.isFavorite = false,
     this.type,
     this.quality,
+    this.evento,
+    this.camaras,
   });
 
   factory Channel.fromJson(Map<String, dynamic> json) {
@@ -49,6 +85,14 @@ class Channel {
       streams = [StreamSource(url: json['streamUrl'])];
     }
 
+    // Parse camaras
+    List<EventCamera>? eventCameras;
+    if (json['camaras'] != null && json['camaras'] is List) {
+      eventCameras = (json['camaras'] as List)
+          .map((c) => EventCamera.fromJson(Map<String, dynamic>.from(c)))
+          .toList();
+    }
+
     return Channel(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
@@ -61,6 +105,8 @@ class Channel {
       isFavorite: json['isFavorite'] ?? false,
       type: json['type'],
       quality: json['quality'],
+      evento: json['evento'],
+      camaras: eventCameras,
     );
   }
 
@@ -77,6 +123,8 @@ class Channel {
       'isFavorite': isFavorite,
       if (type != null) 'type': type,
       if (quality != null) 'quality': quality,
+      if (evento != null) 'evento': evento,
+      if (camaras != null) 'camaras': camaras!.map((c) => c.toJson()).toList(),
     };
   }
 
@@ -115,6 +163,8 @@ class Channel {
     bool? isFavorite,
     String? type,
     String? quality,
+    String? evento,
+    List<EventCamera>? camaras,
   }) {
     return Channel(
       id: id ?? this.id,
@@ -128,6 +178,8 @@ class Channel {
       isFavorite: isFavorite ?? this.isFavorite,
       type: type ?? this.type,
       quality: quality ?? this.quality,
+      evento: evento ?? this.evento,
+      camaras: camaras ?? this.camaras,
     );
   }
 

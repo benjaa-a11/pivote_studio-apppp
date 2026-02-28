@@ -348,70 +348,93 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       return url;
     }
 
-    HttpClient? httpClient;
-    try {
-      final uri = Uri.parse(url);
-      httpClient = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 8)
-        ..badCertificateCallback = (cert, host, port) => true;
+    int resolveRetries = 0;
+    const maxResolveRetries = 3;
 
-      final request = await httpClient.getUrl(uri);
-      request.headers.set(
-        'User-Agent',
-        'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
-      );
-      request.headers.set('Accept', '*/*');
-      request.headers.set('Connection', 'keep-alive');
+    while (resolveRetries <= maxResolveRetries) {
+      if (_isDisposed) return url;
 
-      final response = await request.close();
+      HttpClient? httpClient;
+      try {
+        final uri = Uri.parse(url);
+        httpClient = HttpClient()
+          ..connectionTimeout = Duration(seconds: 5 + (resolveRetries * 2))
+          ..badCertificateCallback = (cert, host, port) => true;
 
-      if (response.redirects.isNotEmpty) {
-        final finalUrl = response.redirects.last.location.toString();
+        final request = await httpClient.getUrl(uri);
+        request.headers.set(
+          'User-Agent',
+          'Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36',
+        );
+        request.headers.set('Accept', '*/*');
+        request.headers.set('Connection', 'keep-alive');
 
-        if (finalUrl.toLowerCase().endsWith('.m3u8')) {
+        final response = await request.close();
+
+        if (response.statusCode >= 500 && response.statusCode <= 599) {
+          throw Exception('Server error: ${response.statusCode}');
+        }
+
+        if (response.redirects.isNotEmpty) {
+          final finalUrl = response.redirects.last.location.toString();
+
+          if (finalUrl.toLowerCase().endsWith('.m3u8')) {
+            return finalUrl;
+          }
+
+          final body = await response.transform(const Utf8Decoder()).join();
+          if (body.contains('.m3u8')) {
+            final m3u8Match =
+                RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
+            if (m3u8Match != null) {
+              return m3u8Match.group(0)!;
+            }
+          }
           return finalUrl;
         }
 
-        final body = await response.transform(const Utf8Decoder()).join();
-        if (body.contains('.m3u8')) {
-          final m3u8Match =
-              RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
-          if (m3u8Match != null) {
-            return m3u8Match.group(0)!;
+        final location = response.headers.value('location');
+        if (location != null) {
+          return location;
+        }
+
+        if (response.statusCode == 200) {
+          final contentType = response.headers.contentType;
+          if (contentType?.mimeType == 'application/vnd.apple.mpegurl' ||
+              contentType?.mimeType == 'application/x-mpegURL') {
+            return url;
+          }
+
+          final body = await response.transform(const Utf8Decoder()).join();
+          if (body.contains('.m3u8')) {
+            final m3u8Match =
+                RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
+            if (m3u8Match != null) {
+              return m3u8Match.group(0)!;
+            }
           }
         }
-        return finalUrl;
-      }
 
-      final location = response.headers.value('location');
-      if (location != null) {
-        return location;
-      }
+        return url;
+      } catch (e) {
+        resolveRetries++;
+        debugPrint(
+            '⚠️ Intento $resolveRetries/$maxResolveRetries para resolver URL fallido: $e');
 
-      if (response.statusCode == 200) {
-        final contentType = response.headers.contentType;
-        if (contentType?.mimeType == 'application/vnd.apple.mpegurl' ||
-            contentType?.mimeType == 'application/x-mpegURL') {
+        if (resolveRetries <= maxResolveRetries) {
+          // Exponential backoff
+          final waitMs = 500 * pow(2, resolveRetries).toInt();
+          await Future.delayed(Duration(milliseconds: waitMs));
+        } else {
+          debugPrint(
+              '❌ Falla definitiva en resolución URL después de $maxResolveRetries intentos.');
           return url;
         }
-
-        final body = await response.transform(const Utf8Decoder()).join();
-        if (body.contains('.m3u8')) {
-          final m3u8Match =
-              RegExp(r'https?://[^\s<>"]+\.m3u8').firstMatch(body);
-          if (m3u8Match != null) {
-            return m3u8Match.group(0)!;
-          }
-        }
+      } finally {
+        httpClient?.close(force: true);
       }
-
-      return url;
-    } catch (e) {
-      debugPrint('❌ Error resolviendo URL: $e');
-      return url;
-    } finally {
-      httpClient?.close(force: true);
     }
+    return url;
   }
 
   // ═══════════════════════════════════════

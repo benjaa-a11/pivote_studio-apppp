@@ -89,32 +89,54 @@ class _ChannelCardState extends State<ChannelCard>
             child: AnimatedContainer(
               duration: AppAnimations.fast,
               decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkCard : Colors.white,
+                color: (widget.channel.type == 'evento' ||
+                        widget.channel.evento != null)
+                    ? const Color(0xFF0A0A0A) // Onyx Black
+                    : isDark
+                        ? AppTheme.darkCard
+                        : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _isPressed
-                      ? Theme.of(context).colorScheme.primary.withAlpha(128)
-                      : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
-                  width: _isPressed ? 2 : 1,
+                  color: (widget.channel.type == 'evento' ||
+                          widget.channel.evento != null)
+                      ? const Color(0xFFD4AF37) // Golden border
+                      : _isPressed
+                          ? Theme.of(context).colorScheme.primary.withAlpha(128)
+                          : (isDark
+                              ? AppTheme.darkBorder
+                              : AppTheme.lightBorder),
+                  width: (widget.channel.type == 'evento' ||
+                          widget.channel.evento != null)
+                      ? 2
+                      : (_isPressed ? 2 : 1),
                 ),
-                boxShadow: _isPressed
+                boxShadow: (widget.channel.type == 'evento' ||
+                        widget.channel.evento != null)
                     ? [
                         BoxShadow(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withAlpha(51),
-                          blurRadius: 12,
+                          color: const Color(0xFFD4AF37).withAlpha(100),
+                          blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
                       ]
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(13),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                    : _isPressed
+                        ? [
+                            BoxShadow(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withAlpha(51),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(13),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
               ),
               child: Column(
                 children: [
@@ -124,7 +146,12 @@ class _ChannelCardState extends State<ChannelCard>
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: isDark ? AppTheme.darkCard : AppTheme.lightBg2,
+                        color: (widget.channel.type == 'evento' ||
+                                widget.channel.evento != null)
+                            ? Colors.transparent
+                            : isDark
+                                ? AppTheme.darkCard
+                                : AppTheme.lightBg2,
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(15),
                         ),
@@ -139,9 +166,12 @@ class _ChannelCardState extends State<ChannelCard>
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? theme.scaffoldBackgroundColor
-                          : AppTheme.lightBg1,
+                      color: (widget.channel.type == 'evento' ||
+                              widget.channel.evento != null)
+                          ? const Color(0xFF0A0A0A)
+                          : isDark
+                              ? theme.scaffoldBackgroundColor
+                              : AppTheme.lightBg1,
                       borderRadius: const BorderRadius.vertical(
                         bottom: Radius.circular(15),
                       ),
@@ -156,6 +186,11 @@ class _ChannelCardState extends State<ChannelCard>
                               Theme.of(context).textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 15,
+                                    color: (widget.channel.type == 'evento' ||
+                                            widget.channel.evento != null)
+                                        ? const Color(
+                                            0xFFD4AF37) // Golden text for name
+                                        : null,
                                   ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -170,9 +205,12 @@ class _ChannelCardState extends State<ChannelCard>
                                     .textTheme
                                     .bodySmall
                                     ?.copyWith(
-                                      color: isDark
-                                          ? Colors.grey[600]
-                                          : Colors.grey[600],
+                                      color: (widget.channel.type == 'evento' ||
+                                              widget.channel.evento != null)
+                                          ? Colors.white70
+                                          : isDark
+                                              ? Colors.grey[600]
+                                              : Colors.grey[600],
                                       fontSize: 13,
                                       fontWeight: FontWeight.w500,
                                     ),

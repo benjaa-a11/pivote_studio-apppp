@@ -18,12 +18,15 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
-  // Key para preservar el estado del video player al cambiar orientación
-  final GlobalKey _videoPlayerKey = GlobalKey();
+  // Key para preservar el estado del video player al re-inicializar
+  Key _videoPlayerKey = UniqueKey();
+  late Channel _currentChannel;
+  int _selectedCameraId = -1; // -1 represents the main stream
 
   @override
   void initState() {
     super.initState();
+    _currentChannel = widget.channel;
     // Bloquear a portrait inicialmente
     Future.delayed(Duration.zero, () {
       if (mounted) {
@@ -91,7 +94,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget _buildLandscapeLayout() {
     return VideoPlayerWidget(
       key: _videoPlayerKey,
-      channel: widget.channel,
+      channel: _currentChannel,
     );
   }
 
@@ -107,7 +110,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           aspectRatio: 16 / 9,
           child: VideoPlayerWidget(
             key: _videoPlayerKey,
-            channel: widget.channel,
+            channel: _currentChannel,
           ),
         ),
 
@@ -159,11 +162,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
           Consumer<FavoritesProvider>(
             builder: (context, favoritesProvider, child) {
               final isFavorite =
-                  favoritesProvider.isFavorite(widget.channel.id);
+                  favoritesProvider.isFavorite(_currentChannel.id);
               return IconButton(
                 onPressed: () {
                   HapticFeedback.lightImpact();
-                  favoritesProvider.toggleFavorite(widget.channel);
+                  favoritesProvider.toggleFavorite(_currentChannel);
                 },
                 icon: Icon(
                   isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
@@ -213,9 +216,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: widget.channel.logoUrl.isNotEmpty
+              child: _currentChannel.logoUrl.isNotEmpty
                   ? Image.network(
-                      widget.channel.getLogoUrl(isDark),
+                      _currentChannel.getLogoUrl(isDark),
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
                         return Icon(
@@ -239,12 +242,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  widget.channel.name,
-                  style: const TextStyle(
+                  _currentChannel.name,
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.8,
                     height: 1.1,
+                    color: (_currentChannel.type == 'evento' ||
+                            _currentChannel.evento != null)
+                        ? const Color(0xFFD4AF37) // Golden tone for event
+                        : null,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -265,7 +272,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        widget.channel.category.toUpperCase(),
+                        _currentChannel.category.toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
@@ -275,7 +282,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    if (widget.channel.quality != null)
+                    if (_currentChannel.quality != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -288,7 +295,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          widget.channel.quality!,
+                          _currentChannel.quality!,
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
@@ -307,14 +314,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _buildChannelInfo(BuildContext context) {
-    // Diseño limpio sin cajas, solo texto bien tipografiado
+    if (_currentChannel.type == 'evento' || _currentChannel.evento != null) {
+      return _buildEventCameras(context);
+    }
+
+    // Diseño limpio sin cajas, solo texto bien tipografiado para canales normales
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            widget.channel.description,
+            _currentChannel.description,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   height: 1.6,
                   fontSize: 15,
@@ -342,6 +353,200 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildEventCameras(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final camaras = widget.channel.camaras ?? [];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD4AF37).withAlpha(30),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: const Color(0xFFD4AF37), width: 1),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.videocam_rounded,
+                    color: Color(0xFFD4AF37), size: 16),
+                SizedBox(width: 8),
+                Text(
+                  'EXCLUSIVO MULTICÁMARA',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFD4AF37),
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 2.5,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: camaras.length + 1, // +1 for the main stream
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return _buildCameraSelector(
+                  id: -1,
+                  nombre: "Gala / Principal",
+                  url: widget.channel.streamUrl.first.url,
+                  tipo: "principal",
+                  isDark: isDark,
+                );
+              }
+              final camara = camaras[index - 1];
+              return _buildCameraSelector(
+                id: camara.id,
+                nombre: camara.nombre,
+                url: camara.url,
+                tipo: camara.tipo,
+                isDark: isDark,
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          if (_currentChannel.description.isNotEmpty)
+            Text(
+              _currentChannel.description,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    height: 1.6,
+                    fontSize: 14,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCameraSelector({
+    required int id,
+    required String nombre,
+    required String url,
+    required String tipo,
+    required bool isDark,
+  }) {
+    bool isSelected = _selectedCameraId == id;
+    Color dominantColor = _getAmbientColor(tipo);
+
+    return GestureDetector(
+      onTap: () {
+        if (isSelected) return;
+        HapticFeedback.mediumImpact();
+
+        setState(() {
+          _selectedCameraId = id;
+          // Forzar la creación de un nuevo widget de reproductor
+          _videoPlayerKey = UniqueKey();
+          // Modificar la URL del canal actual temporalmente
+          _currentChannel = widget.channel.copyWith(
+            name: "${widget.channel.name} - $nombre",
+            streamUrl: [StreamSource(url: url)],
+          );
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? dominantColor.withAlpha(40)
+              : const Color(0xFF101010),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? dominantColor : Colors.white.withAlpha(30),
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: dominantColor.withAlpha(80),
+                    blurRadius: 10,
+                    offset: const Offset(0, 0),
+                  )
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.red : Colors.grey[700],
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    nombre,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? Colors.white : Colors.white70,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            if (tipo.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Padding(
+                padding: const EdgeInsets.only(left: 14),
+                child: Text(
+                  tipo.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: dominantColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ]
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getAmbientColor(String tipo) {
+    if (tipo.toLowerCase().contains("principal") ||
+        tipo.toLowerCase().contains("gala")) {
+      return const Color(0xFFD4AF37); // Dorado
+    } else if (tipo.toLowerCase().contains("exclusiva") ||
+        tipo.toLowerCase().contains("dormitorio")) {
+      return const Color(0xFF8A2BE2); // Violeta Eléctrico
+    } else if (tipo.toLowerCase().contains("jardin") ||
+        tipo.toLowerCase().contains("playa")) {
+      return const Color(0xFFF5DEB3); // Arena / Celeste
+    } else if (tipo.toLowerCase().contains("confesionario")) {
+      return Colors.redAccent;
+    }
+    return const Color(0xFF1E90FF); // Azul genérico
   }
 
   // Related channels methods removed as requested
