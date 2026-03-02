@@ -27,7 +27,8 @@ class MatchCard extends StatelessWidget {
 
     final screenWidth = MediaQuery.of(context).size.width;
     final cardWidth = screenWidth * 0.9;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     final teamA = soccerData!.teams.firstWhere(
       (t) => t.id == match.homeTeamId,
@@ -50,15 +51,14 @@ class MatchCard extends StatelessWidget {
     );
     final tournamentLogoUrl = league.logoUrl ?? '';
 
-    // Theme-aware colors
-    final cardBg = isDark ? const Color(0xFF0D0F14) : Colors.white;
-    final borderColor =
-        isDark ? const Color(0xFF1E2128) : const Color(0xFFE5E7EB);
-    final headerBg = isDark ? const Color(0xFF161921) : const Color(0xFFF9FAFB);
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final textPrimary = isDark ? Colors.white : const Color(0xFF111827);
-    final textSecondary = isDark ? Colors.white70 : const Color(0xFF6B7280);
-    final textMuted = isDark ? Colors.white54 : const Color(0xFF9CA3AF);
+    // Theme-aware colors directly from AppTheme
+    final cardBg = theme.cardColor;
+    final borderColor = theme.dividerTheme.color ?? theme.dividerColor;
+    final headerBg = theme.colorScheme.surfaceContainerHighest;
+    final primaryColor = theme.colorScheme.primary;
+    final textPrimary = theme.colorScheme.onSurface;
+    final textSecondary = theme.colorScheme.onSurface.withValues(alpha: 0.7);
+    final textMuted = theme.colorScheme.onSurface.withValues(alpha: 0.54);
 
     return Container(
       width: cardWidth,
@@ -362,7 +362,7 @@ class MatchCard extends StatelessWidget {
       children: [
         // Estado EN VIVO, FINALIZADO o TIEMPO
         if (isLive)
-          _buildLiveIndicator()
+          _buildLiveIndicator(context)
         else if (isFinished)
           _buildStatusBadge(
               timeStatus.isEmpty ? 'FINAL' : timeStatus.toUpperCase(),
@@ -411,15 +411,15 @@ class MatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildLiveIndicator() {
+  Widget _buildLiveIndicator(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFDC2626),
+        color: Theme.of(context).colorScheme.error,
         borderRadius: BorderRadius.circular(6),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFDC2626).withValues(alpha: 0.3),
+            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
             blurRadius: 8,
             spreadRadius: 0,
           ),
@@ -504,7 +504,7 @@ class MatchCard extends StatelessWidget {
             : match.isWatchable
                 ? _buildWatchButton(context, hasMultipleChannels, primaryColor,
                     isDark, borderColor)
-                : _buildComingSoonButton(isDark, borderColor),
+                : _buildComingSoonButton(context, isDark, borderColor),
       ),
     );
   }
@@ -526,7 +526,7 @@ class MatchCard extends StatelessWidget {
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
+              backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -581,8 +581,9 @@ class MatchCard extends StatelessWidget {
 
   Widget _buildOptionsButton(
       BuildContext context, bool isDark, Color borderColor) {
-    final iconColor = isDark ? Colors.white70 : const Color(0xFF6B7280);
-    final buttonBg = isDark ? const Color(0xFF1E2128) : const Color(0xFFF3F4F6);
+    final theme = Theme.of(context);
+    final iconColor = theme.colorScheme.onSurface.withValues(alpha: 0.7);
+    final buttonBg = theme.colorScheme.surfaceContainerHighest;
 
     return Container(
       width: 46,
@@ -607,9 +608,11 @@ class MatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildComingSoonButton(bool isDark, Color borderColor) {
-    final textColor = isDark ? Colors.white54 : const Color(0xFF9CA3AF);
-    final buttonBg = isDark ? const Color(0xFF1E2128) : const Color(0xFFF3F4F6);
+  Widget _buildComingSoonButton(
+      BuildContext context, bool isDark, Color borderColor) {
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onSurface.withValues(alpha: 0.54);
+    final buttonBg = theme.colorScheme.surfaceContainerHighest;
 
     return Container(
       width: double.infinity,
@@ -650,11 +653,11 @@ class MatchCard extends StatelessWidget {
       context,
       listen: false,
     );
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final modalBg = isDark ? const Color(0xFF0D0F14) : Colors.white;
-    final textPrimary = isDark ? Colors.white : const Color(0xFF111827);
-    final textSecondary = isDark ? Colors.white70 : const Color(0xFF6B7280);
-    final itemBg = isDark ? const Color(0xFF1E2128) : const Color(0xFFF9FAFB);
+    final theme = Theme.of(context);
+    final modalBg = theme.scaffoldBackgroundColor;
+    final textPrimary = theme.colorScheme.onSurface;
+    final textSecondary = theme.colorScheme.onSurface.withValues(alpha: 0.7);
+    final itemBg = theme.colorScheme.surfaceContainerHighest;
 
     showModalBottomSheet(
       context: context,

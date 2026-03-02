@@ -2,13 +2,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/dialog_styles.dart';
 
-enum AppDialogType { success, error, warning, info }
+export 'package:pivote/core/theme/dialog_styles.dart' show AppDialogType;
 
-// ─────────────────────────────────────────────────────────────
-//  AppDialogs  –  Public API (unchanged so callers don't break)
-// ─────────────────────────────────────────────────────────────
 class AppDialogs {
   static Future<bool?> showConfirm({
     required BuildContext context,
@@ -21,8 +18,8 @@ class AppDialogs {
   }) async {
     return showDialog<bool>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
-      builder: (_) => _PremiumDialog(
+      barrierColor: Colors.black.withAlpha(153), // 0.6
+      builder: (_) => _ModernDialog(
         title: title,
         message: message,
         confirmLabel: confirmLabel,
@@ -42,8 +39,8 @@ class AppDialogs {
   }) async {
     return showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
-      builder: (_) => _PremiumDialog(
+      barrierColor: Colors.black.withAlpha(153),
+      builder: (_) => _ModernDialog(
         title: title,
         message: message,
         type: type,
@@ -62,7 +59,7 @@ class AppDialogs {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (ctx) => _PremiumBottomSheet(
+      builder: (ctx) => _ModernBottomSheet(
         scrollable: scrollable,
         child: child,
       ),
@@ -76,82 +73,13 @@ class AppDialogs {
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
-      builder: (_) => const _PremiumLoadingDialog(),
+      barrierColor: Colors.black.withAlpha(140), // 0.55
+      builder: (_) => _ModernLoadingDialog(message: message),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  _DialogConfig  –  Per-type colors / icons / gradients
-// ─────────────────────────────────────────────────────────────
-class _DialogConfig {
-  final Color color;
-  final Color colorLight;
-  final IconData icon;
-  final List<Color> gradient;
-
-  const _DialogConfig({
-    required this.color,
-    required this.colorLight,
-    required this.icon,
-    required this.gradient,
-  });
-
-  static _DialogConfig of(AppDialogType type, bool isDark) {
-    switch (type) {
-      case AppDialogType.success:
-        final c = isDark ? AppTheme.darkSuccess : AppTheme.lightSuccess;
-        return _DialogConfig(
-          color: c,
-          colorLight: c.withValues(alpha: 0.12),
-          icon: Icons.check_rounded,
-          gradient: [
-            const Color(0xFF00C896),
-            const Color(0xFF00A878),
-          ],
-        );
-      case AppDialogType.error:
-        final c = isDark ? AppTheme.darkDanger : AppTheme.lightDanger;
-        return _DialogConfig(
-          color: c,
-          colorLight: c.withValues(alpha: 0.12),
-          icon: Icons.close_rounded,
-          gradient: [
-            const Color(0xFFFF5A5A),
-            const Color(0xFFE03A3A),
-          ],
-        );
-      case AppDialogType.warning:
-        final c = isDark ? AppTheme.darkWarning : AppTheme.lightWarning;
-        return _DialogConfig(
-          color: c,
-          colorLight: c.withValues(alpha: 0.12),
-          icon: Icons.priority_high_rounded,
-          gradient: [
-            const Color(0xFFFFB547),
-            const Color(0xFFFF9500),
-          ],
-        );
-      case AppDialogType.info:
-        return _DialogConfig(
-          color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
-          colorLight: (isDark ? AppTheme.darkAccent : AppTheme.lightAccent)
-              .withValues(alpha: 0.12),
-          icon: Icons.info_rounded,
-          gradient: [
-            const Color(0xFF5B8AF5),
-            const Color(0xFF3D6AE0),
-          ],
-        );
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-//  _PremiumDialog
-// ─────────────────────────────────────────────────────────────
-class _PremiumDialog extends StatefulWidget {
+class _ModernDialog extends StatelessWidget {
   final String title;
   final String message;
   final String? confirmLabel;
@@ -160,7 +88,7 @@ class _PremiumDialog extends StatefulWidget {
   final AppDialogType type;
   final bool isConfirm;
 
-  const _PremiumDialog({
+  const _ModernDialog({
     required this.title,
     required this.message,
     this.confirmLabel,
@@ -171,296 +99,179 @@ class _PremiumDialog extends StatefulWidget {
   });
 
   @override
-  State<_PremiumDialog> createState() => _PremiumDialogState();
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final iconColor = DialogStyles.getIconColor(type, isDark);
+    final iconBgColor = DialogStyles.getIconBgColor(type, isDark);
+    final iconData = DialogStyles.getIcon(type);
+
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+      child: Dialog(
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DialogStyles.borderRadius),
+          side: BorderSide(
+            color: theme.dividerColor.withAlpha(20),
+            width: 1,
+          ),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Padding(
+          padding: DialogStyles.contentPadding,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon Badge
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    iconData,
+                    color: iconColor,
+                    size: 32,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Title
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.syne(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Message
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dmSans(
+                  fontSize: 15,
+                  height: 1.5,
+                  color: theme.colorScheme.onSurface.withAlpha(170), // ~0.65
+                ),
+              ),
+              const SizedBox(height: 32),
+              // Actions
+              if (isConfirm)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _DialogButton(
+                        label: cancelLabel ?? 'Cancelar',
+                        isPrimary: false,
+                        onTap: () => Navigator.pop(context, false),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _DialogButton(
+                        label: confirmLabel ?? 'Confirmar',
+                        isPrimary: true,
+                        isDestructive: isDestructive,
+                        accentColor: iconColor,
+                        onTap: () => Navigator.pop(context, true),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: _DialogButton(
+                    label: 'Entendido',
+                    isPrimary: true,
+                    accentColor: iconColor,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _PremiumDialogState extends State<_PremiumDialog>
-    with TickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scale;
-  late final Animation<double> _fade;
-  late final Animation<Offset> _slide;
-  late final AnimationController _iconController;
-  late final Animation<double> _iconScale;
+class _DialogButton extends StatelessWidget {
+  final String label;
+  final bool isPrimary;
+  final bool isDestructive;
+  final Color? accentColor;
+  final VoidCallback onTap;
 
-  @override
-  void initState() {
-    super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 380),
-    );
-
-    _scale = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0, 0.8, curve: Curves.easeOutBack),
-    ).drive(Tween(begin: 0.82, end: 1.0));
-
-    _fade = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0, 0.5, curve: Curves.easeOut),
-    ).drive(Tween(begin: 0.0, end: 1.0));
-
-    _slide = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0, 0.6, curve: Curves.easeOutCubic),
-    ).drive(Tween(begin: const Offset(0, 0.04), end: Offset.zero));
-
-    _iconController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 550),
-    );
-
-    _iconScale = CurvedAnimation(
-      parent: _iconController,
-      curve: const Interval(0.3, 1.0, curve: Curves.elasticOut),
-    ).drive(Tween(begin: 0.0, end: 1.0));
-
-    _controller.forward();
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (mounted) _iconController.forward();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _iconController.dispose();
-    super.dispose();
-  }
+  const _DialogButton({
+    required this.label,
+    required this.isPrimary,
+    this.isDestructive = false,
+    this.accentColor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final cfg = _DialogConfig.of(widget.type, isDark);
-    final mq = MediaQuery.of(context);
-    final maxW = (mq.size.width * 0.88).clamp(0.0, 380.0);
 
-    return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-      child: FadeTransition(
-        opacity: _fade,
-        child: ScaleTransition(
-          scale: _scale,
-          child: SlideTransition(
-            position: _slide,
-            child: Dialog(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: maxW),
-                child: _buildCard(context, theme, isDark, cfg),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    Color getBgColor() {
+      if (!isPrimary) return theme.colorScheme.onSurface.withAlpha(15);
+      if (isDestructive) return theme.colorScheme.error;
+      return accentColor ?? theme.colorScheme.primary;
+    }
 
-  Widget _buildCard(
-    BuildContext context,
-    ThemeData theme,
-    bool isDark,
-    _DialogConfig cfg,
-  ) {
-    final surfaceColor = isDark
-        ? const Color(0xFF1C1C1E)
-        : Colors.white;
+    Color getTextColor() {
+      if (!isPrimary) return theme.colorScheme.onSurface;
+      if (isDestructive) return Colors.white;
+      // In primary button with accent tint
+      return theme.brightness == Brightness.dark &&
+              (accentColor == theme.colorScheme.primary ||
+                  accentColor == const Color(0xFFC8FF47))
+          ? const Color(0xFF090B0F)
+          : Colors.white;
+    }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.07)
-              : Colors.black.withValues(alpha: 0.04),
-          width: 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: cfg.color.withValues(alpha: 0.15),
-            blurRadius: 60,
-            spreadRadius: -5,
-            offset: const Offset(0, 20),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.12),
-            blurRadius: 40,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Top accent bar
-            Container(
-              height: 4,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: cfg.gradient),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildIconBadge(cfg, isDark),
-                  const SizedBox(height: 24),
-                  Text(
-                    widget.title,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.syne(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.message,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 14.5,
-                      height: 1.6,
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.55),
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  widget.isConfirm
-                      ? _buildConfirmActions(context, theme, cfg)
-                      : _buildAlertAction(context, theme, cfg),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIconBadge(_DialogConfig cfg, bool isDark) {
-    return ScaleTransition(
-      scale: _iconScale,
+    return InkWell(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        width: 72,
-        height: 72,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: cfg.colorLight,
-          shape: BoxShape.circle,
+          color: getBgColor(),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Subtle ring
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: cfg.color.withValues(alpha: 0.2),
-                  width: 1.5,
-                ),
-              ),
-            ),
-            // Inner gradient circle
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: cfg.gradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: cfg.color.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(cfg.icon, color: Colors.white, size: 24),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConfirmActions(
-    BuildContext context,
-    ThemeData theme,
-    _DialogConfig cfg,
-  ) {
-    return Row(
-      children: [
-        Expanded(
-          child: _GhostButton(
-            label: widget.cancelLabel ?? 'Cancelar',
-            onTap: () {
-              HapticFeedback.lightImpact();
-              Navigator.pop(context, false);
-            },
+        child: Text(
+          label,
+          style: GoogleFonts.dmSans(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: getTextColor(),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _GradientButton(
-            label: widget.confirmLabel ?? 'Confirmar',
-            gradient: widget.isDestructive
-                ? const [Color(0xFFFF5A5A), Color(0xFFE03A3A)]
-                : cfg.gradient,
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              Navigator.pop(context, true);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAlertAction(
-    BuildContext context,
-    ThemeData theme,
-    _DialogConfig cfg,
-  ) {
-    return SizedBox(
-      width: double.infinity,
-      child: _GradientButton(
-        label: 'Entendido',
-        gradient: cfg.gradient,
-        onTap: () {
-          HapticFeedback.lightImpact();
-          Navigator.pop(context);
-        },
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  _PremiumBottomSheet
-// ─────────────────────────────────────────────────────────────
-class _PremiumBottomSheet extends StatelessWidget {
+class _ModernBottomSheet extends StatelessWidget {
   final Widget child;
   final bool scrollable;
 
-  const _PremiumBottomSheet({
+  const _ModernBottomSheet({
     required this.child,
     required this.scrollable,
   });
@@ -468,7 +279,6 @@ class _PremiumBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final mq = MediaQuery.of(context);
 
     return Container(
@@ -476,28 +286,21 @@ class _PremiumBottomSheet extends StatelessWidget {
         maxHeight: mq.size.height * 0.92,
       ),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 50,
-            offset: const Offset(0, -10),
-          ),
-        ],
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Drag handle
           Padding(
-            padding: const EdgeInsets.only(top: 14, bottom: 6),
+            padding: const EdgeInsets.only(top: 12, bottom: 8),
             child: Container(
-              width: 40,
+              width: 48,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
+                color: theme.dividerColor,
+                borderRadius: BorderRadius.circular(4),
               ),
             ),
           ),
@@ -510,254 +313,46 @@ class _PremiumBottomSheet extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  _PremiumLoadingDialog
-// ─────────────────────────────────────────────────────────────
-class _PremiumLoadingDialog extends StatefulWidget {
-  const _PremiumLoadingDialog();
+class _ModernLoadingDialog extends StatelessWidget {
+  final String message;
 
-  @override
-  State<_PremiumLoadingDialog> createState() => _PremiumLoadingDialogState();
-}
-
-class _PremiumLoadingDialogState extends State<_PremiumLoadingDialog>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse;
-  late final Animation<double> _pulseAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-
-    _pulseAnim = CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)
-        .drive(Tween(begin: 0.85, end: 1.0));
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
+  const _ModernLoadingDialog({required this.message});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return PopScope(
       canPop: false,
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
         child: Center(
-          child: ScaleTransition(
-            scale: _pulseAnim,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 36),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.07)
-                      : Colors.black.withValues(alpha: 0.04),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: theme.dividerColor.withAlpha(20),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  color: theme.colorScheme.primary,
+                  strokeWidth: 3,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 50,
-                    offset: const Offset(0, 20),
+                const SizedBox(height: 24),
+                Text(
+                  message,
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: theme.colorScheme.onSurface,
                   ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      strokeCap: StrokeCap.round,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Cargando...',
-                    style: GoogleFonts.dmSans(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-//  Reusable Button Primitives
-// ─────────────────────────────────────────────────────────────
-
-class _GradientButton extends StatefulWidget {
-  final String label;
-  final List<Color> gradient;
-  final VoidCallback onTap;
-
-  const _GradientButton({
-    required this.label,
-    required this.gradient,
-    required this.onTap,
-  });
-
-  @override
-  State<_GradientButton> createState() => _GradientButtonState();
-}
-
-class _GradientButtonState extends State<_GradientButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _press;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _press = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-      reverseDuration: const Duration(milliseconds: 200),
-    );
-    _scale = CurvedAnimation(parent: _press, curve: Curves.easeOut)
-        .drive(Tween(begin: 1.0, end: 0.95));
-  }
-
-  @override
-  void dispose() {
-    _press.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _press.forward(),
-      onTapUp: (_) {
-        _press.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () => _press.reverse(),
-      child: ScaleTransition(
-        scale: _scale,
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: widget.gradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: widget.gradient.first.withValues(alpha: 0.35),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            widget.label,
-            style: GoogleFonts.dmSans(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: Colors.white,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GhostButton extends StatefulWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _GhostButton({required this.label, required this.onTap});
-
-  @override
-  State<_GhostButton> createState() => _GhostButtonState();
-}
-
-class _GhostButtonState extends State<_GhostButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _press;
-  late final Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _press = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-      reverseDuration: const Duration(milliseconds: 200),
-    );
-    _scale = CurvedAnimation(parent: _press, curve: Curves.easeOut)
-        .drive(Tween(begin: 1.0, end: 0.95));
-  }
-
-  @override
-  void dispose() {
-    _press.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return GestureDetector(
-      onTapDown: (_) => _press.forward(),
-      onTapUp: (_) {
-        _press.reverse();
-        widget.onTap();
-      },
-      onTapCancel: () => _press.reverse(),
-      child: ScaleTransition(
-        scale: _scale,
-        child: Container(
-          height: 52,
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.06),
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            widget.label,
-            style: GoogleFonts.dmSans(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-              letterSpacing: 0.2,
+                ),
+              ],
             ),
           ),
         ),

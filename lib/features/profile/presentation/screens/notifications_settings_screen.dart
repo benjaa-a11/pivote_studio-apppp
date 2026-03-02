@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/services/notification_service.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class NotificationsSettingsScreen extends StatefulWidget {
@@ -80,33 +81,19 @@ class _NotificationsSettingsScreenState
   }
 
   void _showPermissionDialog() {
-    showDialog(
+    AppDialogs.showConfirm(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Permiso requerido',
-          style: GoogleFonts.syne(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
+      title: 'Permiso requerido',
+      message:
           'Para recibir notificaciones, necesitas habilitar los permisos en la configuración de tu dispositivo.',
-          style: GoogleFonts.dmSans(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancelar', style: GoogleFonts.dmSans()),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              openAppSettings();
-            },
-            child: Text('Abrir Configuración',
-                style: GoogleFonts.dmSans(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
+      confirmLabel: 'Configuración',
+      cancelLabel: 'Cancelar',
+      type: AppDialogType.warning,
+    ).then((confirmed) {
+      if (confirmed == true) {
+        openAppSettings();
+      }
+    });
   }
 
   Future<void> _sendTestNotification() async {

@@ -4,7 +4,7 @@ import 'package:skeletonizer/skeletonizer.dart';
 import 'package:pivote/features/home/presentation/screens/search_screen.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:pivote/core/services/greeting_service.dart';
 
 class SearchHeader extends StatefulWidget {
@@ -23,8 +23,6 @@ class _SearchHeaderState extends State<SearchHeader> {
     // Calculate greetings and date during build to ensure they are current
     // but stay stable due to deterministic GreetingService.
     final greeting = GreetingService.getGreeting();
-    final subtitle = GreetingService.getSubtitle();
-    final date = GreetingService.getFormattedDate();
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
@@ -92,52 +90,6 @@ class _SearchHeaderState extends State<SearchHeader> {
                           fontSize: 24,
                           letterSpacing: -0.8,
                           height: 1.1,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    // Subtitle / Soccer Phrase
-                    AppAnimations.staggeredSlideIn(
-                      index: 1,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 3,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primary,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              subtitle,
-                              style: GoogleFonts.dmSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.primary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    // Date
-                    AppAnimations.staggeredSlideIn(
-                      index: 2,
-                      child: Text(
-                        date,
-                        style: GoogleFonts.dmSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.4),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

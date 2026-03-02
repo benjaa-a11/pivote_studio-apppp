@@ -2,68 +2,69 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // ==================== COLORES OSCUROS (Basado en CSS) ====================
-  static const Color darkBg = Color(0xFF090909); // --bg
-  static const Color darkBg1 = Color(0xFF101010); // --bg1
-  static const Color darkBg2 = Color(0xFF161616); // --bg2
-  static const Color darkBg3 = Color(0xFF1E1E1E); // --bg3
-  static const Color darkBg4 = Color(0xFF252525); // --bg4
-  static const Color darkBorder = Color(0xFF2A2A2A); // --border
-  static const Color darkBorder2 = Color(0xFF333333); // --border2
+  // ==================== COLORES OSCUROS (Premium Tint) ====================
+  static const Color darkBg = Color(0xFF090B0F); // Fondo profundo
+  static const Color darkBg1 = Color(0xFF0E1116); // Superficie principal
+  static const Color darkBg2 = Color(0xFF13171D); // Tarjetas / modales
+  static const Color darkBg3 = Color(0xFF1A1F26); // Hover / elementos elevados
+  static const Color darkBg4 = Color(0xFF222831); // Presionado / destacado
+  static const Color darkBorder = Color(0xFF262C36); // Borde sutil
+  static const Color darkBorder2 = Color(0xFF333A45); // Borde fuerte
 
-  // Accent principal - Verde lima brillante
+  // Accent principal - Verde lima brillante (se mantiene)
   static const Color darkAccent = Color(0xFFC8FF47); // --accent
   static const Color darkAccentDim = Color(0x1AC8FF47); // --accent-dim (10%)
   static const Color darkAccentGlow = Color(0x38C8FF47); // --accent-glow (22%)
 
   // Estados
-  static const Color darkDanger = Color(0xFFFF4757); // --danger
-  static const Color darkDangerDim = Color(0x1FFF4757); // --danger-dim
-  static const Color darkWarning = Color(0xFFFFA502); // --warning
-  static const Color darkWarningDim = Color(0x1FFFA502); // --warning-dim
-  static const Color darkSuccess = Color(0xFF2ED573); // --success
-  static const Color darkSuccessDim = Color(0x1F2ED573); // --success-dim
-  static const Color darkInfo = Color(0xFF1E90FF); // --info
-  static const Color darkInfoDim = Color(0x1F1E90FF); // --info-dim
+  static const Color darkDanger = Color(0xFFFF4D4F); // Rojo suave premium
+  static const Color darkDangerDim = Color(0x1FFF4D4F); // --danger-dim
+  static const Color darkWarning = Color(0xFFFAAD14); // Naranja premium
+  static const Color darkWarningDim = Color(0x1FFAAD14); // --warning-dim
+  static const Color darkSuccess = Color(0xFF52C41A); // Verde premium
+  static const Color darkSuccessDim = Color(0x1F52C41A); // --success-dim
+  static const Color darkInfo = Color(0xFF1677FF); // Azul premium
+  static const Color darkInfoDim = Color(0x1F1677FF); // --info-dim
 
   // Textos
-  static const Color darkText = Color(0xFFF0F0F0); // --text
-  static const Color darkText2 = Color(0xFF999999); // --text2
-  static const Color darkText3 = Color(0xFF555555); // --text3
+  static const Color darkText = Color(0xFFF0F4F8); // Texto puro
+  static const Color darkText2 = Color(0xFFA1AAB5); // Texto secundario
+  static const Color darkText3 = Color(0xFF6E7885); // Texto terciario
 
   // Alias helpers
   static const Color darkCard = darkBg2;
   static const Color lightCard = lightBg1;
 
   // ==================== COLORES CLAROS (Refinado y Profesional) ====================
-  static const Color lightBg = Color(0xFFFAFAFA); // Fondo principal suave
+  static const Color lightBg =
+      Color(0xFFF4F6F8); // Fondo principal suave (cool gray)
   static const Color lightBg1 = Color(0xFFFFFFFF); // Superficie principal
-  static const Color lightBg2 = Color(0xFFF5F5F5); // Superficie secundaria
-  static const Color lightBg3 = Color(0xFFEEEEEE); // Superficie terciaria
-  static const Color lightBg4 = Color(0xFFE0E0E0); // Superficie hover
-  static const Color lightBorder = Color(0xFFE0E0E0); // Borde principal
-  static const Color lightBorder2 = Color(0xFFBDBDBD); // Borde secundario
+  static const Color lightBg2 = Color(0xFFEDF1F5); // Superficie secundaria
+  static const Color lightBg3 = Color(0xFFE3E8ED); // Superficie terciaria
+  static const Color lightBg4 = Color(0xFFD3DCE6); // Superficie hover
+  static const Color lightBorder = Color(0xFFDCE2E8); // Borde principal
+  static const Color lightBorder2 = Color(0xFFC4CDD5); // Borde secundario
 
   // Accent para modo claro - Verde lima más oscuro para mejor contraste
   static const Color lightAccent =
-      Color(0xFF9FCC00); // Versión más oscura del accent
-  static const Color lightAccentDim = Color(0x1A9FCC00); // Dim version
-  static const Color lightAccentGlow = Color(0x389FCC00); // Glow version
+      Color(0xFF8AB300); // Versión más oscura y legible
+  static const Color lightAccentDim = Color(0x1A8AB300); // Dim version
+  static const Color lightAccentGlow = Color(0x388AB300); // Glow version
 
   // Estados modo claro
-  static const Color lightDanger = Color(0xFFD32F2F); // Danger más oscuro
-  static const Color lightDangerDim = Color(0x1FD32F2F);
-  static const Color lightWarning = Color(0xFFF57C00); // Warning más oscuro
-  static const Color lightWarningDim = Color(0x1FF57C00);
-  static const Color lightSuccess = Color(0xFF388E3C); // Success más oscuro
-  static const Color lightSuccessDim = Color(0x1F388E3C);
-  static const Color lightInfo = Color(0xFF1976D2); // Info más oscuro
-  static const Color lightInfoDim = Color(0x1F1976D2);
+  static const Color lightDanger = Color(0xFFCF1322); // Danger más oscuro
+  static const Color lightDangerDim = Color(0x1FCF1322);
+  static const Color lightWarning = Color(0xFFD4380D); // Warning más oscuro
+  static const Color lightWarningDim = Color(0x1FD4380D);
+  static const Color lightSuccess = Color(0xFF389E0D); // Success más oscuro
+  static const Color lightSuccessDim = Color(0x1F389E0D);
+  static const Color lightInfo = Color(0xFF0958D9); // Info más oscuro
+  static const Color lightInfoDim = Color(0x1F0958D9);
 
   // Textos modo claro
-  static const Color lightText = Color(0xFF212121); // Texto principal
-  static const Color lightText2 = Color(0xFF757575); // Texto secundario
-  static const Color lightText3 = Color(0xFFBDBDBD); // Texto terciario
+  static const Color lightText = Color(0xFF1C222B); // Texto principal
+  static const Color lightText2 = Color(0xFF5A6675); // Texto secundario
+  static const Color lightText3 = Color(0xFF8C9BAA); // Texto terciario
 
   // ==================== TEMA OSCURO ====================
   static ThemeData darkTheme = ThemeData(
