@@ -139,14 +139,15 @@ class SupportScreen extends StatelessWidget {
     required IconData icon,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: theme.colorScheme.surfaceContainerHighest.withAlpha(51),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+          border: Border.all(color: theme.dividerColor.withAlpha(26)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -172,7 +173,7 @@ class SupportScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+          color: theme.colorScheme.surfaceContainerHighest.withAlpha(51),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: theme.dividerColor.withValues(alpha: 0.05)),
         ),

@@ -17,8 +17,10 @@ import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:pivote/shared/widgets/connectivity_wrapper.dart';
 import 'package:pivote/core/services/notification_service.dart';
+import 'package:pivote/features/video/presentation/services/webview_preloader.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 
 // Background message handler (must be top-level)
 @pragma('vm:entry-point')
@@ -39,6 +41,13 @@ void main() async {
 
   // Initialize notification handlers for already-authorized users (no permission prompt)
   await NotificationService.initializeWithoutPermission();
+
+  // === APP OPTIMIZATIONS ===
+  // 1. Preload Soccer API in background
+  SoccerService.prefetchLiveSoccerData();
+
+  // 2. Pre-warm WebView chromium engine in background to prevent 1s hitch
+  WebViewPreloader.instance.init();
 
   // AudioManager will be initialized lazily or via the Provider
   final audioManager = AudioManager();

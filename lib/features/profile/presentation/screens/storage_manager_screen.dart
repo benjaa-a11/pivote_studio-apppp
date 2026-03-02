@@ -250,7 +250,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
+                color: theme.colorScheme.surfaceContainerHighest.withAlpha(51),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 24),
@@ -296,13 +296,14 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
   }
 
   Widget _buildClearAllButton(BuildContext context) {
+    final theme = Theme.of(context);
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: _isCleaning ? null : () => _handleClearCache('all'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.black,
-          foregroundColor: Colors.white,
+          backgroundColor: theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
           padding: const EdgeInsets.symmetric(vertical: 20),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),

@@ -22,7 +22,7 @@ class SoccerService {
         final url = doc.data()!['url'] as String?;
         if (url != null && url.isNotEmpty) {
           _cachedApiUrl = url;
-          debugPrint('URL de API de fútbol obtenida desde Firestore: $url');
+          debugPrint('🌐 SoccerService: API URL obtenida: $url');
           return url;
         }
       }
@@ -34,7 +34,31 @@ class SoccerService {
     return _defaultApiUrl;
   }
 
+  // === PREFETCHING OPTIMIZATION ===
+  static Future<SoccerData>? _prefetchFuture;
+
+  static void prefetchLiveSoccerData() {
+    debugPrint('🚀 SoccerService: Iniciando pre-fetch en background...');
+    _prefetchFuture = SoccerService()._executeFetch();
+  }
+
   Future<SoccerData> fetchLiveSoccerData() async {
+    if (_prefetchFuture != null) {
+      debugPrint('⚡ SoccerService: Consumiendo data pre-cargada!');
+      try {
+        final data = await _prefetchFuture!;
+        _prefetchFuture = null; // Clear after consumption
+        return data;
+      } catch (e) {
+        _prefetchFuture = null;
+        debugPrint('⚠️ Pre-fetch falló, re-intentando: $e');
+        return _executeFetch();
+      }
+    }
+    return _executeFetch();
+  }
+
+  Future<SoccerData> _executeFetch() async {
     try {
       final apiUrl = await _getApiUrl();
       final response = await http.get(Uri.parse(apiUrl));
@@ -46,7 +70,7 @@ class SoccerService {
         throw Exception('Error al cargar datos: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('Error en SoccerService: $e');
+      debugPrint('❌ Error en SoccerService._executeFetch: $e');
       rethrow;
     }
   }

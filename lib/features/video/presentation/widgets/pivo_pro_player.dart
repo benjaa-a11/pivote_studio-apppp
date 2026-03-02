@@ -3,12 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
-import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
+import 'package:pivote/features/video/presentation/services/webview_preloader.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// ═══════════════════════════════════════════════════════════════
@@ -106,53 +105,29 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   // ═══════════════════════════════════════
 
   void _initializeWebView() {
-    late final PlatformWebViewControllerCreationParams params;
+    // ⚡ OPTIMIZACIÓN LÍQUIDA: Obtenemos el WebViewController que ya se
+    // pre-calentó en memoria durante el splash de la aplicación.
+    _webViewController = WebViewPreloader.instance.claimController();
 
-    if (WebViewPlatform.instance is WebKitWebViewPlatform) {
-      params = WebKitWebViewControllerCreationParams(
-        allowsInlineMediaPlayback: true,
-        mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
-      );
-    } else {
-      params = const PlatformWebViewControllerCreationParams();
-    }
-
-    _webViewController = WebViewController.fromPlatformCreationParams(params);
-
-    // Android Optimizations
-    if (_webViewController.platform is AndroidWebViewController) {
-      final androidController =
-          _webViewController.platform as AndroidWebViewController;
-
-      androidController.setMediaPlaybackRequiresUserGesture(false);
-
-      androidController.setGeolocationPermissionsPromptCallbacks(
-        onShowPrompt: (request) async {
-          return const GeolocationPermissionsResponse(
-            allow: false,
-            retain: false,
-          );
-        },
-      );
-    }
-
-    _webViewController.setUserAgent(PlayerConfig.userAgent);
-
+    // Reasignar delegados a este State local
     _webViewController
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.black)
-      ..setNavigationDelegate(
+      .setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: _onPageStarted,
           onPageFinished: _onPageFinished,
           onWebResourceError: _onWebResourceError,
         ),
-      )
-      ..addJavaScriptChannel(
-        'FlutterChannel',
-        onMessageReceived: _handleMessageFromHtml,
-      )
-      ..loadRequest(Uri.parse(widget.url));
+      );
+
+    // Limpiamos los canales previos por si fue reusado
+    _webViewController.removeJavaScriptChannel('FlutterChannel');
+    _webViewController.addJavaScriptChannel(
+      'FlutterChannel',
+      onMessageReceived: _handleMessageFromHtml,
+    );
+
+    // Cargar la URL solicitada instantáneamente en el motor ya corriendo
+    _webViewController.loadRequest(Uri.parse(widget.url));
 
     _unifiedController =
         UnifiedVideoController.fromWeb(_webViewController, _videoState);
@@ -703,6 +678,9 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     _stateSubscription?.cancel();
     _unifiedController.dispose();
     _videoState.dispose();
+
+    // ⚡ Liberar de vuelto al Pool (detiene audios y limpia procesos ocultos)
+    WebViewPreloader.instance.releaseController(_webViewController);
 
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(

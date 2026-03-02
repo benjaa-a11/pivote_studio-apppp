@@ -186,7 +186,7 @@ class PrivacySecurityScreen extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        tileColor: theme.colorScheme.surface,
+        tileColor: theme.colorScheme.surfaceContainerHighest.withAlpha(51),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.05)),

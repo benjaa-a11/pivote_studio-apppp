@@ -124,7 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final imagePath = userProvider.profileImagePath;
 
     return SliverAppBar(
-      expandedHeight: 340,
+      expandedHeight: 380, // Aumentado para que el botón no se corte
       pinned: true,
       stretch: true,
       backgroundColor: theme.colorScheme.primary,
@@ -190,17 +190,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 10),
                     child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(40),
-                        bottomRight: Radius.circular(40),
-                        topLeft: Radius.circular(24),
-                        topRight: Radius.circular(24),
-                      ),
+                      // Redondeamos TODO el contenedor de la info
+                      borderRadius: BorderRadius.circular(40),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             vertical: 32, horizontal: 24),
-                        decoration: const BoxDecoration(
-                          color: Colors.transparent,
+                        decoration: BoxDecoration(
+                          color: (isDark ? Colors.black : Colors.white)
+                              .withAlpha(15),
+                          borderRadius: BorderRadius.circular(40),
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -402,9 +400,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+          color: theme.colorScheme.surfaceContainerHighest.withAlpha(51),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: theme.dividerColor.withAlpha(13)),
+          border: Border.all(color: theme.dividerColor.withAlpha(20)),
         ),
         child: Column(
           children: [
@@ -592,11 +590,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        tileColor: theme.colorScheme.surface,
+        tileColor: theme.colorScheme.surfaceContainerHighest.withAlpha(76),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: theme.dividerColor.withAlpha(13))),
-        leading: Icon(icon, color: theme.colorScheme.primary),
+            side: BorderSide(color: theme.dividerColor.withAlpha(20))),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withAlpha(26),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+        ),
         title: Text(title,
             style:
                 GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15)),
