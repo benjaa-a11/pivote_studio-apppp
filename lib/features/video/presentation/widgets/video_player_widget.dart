@@ -69,6 +69,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   int _serverAttempt = 0;
   int _stuckCounter = 0;
   int _consecutiveErrors = 0;
+
+  /// Track original HTTP URL for HTTPS→HTTP rollback
+  String? _originalHttpUrl;
   bool _useHtmlPlayer = false;
 
   /// Mutex to prevent concurrent initialization
@@ -192,6 +195,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_playbackStartTime != null) {
       final elapsed = DateTime.now().difference(_playbackStartTime!);
       if (elapsed < PlayerConfig.watchdogGracePeriod) return;
+    } else {
+      // Not started yet — don't watchdog
+      return;
     }
 
     final bufferHealth = _unifiedController!.bufferHealth;
@@ -199,9 +205,21 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     final isBuffering = _unifiedController!.isBuffering;
 
     // Healthy playback — reset counters
-    if (isPlaying && !isBuffering && bufferHealth > 20) {
+    if (isPlaying && !isBuffering && bufferHealth > 15) {
       _stuckCounter = 0;
       _consecutiveErrors = 0;
+      return;
+    }
+
+    // Transitioning from buffering → playing → reset stuck counter
+    if (isPlaying && !isBuffering && _stuckCounter > 0) {
+      _stuckCounter = 0;
+      return;
+    }
+
+    // Early-play tolerance: first 5 seconds of playback allow low buffer
+    final playElapsed = DateTime.now().difference(_playbackStartTime!);
+    if (playElapsed.inSeconds < 5 && isPlaying) {
       return;
     }
 
@@ -345,12 +363,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
 
     // ── Step 2: HTTP Stabilizer ──────────────────────
-    // Upgrade HTTP to HTTPS for unstable connections
+    // Try HTTPS first, but track original for rollback
+    _originalHttpUrl = null;
     if (url.startsWith('http://')) {
+      _originalHttpUrl = url; // Save for rollback
       final httpsUrl = url.replaceFirst('http://', 'https://');
       debugPrint(
           '🔒 HTTP → HTTPS upgrade: ${httpsUrl.substring(0, min(60, httpsUrl.length))}...');
-      // Try HTTPS first, fall back to HTTP if it fails
       url = httpsUrl;
     }
 
@@ -410,12 +429,26 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Future<String?> _resolveStreamUrl(String url) async {
     debugPrint('🔍 Resolving URL...');
 
-    // Fast path: if URL is clearly an M3U8, don't resolve
     final urlLower = url.toLowerCase();
+
+    // Fast path: if URL is clearly an M3U8, don't resolve
     if (urlLower.endsWith('.m3u8') ||
         urlLower.contains('.m3u8?') ||
-        urlLower.contains('.m3u8#')) {
+        urlLower.contains('.m3u8#') ||
+        urlLower.contains('.m3u8/')) {
       debugPrint('✅ Direct M3U8 URL — no resolution needed');
+      return url;
+    }
+
+    // Fast path: known streaming CDN patterns — skip resolution
+    if (urlLower.contains('akamaized.net') ||
+        urlLower.contains('cloudfront.net') ||
+        urlLower.contains('cdn.') ||
+        urlLower.contains('live.') ||
+        urlLower.contains('stream.') ||
+        urlLower.contains('hls.') ||
+        urlLower.contains('.ts')) {
+      debugPrint('✅ Known CDN pattern — no resolution needed');
       return url;
     }
 
@@ -560,13 +593,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   // VideoPlayer (HLS) — Enhanced
   // ═══════════════════════════════════════
 
-  Future<void> _initializeVideoPlayer(String url) async {
+  Future<void> _initializeVideoPlayer(String url,
+      {bool isHttpFallback = false}) async {
     if (_isDisposed) return;
 
     try {
       await _disposeExistingControllers();
 
-      debugPrint('🎬 Initializing VideoPlayer (HLS)');
+      debugPrint(
+          '🎬 Initializing VideoPlayer (HLS)${isHttpFallback ? ' [HTTP fallback]' : ''}');
 
       final headers = <String, String>{
         'User-Agent': PlayerConfig.userAgent,
@@ -608,6 +643,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _unifiedController =
           UnifiedVideoController.fromVideoPlayer(_videoPlayerController!);
 
+      // Cancel timeouts — initialization succeeded
       _serverTimeoutTimer?.cancel();
       _loadingFailsafe?.cancel();
 
@@ -620,10 +656,39 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _retryCount = 0;
       _stuckCounter = 0;
       _consecutiveErrors = 0;
+      _originalHttpUrl = null; // No longer need rollback
 
       debugPrint('✅ VideoPlayer ready — playback started');
     } catch (e, st) {
-      debugPrint('❌ VideoPlayer error: $e\n$st');
+      debugPrint('❌ VideoPlayer init error: $e\n$st');
+
+      // Fix: If HTTPS failed and we have original HTTP URL, try HTTP first
+      if (!isHttpFallback && _originalHttpUrl != null) {
+        debugPrint('🔄 HTTPS failed — falling back to original HTTP URL');
+        _originalHttpUrl = null;
+        final httpUrl = url.replaceFirst('https://', 'http://');
+        await Future.delayed(
+            const Duration(milliseconds: PlayerConfig.quickRetryDelayMs));
+        if (!_isDisposed && mounted) {
+          await _initializeVideoPlayer(httpUrl, isHttpFallback: true);
+        }
+        return;
+      }
+
+      // Fix: Quick retry on same server before failover
+      _retryCount++;
+      if (_retryCount <= 1 && _currentStream != null) {
+        debugPrint(
+            '🔄 Quick retry $_retryCount on same server before failover');
+        _setPlayerState(PlayerState.retrying);
+        await Future.delayed(
+            const Duration(milliseconds: PlayerConfig.quickRetryDelayMs));
+        if (!_isDisposed && mounted) {
+          await _initializeVideoPlayer(_currentStream!.url);
+        }
+        return;
+      }
+
       await _handleServerFailure();
     }
   }
@@ -859,6 +924,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                       onRefresh: _handleServerFailure,
                       currentServer: _currentServerIndex + 1,
                       totalServers: widget.channel.streamUrl.length,
+                      onAllServersFailed: () {
+                        // Iframe exhausted its servers — try next m3u8 server
+                        debugPrint(
+                            '🔄 Iframe reported all servers failed — continuing to next server');
+                        _handleServerFailure();
+                      },
                     )
                   : AspectRatio(
                       aspectRatio: _getAspectRatio(),

@@ -7,10 +7,9 @@ import 'package:pivote/features/video/presentation/widgets/custom_video_controls
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
-import 'package:pivote/features/video/presentation/services/webview_preloader.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// ═══════════════════════════════════════════════════════════════
+// Android Platform Import for advanced configuration
 /// PivoProPlayer v5.0 — WebView-based Player
 /// ═══════════════════════════════════════════════════════════════
 ///
@@ -23,6 +22,7 @@ class PivoProPlayer extends StatefulWidget {
   final String url;
   final String channelName;
   final VoidCallback? onRefresh;
+  final VoidCallback? onAllServersFailed;
   final int currentServer;
   final int totalServers;
 
@@ -31,6 +31,7 @@ class PivoProPlayer extends StatefulWidget {
     required this.url,
     required this.channelName,
     this.onRefresh,
+    this.onAllServersFailed,
     this.currentServer = 1,
     this.totalServers = 1,
   });
@@ -60,7 +61,10 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   // ═══════════════════════════════════════
   Timer? _stateMonitor;
   Timer? _loadingFailsafe;
+  Timer? _iframeLoadTimeout;
   StreamSubscription? _stateSubscription;
+  int _iframeRetryCount = 0;
+  bool _videoStartedPlaying = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -79,6 +83,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     _initializeWebView();
     _startStateMonitoring();
     _startLoadingFailsafe();
+    _startIframeLoadTimeout();
   }
 
   @override
@@ -105,29 +110,23 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   // ═══════════════════════════════════════
 
   void _initializeWebView() {
-    // ⚡ OPTIMIZACIÓN LÍQUIDA: Obtenemos el WebViewController que ya se
-    // pre-calentó en memoria durante el splash de la aplicación.
-    _webViewController = WebViewPreloader.instance.claimController();
+    _webViewController = WebViewController();
 
-    // Reasignar delegados a este State local
     _webViewController
-      .setNavigationDelegate(
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.black)
+      ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: _onPageStarted,
           onPageFinished: _onPageFinished,
           onWebResourceError: _onWebResourceError,
         ),
-      );
-
-    // Limpiamos los canales previos por si fue reusado
-    _webViewController.removeJavaScriptChannel('FlutterChannel');
-    _webViewController.addJavaScriptChannel(
-      'FlutterChannel',
-      onMessageReceived: _handleMessageFromHtml,
-    );
-
-    // Cargar la URL solicitada instantáneamente en el motor ya corriendo
-    _webViewController.loadRequest(Uri.parse(widget.url));
+      )
+      ..addJavaScriptChannel(
+        'FlutterChannel',
+        onMessageReceived: _handleMessageFromHtml,
+      )
+      ..loadRequest(Uri.parse(widget.url));
 
     _unifiedController =
         UnifiedVideoController.fromWeb(_webViewController, _videoState);
@@ -150,6 +149,8 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   void _onPageFinished(String url) {
     debugPrint('✅ Page Finished: $url');
+    // Start a check: if video doesn't play within timeout, retry
+    _startIframeLoadTimeout();
   }
 
   void _onWebResourceError(WebResourceError error) {
@@ -159,14 +160,38 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
     if (isCritical) {
       debugPrint('❌ Critical WebView Error: ${error.description}');
-      if (!_isDisposed && mounted) {
-        setState(() {
-          _videoState.update(
-            loading: false,
-            error: true,
-            errorMsg: 'Error de conexión: ${error.description}',
+      _iframeRetryCount++;
+
+      if (_iframeRetryCount > PlayerConfig.maxIframeRetries) {
+        debugPrint('❌ Iframe max retries exceeded — signaling parent');
+        if (!_isDisposed && mounted) {
+          setState(() {
+            _videoState.update(
+              loading: false,
+              error: true,
+              errorMsg: 'Error de conexión: ${error.description}',
+            );
+          });
+          // Signal parent to try next server
+          widget.onAllServersFailed?.call();
+        }
+      } else {
+        debugPrint(
+            '🔄 Iframe retry $_iframeRetryCount/${PlayerConfig.maxIframeRetries}');
+        if (!_isDisposed && mounted) {
+          setState(() {
+            _videoState.update(loading: true, error: false);
+          });
+          // Quick retry
+          Future.delayed(
+            const Duration(milliseconds: PlayerConfig.quickRetryDelayMs),
+            () {
+              if (!_isDisposed && mounted) {
+                _webViewController.reload();
+              }
+            },
           );
-        });
+        }
       }
     }
   }
@@ -256,6 +281,9 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   void _onPlayingStarted(Map<String, dynamic> data) {
     _loadingFailsafe?.cancel();
+    _iframeLoadTimeout?.cancel();
+    _videoStartedPlaying = true;
+    _iframeRetryCount = 0; // Reset retries on success
 
     final isMuted = data['muted'] as bool? ?? false;
 
@@ -331,9 +359,9 @@ class _PivoProPlayerState extends State<PivoProPlayer>
       });
     }
 
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 4), () {
       if (!_isDisposed && mounted && _videoState.stallDetected) {
-        debugPrint('🔄 Auto-retry after stall');
+        debugPrint('🔄 Auto-retry after stall timeout');
         _executeJS('window.nextServer()');
       }
     });
@@ -344,15 +372,38 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     final message = data['message'] as String?;
 
     debugPrint('❌ Error: $code — $message');
+    _iframeRetryCount++;
 
-    if (mounted) {
-      setState(() {
-        _videoState.update(
-          loading: false,
-          error: true,
-          errorMsg: message ?? 'Error desconocido',
-        );
-      });
+    if (_iframeRetryCount > PlayerConfig.maxIframeRetries) {
+      debugPrint(
+          '❌ Iframe max retries exceeded after error — signaling parent');
+      if (mounted) {
+        setState(() {
+          _videoState.update(
+            loading: false,
+            error: true,
+            errorMsg: message ?? 'Error desconocido',
+          );
+        });
+      }
+      // Signal parent to try next m3u8 server
+      widget.onAllServersFailed?.call();
+    } else {
+      debugPrint(
+          '🔄 Iframe retry $_iframeRetryCount/${PlayerConfig.maxIframeRetries} after error');
+      if (mounted) {
+        setState(() {
+          _videoState.update(loading: true, error: false);
+        });
+      }
+      Future.delayed(
+        const Duration(milliseconds: PlayerConfig.quickRetryDelayMs),
+        () {
+          if (!_isDisposed && mounted) {
+            _webViewController.reload();
+          }
+        },
+      );
     }
   }
 
@@ -379,6 +430,39 @@ class _PivoProPlayerState extends State<PivoProPlayer>
         setState(() {
           _videoState.update(loading: false);
         });
+      }
+    });
+  }
+
+  /// Iframe-specific timeout: if video doesn't start playing within timeout, take action
+  void _startIframeLoadTimeout() {
+    _iframeLoadTimeout?.cancel();
+    _iframeLoadTimeout = Timer(PlayerConfig.iframeLoadTimeout, () {
+      if (_isDisposed || !mounted) return;
+      if (_videoStartedPlaying) return; // Already playing, no issue
+
+      debugPrint('⏱️ Iframe load timeout — video never started');
+      _iframeRetryCount++;
+
+      if (_iframeRetryCount > PlayerConfig.maxIframeRetries) {
+        debugPrint(
+            '❌ Iframe max retries exceeded — signaling parent for next server');
+        setState(() {
+          _videoState.update(
+            loading: false,
+            error: true,
+            errorMsg: 'El servidor no respondió a tiempo',
+          );
+        });
+        widget.onAllServersFailed?.call();
+      } else {
+        debugPrint(
+            '🔄 Iframe timeout retry $_iframeRetryCount/${PlayerConfig.maxIframeRetries}');
+        setState(() {
+          _videoState.update(loading: true, error: false);
+        });
+        _webViewController.reload();
+        _startIframeLoadTimeout(); // Restart timeout for retry
       }
     });
   }
@@ -473,10 +557,14 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
     setState(() {
       _videoState.reset();
+      _iframeRetryCount = 0;
+      _videoStartedPlaying = false;
     });
 
     _loadingFailsafe?.cancel();
+    _iframeLoadTimeout?.cancel();
     _startLoadingFailsafe();
+    _startIframeLoadTimeout();
 
     await _webViewController.reload();
     widget.onRefresh?.call();
@@ -668,26 +756,21 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   @override
   void dispose() {
-    debugPrint('🗑️ Disposing PivoProPlayer');
     _isDisposed = true;
-
     WidgetsBinding.instance.removeObserver(this);
-
     _stateMonitor?.cancel();
     _loadingFailsafe?.cancel();
+    _iframeLoadTimeout?.cancel();
     _stateSubscription?.cancel();
     _unifiedController.dispose();
     _videoState.dispose();
-
-    // ⚡ Liberar de vuelto al Pool (detiene audios y limpia procesos ocultos)
-    WebViewPreloader.instance.releaseController(_webViewController);
 
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
     );
-
+    _webViewController.loadRequest(Uri.parse('about:blank'));
     super.dispose();
   }
 }

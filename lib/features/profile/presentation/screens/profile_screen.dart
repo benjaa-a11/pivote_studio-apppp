@@ -190,7 +190,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 10),
                     child: ClipRRect(
-                      // Redondeamos TODO el contenedor de la info
                       borderRadius: BorderRadius.circular(40),
                       child: Container(
                         padding: const EdgeInsets.symmetric(

@@ -40,29 +40,29 @@ class PlayerConfig {
 
   // ── Retry & Failover ──────────────────────────────────
   /// Max retries on the same server before failover
-  static const int maxRetriesPerServer = 3;
+  static const int maxRetriesPerServer = 4;
 
   /// Max consecutive errors across all servers before giving up
   static const int maxConsecutiveErrors = 6;
 
   // ── Timeouts ──────────────────────────────────────────
   /// Base timeout for server connection (increases per attempt)
-  static const Duration baseServerTimeout = Duration(seconds: 10);
+  static const Duration baseServerTimeout = Duration(seconds: 25);
 
   /// Max additional timeout added per server attempt
-  static const int maxTimeoutExtensionSeconds = 8;
+  static const int maxTimeoutExtensionSeconds = 10;
 
   /// Timeout for VideoPlayer.initialize()
-  static const Duration initializeTimeout = Duration(seconds: 12);
+  static const Duration initializeTimeout = Duration(seconds: 30);
 
   /// Timeout for URL resolution HTTP requests
-  static const Duration urlResolveTimeout = Duration(seconds: 6);
+  static const Duration urlResolveTimeout = Duration(seconds: 4);
 
   /// Max additional timeout per URL resolve retry
   static const int urlResolveTimeoutExtensionSeconds = 3;
 
   /// Max URL resolve retries
-  static const int maxUrlResolveRetries = 3;
+  static const int maxUrlResolveRetries = 2;
 
   // ── Watchdog & Health ─────────────────────────────────
   /// Interval for the health watchdog check
@@ -72,21 +72,31 @@ class PlayerConfig {
   static const int watchdogStallThreshold = 3;
 
   /// Grace period after initialization before watchdog activates
-  static const Duration watchdogGracePeriod = Duration(seconds: 8);
+  static const Duration watchdogGracePeriod = Duration(seconds: 20);
 
   /// Extended buffering threshold (watchdog ticks)
-  static const int extendedBufferingThreshold = 5;
+  static const int extendedBufferingThreshold = 7;
 
   // ── Loading ───────────────────────────────────────────
   /// Failsafe timer to hide loading overlay if stuck
-  static const Duration loadingFailsafeTimeout = Duration(seconds: 15);
+  static const Duration loadingFailsafeTimeout = Duration(seconds: 40);
 
   // ── Backoff ───────────────────────────────────────────
   /// Base delay for exponential backoff (ms)
-  static const int backoffBaseMs = 400;
+  static const int backoffBaseMs = 200;
 
   /// Max backoff delay (ms)
-  static const int backoffMaxMs = 5000;
+  static const int backoffMaxMs = 3000;
+
+  // ── Iframe / WebView ──────────────────────────────────
+  /// Timeout for iframe page to load and start video
+  static const Duration iframeLoadTimeout = Duration(seconds: 20);
+
+  /// Max retries inside iframe before fallback to next server
+  static const int maxIframeRetries = 2;
+
+  /// Quick retry delay for same-server retry (ms)
+  static const int quickRetryDelayMs = 500;
 
   // ── Buffer Health ─────────────────────────────────────
   /// Seconds of buffer ahead considered "healthy"
