@@ -20,6 +20,7 @@ import 'package:pivote/core/services/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/soccer/data/services/soccer_service.dart';
+import 'package:pivote/shared/screens/firebase_required_screen.dart';
 
 // Background message handler (must be top-level)
 @pragma('vm:entry-point')
@@ -123,6 +124,14 @@ class _AuthenticationWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: AuthService.authStateChanges,
       builder: (context, authSnapshot) {
+        // If Firebase failed to initialize, block the app with a clear screen
+        if (!FirebaseService.isInitialized) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            FlutterNativeSplash.remove();
+          });
+          return const FirebaseRequiredScreen();
+        }
+
         // Mientras esperamos el primer valor del stream de autenticación
         if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox.shrink();

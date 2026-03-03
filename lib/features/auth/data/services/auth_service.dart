@@ -5,17 +5,20 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pivote/features/auth/data/models/user_model.dart';
+import 'package:pivote/core/services/firebase_service.dart';
+import 'package:flutter/services.dart';
 
 /// Service to manage user authentication and session using Firebase Auth
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  // Use the web client ID from google-services.json (client_type: 3)
-  // This is required for Android to obtain the idToken correctly
-  static final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId:
-        '451817571128-ch6b02prjtv8njpek34v233bv3itfpjn.apps.googleusercontent.com',
-  );
+
+  // NOTE:
+  // - Android: no necesita clientId, pero para garantizar idToken estable usamos el Web OAuth Client ID
+  //   (google-services.json -> oauth_client client_type 3).
+  // - Web: usamos el flujo de FirebaseAuth (popup/redirect) por compatibilidad.
+  static const String _googleWebOAuthClientId =
+      '451817571128-ch6b02prjtv8njpek34v233bv3itfpjn.apps.googleusercontent.com';
 
   static const String _usersCollection = 'usuarios-pivote';
 
@@ -25,9 +28,20 @@ class AuthService {
   /// Get current user ID or null
   static String? get currentUserId => _auth.currentUser?.uid;
 
+  static void _requireFirebase() {
+    if (!FirebaseService.isInitialized) {
+      throw FirebaseAuthException(
+        code: 'firebase-not-initialized',
+        message:
+            'La app no pudo inicializar Firebase. Verifica la configuración e inténtalo de nuevo.',
+      );
+    }
+  }
+
   /// Sign in with email and password
   static Future<void> signIn(String email, String password) async {
     try {
+      _requireFirebase();
       await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
@@ -41,18 +55,71 @@ class AuthService {
   /// Sign in with Google - ROBUST IMPLEMENTATION
   static Future<User?> signInWithGoogle() async {
     try {
+      _requireFirebase();
       debugPrint('🔵 Starting Google Sign-In process...');
+
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider()
+          ..addScope('email')
+          ..addScope('profile')
+          ..setCustomParameters(<String, String>{
+            'prompt': 'select_account',
+          });
+
+        try {
+          final userCredential = await _auth.signInWithPopup(provider);
+          final user = userCredential.user;
+          if (user == null) {
+            throw FirebaseAuthException(
+              code: 'null-user',
+              message: 'Error al obtener usuario de Firebase',
+            );
+          }
+          await _createOrUpdateUserDocument(
+            uid: user.uid,
+            email: user.email ?? '',
+            name: (user.displayName?.split(' ').firstOrNull) ?? 'Usuario',
+            lastName: (user.displayName?.split(' ').skip(1).join(' ')) ?? '',
+            photoUrl: user.photoURL,
+          );
+          return user;
+        } on FirebaseAuthException catch (e) {
+          // Popup puede ser bloqueado; damos fallback a redirect.
+          final code = e.code.toLowerCase();
+          if (code.contains('popup') || code.contains('cancel')) rethrow;
+
+          try {
+            await _auth.signInWithRedirect(provider);
+            // La sesión se completará tras el redirect; el wrapper de authStateChanges lo capturará.
+            return _auth.currentUser;
+          } catch (_) {
+            rethrow;
+          }
+        }
+      }
+
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        throw FirebaseAuthException(
+          code: 'platform-not-supported',
+          message: 'Google Sign-In no está disponible en esta plataforma.',
+        );
+      }
+
+      final googleSignIn = GoogleSignIn(
+        serverClientId: _googleWebOAuthClientId,
+        scopes: const ['email', 'profile', 'openid'],
+      );
 
       // 1. Force sign out to ensure account picker works reliably
       try {
-        await _googleSignIn.signOut();
+        await googleSignIn.signOut();
       } catch (e) {
         debugPrint('⚠️ Error signing out from Google (non-fatal): $e');
       }
 
       // 2. Trigger the authentication flow
       // IMPORTANTE: Asegúrate de que el SHA-1 y SHA-256 estén agregados en Firebase Console
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {
         debugPrint('⚠️ Google Sign-In canceled by user');
@@ -65,8 +132,18 @@ class AuthService {
       debugPrint('✅ Google account selected: ${googleUser.email}');
 
       // 3. Obtain the auth details
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // 3.1 Retry once if tokens are missing (can happen on some devices/accounts)
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        try {
+          await googleSignIn
+              .clearAuthCache(); // forces refresh on next authentication call
+          googleAuth = await googleUser.authentication;
+        } catch (e) {
+          debugPrint('⚠️ clearAuthCache retry failed: $e');
+        }
+      }
 
       // 4. Verify tokens
       if (googleAuth.accessToken == null || googleAuth.idToken == null) {
@@ -117,6 +194,20 @@ class AuthService {
       );
 
       return user;
+    } on PlatformException catch (e) {
+      final msg = (e.message ?? '').toLowerCase();
+      if (msg.contains('api') && msg.contains('10') ||
+          msg.contains('developer_error')) {
+        throw FirebaseAuthException(
+          code: 'google-developer-error',
+          message:
+              'Google Sign-In no está configurado correctamente (SHA-1/SHA-256 o OAuth).',
+        );
+      }
+      throw FirebaseAuthException(
+        code: 'google-platform-error',
+        message: e.message ?? 'Error de Google Sign-In',
+      );
     } on FirebaseAuthException {
       rethrow;
     } catch (e, stackTrace) {
@@ -137,6 +228,7 @@ class AuthService {
     required String lastName,
   }) async {
     try {
+      _requireFirebase();
       debugPrint('🔵 Starting email sign-up...');
 
       final userCredential = await _auth.createUserWithEmailAndPassword(
@@ -220,6 +312,7 @@ class AuthService {
     }
 
     try {
+      _requireFirebase();
       debugPrint('🔵 Fetching user data from Firestore: ${user.uid}');
 
       final doc =
@@ -257,10 +350,15 @@ class AuthService {
     try {
       debugPrint('🔵 Starting logout process...');
 
-      await Future.wait([
-        _auth.signOut(),
-        _googleSignIn.signOut(),
-      ]);
+      await _auth.signOut();
+      if (!kIsWeb && !(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+        try {
+          final googleSignIn = GoogleSignIn(serverClientId: _googleWebOAuthClientId);
+          await googleSignIn.signOut();
+        } catch (e) {
+          debugPrint('⚠️ Google sign out failed (non-fatal): $e');
+        }
+      }
 
       debugPrint('✅ Logout completed successfully');
     } catch (e) {
@@ -278,6 +376,7 @@ class AuthService {
     }
 
     try {
+      _requireFirebase();
       debugPrint('🔵 Updating user information...');
 
       final updateData = {
@@ -324,6 +423,7 @@ class AuthService {
     }
 
     try {
+      _requireFirebase();
       await user.updatePassword(newPassword);
       debugPrint('✅ Password updated successfully');
     } catch (e) {
@@ -343,6 +443,7 @@ class AuthService {
     }
 
     try {
+      _requireFirebase();
       debugPrint('🔵 Uploading profile image...');
 
       final ref = FirebaseStorage.instance
@@ -378,6 +479,14 @@ class AuthService {
     }
 
     switch (error.code) {
+      case 'firebase-not-initialized':
+        return 'La app no pudo conectarse a Firebase. Reinstala/actualiza la app o contacta soporte.';
+      case 'platform-not-supported':
+        return 'Google no está disponible en esta plataforma.';
+      case 'google-developer-error':
+        return 'Google Sign-In no está configurado correctamente. Verifica SHA-1/SHA-256 y OAuth en Firebase.';
+      case 'google-platform-error':
+        return 'No se pudo abrir Google Sign-In. Intenta de nuevo.';
       case 'sign_in_canceled':
         return 'Inicio de sesión cancelado.';
       case 'user-not-found':
@@ -415,4 +524,8 @@ class AuthService {
         return 'Algo salió mal: ${error.message ?? "Error desconocido"}';
     }
   }
+}
+
+extension on List<String> {
+  String? get firstOrNull => isEmpty ? null : first;
 }

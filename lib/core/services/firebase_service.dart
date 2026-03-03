@@ -8,6 +8,11 @@ class FirebaseService {
   static bool _isInitialized = false;
   static String? _initializationError;
 
+  static bool _looksMisconfigured(FirebaseOptions options) {
+    // Common placeholder used in this repo: "...:dummy"
+    return options.appId.contains(':dummy');
+  }
+
   /// Initialize Firebase with proper error handling
   static Future<void> initialize() async {
     // Avoid re-initialization
@@ -28,16 +33,23 @@ class FirebaseService {
       debugPrint('🔵 Initializing Firebase...');
 
       // Initialize Firebase with platform-specific options
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      final options = DefaultFirebaseOptions.currentPlatform;
+
+      if (_looksMisconfigured(options)) {
+        throw StateError(
+          'Firebase no está configurado correctamente para esta plataforma '
+          '(appId placeholder). Ejecuta "flutterfire configure" y vuelve a compilar.',
+        );
+      }
+
+      await Firebase.initializeApp(options: options);
 
       _firestore = FirebaseFirestore.instance;
 
       // Enable offline persistence (optional but recommended)
       if (!kIsWeb) {
         try {
-          _firestore!.settings.persistenceEnabled;
+          _firestore!.settings = const Settings(persistenceEnabled: true);
           debugPrint('✅ Firestore offline persistence enabled');
         } catch (e) {
           debugPrint('⚠️ Could not enable offline persistence: $e');
