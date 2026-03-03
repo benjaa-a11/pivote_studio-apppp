@@ -115,8 +115,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     _webViewController
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
-      // Permitir reproducción automática de media sin gesto del usuario
-      ..setMediaPlaybackRequiresUserGesture(false)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: _onPageStarted,

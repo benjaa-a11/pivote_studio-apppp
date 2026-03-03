@@ -134,17 +134,6 @@ class AuthService {
       // 3. Obtain the auth details
       GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // 3.1 Retry once if tokens are missing (can happen on some devices/accounts)
-      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-        try {
-          await googleSignIn
-              .clearAuthCache(); // forces refresh on next authentication call
-          googleAuth = await googleUser.authentication;
-        } catch (e) {
-          debugPrint('⚠️ clearAuthCache retry failed: $e');
-        }
-      }
-
       // 4. Verify tokens
       if (googleAuth.accessToken == null || googleAuth.idToken == null) {
         debugPrint('❌ Failed to obtain Google tokens');

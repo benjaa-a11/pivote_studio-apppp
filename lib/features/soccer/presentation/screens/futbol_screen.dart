@@ -30,16 +30,32 @@ class _FutbolScreenState extends State<FutbolScreen> {
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
               SliverAppBar(
-                expandedHeight: 110,
+                expandedHeight: 130,
                 floating: true,
-                pinned: false, // Ahora desaparece por completo al scrollear
+                pinned: true,
                 elevation: 0,
                 backgroundColor: theme.scaffoldBackgroundColor,
-                flexibleSpace: const FlexibleSpaceBar(
+                flexibleSpace: FlexibleSpaceBar(
+                  titlePadding:
+                      const EdgeInsetsDirectional.only(start: 16, bottom: 8),
+                  collapseMode: CollapseMode.parallax,
+                  title: Text(
+                    'Fútbol en vivo',
+                    style: GoogleFonts.syne(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
                   background: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: 10),
-                      WorldCupCountdown(),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: WorldCupCountdown(),
+                      ),
                     ],
                   ),
                 ),
@@ -220,10 +236,21 @@ class _FutbolScreenState extends State<FutbolScreen> {
       );
     }
 
+    final liveMatches =
+        filteredMatches.where((m) => m.isLive).toList(growable: false);
+    final upcomingMatches = filteredMatches
+        .where((m) => !m.isLive && !m.isFinished)
+        .toList(growable: false);
+
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          final leagueId = leagueIds[index];
+          if (index == 0) {
+            return _buildMatchesSummary(theme, liveMatches.length,
+                upcomingMatches.length, filteredMatches.length);
+          }
+
+          final leagueId = leagueIds[index - 1];
           final league = data.leagues.firstWhere((l) => l.id == leagueId,
               orElse: () => SoccerLeague(
                   id: leagueId,
@@ -234,7 +261,67 @@ class _FutbolScreenState extends State<FutbolScreen> {
 
           return _buildLeagueSection(league, matches, data, theme);
         },
-        childCount: leagueIds.length,
+        childCount: leagueIds.length + 1,
+      ),
+    );
+  }
+
+  Widget _buildMatchesSummary(ThemeData theme, int liveCount,
+      int upcomingCount, int totalCount) {
+    final hasLive = liveCount > 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16, top: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        hasLive
+                            ? Icons.flash_on_rounded
+                            : Icons.schedule_rounded,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        hasLive
+                            ? '$liveCount en vivo'
+                            : '$upcomingCount próximos',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '$totalCount partidos',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

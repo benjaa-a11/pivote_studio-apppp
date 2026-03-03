@@ -67,80 +67,106 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     final minutes = _timeLeft.inMinutes % 60;
     final seconds = _timeLeft.inSeconds % 60;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.cardColor.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: primaryColor.withValues(alpha: 0.1),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 4),
+    final hasStarted = _timeLeft == Duration.zero;
+
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: theme.cardColor.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: primaryColor.withValues(alpha: 0.12),
+            width: 1,
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // FIFA 2026 Logo with subtle glow
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: primaryColor.withValues(alpha: 0.05),
-                ),
-              ),
-              Image.asset(
-                isDark
-                    ? 'assets/FWC-26/2026-FIFA-World-Cup256x-white.png'
-                    : 'assets/FWC-26/2026-FIFA-World-Cup256x-black.png',
-                height: 38,
-                fit: BoxFit.contain,
-              ),
-            ],
-          ),
-          const SizedBox(width: 16),
-          // Vertical Divider
-          Container(
-            width: 1.5,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  primaryColor.withValues(alpha: 0.0),
-                  primaryColor.withValues(alpha: 0.3),
-                  primaryColor.withValues(alpha: 0.0),
-                ],
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
-          ),
-          const SizedBox(width: 16),
-          // Countdown UI
-          Row(
-            children: [
-              _buildTimeUnit(context, days.toString(), 'DÍAS'),
-              _buildSeparator(context),
-              _buildTimeUnit(context, hours.toString().padLeft(2, '0'), 'HS'),
-              _buildSeparator(context),
-              _buildTimeUnit(
-                  context, minutes.toString().padLeft(2, '0'), 'MIN'),
-              _buildSeparator(context),
-              _buildTimeUnit(
-                  context, seconds.toString().padLeft(2, '0'), 'SEG'),
-            ],
-          ),
-        ],
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // FIFA 2026 Logo with subtle glow
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: primaryColor.withValues(alpha: 0.05),
+                  ),
+                ),
+                Image.asset(
+                  isDark
+                      ? 'assets/FWC-26/2026-FIFA-World-Cup256x-white.png'
+                      : 'assets/FWC-26/2026-FIFA-World-Cup256x-black.png',
+                  height: 38,
+                  fit: BoxFit.contain,
+                ),
+              ],
+            ),
+            const SizedBox(width: 14),
+            // Text + Countdown stacked for mejor legibilidad
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasStarted ? 'MUNDIAL 2026 EN JUEGO' : 'Cuenta regresiva Mundial 2026',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.6,
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (hasStarted)
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.sports_soccer_rounded,
+                        size: 16,
+                        color: primaryColor,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Partidos y resultados en tiempo real',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      _buildTimeUnit(context, days.toString(), 'DÍAS'),
+                      _buildSeparator(context),
+                      _buildTimeUnit(
+                          context, hours.toString().padLeft(2, '0'), 'HS'),
+                      _buildSeparator(context),
+                      _buildTimeUnit(
+                          context, minutes.toString().padLeft(2, '0'), 'MIN'),
+                      _buildSeparator(context),
+                      _buildTimeUnit(
+                          context, seconds.toString().padLeft(2, '0'), 'SEG'),
+                    ],
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -153,6 +153,9 @@ class _SearchScreenState extends State<SearchScreen>
                   controller: _searchController,
                   focusNode: _searchFocusNode,
                   onChanged: _onSearch,
+                  onSubmitted: _onSearch,
+                  textInputAction: TextInputAction.search,
+                  autofocus: true,
                   style: GoogleFonts.dmSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
