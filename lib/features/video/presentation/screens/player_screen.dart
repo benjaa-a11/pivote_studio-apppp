@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
+import 'package:pivote/features/video/data/services/epg_service.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/video_player_widget.dart';
 
@@ -23,6 +24,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   late Channel _currentChannel;
   int _selectedCameraId = -1; // -1 represents the main stream
 
+  // Programación (EPG)
+  bool _isLoadingGuide = false;
+  String? _guideError;
+  List<ChannelProgramSlot> _guideSlots = const [];
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +46,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
         );
       }
     });
+
+    // Cargar programación si el canal tiene guid configurado
+    if ((_currentChannel.guid ?? '').trim().isNotEmpty) {
+      _loadGuide();
+    }
   }
 
   @override
@@ -337,22 +348,232 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
           ),
 
-          const SizedBox(height: 40),
+          const SizedBox(height: 24),
 
-          // Placeholder para la futura grilla
-          // Center(
-          //   child: Text(
-          //     'Próximamente: Guía de Programación',
-          //     style: TextStyle(
-          //       color: Theme.of(context).disabledColor,
-          //       fontSize: 12,
-          //       fontWeight: FontWeight.w500,
-          //     ),
-          //   ),
-          // ),
+          if ((_currentChannel.guid ?? '').trim().isNotEmpty)
+            _buildProgramGuideSection(context),
         ],
       ),
     );
+  }
+
+  Widget _buildProgramGuideSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    if (_isLoadingGuide) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.02)
+              : Colors.black.withValues(alpha: 0.02),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.dividerColor.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Cargando programación del canal...',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontSize: 13,
+                  color:
+                      theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_guideError != null) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.error.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.colorScheme.error.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              size: 18,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'No se pudo cargar la programación',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Toca para reintentar.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: _loadGuide,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              color: theme.colorScheme.onSurface
+                  .withValues(alpha: 0.8),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_guideSlots.isEmpty) {
+      // No hay datos de guía para este canal
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.02)
+            : Colors.black.withValues(alpha: 0.01),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.08),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Próxima programación',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                onPressed: _loadGuide,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                color: theme.colorScheme.onSurface
+                    .withValues(alpha: 0.7),
+                tooltip: 'Actualizar programación',
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ..._guideSlots.take(5).map(
+                (slot) => Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 64,
+                        child: Text(
+                          slot.time,
+                          style: theme.textTheme.labelSmall
+                              ?.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          slot.title,
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(
+                            fontSize: 13,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.85),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadGuide() async {
+    final guid = (_currentChannel.guid ?? '').trim();
+    if (guid.isEmpty) return;
+
+    setState(() {
+      _isLoadingGuide = true;
+      _guideError = null;
+    });
+
+    try {
+      final slots = await EpgService.fetchGuide(
+        guid: guid,
+        start: DateTime.now(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _guideSlots = slots;
+        _isLoadingGuide = false;
+        _guideError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingGuide = false;
+        _guideError = e.toString();
+      });
+    }
   }
 
   Widget _buildEventCameras(BuildContext context) {

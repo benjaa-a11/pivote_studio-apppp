@@ -37,6 +37,8 @@ class Channel {
   final List<String> logoUrl; // [0] dark mode, [1] light mode
   final List<StreamSource> streamUrl;
   final String description;
+  /// Optional external guide identifier (numeric channel code or name)
+  final String? guid;
   final bool isHidden;
   final int order;
   bool isFavorite;
@@ -52,6 +54,7 @@ class Channel {
     required this.logoUrl,
     required this.streamUrl,
     required this.description,
+    this.guid,
     this.isHidden = false,
     this.order = 999,
     this.isFavorite = false,
@@ -100,6 +103,7 @@ class Channel {
       logoUrl: logoUrls,
       streamUrl: streams,
       description: json['description'] ?? '',
+      guid: json['guid'],
       isHidden: json['isHidden'] ?? false,
       order: json['order'] ?? 999,
       isFavorite: json['isFavorite'] ?? false,
@@ -118,6 +122,7 @@ class Channel {
       'logoUrl': logoUrl,
       'streamUrl': streamUrl.map((s) => s.toJson()).toList(),
       'description': description,
+      if (guid != null) 'guid': guid,
       'isHidden': isHidden,
       'order': order,
       'isFavorite': isFavorite,
@@ -160,6 +165,7 @@ class Channel {
     List<String>? logoUrl,
     List<StreamSource>? streamUrl,
     String? description,
+    String? guid,
     bool? isHidden,
     int? order,
     bool? isFavorite,
@@ -175,6 +181,7 @@ class Channel {
       logoUrl: logoUrl ?? this.logoUrl,
       streamUrl: streamUrl ?? this.streamUrl,
       description: description ?? this.description,
+      guid: guid ?? this.guid,
       isHidden: isHidden ?? this.isHidden,
       order: order ?? this.order,
       isFavorite: isFavorite ?? this.isFavorite,
