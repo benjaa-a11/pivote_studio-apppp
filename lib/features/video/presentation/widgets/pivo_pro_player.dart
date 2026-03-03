@@ -115,6 +115,8 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     _webViewController
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
+      // Permitir reproducción automática de media sin gesto del usuario
+      ..setMediaPlaybackRequiresUserGesture(false)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: _onPageStarted,
@@ -149,6 +151,8 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   void _onPageFinished(String url) {
     debugPrint('✅ Page Finished: $url');
+    // Lanzar intento de autoplay dentro del iframe
+    _executeJS('window.play()');
     // Start a check: if video doesn't play within timeout, retry
     _startIframeLoadTimeout();
   }

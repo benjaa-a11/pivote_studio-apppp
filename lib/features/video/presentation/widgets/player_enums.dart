@@ -40,14 +40,14 @@ class PlayerConfig {
 
   // ── Retry & Failover ──────────────────────────────────
   /// Max retries on the same server before failover
-  static const int maxRetriesPerServer = 4;
+  static const int maxRetriesPerServer = 3;
 
   /// Max consecutive errors across all servers before giving up
   static const int maxConsecutiveErrors = 6;
 
   // ── Timeouts ──────────────────────────────────────────
   /// Base timeout for server connection (increases per attempt)
-  static const Duration baseServerTimeout = Duration(seconds: 25);
+  static const Duration baseServerTimeout = Duration(seconds: 18);
 
   /// Max additional timeout added per server attempt
   static const int maxTimeoutExtensionSeconds = 10;
@@ -66,7 +66,7 @@ class PlayerConfig {
 
   // ── Watchdog & Health ─────────────────────────────────
   /// Interval for the health watchdog check
-  static const Duration watchdogInterval = Duration(seconds: 5);
+  static const Duration watchdogInterval = Duration(seconds: 3);
 
   /// How many consecutive watchdog ticks of bad health before recovery
   static const int watchdogStallThreshold = 3;
@@ -75,11 +75,11 @@ class PlayerConfig {
   static const Duration watchdogGracePeriod = Duration(seconds: 20);
 
   /// Extended buffering threshold (watchdog ticks)
-  static const int extendedBufferingThreshold = 7;
+  static const int extendedBufferingThreshold = 5;
 
   // ── Loading ───────────────────────────────────────────
   /// Failsafe timer to hide loading overlay if stuck
-  static const Duration loadingFailsafeTimeout = Duration(seconds: 40);
+  static const Duration loadingFailsafeTimeout = Duration(seconds: 30);
 
   // ── Backoff ───────────────────────────────────────────
   /// Base delay for exponential backoff (ms)
@@ -90,10 +90,10 @@ class PlayerConfig {
 
   // ── Iframe / WebView ──────────────────────────────────
   /// Timeout for iframe page to load and start video
-  static const Duration iframeLoadTimeout = Duration(seconds: 20);
+  static const Duration iframeLoadTimeout = Duration(seconds: 12);
 
   /// Max retries inside iframe before fallback to next server
-  static const int maxIframeRetries = 2;
+  static const int maxIframeRetries = 3;
 
   /// Quick retry delay for same-server retry (ms)
   static const int quickRetryDelayMs = 500;
