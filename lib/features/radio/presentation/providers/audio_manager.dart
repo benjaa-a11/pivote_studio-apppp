@@ -39,8 +39,6 @@ class AudioManager extends ChangeNotifier {
     if (_isInitialized) return;
     _isInitialized = true;
 
-    await AudioServiceHelper.init();
-
     // Listen to player state changes
     _audioPlayer.playerStateStream.listen((playerState) {
       final processingState = playerState.processingState;
@@ -60,6 +58,12 @@ class AudioManager extends ChangeNotifier {
 
       notifyListeners();
     });
+
+    try {
+      await AudioServiceHelper.init();
+    } catch (e) {
+      debugPrint("AudioService error: $e");
+    }
 
     // Listen to playback errors
     _audioPlayer.playbackEventStream.listen(

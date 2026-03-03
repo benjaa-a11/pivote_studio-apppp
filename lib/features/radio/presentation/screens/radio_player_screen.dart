@@ -7,6 +7,7 @@ import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/features/radio/data/models/radio.dart' as radio_model;
 import 'package:pivote/features/radio/presentation/providers/audio_manager.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
+import 'package:pivote/core/services/image_cache_helper.dart';
 
 class RadioPlayerScreen extends StatefulWidget {
   final radio_model.Radio radio;
@@ -225,7 +226,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   }
 
   Widget _buildHeader(BuildContext context, bool isDark) {
-    final textColor = isDark ? Colors.white : Colors.black;
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -274,6 +275,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
 
   Widget _buildPlayerArt(BuildContext context, Size size) {
     final artSize = size.width * 0.8;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Stack(
         alignment: Alignment.center,
@@ -317,18 +319,24 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                   ),
                 ),
                 child: CachedNetworkImage(
+                  cacheManager: ImageCacheHelper.customCacheManager,
                   imageUrl: widget.radio.logoUrl,
                   fit: BoxFit.cover,
                   placeholder: (context, url) => Container(
-                    color: Colors.grey[900],
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.05),
                     child: const Center(
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   ),
                   errorWidget: (context, url, error) => Container(
-                    color: Colors.grey[900],
-                    child: const Icon(Icons.radio,
-                        color: Colors.white24, size: 64),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.05),
+                    child: Icon(Icons.radio,
+                        color: isDark ? Colors.white24 : Colors.black12,
+                        size: 64),
                   ),
                 ),
               ),
@@ -340,7 +348,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   }
 
   Widget _buildPlayerInfo(BuildContext context, bool isDark) {
-    final textColor = isDark ? Colors.white : Colors.black;
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
     return Column(
       children: [
@@ -359,9 +367,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
           widget.radio.frequency,
           textAlign: TextAlign.center,
           style: GoogleFonts.dmSans(
-            color: isDark
-                ? Theme.of(context).textTheme.bodyMedium?.color
-                : textColor.withValues(alpha: 0.5),
+            color: textColor.withValues(alpha: 0.5),
             fontSize: 18,
             fontWeight: FontWeight.w500,
           ),
@@ -371,7 +377,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   }
 
   Widget _buildPlayerControls(BuildContext context, bool isDark) {
-    final textColor = isDark ? Colors.white : Colors.black;
+    final textColor = Theme.of(context).colorScheme.onSurface;
 
     return Consumer<AudioManager>(
       builder: (context, audioManager, _) {

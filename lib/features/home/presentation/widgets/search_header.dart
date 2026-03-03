@@ -25,7 +25,7 @@ class _SearchHeaderState extends State<SearchHeader> {
     final greeting = GreetingService.getGreeting();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
         border: Border(
@@ -87,7 +87,7 @@ class _SearchHeaderState extends State<SearchHeader> {
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w900,
                           color: theme.colorScheme.onSurface,
-                          fontSize: 24,
+                          fontSize: 20,
                           letterSpacing: -0.8,
                           height: 1.1,
                         ),
@@ -114,7 +114,7 @@ class _SearchHeaderState extends State<SearchHeader> {
               },
               borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.05)

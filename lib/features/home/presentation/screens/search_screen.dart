@@ -26,10 +26,6 @@ class _SearchScreenState extends State<SearchScreen>
   void initState() {
     super.initState();
     _loadSearchHistory();
-    // Auto focus search on open
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) _searchFocusNode.requestFocus();
-    });
   }
 
   Future<void> _loadSearchHistory() async {

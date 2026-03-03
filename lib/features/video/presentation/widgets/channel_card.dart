@@ -8,6 +8,7 @@ import 'package:pivote/features/video/presentation/providers/channel_provider.da
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/services/image_cache_helper.dart';
 
 class ChannelCard extends StatefulWidget {
   final Channel channel;
@@ -247,6 +248,7 @@ class _ChannelCardState extends State<ChannelCard>
     }
 
     return CachedNetworkImage(
+      cacheManager: ImageCacheHelper.customCacheManager,
       imageUrl: logoUrl,
       fit: BoxFit.contain,
       alignment: Alignment.center,

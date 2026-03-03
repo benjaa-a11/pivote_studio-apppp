@@ -6,6 +6,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
+import 'package:pivote/core/services/image_cache_helper.dart';
 
 class MatchCard extends StatelessWidget {
   final SoccerMatch match;
@@ -137,6 +138,7 @@ class MatchCard extends StatelessWidget {
               width: 44,
               height: 44,
               child: CachedNetworkImage(
+                cacheManager: ImageCacheHelper.customCacheManager,
                 imageUrl: tournamentLogoUrl,
                 fit: BoxFit.contain,
                 memCacheWidth: 200,
@@ -277,6 +279,7 @@ class MatchCard extends StatelessWidget {
           height: 70,
           child: logoUrl.isNotEmpty
               ? CachedNetworkImage(
+                  cacheManager: ImageCacheHelper.customCacheManager,
                   imageUrl: logoUrl,
                   fit: BoxFit.contain,
                   memCacheWidth: 200,
@@ -704,6 +707,7 @@ class MatchCard extends StatelessWidget {
                   padding: const EdgeInsets.all(4),
                   child: channel.logoUrl.isNotEmpty
                       ? CachedNetworkImage(
+                          cacheManager: ImageCacheHelper.customCacheManager,
                           imageUrl: channel.logoUrl.first,
                           fit: BoxFit.contain,
                           memCacheWidth: 150,

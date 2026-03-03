@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
+import 'package:pivote/core/services/image_cache_helper.dart';
 
 class SoccerMatchCard extends StatelessWidget {
   final SoccerMatch match;
@@ -178,6 +179,7 @@ class SoccerMatchCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: CachedNetworkImage(
+            cacheManager: ImageCacheHelper.customCacheManager,
             imageUrl: team.logoUrl ?? '',
             fit: BoxFit.contain,
             errorWidget: (context, url, error) =>
