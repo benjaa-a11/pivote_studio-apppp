@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
@@ -22,7 +23,6 @@ import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 import 'package:pivote/shared/screens/firebase_required_screen.dart';
 
-// Background message handler (must be top-level)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await FirebaseService.initialize();
@@ -31,27 +31,16 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
-  // Initialize Firebase
   await FirebaseService.initialize();
-
-  // Register background message handler (permission request deferred to post-login)
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // Initialize notification handlers for already-authorized users (no permission prompt)
   await NotificationService.initializeWithoutPermission();
 
-  // === APP OPTIMIZATIONS ===
-  // 1. Preload Soccer API in background
   SoccerService.prefetchLiveSoccerData();
-
-  // AudioManager will be initialized lazily or via the Provider
   final audioManager = AudioManager();
 
-  // IMPORTANTE: NO restringir orientaciones aquí
-  // Las pantallas individuales manejarán sus propias orientaciones
-  // Esto permite que PlayerScreen pueda rotar a landscape
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -64,7 +53,6 @@ void main() async {
 
 class PivoteApp extends StatelessWidget {
   final AudioManager audioManager;
-
   const PivoteApp({super.key, required this.audioManager});
 
   @override
@@ -81,12 +69,10 @@ class PivoteApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RadioProvider()),
         ChangeNotifierProvider(create: (_) => SoccerProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
-        // ⚡ CRÍTICO: Usar .value para pasar el AudioManager ya inicializado
         ChangeNotifierProvider.value(value: audioManager),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
-          // Configurar barra de estado según el tema
           SystemChrome.setSystemUIOverlayStyle(
             SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
@@ -96,7 +82,6 @@ class PivoteApp extends StatelessWidget {
                   themeProvider.isDarkMode ? Brightness.dark : Brightness.light,
             ),
           );
-
           return ConnectivityWrapper(
             child: MaterialApp(
               title: 'Pivote',
@@ -115,7 +100,6 @@ class PivoteApp extends StatelessWidget {
   }
 }
 
-/// Wrapper to check authentication status and navigate accordingly
 class _AuthenticationWrapper extends StatelessWidget {
   const _AuthenticationWrapper();
 
@@ -124,44 +108,31 @@ class _AuthenticationWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: AuthService.authStateChanges,
       builder: (context, authSnapshot) {
-        // If Firebase failed to initialize, block the app with a clear screen
         if (!FirebaseService.isInitialized) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             FlutterNativeSplash.remove();
           });
           return const FirebaseRequiredScreen();
         }
-
-        // Mientras esperamos el primer valor del stream de autenticación
         if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const SizedBox.shrink();
         }
-
         final user = authSnapshot.data;
-
-        // Si el usuario no está autenticado, ir login
         if (user == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             FlutterNativeSplash.remove();
           });
           return const LoginScreen();
         }
-
-        // Si está autenticado, esperamos a que los datos estén listos
         return Consumer2<ChannelProvider, SoccerProvider>(
           builder: (context, channelProvider, soccerProvider, child) {
-            // Relaxed check: Only depends on channelProvider for the core experience
-            // Soccer and Match data can load lazily
             final isDataReady = channelProvider.isInitialized;
-
             if (isDataReady) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 FlutterNativeSplash.remove();
               });
               return const MainScreen();
             }
-
-            // Show a themed, premium loading state
             return Scaffold(
               backgroundColor: AppTheme.darkBg,
               body: Center(

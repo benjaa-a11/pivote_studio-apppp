@@ -5,39 +5,39 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:video_player/video_player.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
+import 'package:pivote/features/video/presentation/widgets/iptv_engine.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/pivo_pro_player.dart';
 import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// ═══════════════════════════════════════════════════════════════
-/// Pivote Professional Video Player v5.0
-/// ═══════════════════════════════════════════════════════════════
-///
-/// Professional-grade live TV channel player with:
-/// - M3U8 (HLS) streams via native VideoPlayer
-/// - MPD (DASH) / Iframe / External streams via WebView + PivoProPlayer
-/// - Intelligent URL resolution with HEAD-first strategy
-/// - Adaptive watchdog with grace period for slow servers
-/// - Mutex-protected initialization (no race conditions)
-/// - Categorized error recovery with exponential backoff
-/// - Seamless fullscreen transitions (video never stops)
-/// - State machine for clean loading/error UX
-///
+// ════════════════════════════════════════════════════════════════════════════
+// Pivote VideoPlayerWidget v6.0 — media_kit (libmpv) Edition
+// ════════════════════════════════════════════════════════════════════════════
+//
+//  Native paths:
+//    M3U8 / MP4 / HTTP(S) streams  → IPTVEngine (libmpv)
+//    DASH / Iframe / HTML          → PivoProPlayer (WebView)
+//
+//  Features:
+//    • Mutex-protected initialization (no race conditions)
+//    • HEAD-first URL resolution with CDN fast-path
+//    • Per-server retry with exponential backoff
+//    • Adaptive server timeout (base + 2 s per attempt)
+//    • IPTVEngine state polling + ChangeNotifier listener
+//    • Orientation monitor (500 ms) for seamless fullscreen
+//    • Loading failsafe (15 s) to prevent infinite spinner
+//
 
 class VideoPlayerWidget extends StatefulWidget {
   final Channel channel;
-
-  const VideoPlayerWidget({
-    super.key,
-    required this.channel,
-  });
+  const VideoPlayerWidget({super.key, required this.channel});
 
   @override
   State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
@@ -45,788 +45,374 @@ class VideoPlayerWidget extends StatefulWidget {
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
-  // ═══════════════════════════════════════
-  // Controllers
-  // ═══════════════════════════════════════
-  VideoPlayerController? _videoPlayerController;
-  UnifiedVideoController? _unifiedController;
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
+  // ── Engine / Controllers ─────────────────────────────────────────────────
+  IPTVEngine? _engine;
+  UnifiedVideoController? _unified;
+  late AnimationController _fadeCtrl;
+  late Animation<double> _fadeAnim;
 
-  // ═══════════════════════════════════════
-  // State Machine
-  // ═══════════════════════════════════════
+  // ── State ─────────────────────────────────────────────────────────────────
   PlayerState _playerState = PlayerState.idle;
   StreamSource? _currentStream;
-
   bool _isFullScreen = false;
-  AspectRatioType _aspectRatioType = AspectRatioType.ratio16_9;
-  int _currentServerIndex = 0;
-
+  AspectRatioType _aspectRatio = AspectRatioType.ratio16_9;
+  int _serverIndex = 0;
   bool _isMuted = false;
-  bool _isDisposed = false;
+  bool _disposed = false;
+  bool _useWebPlayer = false;
   int _retryCount = 0;
   int _serverAttempt = 0;
-  int _stuckCounter = 0;
-  int _consecutiveErrors = 0;
 
-  /// Track original HTTP URL for HTTPS→HTTP rollback
-  String? _originalHttpUrl;
-  bool _useHtmlPlayer = false;
-
-  /// Mutex to prevent concurrent initialization
   Completer<void>? _initLock;
 
-  /// Timestamp when playback started (for watchdog grace)
-  DateTime? _playbackStartTime;
-
-  // ═══════════════════════════════════════
-  // Timers
-  // ═══════════════════════════════════════
-  Timer? _serverTimeoutTimer;
-  Timer? _errorRecoveryTimer;
-  Timer? _stateCheckTimer;
-  Timer? _orientationCheckTimer;
+  // ── Timers ─────────────────────────────────────────────────────────────────
+  Timer? _serverTimeout;
   Timer? _loadingFailsafe;
+  Timer? _orientationTimer;
+  Timer? _enginePollTimer;
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
-    _isDisposed = false;
+    _disposed = false;
 
-    _fadeController = AnimationController(
+    _fadeCtrl = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeInOut,
-    );
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
 
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
 
-    debugPrint('═══════════════════════════════════════');
-    debugPrint('🎬 VideoPlayerWidget v5.0 Professional');
-    debugPrint('📺 Canal: ${widget.channel.name}');
-    debugPrint('🔢 Servidores: ${widget.channel.streamUrl.length}');
-    debugPrint('═══════════════════════════════════════');
+    debugPrint('🎬 VideoPlayerWidget v6.0 — ${widget.channel.name}');
 
-    _initializePlayer();
-    _startWatchdog();
+    _initPlayer();
     _startOrientationMonitor();
-    _startLoadingFailsafe();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_isDisposed) return;
+    if (_disposed || _useWebPlayer) return;
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _engine?.pause();
+    } else if (state == AppLifecycleState.resumed) {
+      _engine?.play();
+    }
+  }
 
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-        debugPrint('⏸️ App en background — pausando');
-        _unifiedController?.pause();
+  @override
+  void dispose() {
+    _disposed = true;
+    WidgetsBinding.instance.removeObserver(this);
+    _serverTimeout?.cancel();
+    _loadingFailsafe?.cancel();
+    _orientationTimer?.cancel();
+    _enginePollTimer?.cancel();
+    _engine?.removeListener(_onEngineState);
+    _engine?.dispose();
+    _unified?.dispose();
+    _fadeCtrl.dispose();
+    WakelockPlus.disable();
+    super.dispose();
+  }
+
+  // ── Orientation Monitor ───────────────────────────────────────────────────
+
+  void _startOrientationMonitor() {
+    _orientationTimer?.cancel();
+    _orientationTimer =
+        Timer.periodic(PlayerConfig.orientationCheckInterval, (_) {
+      if (_disposed || !mounted) return;
+      final landscape =
+          MediaQuery.of(context).orientation == Orientation.landscape;
+      if (landscape && !_isFullScreen) {
+        _safeSetState(() => _isFullScreen = true);
+      }
+      if (!landscape && _isFullScreen) {
+        _safeSetState(() => _isFullScreen = false);
+      }
+    });
+  }
+
+  // ── Player Initialization ─────────────────────────────────────────────────
+
+  Future<void> _initPlayer() async {
+    if (_initLock != null && !_initLock!.isCompleted) return;
+    if (_disposed) return;
+
+    _initLock = Completer();
+    _setPlayerState(PlayerState.connecting);
+    _retryCount = 0;
+    _serverAttempt = 0;
+    _serverIndex = 0;
+
+    try {
+      await _tryServer();
+    } catch (e) {
+      debugPrint('❌ _initPlayer: $e');
+      _setPlayerState(PlayerState.error);
+    } finally {
+      _initLock?.complete();
+    }
+  }
+
+  Future<void> _tryServer() async {
+    if (_disposed) return;
+
+    _serverTimeout?.cancel();
+    _loadingFailsafe?.cancel();
+
+    if (_serverIndex >= widget.channel.streamUrl.length) {
+      _setPlayerState(PlayerState.error);
+      return;
+    }
+
+    _currentStream = widget.channel.streamUrl[_serverIndex];
+    String url = _currentStream!.url.trim();
+
+    debugPrint(
+        '── Server ${_serverIndex + 1}/${widget.channel.streamUrl.length}');
+    debugPrint('   URL: ${url.substring(0, min(80, url.length))}');
+
+    // URL resolution
+    _setPlayerState(PlayerState.resolvingUrl);
+    try {
+      final resolved = await _resolveUrl(url);
+      if (resolved != null && resolved.isNotEmpty) url = resolved;
+    } catch (_) {}
+
+    if (url.isEmpty) {
+      await _nextServer();
+      return;
+    }
+
+    // Detect stream type
+    final isWeb = _isWebStream(url);
+
+    // Server timeout
+    final timeoutSec = PlayerConfig.baseServerTimeout.inSeconds +
+        (_serverAttempt * 2).clamp(0, PlayerConfig.maxTimeoutExtensionSeconds);
+
+    _serverTimeout = Timer(Duration(seconds: timeoutSec), () {
+      if (_disposed || !mounted) return;
+      if (_playerState.isLoading &&
+          _serverIndex < widget.channel.streamUrl.length - 1) {
+        debugPrint('⏱ Server $_serverIndex timeout');
+        _nextServer();
+      }
+    });
+
+    // Loading failsafe — always show UI after 15 s
+    _loadingFailsafe = Timer(PlayerConfig.loadingFailsafeTimeout, () {
+      if (!_disposed && mounted && _playerState.isLoading) {
+        debugPrint('⏱ Failsafe triggered');
+        _setPlayerState(PlayerState.playing);
+      }
+    });
+
+    if (isWeb) {
+      debugPrint('🌐 Mode: WebView');
+      _safeSetState(() {
+        _useWebPlayer = true;
+      });
+      _setPlayerState(PlayerState.playing);
+      _serverTimeout?.cancel();
+      _loadingFailsafe?.cancel();
+    } else {
+      debugPrint('📱 Mode: libmpv (IPTVEngine)');
+      _safeSetState(() {
+        _useWebPlayer = false;
+      });
+      _setPlayerState(PlayerState.initializing);
+      await _loadIPTV(url);
+    }
+  }
+
+  bool _isWebStream(String url) {
+    final u = url.toLowerCase();
+    return u.contains('iframe') ||
+        u.contains('embed') ||
+        u.contains('pivo-pro') ||
+        u.contains('pivopro') ||
+        u.contains('vercel.app') ||
+        u.contains('.html') ||
+        u.endsWith('.mpd') ||
+        u.contains('.mpd?');
+  }
+
+  // ── IPTVEngine Load ───────────────────────────────────────────────────────
+
+  Future<void> _loadIPTV(String url) async {
+    if (_disposed) return;
+
+    // Destroy old engine cleanly
+    _enginePollTimer?.cancel();
+    _engine?.removeListener(_onEngineState);
+    await _engine?.stop();
+    _engine?.dispose();
+    _unified?.dispose();
+
+    // Fresh engine
+    _engine = IPTVEngine();
+    _unified = UnifiedVideoController.fromIPTV(_engine!);
+    _engine!.addListener(_onEngineState);
+
+    // Start polling fallback for non-notified states
+    _enginePollTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      if (_disposed || !mounted) return;
+      _safeSetState(() {});
+    });
+
+    await _engine!.load(
+      url,
+      k1: _currentStream?.k1,
+      k2: _currentStream?.k2,
+    );
+  }
+
+  void _onEngineState() {
+    if (_disposed || _engine == null) return;
+    final s = _engine!.state;
+
+    switch (s.status) {
+      case IPTVStatus.playing:
+        _serverTimeout?.cancel();
+        _loadingFailsafe?.cancel();
+        _retryCount = 0;
+        if (_playerState != PlayerState.playing) {
+          _setPlayerState(PlayerState.playing);
+          _fadeCtrl.forward();
+        }
         break;
-      case AppLifecycleState.resumed:
-        debugPrint('▶️ App en foreground — resumiendo');
-        _unifiedController?.play();
-        _checkStreamHealth();
+      case IPTVStatus.buffering:
+        if (_playerState == PlayerState.playing) {
+          _setPlayerState(PlayerState.buffering);
+        }
+        break;
+      case IPTVStatus.error:
+        debugPrint('❌ Engine error: ${s.errorMessage}');
+        _nextServer();
+        break;
+      case IPTVStatus.reconnecting:
+        _setPlayerState(PlayerState.retrying);
         break;
       default:
         break;
     }
-  }
 
-  // ═══════════════════════════════════════
-  // Orientation Monitor
-  // ═══════════════════════════════════════
-
-  void _startOrientationMonitor() {
-    _orientationCheckTimer?.cancel();
-    _orientationCheckTimer = Timer.periodic(
-      PlayerConfig.orientationCheckInterval,
-      (timer) {
-        if (_isDisposed || !mounted) {
-          timer.cancel();
-          return;
-        }
-        _syncOrientationState();
-      },
-    );
-  }
-
-  void _syncOrientationState() {
-    if (!mounted) return;
-
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-
-    if (!isLandscape && _isFullScreen) {
-      _safeSetState(() => _isFullScreen = false);
-    } else if (isLandscape && !_isFullScreen) {
-      _safeSetState(() => _isFullScreen = true);
-    }
-  }
-
-  // ═══════════════════════════════════════
-  // Watchdog & Health Monitoring
-  // ═══════════════════════════════════════
-
-  void _startWatchdog() {
-    _stateCheckTimer?.cancel();
-    _stateCheckTimer = Timer.periodic(
-      PlayerConfig.watchdogInterval,
-      (timer) {
-        if (_isDisposed || !mounted) {
-          timer.cancel();
-          return;
-        }
-        _checkStreamHealth();
-      },
-    );
-  }
-
-  void _checkStreamHealth() {
-    if (_useHtmlPlayer) return;
-    if (_unifiedController == null) return;
-
-    // Grace period: don't watchdog during initial connection
-    if (_playbackStartTime != null) {
-      final elapsed = DateTime.now().difference(_playbackStartTime!);
-      if (elapsed < PlayerConfig.watchdogGracePeriod) return;
-    } else {
-      // Not started yet — don't watchdog
-      return;
-    }
-
-    final bufferHealth = _unifiedController!.bufferHealth;
-    final isPlaying = _unifiedController!.isPlaying;
-    final isBuffering = _unifiedController!.isBuffering;
-
-    // Healthy playback — reset counters
-    if (isPlaying && !isBuffering && bufferHealth > 15) {
-      _stuckCounter = 0;
-      _consecutiveErrors = 0;
-      return;
-    }
-
-    // Transitioning from buffering → playing → reset stuck counter
-    if (isPlaying && !isBuffering && _stuckCounter > 0) {
-      _stuckCounter = 0;
-      return;
-    }
-
-    // Early-play tolerance: first 5 seconds of playback allow low buffer
-    final playElapsed = DateTime.now().difference(_playbackStartTime!);
-    if (playElapsed.inSeconds < 5 && isPlaying) {
-      return;
-    }
-
-    // Critical buffer health while supposedly playing
-    if (bufferHealth < 10 && isPlaying) {
-      _stuckCounter++;
-      debugPrint(
-          '⚠️ Low buffer: $bufferHealth% (tick $_stuckCounter/${PlayerConfig.watchdogStallThreshold})');
-
-      if (_stuckCounter >= PlayerConfig.watchdogStallThreshold) {
-        debugPrint('🔄 Watchdog: stream stalled — initiating recovery');
-        _stuckCounter = 0;
-        _handleStreamStall();
-      }
-      return;
-    }
-
-    // Extended buffering detection
-    if (isBuffering) {
-      _stuckCounter++;
-      if (_stuckCounter >= PlayerConfig.extendedBufferingThreshold) {
-        debugPrint(
-            '⚠️ Extended buffering (${_stuckCounter * 5}s) — initiating recovery');
-        _stuckCounter = 0;
-        _handleStreamStall();
-      }
-    }
-  }
-
-  Future<void> _handleStreamStall() async {
-    if (_useHtmlPlayer || _isDisposed) return;
-
-    _consecutiveErrors++;
-
-    if (_consecutiveErrors >= PlayerConfig.maxConsecutiveErrors) {
-      debugPrint('❌ Too many consecutive errors — forced failover');
-      await _handleServerFailure();
-    } else {
-      _retryCount++;
-      if (_retryCount <= PlayerConfig.maxRetriesPerServer &&
-          _currentStream != null) {
-        debugPrint(
-            '🔄 Retry $_retryCount/${PlayerConfig.maxRetriesPerServer} on current server');
-        _setPlayerState(PlayerState.retrying);
-        await _initializeVideoPlayer(_currentStream!.url);
-      } else {
-        await _handleServerFailure();
-      }
-    }
-  }
-
-  void _startLoadingFailsafe() {
-    _loadingFailsafe?.cancel();
-    _loadingFailsafe = Timer(PlayerConfig.loadingFailsafeTimeout, () {
-      if (!_isDisposed && mounted && _playerState.isLoading) {
-        debugPrint('⏱️ Loading failsafe triggered — forcing UI visible');
-        _setPlayerState(PlayerState.playing);
-      }
-    });
-  }
-
-  // ═══════════════════════════════════════
-  // Player State Machine
-  // ═══════════════════════════════════════
-
-  void _setPlayerState(PlayerState newState) {
-    if (_isDisposed || !mounted) return;
-    if (_playerState == newState) return;
-
-    debugPrint('📊 State: ${_playerState.name} → ${newState.name}');
-    _safeSetState(() => _playerState = newState);
-  }
-
-  // ═══════════════════════════════════════
-  // Player Initialization (Mutex-Protected)
-  // ═══════════════════════════════════════
-
-  Future<void> _initializePlayer() async {
-    // Mutex: prevent concurrent initialization
-    if (_initLock != null && !_initLock!.isCompleted) {
-      debugPrint('⚠️ Initialization already in progress — skipping');
-      return;
-    }
-    if (_isDisposed) return;
-
-    _initLock = Completer<void>();
-
-    _setPlayerState(PlayerState.connecting);
-    _retryCount = 0;
-    _serverAttempt = 0;
-    _stuckCounter = 0;
-    _consecutiveErrors = 0;
-    _playbackStartTime = null;
-
-    try {
-      await _tryCurrentServer();
-    } catch (e, st) {
-      debugPrint('❌ Error in initializePlayer: $e\n$st');
-      _setPlayerState(PlayerState.error);
-    } finally {
-      if (!_initLock!.isCompleted) {
-        _initLock!.complete();
-      }
-    }
-  }
-
-  Future<void> _tryCurrentServer() async {
-    if (_isDisposed) return;
-
-    _serverTimeoutTimer?.cancel();
-    _loadingFailsafe?.cancel();
-    _startLoadingFailsafe();
-
-    if (_currentServerIndex >= widget.channel.streamUrl.length) {
-      throw Exception('No more servers available');
-    }
-
-    _currentStream = widget.channel.streamUrl[_currentServerIndex];
-    String url = _currentStream!.url.trim();
-
-    debugPrint('───────────────────────────────────────');
-    debugPrint(
-        '🔄 Server ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}');
-    debugPrint('🔗 URL: ${url.substring(0, min(60, url.length))}...');
-    debugPrint('───────────────────────────────────────');
-
-    // ── Step 1: Resolve URL ──────────────────────────
-    _setPlayerState(PlayerState.resolvingUrl);
-    try {
-      final resolvedUrl = await _resolveStreamUrl(url);
-      if (resolvedUrl != null && resolvedUrl.isNotEmpty) {
-        url = resolvedUrl;
-        debugPrint('✅ URL resolved: ${url.substring(0, min(80, url.length))}');
-      }
-    } catch (e) {
-      debugPrint('⚠️ URL resolution error: $e — using original URL');
-    }
-
-    if (url.isEmpty) {
-      throw Exception('Empty URL after resolution');
-    }
-
-    // ── Step 2: HTTP Stabilizer ──────────────────────
-    // Try HTTPS first, but track original for rollback
-    _originalHttpUrl = null;
-    if (url.startsWith('http://')) {
-      _originalHttpUrl = url; // Save for rollback
-      final httpsUrl = url.replaceFirst('http://', 'https://');
-      debugPrint(
-          '🔒 HTTP → HTTPS upgrade: ${httpsUrl.substring(0, min(60, httpsUrl.length))}...');
-      url = httpsUrl;
-    }
-
-    // ── Step 2: Server timeout ───────────────────────
-    final timeoutDuration = Duration(
-      seconds: PlayerConfig.baseServerTimeout.inSeconds +
-          (_serverAttempt * 2)
-              .clamp(0, PlayerConfig.maxTimeoutExtensionSeconds),
-    );
-
-    _serverTimeoutTimer = Timer(timeoutDuration, () {
-      if (mounted &&
-          !_isDisposed &&
-          _playerState.isLoading &&
-          _currentServerIndex < widget.channel.streamUrl.length - 1) {
-        debugPrint(
-            '⏱️ Server ${_currentServerIndex + 1} timeout after ${timeoutDuration.inSeconds}s');
-        _currentServerIndex++;
-        _tryCurrentServer();
-      }
-    });
-
-    // ── Step 3: Detect stream type ───────────────────
-    final streamType = widget.channel.getStreamType(url);
-    final isNative =
-        streamType == StreamType.m3u8 || streamType == StreamType.mp4;
-
-    // Also check URL patterns for additional safety
-    final urlLower = url.toLowerCase();
-    final looksLikeHls = urlLower.contains('.m3u8') || urlLower.contains('m3u');
-    final looksLikeWeb = urlLower.contains('iframe') ||
-        urlLower.contains('embed') ||
-        urlLower.contains('pivo-pro') ||
-        urlLower.contains('pivopro') ||
-        urlLower.contains('vercel.app') ||
-        urlLower.contains('.html');
-
-    final useNative = (isNative || looksLikeHls) && !looksLikeWeb;
-
-    if (useNative) {
-      debugPrint('📱 Mode: Native Player (HLS)');
-      _safeSetState(() => _useHtmlPlayer = false);
-      _setPlayerState(PlayerState.initializing);
-      await _initializeVideoPlayer(url);
-    } else {
-      debugPrint('🌐 Mode: WebView Player (DASH/Iframe/External)');
-      _safeSetState(() => _useHtmlPlayer = true);
-      _setPlayerState(PlayerState.playing);
-      _loadingFailsafe?.cancel();
-    }
-  }
-
-  // ═══════════════════════════════════════
-  // URL Resolution — HEAD-first Strategy
-  // ═══════════════════════════════════════
-
-  Future<String?> _resolveStreamUrl(String url) async {
-    debugPrint('🔍 Resolving URL...');
-
-    final urlLower = url.toLowerCase();
-
-    // Fast path: if URL is clearly an M3U8, don't resolve
-    if (urlLower.endsWith('.m3u8') ||
-        urlLower.contains('.m3u8?') ||
-        urlLower.contains('.m3u8#') ||
-        urlLower.contains('.m3u8/')) {
-      debugPrint('✅ Direct M3U8 URL — no resolution needed');
-      return url;
-    }
-
-    // Fast path: known streaming CDN patterns — skip resolution
-    if (urlLower.contains('akamaized.net') ||
-        urlLower.contains('cloudfront.net') ||
-        urlLower.contains('cdn.') ||
-        urlLower.contains('live.') ||
-        urlLower.contains('stream.') ||
-        urlLower.contains('hls.') ||
-        urlLower.contains('.ts')) {
-      debugPrint('✅ Known CDN pattern — no resolution needed');
-      return url;
-    }
-
-    // If it's an iframe/embed/external player URL, don't try to resolve
-    if (urlLower.contains('iframe') ||
-        urlLower.contains('embed') ||
-        urlLower.contains('.html') ||
-        urlLower.contains('pivo-pro') ||
-        urlLower.contains('pivopro') ||
-        urlLower.contains('vercel.app')) {
-      debugPrint('🌐 External URL — no resolution needed');
-      return url;
-    }
-
-    int resolveRetries = 0;
-
-    while (resolveRetries <= PlayerConfig.maxUrlResolveRetries) {
-      if (_isDisposed) return url;
-
-      HttpClient? httpClient;
-      try {
-        final uri = Uri.parse(url);
-        final timeout = Duration(
-          seconds: PlayerConfig.urlResolveTimeout.inSeconds +
-              (resolveRetries * PlayerConfig.urlResolveTimeoutExtensionSeconds),
-        );
-
-        httpClient = HttpClient()
-          ..connectionTimeout = timeout
-          ..idleTimeout = timeout
-          ..badCertificateCallback = (cert, host, port) => true;
-
-        // ── Strategy: Use GET but follow redirects carefully ──
-        final request = await httpClient.getUrl(uri);
-        request.followRedirects = true;
-        request.maxRedirects = 5;
-        request.headers.set('User-Agent', PlayerConfig.userAgent);
-        request.headers.set('Accept', '*/*');
-        request.headers.set('Connection', 'keep-alive');
-
-        final response = await request.close().timeout(timeout);
-
-        // Server error → don't retry resolution, failover later
-        if (response.statusCode >= 500) {
-          debugPrint('⚠️ Server ${response.statusCode} during resolution');
-          await response.drain();
-          return url;
-        }
-
-        // Check if we were redirected to an M3U8
-        if (response.redirects.isNotEmpty) {
-          final finalUrl = response.redirects.last.location.toString();
-          if (finalUrl.toLowerCase().contains('.m3u8')) {
-            await response.drain();
-            return finalUrl;
-          }
-        }
-
-        // Check content-type header for HLS MIME type
-        final contentType = response.headers.contentType;
-        if (contentType != null) {
-          final mime = contentType.mimeType.toLowerCase();
-          if (mime == 'application/vnd.apple.mpegurl' ||
-              mime == 'application/x-mpegurl' ||
-              mime == 'audio/mpegurl' ||
-              mime == 'audio/x-mpegurl') {
-            debugPrint('✅ Content-Type indicates HLS');
-            // The URL itself serves the M3U8
-            await response.drain();
-            if (response.redirects.isNotEmpty) {
-              return response.redirects.last.location.toString();
-            }
-            return url;
-          }
-        }
-
-        // If we got a 200, read the body to search for M3U8 links
-        if (response.statusCode == 200) {
-          final body = await response.transform(const Utf8Decoder()).join();
-
-          // Check if body IS an M3U8 playlist
-          if (body.trimLeft().startsWith('#EXTM3U')) {
-            debugPrint('✅ Body is M3U8 playlist');
-            if (response.redirects.isNotEmpty) {
-              return response.redirects.last.location.toString();
-            }
-            return url;
-          }
-
-          // Extract M3U8 URL from body (HTML page or JSON response)
-          if (body.contains('.m3u8')) {
-            final m3u8Match = RegExp(r"""https?://[^\s<>"']+\.m3u8[^\s<>"']*""")
-                .firstMatch(body);
-            if (m3u8Match != null) {
-              final extracted = m3u8Match.group(0)!;
-              debugPrint(
-                  '✅ Extracted M3U8 from body: ${extracted.substring(0, min(80, extracted.length))}');
-              return extracted;
-            }
-          }
-
-          // Check for redirect URL in Location header
-          final location = response.headers.value('location');
-          if (location != null && location.isNotEmpty) {
-            return location;
-          }
-
-          // If redirected, use the final redirect URL
-          if (response.redirects.isNotEmpty) {
-            return response.redirects.last.location.toString();
-          }
-        } else {
-          await response.drain();
-        }
-
-        return url;
-      } catch (e) {
-        resolveRetries++;
-        debugPrint(
-            '⚠️ Resolve attempt $resolveRetries/${PlayerConfig.maxUrlResolveRetries}: $e');
-
-        if (resolveRetries <= PlayerConfig.maxUrlResolveRetries) {
-          final waitMs = min(
-            PlayerConfig.backoffMaxMs,
-            PlayerConfig.backoffBaseMs * pow(2, resolveRetries).toInt(),
-          );
-          await Future.delayed(Duration(milliseconds: waitMs));
-        } else {
-          debugPrint('❌ URL resolution failed after all retries');
-          return url;
-        }
-      } finally {
-        try {
-          httpClient?.close(force: true);
-        } catch (_) {}
-      }
-    }
-    return url;
-  }
-
-  // ═══════════════════════════════════════
-  // VideoPlayer (HLS) — Enhanced
-  // ═══════════════════════════════════════
-
-  Future<void> _initializeVideoPlayer(String url,
-      {bool isHttpFallback = false}) async {
-    if (_isDisposed) return;
-
-    try {
-      await _disposeExistingControllers();
-
-      debugPrint(
-          '🎬 Initializing VideoPlayer (HLS)${isHttpFallback ? ' [HTTP fallback]' : ''}');
-
-      final headers = <String, String>{
-        'User-Agent': PlayerConfig.userAgent,
-        'Accept': '*/*',
-        'Accept-Encoding': 'gzip, deflate',
-        'Connection': 'keep-alive',
-      };
-
-      // Add Referer if URL has a valid origin
-      try {
-        final origin = Uri.parse(url).origin;
-        if (origin.isNotEmpty && origin != 'null') {
-          headers['Referer'] = origin;
-        }
-      } catch (_) {}
-
-      _videoPlayerController = VideoPlayerController.networkUrl(
-        Uri.parse(url),
-        formatHint: VideoFormat.hls,
-        videoPlayerOptions: VideoPlayerOptions(
-          mixWithOthers: false,
-          allowBackgroundPlayback: false,
-        ),
-        httpHeaders: headers,
-      );
-
-      _videoPlayerController!.addListener(_videoListener);
-
-      // Initialize with generous timeout for slow servers
-      await _videoPlayerController!.initialize().timeout(
-        PlayerConfig.initializeTimeout,
-        onTimeout: () {
-          throw TimeoutException('Player initialization timeout');
-        },
-      );
-
-      if (_isDisposed || !mounted) return;
-
-      _unifiedController =
-          UnifiedVideoController.fromVideoPlayer(_videoPlayerController!);
-
-      // Cancel timeouts — initialization succeeded
-      _serverTimeoutTimer?.cancel();
-      _loadingFailsafe?.cancel();
-
-      await _videoPlayerController!.setVolume(_isMuted ? 0.0 : 1.0);
-      await _videoPlayerController!.play();
-
-      _playbackStartTime = DateTime.now();
-      _fadeController.forward();
-
-      _retryCount = 0;
-      _stuckCounter = 0;
-      _consecutiveErrors = 0;
-      _originalHttpUrl = null; // No longer need rollback
-
-      debugPrint('✅ VideoPlayer ready — playback started');
-    } catch (e, st) {
-      debugPrint('❌ VideoPlayer init error: $e\n$st');
-
-      // Fix: If HTTPS failed and we have original HTTP URL, try HTTP first
-      if (!isHttpFallback && _originalHttpUrl != null) {
-        debugPrint('🔄 HTTPS failed — falling back to original HTTP URL');
-        _originalHttpUrl = null;
-        final httpUrl = url.replaceFirst('https://', 'http://');
-        await Future.delayed(
-            const Duration(milliseconds: PlayerConfig.quickRetryDelayMs));
-        if (!_isDisposed && mounted) {
-          await _initializeVideoPlayer(httpUrl, isHttpFallback: true);
-        }
-        return;
-      }
-
-      // Fix: Quick retry on same server before failover
-      _retryCount++;
-      if (_retryCount <= 1 && _currentStream != null) {
-        debugPrint(
-            '🔄 Quick retry $_retryCount on same server before failover');
-        _setPlayerState(PlayerState.retrying);
-        await Future.delayed(
-            const Duration(milliseconds: PlayerConfig.quickRetryDelayMs));
-        if (!_isDisposed && mounted) {
-          await _initializeVideoPlayer(_currentStream!.url);
-        }
-        return;
-      }
-
-      await _handleServerFailure();
-    }
-  }
-
-  void _videoListener() {
-    if (_isDisposed || !mounted || _videoPlayerController == null) return;
-
-    final value = _videoPlayerController!.value;
-
-    // ── Healthy playback: reset everything ──
-    if (value.isInitialized &&
-        value.isPlaying &&
-        !value.isBuffering &&
-        !value.hasError) {
-      _stuckCounter = 0;
-      _consecutiveErrors = 0;
-
-      if (_playerState != PlayerState.playing) {
-        _loadingFailsafe?.cancel();
-        _setPlayerState(PlayerState.playing);
-      }
-    }
-
-    // ── Buffering state ──
-    if (value.isInitialized && value.isBuffering && !value.hasError) {
-      if (_playerState == PlayerState.playing) {
-        _setPlayerState(PlayerState.buffering);
-      }
-    }
-
-    // ── Back from buffering to playing ──
-    if (value.isInitialized &&
-        value.isPlaying &&
-        !value.isBuffering &&
-        _playerState == PlayerState.buffering) {
-      _setPlayerState(PlayerState.playing);
-    }
-
-    // ── Error handling with debounce ──
-    if (value.hasError &&
-        _playerState != PlayerState.retrying &&
-        _playerState != PlayerState.connecting) {
-      final errorDesc = value.errorDescription ?? 'Unknown error';
-      debugPrint('⚠️ VideoPlayer error: $errorDesc');
-
-      if (_errorRecoveryTimer?.isActive ?? false) return;
-
-      _errorRecoveryTimer = Timer(const Duration(seconds: 1), () async {
-        if (_isDisposed || !mounted) return;
-
-        _consecutiveErrors++;
-        _retryCount++;
-
-        debugPrint(
-            '🔄 Recovery $_retryCount/${PlayerConfig.maxRetriesPerServer} '
-            '(consecutive: $_consecutiveErrors)');
-
-        if (_consecutiveErrors >= PlayerConfig.maxConsecutiveErrors) {
-          debugPrint('❌ Too many errors — forced failover');
-          await _handleServerFailure();
-        } else if (_retryCount <= PlayerConfig.maxRetriesPerServer &&
-            _currentStream != null) {
-          _setPlayerState(PlayerState.retrying);
-          await _initializeVideoPlayer(_currentStream!.url);
-        } else {
-          await _handleServerFailure();
-        }
-      });
-    }
-
-    // Rebuild for visual updates (buffering indicator etc)
     _safeSetState(() {});
   }
 
-  // ═══════════════════════════════════════
-  // Error Handling & Server Failover
-  // ═══════════════════════════════════════
+  // ── Server failover ───────────────────────────────────────────────────────
 
-  Future<void> _disposeExistingControllers() async {
-    if (_videoPlayerController != null) {
-      _videoPlayerController!.removeListener(_videoListener);
-      try {
-        await _videoPlayerController!.pause();
-        await _videoPlayerController!.dispose();
-      } catch (e) {
-        debugPrint('⚠️ Error disposing VideoPlayer: $e');
-      }
-      _videoPlayerController = null;
-    }
-    _unifiedController = null;
-  }
-
-  Future<void> _handleServerFailure() async {
-    if (_isDisposed) return;
-
-    debugPrint('⚠️ Server ${_currentServerIndex + 1} failed');
-
-    if (_currentServerIndex < widget.channel.streamUrl.length - 1) {
-      _currentServerIndex++;
+  Future<void> _nextServer() async {
+    if (_disposed) return;
+    if (_serverIndex < widget.channel.streamUrl.length - 1) {
+      _serverIndex++;
       _retryCount = 0;
-
-      debugPrint(
-          '🔄 Trying server ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}');
-
+      _serverAttempt++;
       _setPlayerState(PlayerState.connecting);
 
-      await Future.delayed(_backoffDurationForAttempt(_serverAttempt));
-      _serverAttempt++;
-
-      await _tryCurrentServer();
+      final delay = _backoff(_serverAttempt);
+      await Future.delayed(Duration(milliseconds: delay));
+      if (!_disposed) await _tryServer();
     } else {
       debugPrint('❌ All servers exhausted');
-      if (mounted && !_isDisposed) {
-        _loadingFailsafe?.cancel();
-        _safeSetState(() {
-          _playerState = PlayerState.error;
-        });
-      }
+      _loadingFailsafe?.cancel();
+      _setPlayerState(PlayerState.error);
     }
   }
 
-  Duration _backoffDurationForAttempt(int attempt) {
-    final ms = min(
-      PlayerConfig.backoffMaxMs,
-      (PlayerConfig.backoffBaseMs * pow(2, attempt)).toInt(),
-    );
-    return Duration(milliseconds: ms);
+  int _backoff(int attempt) =>
+      (PlayerConfig.backoffBaseMs * pow(2, attempt).toInt())
+          .clamp(PlayerConfig.backoffBaseMs, PlayerConfig.backoffMaxMs);
+
+  // ── URL Resolution ────────────────────────────────────────────────────────
+
+  Future<String?> _resolveUrl(String url) async {
+    final u = url.toLowerCase();
+
+    // Fast paths — skip resolution
+    if (u.endsWith('.m3u8') ||
+        u.contains('.m3u8?') ||
+        u.contains('akamaized.net') ||
+        u.contains('cloudfront.net') ||
+        u.contains('cdn.') ||
+        u.contains('live.') ||
+        u.contains('stream.') ||
+        u.contains('hls.') ||
+        u.contains('.ts') ||
+        _isWebStream(url)) {
+      return url;
+    }
+
+    HttpClient? client;
+    try {
+      client = HttpClient()
+        ..connectionTimeout = PlayerConfig.urlResolveTimeout
+        ..idleTimeout = PlayerConfig.urlResolveTimeout
+        ..badCertificateCallback = (_, __, ___) => true;
+
+      final req = await client.getUrl(Uri.parse(url));
+      req.followRedirects = true;
+      req.maxRedirects = 5;
+      req.headers.set('User-Agent', PlayerConfig.userAgent);
+      req.headers.set('Accept', '*/*');
+
+      final res = await req.close().timeout(PlayerConfig.urlResolveTimeout);
+
+      if (res.redirects.isNotEmpty) {
+        final final_ = res.redirects.last.location.toString();
+        if (final_.toLowerCase().contains('.m3u8')) {
+          await res.drain();
+          return final_;
+        }
+      }
+
+      final ct = res.headers.contentType?.mimeType.toLowerCase() ?? '';
+      if (ct.contains('mpegurl') || ct.contains('x-mpegurl')) {
+        await res.drain();
+        return url;
+      }
+
+      if (res.statusCode == 200) {
+        final body = await res.transform(const Utf8Decoder()).join();
+        if (body.trimLeft().startsWith('#EXTM3U')) return url;
+        final match = RegExp(r'https?://[^\s<>"\x27]+\.m3u8[^\s<>"\x27]*')
+            .firstMatch(body);
+        if (match != null) return match.group(0);
+      } else {
+        await res.drain();
+      }
+      return url;
+    } catch (_) {
+      return url;
+    } finally {
+      try {
+        client?.close(force: true);
+      } catch (_) {}
+    }
   }
 
-  // ═══════════════════════════════════════
-  // UI Controls
-  // ═══════════════════════════════════════
+  // ── UI Helpers ────────────────────────────────────────────────────────────
+
+  void _setPlayerState(PlayerState s) {
+    if (_disposed || !mounted || _playerState == s) return;
+    debugPrint('📊 State: ${_playerState.name} → ${s.name}');
+    _safeSetState(() => _playerState = s);
+  }
+
+  void _safeSetState(VoidCallback fn) {
+    if (mounted && !_disposed) setState(fn);
+  }
 
   void _toggleFullScreen() {
-    if (_isDisposed) return;
-
+    if (_disposed) return;
     setState(() => _isFullScreen = !_isFullScreen);
-
     if (_isFullScreen) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([
@@ -842,65 +428,28 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
   }
 
-  void _changeAspectRatio() {
-    if (_isDisposed) return;
-    setState(() {
-      _aspectRatioType = _aspectRatioType.next;
-    });
-  }
+  void _changeAspectRatio() => setState(() => _aspectRatio = _aspectRatio.next);
 
   double _getAspectRatio() {
-    switch (_aspectRatioType) {
+    switch (_aspectRatio) {
       case AspectRatioType.auto:
-        if (_videoPlayerController != null &&
-            _videoPlayerController!.value.isInitialized) {
-          return _videoPlayerController!.value.aspectRatio;
-        }
-        return 16 / 9;
       case AspectRatioType.ratio16_9:
         return 16 / 9;
       case AspectRatioType.ratio4_3:
         return 4 / 3;
       case AspectRatioType.stretch:
-        final size = MediaQuery.of(context).size;
-        return size.width / size.height;
+        final s = MediaQuery.of(context).size;
+        return s.width / s.height;
     }
   }
 
   void _toggleMute() {
-    if (_isDisposed) return;
-
+    if (_disposed) return;
     setState(() => _isMuted = !_isMuted);
-    _videoPlayerController?.setVolume(_isMuted ? 0.0 : 1.0);
+    _engine?.setMuted(_isMuted);
   }
 
-  // ═══════════════════════════════════════
-  // Lifecycle
-  // ═══════════════════════════════════════
-
-  @override
-  void dispose() {
-    debugPrint('🗑️ Disposing VideoPlayerWidget');
-    _isDisposed = true;
-
-    WidgetsBinding.instance.removeObserver(this);
-
-    _serverTimeoutTimer?.cancel();
-    _errorRecoveryTimer?.cancel();
-    _stateCheckTimer?.cancel();
-    _orientationCheckTimer?.cancel();
-    _loadingFailsafe?.cancel();
-    _fadeController.dispose();
-
-    _disposeExistingControllers();
-
-    WakelockPlus.disable();
-    super.dispose();
-  }
-
-  // ═══════════════════════════════════════
-  // Build
-  // ═══════════════════════════════════════
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -915,124 +464,120 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         backgroundColor: Colors.black,
         body: Stack(
           children: [
-            // 1. Video Layer
-            Center(
-              child: _useHtmlPlayer
-                  ? PivoProPlayer(
-                      url: _currentStream!.url,
-                      channelName: widget.channel.name,
-                      onRefresh: _handleServerFailure,
-                      currentServer: _currentServerIndex + 1,
-                      totalServers: widget.channel.streamUrl.length,
-                      onAllServersFailed: () {
-                        // Iframe exhausted its servers — try next m3u8 server
-                        debugPrint(
-                            '🔄 Iframe reported all servers failed — continuing to next server');
-                        _handleServerFailure();
-                      },
-                    )
-                  : AspectRatio(
-                      aspectRatio: _getAspectRatio(),
-                      child: (_videoPlayerController != null &&
-                              _videoPlayerController!.value.isInitialized)
-                          ? VideoPlayer(_videoPlayerController!)
-                          : Container(color: Colors.black),
-                    ),
-            ),
+            // ── 1. Video Layer ──────────────────────────────────────────
+            _buildVideoLayer(),
 
-            // 2. Controls Layer (Only for Native Player)
-            if (!_useHtmlPlayer && _unifiedController != null)
+            // ── 2. Native Controls (only libmpv path) ──────────────────
+            if (!_useWebPlayer && _unified != null)
               Positioned.fill(
                 child: CustomVideoControls(
-                  controller: _unifiedController!,
+                  controller: _unified!,
                   channelName: widget.channel.name,
                   onFullScreenToggle: _toggleFullScreen,
                   isFullScreen: _isFullScreen,
-                  aspectRatioLabel: _aspectRatioType.label,
+                  aspectRatioLabel: _aspectRatio.label,
                   onAspectRatioChange: _changeAspectRatio,
                   onMuteToggle: _toggleMute,
                   isMuted: _isMuted,
-                  currentServer: _currentServerIndex + 1,
+                  currentServer: _serverIndex + 1,
                   totalServers: widget.channel.streamUrl.length,
                   onServerSelect: (idx) {
-                    _currentServerIndex = idx;
+                    _serverIndex = idx;
                     _retryCount = 0;
-                    _consecutiveErrors = 0;
-                    _stuckCounter = 0;
+                    _serverAttempt = 0;
                     _setPlayerState(PlayerState.connecting);
-                    _tryCurrentServer();
+                    _tryServer();
                   },
                 ),
               ),
 
-            // 3. Fade Animation (entrance)
-            if (!_useHtmlPlayer)
+            // ── 3. Fade-in animation ────────────────────────────────────
+            if (!_useWebPlayer)
               IgnorePointer(
                 child: FadeTransition(
-                  opacity: Tween<double>(begin: 1.0, end: 0.0)
-                      .animate(_fadeAnimation),
+                  opacity: Tween(begin: 1.0, end: 0.0).animate(_fadeAnim),
                   child: Container(color: Colors.black),
                 ),
               ),
 
-            // 4. Loading / Buffering State
-            if (!_useHtmlPlayer && _shouldShowLoadingOverlay())
-              _buildLoadingWidget(),
+            // ── 4. Loading overlay ──────────────────────────────────────
+            if (!_useWebPlayer && _shouldShowLoading()) _buildLoading(),
 
-            // 5. Error State
-            if (!_useHtmlPlayer && _playerState == PlayerState.error)
-              _buildErrorWidget(),
+            // ── 5. Error overlay ────────────────────────────────────────
+            if (!_useWebPlayer && _playerState == PlayerState.error)
+              _buildError(),
           ],
         ),
       ),
     );
   }
 
-  bool _shouldShowLoadingOverlay() {
-    if (_playerState.isLoading) return true;
-    if (_playerState == PlayerState.buffering) return true;
-    // Also show if the native controller reports buffering
-    if (_unifiedController != null && _unifiedController!.isBuffering) {
-      return true;
+  Widget _buildVideoLayer() {
+    if (_useWebPlayer && _currentStream != null) {
+      return Center(
+        child: PivoProPlayer(
+          url: _currentStream!.url,
+          channelName: widget.channel.name,
+          currentServer: _serverIndex + 1,
+          totalServers: widget.channel.streamUrl.length,
+          onRefresh: () => _nextServer(),
+          onAllServersFailed: () {
+            debugPrint('🔄 WebView exhausted → next server');
+            _nextServer();
+          },
+        ),
+      );
     }
+
+    if (_engine != null) {
+      return AspectRatio(
+        aspectRatio: _getAspectRatio(),
+        child: Video(
+          controller: _engine!.videoController,
+          controls: NoVideoControls,
+          fill: Colors.black,
+        ),
+      );
+    }
+
+    return Container(color: Colors.black);
+  }
+
+  bool _shouldShowLoading() {
+    if (_playerState.isLoading) return true;
+    if (_engine?.state.status == IPTVStatus.buffering) return true;
+    if (_engine?.state.status == IPTVStatus.reconnecting) return true;
     return false;
   }
 
-  void _safeSetState(VoidCallback fn) {
-    if (mounted && !_isDisposed) {
-      setState(fn);
+  Widget _buildLoading() {
+    final isReconnecting = _engine?.state.status == IPTVStatus.reconnecting;
+    final isBuffering = _playerState == PlayerState.buffering ||
+        _engine?.state.status == IPTVStatus.buffering;
+
+    String msg;
+    if (isReconnecting) {
+      msg =
+          'Reconectando... (${_engine?.state.reconnectAttempt}/${IPTVConfig.maxReconnectAttempts})';
+    } else if (isBuffering) {
+      msg = 'Cargando...';
+    } else {
+      msg = _playerState.displayMessage;
     }
-  }
-
-  // ═══════════════════════════════════════
-  // Loading Widget
-  // ═══════════════════════════════════════
-
-  Widget _buildLoadingWidget() {
-    final bool isBuffering = _playerState == PlayerState.buffering ||
-        (_unifiedController != null && _unifiedController!.isBuffering);
-
-    // Simple, clean messages like major streaming platforms
-    final String message = isBuffering ? 'Cargando...' : 'Conectando...';
-    final String? subMessage = _playerState == PlayerState.retrying
-        ? 'Intento $_retryCount/${PlayerConfig.maxRetriesPerServer}'
-        : null;
 
     return VideoLoadingWidget(
       isBuffering: isBuffering,
-      message: message,
+      message: msg,
       serverInfo: widget.channel.streamUrl.length > 1
-          ? '${_currentServerIndex + 1}/${widget.channel.streamUrl.length}'
+          ? '${_serverIndex + 1}/${widget.channel.streamUrl.length}'
           : null,
-      subMessage: subMessage,
+      subMessage: _playerState == PlayerState.retrying
+          ? 'Intento $_retryCount/${PlayerConfig.maxRetriesPerServer}'
+          : null,
     );
   }
 
-  // ═══════════════════════════════════════
-  // Error Widget
-  // ═══════════════════════════════════════
-
-  Widget _buildErrorWidget() {
+  Widget _buildError() {
     return Container(
       color: Colors.black,
       child: Center(
@@ -1041,16 +586,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Error icon with glow
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.red.withAlpha(20),
-                  border: Border.all(
-                    color: Colors.red.withAlpha(60),
-                    width: 1.5,
-                  ),
+                  border:
+                      Border.all(color: Colors.red.withAlpha(60), width: 1.5),
                 ),
                 child: const Icon(
                   Icons.signal_wifi_connected_no_internet_4_rounded,
@@ -1065,19 +607,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                   color: Colors.white,
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  height: 1.3,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Verifica tu conexión e intenta nuevamente.\n'
-                'Si el problema persiste, el servidor puede estar temporalmente fuera de servicio.',
+                'Verifica tu conexión e intentá nuevamente.',
                 style: GoogleFonts.dmSans(
-                  color: Colors.white54,
-                  fontSize: 13,
-                  height: 1.5,
-                ),
+                    color: Colors.white54, fontSize: 13, height: 1.5),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
@@ -1087,13 +624,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 decoration: BoxDecoration(
                   color: Colors.white.withAlpha(10),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withAlpha(20),
-                    width: 0.5,
-                  ),
+                  border:
+                      Border.all(color: Colors.white.withAlpha(20), width: 0.5),
                 ),
                 child: Text(
-                  'Servidor ${_currentServerIndex + 1}/${widget.channel.streamUrl.length}',
+                  'Servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}',
                   style: GoogleFonts.dmSans(
                     color: Colors.white38,
                     fontSize: 11,
@@ -1102,19 +637,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 ),
               ),
               const SizedBox(height: 28),
-              // Retry button
               GestureDetector(
                 onTap: () {
                   HapticFeedback.mediumImpact();
-                  _currentServerIndex = 0;
-                  _consecutiveErrors = 0;
-                  _initializePlayer();
+                  _serverIndex = 0;
+                  _serverAttempt = 0;
+                  _initPlayer();
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 14,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(12),
@@ -1130,11 +662,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.refresh_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                      const Icon(Icons.refresh_rounded,
+                          color: Colors.white, size: 18),
                       const SizedBox(width: 8),
                       Text(
                         'Reintentar',

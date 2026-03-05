@@ -75,10 +75,9 @@ class EpgService {
     String? currentName;
     final currentPrograms = <String>[];
 
-    bool _isChannelNumber(String line) =>
-        RegExp(r'^\d+$').hasMatch(line.trim());
+    bool isChannelNumber(String line) => RegExp(r'^\d+$').hasMatch(line.trim());
 
-    void _flushChannel() {
+    void flushChannel() {
       if (currentNumber == null && currentName == null) return;
       channels.add(_ParsedChannel(
         number: currentNumber,
@@ -94,13 +93,13 @@ class EpgService {
       final line = lines[i];
       if (line.isEmpty) continue;
 
-      if (_isChannelNumber(line)) {
+      if (isChannelNumber(line)) {
         // New channel block.
-        _flushChannel();
+        flushChannel();
         currentNumber = line;
         // Next line should be channel name if available.
         if (i + 1 < lines.length &&
-            !_isChannelNumber(lines[i + 1]) &&
+            !isChannelNumber(lines[i + 1]) &&
             !lines[i + 1].toLowerCase().contains('ver más')) {
           currentName = lines[i + 1];
         }
@@ -118,7 +117,7 @@ class EpgService {
         currentPrograms.add(line);
       }
     }
-    _flushChannel();
+    flushChannel();
 
     if (channels.isEmpty) return const [];
 
@@ -177,4 +176,3 @@ class _ParsedChannel {
   static final empty =
       _ParsedChannel(number: null, name: null, programLines: const []);
 }
-

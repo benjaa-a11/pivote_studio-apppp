@@ -340,9 +340,11 @@ class AuthService {
       debugPrint('🔵 Starting logout process...');
 
       await _auth.signOut();
-      if (!kIsWeb && !(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      if (!kIsWeb &&
+          !(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
         try {
-          final googleSignIn = GoogleSignIn(serverClientId: _googleWebOAuthClientId);
+          final googleSignIn =
+              GoogleSignIn(serverClientId: _googleWebOAuthClientId);
           await googleSignIn.signOut();
         } catch (e) {
           debugPrint('⚠️ Google sign out failed (non-fatal): $e');

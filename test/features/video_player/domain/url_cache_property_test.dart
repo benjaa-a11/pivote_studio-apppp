@@ -44,7 +44,8 @@ void main() {
     // **Validates: Requirements 1.4**
     test(
         'Property 3: For any URL resolved successfully, if the same URL is requested within 5 minutes, '
-        'it must be obtained from cache without performing a new HTTP resolution', () async {
+        'it must be obtained from cache without performing a new HTTP resolution',
+        () async {
       final cache = URLCache();
       const iterations = 100;
 
@@ -65,14 +66,12 @@ void main() {
 
         // Assertions
         expect(cached, isNotNull,
-            reason:
-                'URL should be in cache after being stored (iteration $i)');
+            reason: 'URL should be in cache after being stored (iteration $i)');
         expect(cached?.finalURL, equals(resolved1.finalURL),
             reason:
                 'Cached URL should match the original resolved URL (iteration $i)');
         expect(cached?.resolvedAt, equals(resolved1.resolvedAt),
-            reason:
-                'Cached resolution timestamp should match (iteration $i)');
+            reason: 'Cached resolution timestamp should match (iteration $i)');
         expect(cached?.resolutionTime, equals(resolved1.resolutionTime),
             reason: 'Cached resolution time should match (iteration $i)');
       }

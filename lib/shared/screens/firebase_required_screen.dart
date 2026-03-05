@@ -51,7 +51,8 @@ class FirebaseRequiredScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       height: 1.4,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.75),
                     ),
                   ),
                   const SizedBox(height: 18),
@@ -114,7 +115,8 @@ class FirebaseRequiredScreen extends StatelessWidget {
                     'Solución (dev): ejecuta flutterfire configure y vuelve a compilar.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.55),
                     ),
                   ),
                 ],
@@ -126,4 +128,3 @@ class FirebaseRequiredScreen extends StatelessWidget {
     );
   }
 }
-

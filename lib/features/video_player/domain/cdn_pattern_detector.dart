@@ -1,8 +1,8 @@
 /// Detector de patrones CDN conocidos para optimización de resolución de URLs
-/// 
+///
 /// Identifica URLs que pertenecen a CDNs conocidos (Cloudflare, Akamai, AWS CloudFront)
 /// para omitir verificaciones HEAD/GET innecesarias y mejorar el rendimiento.
-/// 
+///
 /// **Validates: Requirements 1.3**
 class CDNPatternDetector {
   // Patrones de dominio para Cloudflare
@@ -10,7 +10,8 @@ class CDNPatternDetector {
     RegExp(r'\.cloudflare\.com$', caseSensitive: false),
     RegExp(r'\.cloudflare\.net$', caseSensitive: false),
     RegExp(r'\.cloudflarestream\.com$', caseSensitive: false),
-    RegExp(r'\.cloudfront\.net$', caseSensitive: false), // AWS CloudFront también usa este dominio
+    RegExp(r'\.cloudfront\.net$',
+        caseSensitive: false), // AWS CloudFront también usa este dominio
   ];
 
   // Patrones de dominio para Akamai
@@ -28,10 +29,10 @@ class CDNPatternDetector {
   ];
 
   /// Detecta si una URL pertenece a un CDN conocido
-  /// 
+  ///
   /// Retorna true si la URL coincide con patrones de Cloudflare, Akamai o AWS CloudFront.
   /// Esto permite al sistema omitir verificaciones HEAD/GET adicionales.
-  /// 
+  ///
   /// Ejemplo:
   /// ```dart
   /// final detector = CDNPatternDetector();
@@ -66,7 +67,7 @@ class CDNPatternDetector {
   }
 
   /// Detecta el tipo de CDN de una URL
-  /// 
+  ///
   /// Retorna el nombre del CDN ('cloudflare', 'akamai', 'cloudfront') o null si no es un CDN conocido.
   String? detectCDNType(String url) {
     try {

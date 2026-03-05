@@ -119,7 +119,9 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  hasStarted ? 'MUNDIAL 2026 EN JUEGO' : 'Cuenta regresiva Mundial 2026',
+                  hasStarted
+                      ? 'MUNDIAL 2026 EN JUEGO'
+                      : 'Cuenta regresiva Mundial 2026',
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.6,
@@ -142,8 +144,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color:
-                              theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.75),
                         ),
                       ),
                     ],

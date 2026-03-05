@@ -11,7 +11,7 @@ class VideoQuality {
   });
 
   String get resolution => '${width}x$height';
-  
+
   String get bitrateFormatted =>
       '${(bitrate / 1000000).toStringAsFixed(1)} Mbps';
 

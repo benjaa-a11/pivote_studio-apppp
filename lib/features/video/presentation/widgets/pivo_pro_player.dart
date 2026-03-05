@@ -3,20 +3,21 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// Android Platform Import for advanced configuration
-/// PivoProPlayer v5.0 — WebView-based Player
-/// ═══════════════════════════════════════════════════════════════
-///
-/// Handles DASH, Iframe, and external HTML-based streams via WebView.
-/// Uses the same shared enums and unified loading/error UI as the
-/// native M3U8 player for visual consistency.
-///
+// ════════════════════════════════════════════════════════════════════════════
+// PivoProPlayer v6.0 — WebView-based Player (DASH / Iframe / HTML)
+// ════════════════════════════════════════════════════════════════════════════
+//
+// Critical fix: setMediaPlaybackRequiresUserGesture(false) on Android
+// so the WebView page can autoplay without a user gesture, solving the
+// "loads then immediately pauses" bug.
+//
 
 class PivoProPlayer extends StatefulWidget {
   final String url;
@@ -42,29 +43,20 @@ class PivoProPlayer extends StatefulWidget {
 
 class _PivoProPlayerState extends State<PivoProPlayer>
     with WidgetsBindingObserver, AutomaticKeepAliveClientMixin {
-  // ═══════════════════════════════════════
-  // Controllers
-  // ═══════════════════════════════════════
-  late final WebViewController _webViewController;
-  late final UnifiedVideoController _unifiedController;
+  late final WebViewController _wvc;
+  late final UnifiedVideoController _unified;
   final VideoState _videoState = VideoState();
 
-  // ═══════════════════════════════════════
-  // States
-  // ═══════════════════════════════════════
   bool _isFullscreen = false;
-  AspectRatioType _aspectRatioType = AspectRatioType.ratio16_9;
-  bool _isDisposed = false;
+  AspectRatioType _arType = AspectRatioType.ratio16_9;
+  bool _disposed = false;
+  bool _videoStarted = false;
+  int _iframeRetries = 0;
 
-  // ═══════════════════════════════════════
-  // Timers & Monitoring
-  // ═══════════════════════════════════════
   Timer? _stateMonitor;
   Timer? _loadingFailsafe;
-  Timer? _iframeLoadTimeout;
-  StreamSubscription? _stateSubscription;
-  int _iframeRetryCount = 0;
-  bool _videoStartedPlaying = false;
+  Timer? _iframeTimeout;
+  StreamSubscription? _stateSub;
 
   @override
   bool get wantKeepAlive => true;
@@ -73,415 +65,293 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
-    debugPrint('═══════════════════════════════════════');
-    debugPrint('🌐 PivoProPlayer v5.0 Starting');
-    debugPrint('📺 Channel: ${widget.channelName}');
-    debugPrint('🔗 URL: ${widget.url}');
-    debugPrint('═══════════════════════════════════════');
-
-    _initializeWebView();
-    _startStateMonitoring();
+    debugPrint('🌐 PivoProPlayer v6.0 — ${widget.channelName}');
+    debugPrint('   URL: ${widget.url}');
+    _initWebView();
+    _startStateMonitor();
     _startLoadingFailsafe();
-    _startIframeLoadTimeout();
+    _startIframeTimeout();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_isDisposed) return;
-
-    switch (state) {
-      case AppLifecycleState.paused:
-      case AppLifecycleState.inactive:
-        debugPrint('⏸️ App background');
-        _executeJS('window.pause()');
-        break;
-      case AppLifecycleState.resumed:
-        debugPrint('▶️ App foreground');
-        _executeJS('window.play()');
-        break;
-      default:
-        break;
+    if (_disposed) {
+      return;
+    }
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _js('window.pause()');
+    } else if (state == AppLifecycleState.resumed) {
+      _js('window.play()');
     }
   }
 
-  // ═══════════════════════════════════════
-  // WebView Initialization
-  // ═══════════════════════════════════════
+  // ── WebView Init ─────────────────────────────────────────────────────────
 
-  void _initializeWebView() {
-    _webViewController = WebViewController();
+  void _initWebView() {
+    _wvc = WebViewController();
 
-    _webViewController
+    // ╔══════════════════════════════════════════════════════════════╗
+    // ║ CRITICAL FIX: Allow autoplay without user gesture           ║
+    // ║ This is the root cause of "loads then pauses" on Android    ║
+    // ╚══════════════════════════════════════════════════════════════╝
+    final platform = _wvc.platform;
+    if (platform is AndroidWebViewController) {
+      AndroidWebViewController.enableDebugging(false);
+      platform.setMediaPlaybackRequiresUserGesture(false);
+    }
+
+    _wvc
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: _onPageStarted,
-          onPageFinished: _onPageFinished,
-          onWebResourceError: _onWebResourceError,
-        ),
-      )
-      ..addJavaScriptChannel(
-        'FlutterChannel',
-        onMessageReceived: _handleMessageFromHtml,
-      )
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageStarted: _onPageStarted,
+        onPageFinished: _onPageFinished,
+        onWebResourceError: _onWebResourceError,
+      ))
+      ..addJavaScriptChannel('FlutterChannel',
+          onMessageReceived: _onMessageFromHtml)
       ..loadRequest(Uri.parse(widget.url));
 
-    _unifiedController =
-        UnifiedVideoController.fromWeb(_webViewController, _videoState);
-
-    _stateSubscription = _videoState.stateChanges.listen(_onStateChange);
+    _unified = UnifiedVideoController.fromWeb(_wvc, _videoState);
+    _stateSub = _videoState.stateChanges.listen(_onStateChange);
   }
 
-  // ═══════════════════════════════════════
-  // Navigation Callbacks
-  // ═══════════════════════════════════════
+  // ── Page events ──────────────────────────────────────────────────────────
 
   void _onPageStarted(String url) {
-    debugPrint('📄 Page Started: $url');
-    if (!_isDisposed && mounted) {
-      setState(() {
-        _videoState.update(loading: true, error: false, errorMsg: null);
-      });
+    debugPrint('📄 Page started: $url');
+    if (!_disposed && mounted) {
+      setState(() => _videoState.update(loading: true, error: false));
     }
   }
 
   void _onPageFinished(String url) {
-    debugPrint('✅ Page Finished: $url');
-    // Lanzar intento de autoplay dentro del iframe
-    _executeJS('window.play()');
-    // Start a check: if video doesn't play within timeout, retry
-    _startIframeLoadTimeout();
-  }
-
-  void _onWebResourceError(WebResourceError error) {
-    final isCritical = error.errorType == WebResourceErrorType.hostLookup ||
-        error.errorType == WebResourceErrorType.timeout ||
-        error.errorType == WebResourceErrorType.connect;
-
-    if (isCritical) {
-      debugPrint('❌ Critical WebView Error: ${error.description}');
-      _iframeRetryCount++;
-
-      if (_iframeRetryCount > PlayerConfig.maxIframeRetries) {
-        debugPrint('❌ Iframe max retries exceeded — signaling parent');
-        if (!_isDisposed && mounted) {
-          setState(() {
-            _videoState.update(
-              loading: false,
-              error: true,
-              errorMsg: 'Error de conexión: ${error.description}',
-            );
-          });
-          // Signal parent to try next server
-          widget.onAllServersFailed?.call();
-        }
-      } else {
-        debugPrint(
-            '🔄 Iframe retry $_iframeRetryCount/${PlayerConfig.maxIframeRetries}');
-        if (!_isDisposed && mounted) {
-          setState(() {
-            _videoState.update(loading: true, error: false);
-          });
-          // Quick retry
-          Future.delayed(
-            const Duration(milliseconds: PlayerConfig.quickRetryDelayMs),
-            () {
-              if (!_isDisposed && mounted) {
-                _webViewController.reload();
-              }
-            },
-          );
-        }
-      }
-    }
-  }
-
-  // ═══════════════════════════════════════
-  // Message Handling
-  // ═══════════════════════════════════════
-
-  void _handleMessageFromHtml(JavaScriptMessage message) {
-    if (_isDisposed || !mounted) return;
-
-    try {
-      final data = jsonDecode(message.message) as Map<String, dynamic>;
-      final eventType = data['type'] as String?;
-
-      debugPrint('📨 HTML Event: $eventType');
-
-      if (data.containsKey('state')) {
-        _syncStateFromHtml(data['state'] as Map<String, dynamic>);
-      }
-
-      switch (eventType) {
-        case 'playerReady':
-          _onPlayerReady(data);
-          break;
-        case 'loadingStart':
-          _onLoadingStart(data);
-          break;
-        case 'playingStarted':
-          _onPlayingStarted(data);
-          break;
-        case 'stateUpdate':
-          _onStateUpdate(data);
-          break;
-        case 'buffering':
-          _onBuffering(data);
-          break;
-        case 'audioEnabled':
-        case 'audioDisabled':
-          _onAudioChange(data);
-          break;
-        case 'serverChange':
-          _onServerChange(data);
-          break;
-        case 'streamStalled':
-          _onStreamStalled(data);
-          break;
-        case 'error':
-          _onError(data);
-          break;
-        default:
-          debugPrint('⚠️ Unknown event: $eventType');
-      }
-    } catch (e, st) {
-      debugPrint('❌ Error processing HTML message: $e\n$st');
-    }
-  }
-
-  void _syncStateFromHtml(Map<String, dynamic> htmlState) {
-    _videoState.update(
-      playing: htmlState['isPlaying'] as bool?,
-      buffering: htmlState['isBuffering'] as bool?,
-      muted: htmlState['isMuted'] as bool?,
-      loading: htmlState['isLoading'] as bool?,
-      bufHealth: htmlState['bufferHealth'] as int?,
-      stalled: htmlState['stallDetected'] as bool?,
-      servIndex: htmlState['serverIndex'] as int?,
-      totalServ: htmlState['totalServers'] as int?,
-      chanId: htmlState['channelId'] as String?,
-    );
-  }
-
-  void _onPlayerReady(Map<String, dynamic> data) {
-    debugPrint('✅ Player Ready — Version: ${data['version']}');
-  }
-
-  void _onLoadingStart(Map<String, dynamic> data) {
-    _loadingFailsafe?.cancel();
-    _startLoadingFailsafe();
-
-    if (mounted) {
-      setState(() {
-        _videoState.update(loading: true, error: false);
-      });
-    }
-  }
-
-  void _onPlayingStarted(Map<String, dynamic> data) {
-    _loadingFailsafe?.cancel();
-    _iframeLoadTimeout?.cancel();
-    _videoStartedPlaying = true;
-    _iframeRetryCount = 0; // Reset retries on success
-
-    final isMuted = data['muted'] as bool? ?? false;
-
-    if (mounted) {
-      setState(() {
-        _videoState.update(
-          loading: false,
-          playing: true,
-          buffering: false,
-          muted: isMuted,
-          error: false,
-        );
-      });
-    }
-
-    debugPrint('✅ Playing — Muted: $isMuted');
-  }
-
-  void _onStateUpdate(Map<String, dynamic> data) {
-    if (data.containsKey('state')) {
-      _syncStateFromHtml(data['state'] as Map<String, dynamic>);
-    }
-  }
-
-  void _onBuffering(Map<String, dynamic> data) {
-    final state = data['state'] as String?;
-
-    if (mounted) {
-      setState(() {
-        if (state == 'waiting') {
-          _videoState.update(buffering: true);
-        } else if (state == 'ready') {
-          _videoState.update(buffering: false);
-        }
-      });
-    }
-  }
-
-  void _onAudioChange(Map<String, dynamic> data) {
-    final isMuted = data['type'] == 'audioDisabled';
-
-    if (mounted) {
-      setState(() {
-        _videoState.update(muted: isMuted);
-      });
-    }
-  }
-
-  void _onServerChange(Map<String, dynamic> data) {
-    final serverIndex = data['serverIndex'] as int?;
-    final totalServers = data['totalServers'] as int?;
-    final attempt = data['attempt'] as int?;
-
-    debugPrint('🔄 Server $serverIndex/$totalServers (Attempt $attempt)');
-
-    if (mounted) {
-      setState(() {
-        _videoState.update(
-          loading: true,
-          servIndex: (serverIndex ?? 1) - 1,
-          totalServ: totalServers,
-        );
-      });
-    }
-  }
-
-  void _onStreamStalled(Map<String, dynamic> data) {
-    debugPrint('⚠️ Stream Stalled');
-
-    if (mounted) {
-      setState(() {
-        _videoState.update(stalled: true);
-      });
-    }
-
-    Future.delayed(const Duration(seconds: 4), () {
-      if (!_isDisposed && mounted && _videoState.stallDetected) {
-        debugPrint('🔄 Auto-retry after stall timeout');
-        _executeJS('window.nextServer()');
+    debugPrint('✅ Page finished: $url');
+    // Trigger play after page is fully loaded
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!_disposed && mounted) {
+        _js('window.play()');
       }
     });
+    _startIframeTimeout();
   }
 
-  void _onError(Map<String, dynamic> data) {
-    final code = data['code'] as String?;
-    final message = data['message'] as String?;
+  void _onWebResourceError(WebResourceError err) {
+    final isCritical = err.errorType == WebResourceErrorType.hostLookup ||
+        err.errorType == WebResourceErrorType.timeout ||
+        err.errorType == WebResourceErrorType.connect;
+    if (!isCritical) {
+      return;
+    }
 
-    debugPrint('❌ Error: $code — $message');
-    _iframeRetryCount++;
+    debugPrint('❌ WebView error: ${err.description}');
+    _iframeRetries++;
 
-    if (_iframeRetryCount > PlayerConfig.maxIframeRetries) {
-      debugPrint(
-          '❌ Iframe max retries exceeded after error — signaling parent');
-      if (mounted) {
-        setState(() {
-          _videoState.update(
+    if (_iframeRetries > PlayerConfig.maxIframeRetries) {
+      if (!_disposed && mounted) {
+        setState(() => _videoState.update(
             loading: false,
             error: true,
-            errorMsg: message ?? 'Error desconocido',
-          );
-        });
+            errorMsg: 'Error de conexión: ${err.description}'));
+        widget.onAllServersFailed?.call();
       }
-      // Signal parent to try next m3u8 server
-      widget.onAllServersFailed?.call();
     } else {
       debugPrint(
-          '🔄 Iframe retry $_iframeRetryCount/${PlayerConfig.maxIframeRetries} after error');
-      if (mounted) {
-        setState(() {
-          _videoState.update(loading: true, error: false);
-        });
-      }
+          '🔄 WebView retry $_iframeRetries/${PlayerConfig.maxIframeRetries}');
       Future.delayed(
         const Duration(milliseconds: PlayerConfig.quickRetryDelayMs),
         () {
-          if (!_isDisposed && mounted) {
-            _webViewController.reload();
-          }
+          if (!_disposed && mounted) _wvc.reload();
         },
       );
     }
   }
 
-  // ═══════════════════════════════════════
-  // State Monitoring
-  // ═══════════════════════════════════════
+  // ── HTML → Flutter messages ──────────────────────────────────────────────
 
-  void _startStateMonitoring() {
-    _stateMonitor?.cancel();
-    _stateMonitor = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (_isDisposed || !mounted) {
-        timer.cancel();
-        return;
+  void _onMessageFromHtml(JavaScriptMessage msg) {
+    if (_disposed || !mounted) return;
+    try {
+      final data = jsonDecode(msg.message) as Map<String, dynamic>;
+      final type = data['type'] as String?;
+      if (data['state'] != null) {
+        _syncState(data['state'] as Map<String, dynamic>);
       }
-      _executeJS('window.FlutterBridge.sendStateUpdate()');
+
+      switch (type) {
+        case 'playerReady':
+          debugPrint('✅ HTML player ready');
+          break;
+        case 'playingStarted':
+          _onPlayingStarted(data);
+          break;
+        case 'loadingStart':
+          _onLoadingStart();
+          break;
+        case 'stateUpdate':
+          if (data['state'] != null) {
+            _syncState(data['state'] as Map<String, dynamic>);
+          }
+          break;
+        case 'buffering':
+          setState(() => _videoState.update(
+                buffering: data['state'] == 'waiting',
+              ));
+          break;
+        case 'audioEnabled':
+          setState(() => _videoState.update(muted: false));
+          break;
+        case 'audioDisabled':
+          setState(() => _videoState.update(muted: true));
+          break;
+        case 'streamStalled':
+          _onStreamStalled();
+          break;
+        case 'serverChange':
+          _onServerChange(data);
+          break;
+        case 'error':
+          _onHtmlError(data);
+          break;
+        default:
+          break;
+      }
+    } catch (e) {
+      debugPrint('❌ HTML msg parse: $e');
+    }
+  }
+
+  void _syncState(Map<String, dynamic> s) {
+    _videoState.update(
+      playing: s['isPlaying'] as bool?,
+      buffering: s['isBuffering'] as bool?,
+      muted: s['isMuted'] as bool?,
+      loading: s['isLoading'] as bool?,
+      bufHealth: s['bufferHealth'] as int?,
+      stalled: s['stallDetected'] as bool?,
+      servIndex: s['serverIndex'] as int?,
+      totalServ: s['totalServers'] as int?,
+    );
+  }
+
+  void _onLoadingStart() {
+    _loadingFailsafe?.cancel();
+    _startLoadingFailsafe();
+    if (mounted) {
+      setState(() => _videoState.update(loading: true, error: false));
+    }
+  }
+
+  void _onPlayingStarted(Map<String, dynamic> data) {
+    _loadingFailsafe?.cancel();
+    _iframeTimeout?.cancel();
+    _videoStarted = true;
+    _iframeRetries = 0;
+
+    final muted = data['muted'] as bool? ?? false;
+    if (mounted) {
+      setState(() => _videoState.update(
+            loading: false,
+            playing: true,
+            buffering: false,
+            muted: muted,
+            error: false,
+          ));
+    }
+    debugPrint('▶️ Playing — muted: $muted');
+  }
+
+  void _onStreamStalled() {
+    debugPrint('⚠️ Stream stalled');
+    if (mounted) setState(() => _videoState.update(stalled: true));
+    Future.delayed(const Duration(seconds: 4), () {
+      if (!_disposed && mounted && _videoState.stallDetected) {
+        _js('window.nextServer()');
+      }
+    });
+  }
+
+  void _onServerChange(Map<String, dynamic> data) {
+    final idx = data['serverIndex'] as int? ?? 1;
+    final total = data['totalServers'] as int?;
+    if (mounted) {
+      setState(() => _videoState.update(
+            loading: true,
+            servIndex: idx - 1,
+            totalServ: total,
+          ));
+    }
+  }
+
+  void _onHtmlError(Map<String, dynamic> data) {
+    debugPrint('❌ HTML error: ${data['code']} — ${data['message']}');
+    _iframeRetries++;
+    if (_iframeRetries > PlayerConfig.maxIframeRetries) {
+      if (mounted) {
+        setState(() => _videoState.update(
+              loading: false,
+              error: true,
+              errorMsg: data['message'] as String? ?? 'Error desconocido',
+            ));
+      }
+      widget.onAllServersFailed?.call();
+    } else {
+      if (mounted) {
+        setState(() => _videoState.update(loading: true, error: false));
+      }
+      Future.delayed(
+        const Duration(milliseconds: PlayerConfig.quickRetryDelayMs),
+        () {
+          if (!_disposed && mounted) _wvc.reload();
+        },
+      );
+    }
+  }
+
+  // ── Monitoring ────────────────────────────────────────────────────────────
+
+  void _startStateMonitor() {
+    _stateMonitor?.cancel();
+    _stateMonitor = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (_disposed || !mounted) return;
+      _js('if(window.FlutterBridge)window.FlutterBridge.sendStateUpdate()');
     });
   }
 
   void _startLoadingFailsafe() {
     _loadingFailsafe?.cancel();
     _loadingFailsafe = Timer(PlayerConfig.loadingFailsafeTimeout, () {
-      if (!_isDisposed && mounted && _videoState.isLoading) {
-        debugPrint('⏱️ Loading failsafe triggered');
-        setState(() {
-          _videoState.update(loading: false);
-        });
+      if (!_disposed && mounted && _videoState.isLoading) {
+        debugPrint('⏱ Loading failsafe');
+        setState(() => _videoState.update(loading: false));
       }
     });
   }
 
-  /// Iframe-specific timeout: if video doesn't start playing within timeout, take action
-  void _startIframeLoadTimeout() {
-    _iframeLoadTimeout?.cancel();
-    _iframeLoadTimeout = Timer(PlayerConfig.iframeLoadTimeout, () {
-      if (_isDisposed || !mounted) return;
-      if (_videoStartedPlaying) return; // Already playing, no issue
-
-      debugPrint('⏱️ Iframe load timeout — video never started');
-      _iframeRetryCount++;
-
-      if (_iframeRetryCount > PlayerConfig.maxIframeRetries) {
-        debugPrint(
-            '❌ Iframe max retries exceeded — signaling parent for next server');
-        setState(() {
-          _videoState.update(
-            loading: false,
-            error: true,
-            errorMsg: 'El servidor no respondió a tiempo',
-          );
-        });
+  void _startIframeTimeout() {
+    _iframeTimeout?.cancel();
+    _iframeTimeout = Timer(PlayerConfig.iframeLoadTimeout, () {
+      if (_disposed || !mounted || _videoStarted) return;
+      debugPrint('⏱ Iframe timeout');
+      _iframeRetries++;
+      if (_iframeRetries > PlayerConfig.maxIframeRetries) {
+        setState(() => _videoState.update(
+              loading: false,
+              error: true,
+              errorMsg: 'El servidor no respondió a tiempo',
+            ));
         widget.onAllServersFailed?.call();
       } else {
-        debugPrint(
-            '🔄 Iframe timeout retry $_iframeRetryCount/${PlayerConfig.maxIframeRetries}');
-        setState(() {
-          _videoState.update(loading: true, error: false);
-        });
-        _webViewController.reload();
-        _startIframeLoadTimeout(); // Restart timeout for retry
+        setState(() => _videoState.update(loading: true, error: false));
+        _wvc.reload();
+        _startIframeTimeout();
       }
     });
   }
 
   void _onStateChange(VideoStateChange change) {
-    if (_isDisposed || !mounted) return;
-
-    if (change.hasChanged('isPlaying')) {
-      debugPrint('▶️ isPlaying: ${change.getValue('isPlaying')}');
-    }
-    if (change.hasChanged('isBuffering')) {
-      debugPrint('⏳ isBuffering: ${change.getValue('isBuffering')}');
-    }
-    if (change.hasChanged('hasError')) {
-      debugPrint('❌ hasError: ${change.getValue('hasError')}');
-    }
-
+    if (_disposed || !mounted) return;
     if (change.hasChanged('isLoading') ||
         change.hasChanged('hasError') ||
         change.hasChanged('isPlaying')) {
@@ -489,17 +359,11 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     }
   }
 
-  // ═══════════════════════════════════════
-  // Controls
-  // ═══════════════════════════════════════
+  // ── Controls ──────────────────────────────────────────────────────────────
 
-  Future<void> _toggleMute() async {
-    await _executeJS('window.toggleMute()');
-  }
-
+  Future<void> _toggleMute() => _js('window.toggleMute()');
   Future<void> _toggleFullscreen() async {
     setState(() => _isFullscreen = !_isFullscreen);
-
     if (_isFullscreen) {
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       await SystemChrome.setPreferredOrientations([
@@ -516,65 +380,42 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     }
   }
 
-  void _changeAspectRatio() {
-    setState(() {
-      _aspectRatioType = _aspectRatioType.next;
-    });
-  }
+  void _changeAspectRatio() => setState(() => _arType = _arType.next);
 
   double _getAspectRatio() {
-    switch (_aspectRatioType) {
-      case AspectRatioType.auto:
-        return 16 / 9;
-      case AspectRatioType.ratio16_9:
-        return 16 / 9;
+    switch (_arType) {
       case AspectRatioType.ratio4_3:
         return 4 / 3;
       case AspectRatioType.stretch:
-        final size = MediaQuery.of(context).size;
-        return size.width / size.height;
-    }
-  }
-
-  Future<void> _executeJS(String script) async {
-    if (_isDisposed) return;
-
-    try {
-      await _webViewController.runJavaScript('''
-        (function() {
-          try {
-            $script;
-          } catch(e) {
-            console.error('JS Error:', e);
-          }
-        })();
-      ''');
-    } catch (e) {
-      debugPrint('❌ JS execution error: $e');
+        final s = MediaQuery.of(context).size;
+        return s.width / s.height;
+      default:
+        return 16 / 9;
     }
   }
 
   Future<void> _handleRefresh() async {
-    debugPrint('🔄 Refresh requested');
-
     setState(() {
       _videoState.reset();
-      _iframeRetryCount = 0;
-      _videoStartedPlaying = false;
+      _iframeRetries = 0;
+      _videoStarted = false;
     });
-
     _loadingFailsafe?.cancel();
-    _iframeLoadTimeout?.cancel();
+    _iframeTimeout?.cancel();
     _startLoadingFailsafe();
-    _startIframeLoadTimeout();
-
-    await _webViewController.reload();
+    _startIframeTimeout();
+    await _wvc.reload();
     widget.onRefresh?.call();
   }
 
-  // ═══════════════════════════════════════
-  // Build
-  // ═══════════════════════════════════════
+  Future<void> _js(String script) async {
+    if (_disposed) return;
+    try {
+      await _wvc.runJavaScript('(function(){try{$script}catch(e){}})()');
+    } catch (_) {}
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -584,34 +425,27 @@ class _PivoProPlayerState extends State<PivoProPlayer>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // 1. WebView
           Center(
             child: AspectRatio(
               aspectRatio: _getAspectRatio(),
-              child: WebViewWidget(controller: _webViewController),
+              child: WebViewWidget(controller: _wvc),
             ),
           ),
-
-          // 2. Native Controls
           Positioned.fill(
             child: CustomVideoControls(
-              controller: _unifiedController,
+              controller: _unified,
               channelName: widget.channelName,
               onFullScreenToggle: _toggleFullscreen,
               isFullScreen: _isFullscreen,
-              aspectRatioLabel: _aspectRatioType.label,
+              aspectRatioLabel: _arType.label,
               onAspectRatioChange: _changeAspectRatio,
               onMuteToggle: _toggleMute,
               isMuted: _videoState.isMuted,
               currentServer: _videoState.serverIndex + 1,
               totalServers: _videoState.totalServers,
-              onServerSelect: (idx) {
-                _executeJS('window.switchToServer($idx)');
-              },
+              onServerSelect: (idx) => _js('window.switchToServer($idx)'),
             ),
           ),
-
-          // 3. Loading/Buffering Indicator (Simplified)
           if (_videoState.isLoading || _videoState.isBuffering)
             VideoLoadingWidget(
               message: _videoState.isBuffering
@@ -624,17 +458,13 @@ class _PivoProPlayerState extends State<PivoProPlayer>
                   ? '${_videoState.serverIndex + 1}/${_videoState.totalServers}'
                   : null,
             ),
-
-          // 5. Error Widget — Unified style with M3U8 player
-          if (_videoState.hasError && !_videoState.isLoading)
-            _buildErrorWidget(),
+          if (_videoState.hasError && !_videoState.isLoading) _buildError(),
         ],
       ),
     );
   }
 
-  /// Unified error widget matching the M3U8 player style
-  Widget _buildErrorWidget() {
+  Widget _buildError() {
     return Container(
       color: Colors.black,
       child: Center(
@@ -648,10 +478,8 @@ class _PivoProPlayerState extends State<PivoProPlayer>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.red.withAlpha(20),
-                  border: Border.all(
-                    color: Colors.red.withAlpha(60),
-                    width: 1.5,
-                  ),
+                  border:
+                      Border.all(color: Colors.red.withAlpha(60), width: 1.5),
                 ),
                 child: const Icon(
                   Icons.signal_wifi_connected_no_internet_4_rounded,
@@ -666,7 +494,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
                   color: Colors.white,
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  height: 1.3,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -674,32 +501,8 @@ class _PivoProPlayerState extends State<PivoProPlayer>
               Text(
                 _videoState.errorMessage ?? 'Error desconocido',
                 style: GoogleFonts.dmSans(
-                  color: Colors.white54,
-                  fontSize: 13,
-                  height: 1.5,
-                ),
+                    color: Colors.white54, fontSize: 13, height: 1.5),
                 textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(10),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withAlpha(20),
-                    width: 0.5,
-                  ),
-                ),
-                child: Text(
-                  'Servidor ${_videoState.serverIndex + 1}/${_videoState.totalServers}',
-                  style: GoogleFonts.dmSans(
-                    color: Colors.white38,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
               ),
               const SizedBox(height: 28),
               GestureDetector(
@@ -708,10 +511,8 @@ class _PivoProPlayerState extends State<PivoProPlayer>
                   _handleRefresh();
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 14,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(12),
@@ -727,20 +528,15 @@ class _PivoProPlayerState extends State<PivoProPlayer>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.refresh_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                      const Icon(Icons.refresh_rounded,
+                          color: Colors.white, size: 18),
                       const SizedBox(width: 8),
-                      Text(
-                        'Reintentar',
-                        style: GoogleFonts.dmSans(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
-                      ),
+                      Text('Reintentar',
+                          style: GoogleFonts.dmSans(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          )),
                     ],
                   ),
                 ),
@@ -752,27 +548,24 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     );
   }
 
-  // ═══════════════════════════════════════
-  // Lifecycle
-  // ═══════════════════════════════════════
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
   void dispose() {
-    _isDisposed = true;
+    _disposed = true;
     WidgetsBinding.instance.removeObserver(this);
     _stateMonitor?.cancel();
     _loadingFailsafe?.cancel();
-    _iframeLoadTimeout?.cancel();
-    _stateSubscription?.cancel();
-    _unifiedController.dispose();
+    _iframeTimeout?.cancel();
+    _stateSub?.cancel();
+    _unified.dispose();
     _videoState.dispose();
-
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
     );
-    _webViewController.loadRequest(Uri.parse('about:blank'));
+    _wvc.loadRequest(Uri.parse('about:blank'));
     super.dispose();
   }
 }

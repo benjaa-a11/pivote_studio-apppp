@@ -9,7 +9,10 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_auth
   firebase_core
   firebase_storage
+  media_kit_libs_windows_video
+  media_kit_video
   permission_handler_windows
+  screen_brightness_windows
   url_launcher_windows
 )
 

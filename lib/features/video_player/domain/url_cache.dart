@@ -16,10 +16,10 @@ class CachedEntry {
 }
 
 /// Caché de URLs resueltas con TTL de 5 minutos
-/// 
+///
 /// Gestiona el almacenamiento temporal de URLs resueltas para evitar
 /// resoluciones repetidas dentro del período de TTL.
-/// 
+///
 /// **Validates: Requirements 1.4**
 class URLCache {
   final Duration ttl;
@@ -28,7 +28,7 @@ class URLCache {
   URLCache({this.ttl = const Duration(minutes: 5)});
 
   /// Almacena una URL resuelta en el caché
-  /// 
+  ///
   /// [key] es la URL original sin resolver
   /// [value] es la URL resuelta con metadatos
   void put(String key, ResolvedURL value) {
@@ -39,12 +39,12 @@ class URLCache {
   }
 
   /// Obtiene una URL del caché si existe y no ha expirado
-  /// 
+  ///
   /// Retorna null si la URL no está en caché o ha expirado.
   /// Las entradas expiradas se eliminan automáticamente.
   ResolvedURL? get(String key) {
     final entry = _cache[key];
-    
+
     if (entry == null) {
       return null;
     }

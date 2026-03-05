@@ -14,9 +14,18 @@ dependencies:
   cupertino_icons: ^1.0.2
   google_fonts: ^6.1.0
   
-  # Video Players
-  video_player: ^2.8.0
+  # ═══════════════════════════════════════════
+  # VIDEO ENGINE — media_kit (libmpv-powered)
+  # Industry-standard IPTV/media engine
+  # ═══════════════════════════════════════════
+  media_kit: ^1.1.10
+  media_kit_video: ^1.2.4
+  media_kit_libs_video: ^1.0.4
+  
+  # Screen keep-awake
   wakelock_plus: ^1.2.0
+  
+  # WebView for DASH/Iframe streams
   webview_flutter: ^4.4.2
   webview_flutter_android: ^3.12.1
   webview_flutter_wkwebview: ^3.9.4
@@ -65,7 +74,6 @@ dependencies:
   flutter_local_notifications: ^17.0.0
   permission_handler: ^11.3.0
 
-# Flutter Native Splash configuration
 flutter_native_splash:
   color: "#020611"
   image: assets/logo.png
@@ -94,5 +102,3 @@ flutter:
     - assets/icons/
     - assets/icons/player/
     - assets/FWC-26/
-
-    

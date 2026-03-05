@@ -347,9 +347,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ?.withValues(alpha: 0.8),
                 ),
           ),
-
           const SizedBox(height: 24),
-
           if ((_currentChannel.guid ?? '').trim().isNotEmpty)
             _buildProgramGuideSection(context),
         ],
@@ -390,8 +388,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 'Cargando programación del canal...',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontSize: 13,
-                  color:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
             ),
@@ -437,8 +434,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     'Toca para reintentar.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontSize: 12,
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -447,8 +443,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             IconButton(
               onPressed: _loadGuide,
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              color: theme.colorScheme.onSurface
-                  .withValues(alpha: 0.8),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
           ],
         ),
@@ -498,8 +493,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               IconButton(
                 onPressed: _loadGuide,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                color: theme.colorScheme.onSurface
-                    .withValues(alpha: 0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 tooltip: 'Actualizar programación',
               ),
             ],
@@ -507,16 +501,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
           const SizedBox(height: 8),
           ..._guideSlots.take(5).map(
                 (slot) => Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 3),
+                  padding: const EdgeInsets.symmetric(vertical: 3),
                   child: Row(
                     children: [
                       SizedBox(
                         width: 64,
                         child: Text(
                           slot.time,
-                          style: theme.textTheme.labelSmall
-                              ?.copyWith(
+                          style: theme.textTheme.labelSmall?.copyWith(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: theme.colorScheme.onSurface
@@ -528,8 +520,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       Expanded(
                         child: Text(
                           slot.title,
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(
+                          style: theme.textTheme.bodySmall?.copyWith(
                             fontSize: 13,
                             color: theme.colorScheme.onSurface
                                 .withValues(alpha: 0.85),

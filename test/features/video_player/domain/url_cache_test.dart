@@ -49,10 +49,10 @@ void main() {
 
       // Act
       shortTTLCache.put(key, resolvedURL);
-      
+
       // Wait for TTL to expire
       await Future.delayed(const Duration(milliseconds: 150));
-      
+
       final retrieved = shortTTLCache.get(key);
 
       // Assert
@@ -61,18 +61,22 @@ void main() {
 
     test('should clear all entries', () {
       // Arrange
-      cache.put('key1', ResolvedURL(
-        finalURL: 'url1',
-        resolvedAt: DateTime.now(),
-        resolutionTime: const Duration(milliseconds: 100),
-        fromCache: false,
-      ));
-      cache.put('key2', ResolvedURL(
-        finalURL: 'url2',
-        resolvedAt: DateTime.now(),
-        resolutionTime: const Duration(milliseconds: 100),
-        fromCache: false,
-      ));
+      cache.put(
+          'key1',
+          ResolvedURL(
+            finalURL: 'url1',
+            resolvedAt: DateTime.now(),
+            resolutionTime: const Duration(milliseconds: 100),
+            fromCache: false,
+          ));
+      cache.put(
+          'key2',
+          ResolvedURL(
+            finalURL: 'url2',
+            resolvedAt: DateTime.now(),
+            resolutionTime: const Duration(milliseconds: 100),
+            fromCache: false,
+          ));
 
       // Act
       cache.clear();
@@ -86,23 +90,27 @@ void main() {
     test('should clear only expired entries', () async {
       // Arrange
       final shortTTLCache = URLCache(ttl: const Duration(milliseconds: 100));
-      
-      shortTTLCache.put('expired-key', ResolvedURL(
-        finalURL: 'expired-url',
-        resolvedAt: DateTime.now(),
-        resolutionTime: const Duration(milliseconds: 50),
-        fromCache: false,
-      ));
+
+      shortTTLCache.put(
+          'expired-key',
+          ResolvedURL(
+            finalURL: 'expired-url',
+            resolvedAt: DateTime.now(),
+            resolutionTime: const Duration(milliseconds: 50),
+            fromCache: false,
+          ));
 
       // Wait for first entry to expire
       await Future.delayed(const Duration(milliseconds: 150));
 
-      shortTTLCache.put('valid-key', ResolvedURL(
-        finalURL: 'valid-url',
-        resolvedAt: DateTime.now(),
-        resolutionTime: const Duration(milliseconds: 50),
-        fromCache: false,
-      ));
+      shortTTLCache.put(
+          'valid-key',
+          ResolvedURL(
+            finalURL: 'valid-url',
+            resolvedAt: DateTime.now(),
+            resolutionTime: const Duration(milliseconds: 50),
+            fromCache: false,
+          ));
 
       // Act
       shortTTLCache.clearExpired();
@@ -114,43 +122,52 @@ void main() {
 
     test('should report correct cache size', () {
       // Arrange & Act
-      cache.put('key1', ResolvedURL(
-        finalURL: 'url1',
-        resolvedAt: DateTime.now(),
-        resolutionTime: const Duration(milliseconds: 100),
-        fromCache: false,
-      ));
-      cache.put('key2', ResolvedURL(
-        finalURL: 'url2',
-        resolvedAt: DateTime.now(),
-        resolutionTime: const Duration(milliseconds: 100),
-        fromCache: false,
-      ));
+      cache.put(
+          'key1',
+          ResolvedURL(
+            finalURL: 'url1',
+            resolvedAt: DateTime.now(),
+            resolutionTime: const Duration(milliseconds: 100),
+            fromCache: false,
+          ));
+      cache.put(
+          'key2',
+          ResolvedURL(
+            finalURL: 'url2',
+            resolvedAt: DateTime.now(),
+            resolutionTime: const Duration(milliseconds: 100),
+            fromCache: false,
+          ));
 
       // Assert
       expect(cache.size, equals(2));
     });
 
-    test('should report correct valid size excluding expired entries', () async {
+    test('should report correct valid size excluding expired entries',
+        () async {
       // Arrange
       final shortTTLCache = URLCache(ttl: const Duration(milliseconds: 100));
-      
-      shortTTLCache.put('expired-key', ResolvedURL(
-        finalURL: 'expired-url',
-        resolvedAt: DateTime.now(),
-        resolutionTime: const Duration(milliseconds: 50),
-        fromCache: false,
-      ));
+
+      shortTTLCache.put(
+          'expired-key',
+          ResolvedURL(
+            finalURL: 'expired-url',
+            resolvedAt: DateTime.now(),
+            resolutionTime: const Duration(milliseconds: 50),
+            fromCache: false,
+          ));
 
       // Wait for first entry to expire
       await Future.delayed(const Duration(milliseconds: 150));
 
-      shortTTLCache.put('valid-key', ResolvedURL(
-        finalURL: 'valid-url',
-        resolvedAt: DateTime.now(),
-        resolutionTime: const Duration(milliseconds: 50),
-        fromCache: false,
-      ));
+      shortTTLCache.put(
+          'valid-key',
+          ResolvedURL(
+            finalURL: 'valid-url',
+            resolvedAt: DateTime.now(),
+            resolutionTime: const Duration(milliseconds: 50),
+            fromCache: false,
+          ));
 
       // Assert
       expect(shortTTLCache.size, equals(2)); // Total entries

@@ -37,6 +37,7 @@ class Channel {
   final List<String> logoUrl; // [0] dark mode, [1] light mode
   final List<StreamSource> streamUrl;
   final String description;
+
   /// Optional external guide identifier (numeric channel code or name)
   final String? guid;
   final bool isHidden;

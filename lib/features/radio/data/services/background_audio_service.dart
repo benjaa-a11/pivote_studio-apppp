@@ -27,7 +27,6 @@ class BackgroundAudioHandler extends BaseAudioHandler
     _audioPlayer.playerStateStream.listen((state) {
       _updatePlaybackState();
     });
-
   }
 
   Future<void> playRadio({
@@ -55,11 +54,11 @@ class BackgroundAudioHandler extends BaseAudioHandler
 
       // Set audio source with timeout
       await _audioPlayer.setUrl(streamUrl, headers: headers).timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              throw Exception('Connection timeout');
-            },
-          );
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Connection timeout');
+        },
+      );
 
       // Update media item
       mediaItem.add(MediaItem(

@@ -15,7 +15,7 @@ class StreamURL {
   });
 
   bool get isCached => cachedAt != null;
-  
+
   bool get isExpired =>
       cachedAt != null &&
       DateTime.now().difference(cachedAt!) > const Duration(minutes: 5);

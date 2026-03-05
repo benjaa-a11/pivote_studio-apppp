@@ -1,7 +1,8 @@
 class Tournament {
   final String id;
   final String name;
-  final List<String> logoUrl; // Array with 2 URLs: [0] for dark mode, [1] for light mode
+  final List<String>
+      logoUrl; // Array with 2 URLs: [0] for dark mode, [1] for light mode
 
   Tournament({
     required this.id,

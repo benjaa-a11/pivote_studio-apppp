@@ -185,8 +185,7 @@ void main() {
       }
     });
 
-    test(
-        'Property 2 (Subdomains): CDN detection should work with subdomains',
+    test('Property 2 (Subdomains): CDN detection should work with subdomains',
         () {
       const iterations = 100;
 
@@ -273,11 +272,9 @@ void main() {
 
         // All results should be identical
         expect(result1, equals(result2),
-            reason:
-                'Multiple calls should return same result (iteration $i)');
+            reason: 'Multiple calls should return same result (iteration $i)');
         expect(result2, equals(result3),
-            reason:
-                'Multiple calls should return same result (iteration $i)');
+            reason: 'Multiple calls should return same result (iteration $i)');
       }
     });
 
@@ -299,8 +296,7 @@ void main() {
         final isDetected = detector.isKnownCDN(invalidURL);
 
         expect(isDetected, isFalse,
-            reason:
-                'Invalid URL should return false: $invalidURL');
+            reason: 'Invalid URL should return false: $invalidURL');
       }
     });
 
@@ -315,7 +311,8 @@ void main() {
         'https://video.cloudflare.com/stream.m3u8': 'cloudflare',
         'https://cdn.cloudflare.net/video.m3u8': 'cloudflare',
         'https://stream.cloudflarestream.com/live.m3u8': 'cloudflare',
-        'https://d123.cloudfront.net/video.m3u8': 'cloudflare', // Detected as cloudflare due to pattern overlap
+        'https://d123.cloudfront.net/video.m3u8':
+            'cloudflare', // Detected as cloudflare due to pattern overlap
         // Akamai
         'https://cdn.akamai.net/stream.m3u8': 'akamai',
         'https://video.akamaihd.net/live.m3u8': 'akamai',
@@ -336,8 +333,7 @@ void main() {
         expect(isDetected, isTrue,
             reason: 'Known CDN pattern should be detected: $url');
         expect(detectedType, equals(expectedType),
-            reason:
-                'CDN type should match expected: $url -> $expectedType');
+            reason: 'CDN type should match expected: $url -> $expectedType');
       }
     });
 
@@ -372,7 +368,7 @@ void main() {
 
       for (int i = 0; i < iterations; i++) {
         final domain = cdnDomains[i % cdnDomains.length];
-        final randomPath = '/path${i}/to/video_${i * 2}.m3u8';
+        final randomPath = '/path$i/to/video_${i * 2}.m3u8';
         final url = 'https://$domain$randomPath';
 
         final isDetected = detector.isKnownCDN(url);
@@ -410,8 +406,7 @@ void main() {
       }
 
       // Verify we tested both types
-      expect(cdnCount, greaterThan(0),
-          reason: 'Should have tested CDN URLs');
+      expect(cdnCount, greaterThan(0), reason: 'Should have tested CDN URLs');
       expect(nonCDNCount, greaterThan(0),
           reason: 'Should have tested non-CDN URLs');
     });

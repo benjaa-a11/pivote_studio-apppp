@@ -48,12 +48,12 @@ class _FutbolScreenState extends State<FutbolScreen> {
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
-                  background: Column(
+                  background: const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.symmetric(horizontal: 16),
                         child: WorldCupCountdown(),
                       ),
                     ],
@@ -266,8 +266,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
     );
   }
 
-  Widget _buildMatchesSummary(ThemeData theme, int liveCount,
-      int upcomingCount, int totalCount) {
+  Widget _buildMatchesSummary(
+      ThemeData theme, int liveCount, int upcomingCount, int totalCount) {
     final hasLive = liveCount > 0;
 
     return Container(
@@ -277,8 +277,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
         children: [
           Expanded(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: theme.colorScheme.primary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(16),
@@ -313,8 +312,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
