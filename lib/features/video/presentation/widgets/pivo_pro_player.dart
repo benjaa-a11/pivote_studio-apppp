@@ -504,6 +504,27 @@ class _PivoProPlayerState extends State<PivoProPlayer>
                     color: Colors.white54, fontSize: 13, height: 1.5),
                 textAlign: TextAlign.center,
               ),
+              if (_videoState.totalServers > 1) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(10),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: Colors.white.withAlpha(20), width: 0.5),
+                  ),
+                  child: Text(
+                    'Servidor ${_videoState.serverIndex + 1}/${_videoState.totalServers}',
+                    style: GoogleFonts.dmSans(
+                      color: Colors.white38,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 28),
               GestureDetector(
                 onTap: () {

@@ -530,12 +530,14 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
 
     if (_engine != null) {
-      return AspectRatio(
-        aspectRatio: _getAspectRatio(),
-        child: Video(
-          controller: _engine!.videoController,
-          controls: NoVideoControls,
-          fill: Colors.black,
+      return Center(
+        child: AspectRatio(
+          aspectRatio: _getAspectRatio(),
+          child: Video(
+            controller: _engine!.videoController,
+            controls: NoVideoControls,
+            fill: Colors.black,
+          ),
         ),
       );
     }
@@ -617,25 +619,27 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                     color: Colors.white54, fontSize: 13, height: 1.5),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(10),
-                  borderRadius: BorderRadius.circular(20),
-                  border:
-                      Border.all(color: Colors.white.withAlpha(20), width: 0.5),
-                ),
-                child: Text(
-                  'Servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}',
-                  style: GoogleFonts.dmSans(
-                    color: Colors.white38,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+              if (widget.channel.streamUrl.length > 1) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(10),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: Colors.white.withAlpha(20), width: 0.5),
+                  ),
+                  child: Text(
+                    'Servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}',
+                    style: GoogleFonts.dmSans(
+                      color: Colors.white38,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
+              ],
               const SizedBox(height: 28),
               GestureDetector(
                 onTap: () {
