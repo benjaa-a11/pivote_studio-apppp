@@ -37,7 +37,7 @@ class _VideoLoadingWidgetState extends State<VideoLoadingWidget>
     super.initState();
 
     _pulseCtrl = AnimationController(
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     )..repeat(reverse: true);
 
@@ -68,7 +68,7 @@ class _VideoLoadingWidgetState extends State<VideoLoadingWidget>
       opacity: _fadeAnim,
       child: SizedBox.expand(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
             color: Colors.black.withAlpha(100),
             child: Center(
