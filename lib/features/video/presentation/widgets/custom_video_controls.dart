@@ -91,17 +91,13 @@ class CustomVideoControls extends StatefulWidget {
 class _CustomVideoControlsState extends State<CustomVideoControls>
     with TickerProviderStateMixin {
   bool _showControls = true;
-  bool _showAspectRatioToast = false;
   bool _controlsLocked = false;
 
   Timer? _hideTimer;
-  Timer? _aspectRatioToastTimer;
   Timer? _controlsInteractionTimer;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  late AnimationController _toastController;
-  late Animation<double> _toastAnimation;
   late AnimationController _bufferingController;
 
   @override
@@ -115,15 +111,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
       curve: Curves.easeInOut,
-    );
-
-    _toastController = AnimationController(
-      duration: const Duration(milliseconds: 250),
-      vsync: this,
-    );
-    _toastAnimation = CurvedAnimation(
-      parent: _toastController,
-      curve: Curves.easeOutBack,
     );
 
     _bufferingController = AnimationController(
@@ -164,10 +151,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   @override
   void dispose() {
     _hideTimer?.cancel();
-    _aspectRatioToastTimer?.cancel();
     _controlsInteractionTimer?.cancel();
     _fadeController.dispose();
-    _toastController.dispose();
     _bufferingController.dispose();
     widget.controller.removeListener(_videoListener);
     super.dispose();
@@ -225,19 +210,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     });
   }
 
-  void _showAspectRatioChangeToast() {
-    _aspectRatioToastTimer?.cancel();
-    setState(() => _showAspectRatioToast = true);
-    _toastController.forward(from: 0.0);
-    _aspectRatioToastTimer = Timer(const Duration(milliseconds: 1800), () {
-      if (mounted) {
-        _toastController.reverse().then((_) {
-          if (mounted) setState(() => _showAspectRatioToast = false);
-        });
-      }
-    });
-  }
-
   // ═══════════════════════════════════════
   // Build
   // ═══════════════════════════════════════
@@ -258,10 +230,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   ? _buildBufferingIndicator()
                   : const SizedBox.shrink(),
             ),
-
-            // Aspect ratio toast
-            if (_showAspectRatioToast && widget.isFullScreen)
-              _buildAspectRatioToast(),
 
             // Controls
             FadeTransition(
@@ -284,52 +252,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         child: const VideoLoadingWidget(
           message: 'Cargando...',
           isBuffering: true,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAspectRatioToast() {
-    return Center(
-      child: ScaleTransition(
-        scale: _toastAnimation,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.black.withAlpha(230),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.primary.withAlpha(153),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withAlpha(77),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.aspect_ratio_rounded,
-                color: Theme.of(context).colorScheme.primary,
-                size: 22,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                widget.aspectRatioLabel,
-                style: GoogleFonts.dmSans(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
-                  color: Colors.white,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -503,20 +425,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               },
               size: 20,
             ),
-            if (widget.isFullScreen) ...[
-              const SizedBox(width: 12),
-              _buildControlButton(
-                icon: Icons.aspect_ratio_rounded,
-                label: widget.aspectRatioLabel,
-                onPressed: () {
-                  _onControlInteraction();
-                  HapticFeedback.mediumImpact();
-                  widget.onAspectRatioChange?.call();
-                  _showAspectRatioChangeToast();
-                },
-                size: 19,
-              ),
-            ],
+            if (widget.isFullScreen) const SizedBox(width: 12),
             const Spacer(),
             if (widget.onFullScreenToggle != null)
               _buildControlSvg(

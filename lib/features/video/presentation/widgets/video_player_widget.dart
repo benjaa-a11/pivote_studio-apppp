@@ -348,8 +348,85 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   // ── URL Resolution ────────────────────────────────────────────────────────
 
+  /// Checks if this URL is a la14hd/la12hd page that needs playbackURL extraction
+  bool _isStreamPageUrl(String url) {
+    final u = url.toLowerCase();
+    return u.contains('la14hd.com') ||
+        u.contains('la12hd.com') ||
+        u.contains('la10hd.com') ||
+        u.contains('la16hd.com');
+  }
+
+  /// Extracts m3u8 playbackURL from la14hd/la12hd HTML page source
+  Future<String?> _resolveStreamPage(String url) async {
+    HttpClient? client;
+    try {
+      client = HttpClient()
+        ..connectionTimeout = const Duration(seconds: 6)
+        ..idleTimeout = const Duration(seconds: 6)
+        ..badCertificateCallback = (_, __, ___) => true;
+
+      final req = await client.getUrl(Uri.parse(url));
+      req.followRedirects = true;
+      req.maxRedirects = 5;
+      req.headers.set('User-Agent', PlayerConfig.userAgent);
+      req.headers.set('Accept', 'text/html,*/*');
+      req.headers.set('Referer', url);
+
+      final res = await req.close().timeout(const Duration(seconds: 6));
+
+      if (res.statusCode == 200) {
+        final body = await res.transform(const Utf8Decoder()).join();
+
+        // Extract var playbackURL = "...m3u8...";
+        final playbackMatch = RegExp(
+                r'var\s+playbackURL\s*=\s*["\x27](https?://[^"\x27]+)["\x27]')
+            .firstMatch(body);
+        if (playbackMatch != null) {
+          final m3u8 = playbackMatch.group(1)!;
+          debugPrint(
+              '🔗 StreamPage resolved: ${m3u8.substring(0, min(80, m3u8.length))}');
+          return m3u8;
+        }
+
+        // Fallback: try generic m3u8 URL extraction from source
+        final genericMatch =
+            RegExp(r'https?://[^\s<>"\x27]+\.m3u8[^\s<>"\x27]*')
+                .firstMatch(body);
+        if (genericMatch != null) {
+          final m3u8 = genericMatch.group(0)!;
+          debugPrint(
+              '🔗 StreamPage generic m3u8: ${m3u8.substring(0, min(80, m3u8.length))}');
+          return m3u8;
+        }
+
+        debugPrint('⚠️ StreamPage: no playbackURL found in HTML');
+      } else {
+        await res.drain();
+        debugPrint('⚠️ StreamPage HTTP ${res.statusCode}');
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ StreamPage resolve error: $e');
+      return null;
+    } finally {
+      try {
+        client?.close(force: true);
+      } catch (_) {}
+    }
+  }
+
   Future<String?> _resolveUrl(String url) async {
     final u = url.toLowerCase();
+
+    // ── la14hd / la12hd stream page extraction ──────────────────────────
+    if (_isStreamPageUrl(url)) {
+      debugPrint('🌐 Detected stream page: $url');
+      final m3u8 = await _resolveStreamPage(url);
+      if (m3u8 != null && m3u8.isNotEmpty) return m3u8;
+      // If extraction failed, skip to next server
+      return null;
+    }
 
     // Fast paths — skip resolution
     if (u.endsWith('.m3u8') ||
@@ -429,12 +506,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_disposed) return;
     setState(() => _isFullScreen = !_isFullScreen);
     if (_isFullScreen) {
-      // Edge-to-edge: render behind notch/cutout
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        systemNavigationBarColor: Colors.transparent,
-      ));
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,

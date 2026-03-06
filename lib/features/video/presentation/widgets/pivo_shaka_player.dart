@@ -262,12 +262,7 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
   Future<void> _toggleFullscreen() async {
     setState(() => _isFullscreen = !_isFullscreen);
     if (_isFullscreen) {
-      // Edge-to-edge: render behind notch/cutout
-      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        systemNavigationBarColor: Colors.transparent,
-      ));
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       await SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
