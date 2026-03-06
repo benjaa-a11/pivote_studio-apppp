@@ -137,7 +137,9 @@ class Channel {
   StreamType getStreamType(String url) {
     // Priority 1: Use explicit type field if available
     if (type != null) {
-      if (type!.toLowerCase() == 'dash') return StreamType.dash;
+      if (type!.toLowerCase() == 'dash' || type!.toLowerCase() == 'mpd') {
+        return StreamType.dash;
+      }
       if (type!.toLowerCase() == 'hls') return StreamType.m3u8;
     }
 

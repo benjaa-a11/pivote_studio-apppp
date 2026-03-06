@@ -239,9 +239,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         u.contains('pivo-pro') ||
         u.contains('pivopro') ||
         u.contains('vercel.app') ||
-        u.contains('.html') ||
-        u.endsWith('.mpd') ||
-        u.contains('.mpd?');
+        u.contains('.html');
   }
 
   // ── IPTVEngine Load ───────────────────────────────────────────────────────
