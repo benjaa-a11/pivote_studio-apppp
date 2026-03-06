@@ -14,6 +14,7 @@ import 'package:pivote/features/video/presentation/widgets/iptv_engine.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/pivo_pro_player.dart';
+import 'package:pivote/features/video/presentation/widgets/pivo_shaka_player.dart';
 import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -60,6 +61,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   bool _isMuted = false;
   bool _disposed = false;
   bool _useWebPlayer = false;
+  bool _useShakaPlayer = false;
   int _retryCount = 0;
   int _serverAttempt = 0;
 
@@ -206,8 +208,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     });
 
-    // Loading failsafe — always show UI after 15 s
-    _loadingFailsafe = Timer(PlayerConfig.loadingFailsafeTimeout, () {
+    // Loading failsafe — always show UI after 25 s (tuned for aggressive buffer)
+    _loadingFailsafe = Timer(const Duration(seconds: 25), () {
       if (!_disposed && mounted && _playerState.isLoading) {
         debugPrint('⏱ Failsafe triggered');
         _setPlayerState(PlayerState.playing);
@@ -218,6 +220,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       debugPrint('🌐 Mode: WebView');
       _safeSetState(() {
         _useWebPlayer = true;
+        _useShakaPlayer = false;
+      });
+      _setPlayerState(PlayerState.playing);
+      _serverTimeout?.cancel();
+      _loadingFailsafe?.cancel();
+    } else if (_currentStream != null && _currentStream!.isDash) {
+      debugPrint('🌐 Mode: Shaka WebView (MPD)');
+      _safeSetState(() {
+        _useWebPlayer = false;
+        _useShakaPlayer = true;
       });
       _setPlayerState(PlayerState.playing);
       _serverTimeout?.cancel();
@@ -226,6 +238,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       debugPrint('📱 Mode: libmpv (IPTVEngine)');
       _safeSetState(() {
         _useWebPlayer = false;
+        _useShakaPlayer = false;
       });
       _setPlayerState(PlayerState.initializing);
       await _loadIPTV(url);
@@ -466,7 +479,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             _buildVideoLayer(),
 
             // ── 2. Native Controls (only libmpv path) ──────────────────
-            if (!_useWebPlayer && _unified != null)
+            if (!_useWebPlayer && !_useShakaPlayer && _unified != null)
               Positioned.fill(
                 child: CustomVideoControls(
                   controller: _unified!,
@@ -490,7 +503,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               ),
 
             // ── 3. Fade-in animation ────────────────────────────────────
-            if (!_useWebPlayer)
+            if (!_useWebPlayer && !_useShakaPlayer)
               IgnorePointer(
                 child: FadeTransition(
                   opacity: Tween(begin: 1.0, end: 0.0).animate(_fadeAnim),
@@ -499,10 +512,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               ),
 
             // ── 4. Loading overlay ──────────────────────────────────────
-            if (!_useWebPlayer && _shouldShowLoading()) _buildLoading(),
+            if (!_useWebPlayer && !_useShakaPlayer && _shouldShowLoading())
+              _buildLoading(),
 
             // ── 5. Error overlay ────────────────────────────────────────
-            if (!_useWebPlayer && _playerState == PlayerState.error)
+            if (!_useWebPlayer &&
+                !_useShakaPlayer &&
+                _playerState == PlayerState.error)
               _buildError(),
           ],
         ),
@@ -521,6 +537,24 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           onRefresh: () => _nextServer(),
           onAllServersFailed: () {
             debugPrint('🔄 WebView exhausted → next server');
+            _nextServer();
+          },
+        ),
+      );
+    }
+
+    if (_useShakaPlayer && _currentStream != null) {
+      return Center(
+        child: PivoShakaPlayer(
+          url: _currentStream!.url,
+          k1: _currentStream!.k1,
+          k2: _currentStream!.k2,
+          channelName: widget.channel.name,
+          currentServer: _serverIndex + 1,
+          totalServers: widget.channel.streamUrl.length,
+          onRefresh: () => _nextServer(),
+          onAllServersFailed: () {
+            debugPrint('🔄 Shaka exhausted → next server');
             _nextServer();
           },
         ),

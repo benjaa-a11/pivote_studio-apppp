@@ -22,13 +22,13 @@ import 'package:media_kit_video/media_kit_video.dart';
 class IPTVConfig {
   IPTVConfig._();
 
-  // Buffer
-  static const int demuxerMaxBytes = 32 * 1024 * 1024; // 32 MB
-  static const int demuxerMaxBytesLive = 16 * 1024 * 1024; // 16 MB for live
-  static const double cacheSecs = 10.0;
-  static const double cacheSetsLive = 5.0;
-  static const int networkBufferKb = 512;
-  static const int networkTimeoutSec = 10;
+  // Buffer (Aggressive tuning for 0 stuttering)
+  static const int demuxerMaxBytes = 64 * 1024 * 1024; // 64 MB
+  static const int demuxerMaxBytesLive = 32 * 1024 * 1024; // 32 MB for live
+  static const double cacheSecs = 20.0;
+  static const double cacheSetsLive = 15.0;
+  static const int networkBufferKb = 2048; // 2 MB
+  static const int networkTimeoutSec = 15;
 
   // Reconnection
   static const int maxReconnectAttempts = 8;
@@ -43,10 +43,11 @@ class IPTVConfig {
   // MPV properties (tuned for live IPTV)
   static const Map<String, String> mpvLiveProps = {
     'cache': 'yes',
-    'cache-pause': 'no',
-    'cache-pause-wait': '1',
+    'cache-pause': 'yes', // Pause on low buffer to avoid tearing
+    'cache-pause-wait': '5', // Wait for 5s of buffer before resuming
+    'cache-secs': '15', // Require 15s to be ready internally
     'demuxer-max-bytes': '$demuxerMaxBytes',
-    'demuxer-max-back-bytes': '8388608', // 8 MB back buffer
+    'demuxer-max-back-bytes': '16777216', // 16 MB back buffer (up from 8MB)
     'stream-buffer-size': '${networkBufferKb}k',
     'network-timeout': '$networkTimeoutSec',
     'reconnect': 'yes',
