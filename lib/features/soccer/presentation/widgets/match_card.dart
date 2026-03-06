@@ -7,7 +7,6 @@ import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
-import 'package:pivote/features/soccer/presentation/widgets/soccer_match_card.dart'; // For LivePulseIndicator
 
 class MatchCard extends StatelessWidget {
   final SoccerMatch match;
@@ -366,25 +365,7 @@ class MatchCard extends StatelessWidget {
       children: [
         // Estado EN VIVO, FINALIZADO o TIEMPO
         if (isLive)
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildLiveIndicator(context),
-              if (match.score.length >= 2) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '${match.score[0]} - ${match.score[1]}',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    letterSpacing: 2.0,
-                    height: 1.0,
-                  ),
-                ),
-              ],
-            ],
-          )
+          _buildLiveIndicator(context)
         else if (isFinished)
           _buildStatusBadge(
               timeStatus.isEmpty ? 'FINAL' : timeStatus.toUpperCase(),
@@ -481,7 +462,14 @@ class MatchCard extends StatelessWidget {
   }
 
   Widget _buildLivePulse() {
-    return const LivePulseIndicator(color: Colors.white, size: 6.0);
+    return Container(
+      width: 6,
+      height: 6,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+      ),
+    );
   }
 
   Widget _buildStatusBadge(String text, Color color) {

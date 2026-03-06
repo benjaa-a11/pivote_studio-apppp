@@ -1,11 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-/// Premium World Cup 2026 Countdown Banner.
-///
-/// Full-width gradient banner with card-style time tiles, FIFA logo,
-/// smooth entry animation, and responsive layout.
 class WorldCupCountdown extends StatefulWidget {
   const WorldCupCountdown({super.key});
 
@@ -14,62 +9,50 @@ class WorldCupCountdown extends StatefulWidget {
 }
 
 class _WorldCupCountdownState extends State<WorldCupCountdown>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late Timer _timer;
-  late final DateTime _targetDate;
+  late DateTime _targetDate;
   Duration _timeLeft = Duration.zero;
-
-  late final AnimationController _entryCtrl;
-  late final Animation<double> _fadeIn;
-  late final Animation<Offset> _slideUp;
-
-  // Subtle second-tick animation
-  late final AnimationController _tickCtrl;
-  late final Animation<double> _tickFade;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
-    _targetDate = DateTime(2026, 6, 11); // FIFA World Cup 2026 kickoff
+    // World Cup 2026 starts June 11, 2026
+    _targetDate = DateTime(2026, 6, 11);
     _calculateTimeLeft();
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _calculateTimeLeft());
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _calculateTimeLeft();
+        });
+      }
     });
 
-    // Entry animation
-    _entryCtrl = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _fadeIn = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-    _slideUp = Tween<Offset>(
-      begin: const Offset(0, 0.15),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
-    _entryCtrl.forward();
-
-    // Seconds tick pulse
-    _tickCtrl = AnimationController(
-      duration: const Duration(seconds: 1),
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat(reverse: true);
-    _tickFade = Tween<double>(begin: 1.0, end: 0.5).animate(
-      CurvedAnimation(parent: _tickCtrl, curve: Curves.easeInOut),
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
 
   void _calculateTimeLeft() {
     final now = DateTime.now();
     _timeLeft = _targetDate.difference(now);
-    if (_timeLeft.isNegative) _timeLeft = Duration.zero;
+    if (_timeLeft.isNegative) {
+      _timeLeft = Duration.zero;
+    }
   }
 
   @override
   void dispose() {
     _timer.cancel();
-    _entryCtrl.dispose();
-    _tickCtrl.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -77,239 +60,161 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primary = theme.colorScheme.primary;
+    final primaryColor = theme.colorScheme.primary;
 
     final days = _timeLeft.inDays;
     final hours = _timeLeft.inHours % 24;
     final minutes = _timeLeft.inMinutes % 60;
     final seconds = _timeLeft.inSeconds % 60;
+
     final hasStarted = _timeLeft == Duration.zero;
 
-    return SlideTransition(
-      position: _slideUp,
-      child: FadeTransition(
-        opacity: _fadeIn,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark
-                  ? [
-                      const Color(0xFF0D1117),
-                      Color.lerp(const Color(0xFF0D1117), primary, 0.08)!,
-                      const Color(0xFF0D1117),
-                    ]
-                  : [
-                      const Color(0xFFF8FAFC),
-                      Color.lerp(const Color(0xFFF8FAFC), primary, 0.06)!,
-                      const Color(0xFFF8FAFC),
-                    ],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: primary.withValues(alpha: isDark ? 0.15 : 0.1),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
-              ),
-            ],
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: theme.cardColor.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: primaryColor.withValues(alpha: 0.12),
+            width: 1,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── Header: Logo + Title ──
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    isDark
-                        ? 'assets/FWC-26/2026-FIFA-World-Cup256x-white.png'
-                        : 'assets/FWC-26/2026-FIFA-World-Cup256x-black.png',
-                    height: 40,
-                    fit: BoxFit.contain,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // FIFA 2026 Logo with subtle glow
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: primaryColor.withValues(alpha: 0.05),
                   ),
-                  const SizedBox(width: 14),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+                Image.asset(
+                  isDark
+                      ? 'assets/FWC-26/2026-FIFA-World-Cup256x-white.png'
+                      : 'assets/FWC-26/2026-FIFA-World-Cup256x-black.png',
+                  height: 38,
+                  fit: BoxFit.contain,
+                ),
+              ],
+            ),
+            const SizedBox(width: 14),
+            // Text + Countdown stacked for mejor legibilidad
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasStarted
+                      ? 'MUNDIAL 2026 EN JUEGO'
+                      : 'Cuenta regresiva Mundial 2026',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.6,
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (hasStarted)
+                  Row(
                     children: [
-                      Text(
-                        hasStarted
-                            ? '¡EL MUNDIAL COMENZÓ!'
-                            : 'COPA DEL MUNDO 2026',
-                        style: GoogleFonts.syne(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
-                          color: theme.colorScheme.onSurface,
-                        ),
+                      Icon(
+                        Icons.sports_soccer_rounded,
+                        size: 16,
+                        color: primaryColor,
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(width: 6),
                       Text(
-                        hasStarted
-                            ? 'Seguí los partidos en vivo'
-                            : 'Cuenta regresiva',
-                        style: GoogleFonts.dmSans(
+                        'Partidos y resultados en tiempo real',
+                        style: theme.textTheme.bodySmall?.copyWith(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.5),
-                          letterSpacing: 0.3,
+                              .withValues(alpha: 0.75),
                         ),
                       ),
                     ],
-                  ),
-                ],
-              ),
-
-              if (!hasStarted) ...[
-                const SizedBox(height: 20),
-
-                // ── Time Tiles Row ──
-                Row(
-                  children: [
-                    _TimeTile(
-                      value: days.toString(),
-                      label: 'DÍAS',
-                      primary: primary,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(width: 8),
-                    _TimeTile(
-                      value: hours.toString().padLeft(2, '0'),
-                      label: 'HS',
-                      primary: primary,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(width: 8),
-                    _TimeTile(
-                      value: minutes.toString().padLeft(2, '0'),
-                      label: 'MIN',
-                      primary: primary,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(width: 8),
-                    AnimatedBuilder(
-                      animation: _tickFade,
-                      builder: (context, child) => Opacity(
-                        opacity: _tickFade.value,
-                        child: child,
-                      ),
-                      child: _TimeTile(
-                        value: seconds.toString().padLeft(2, '0'),
-                        label: 'SEG',
-                        primary: primary,
-                        isDark: isDark,
-                        isSeconds: true,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-
-              if (hasStarted) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  )
+                else
+                  Row(
                     children: [
-                      Icon(Icons.sports_soccer_rounded,
-                          size: 18, color: primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Partidos y resultados en tiempo real',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.7),
-                        ),
-                      ),
+                      _buildTimeUnit(context, days.toString(), 'DÍAS'),
+                      _buildSeparator(context),
+                      _buildTimeUnit(
+                          context, hours.toString().padLeft(2, '0'), 'HS'),
+                      _buildSeparator(context),
+                      _buildTimeUnit(
+                          context, minutes.toString().padLeft(2, '0'), 'MIN'),
+                      _buildSeparator(context),
+                      _buildTimeUnit(
+                          context, seconds.toString().padLeft(2, '0'), 'SEG'),
                     ],
                   ),
-                ),
               ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
-}
 
-/// Individual countdown time tile with premium card styling.
-class _TimeTile extends StatelessWidget {
-  final String value;
-  final String label;
-  final Color primary;
-  final bool isDark;
-  final bool isSeconds;
+  Widget _buildTimeUnit(BuildContext context, String value, String label) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
 
-  const _TimeTile({
-    required this.value,
-    required this.label,
-    required this.primary,
-    required this.isDark,
-    this.isSeconds = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.04)
-              : Colors.black.withValues(alpha: 0.03),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSeconds
-                ? primary.withValues(alpha: 0.2)
-                : (isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : Colors.black.withValues(alpha: 0.05)),
-            width: 1,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ScaleTransition(
+          scale: _pulseAnimation,
+          child: Text(
+            value,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: primaryColor,
+              letterSpacing: -0.5,
+            ),
           ),
         ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: GoogleFonts.syne(
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-                color: isSeconds ? primary : primary,
-                height: 1.0,
-                letterSpacing: -1,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.dmSans(
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.4),
-                letterSpacing: 1.0,
-              ),
-            ),
-          ],
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            fontSize: 8,
+            fontWeight: FontWeight.w800,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+            letterSpacing: 0.8,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSeparator(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Text(
+        ':',
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+          color: theme.colorScheme.primary.withValues(alpha: 0.3),
         ),
       ),
     );

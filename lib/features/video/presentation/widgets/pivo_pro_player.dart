@@ -11,16 +11,12 @@ import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
-// PivoProPlayer v7.0 — Ultra-Optimized WebView Player (DASH / Iframe / HTML)
+// PivoProPlayer v6.0 — WebView-based Player (DASH / Iframe / HTML)
 // ════════════════════════════════════════════════════════════════════════════
 //
-// Improvements over v6.0:
-//   • FIXED: autoplay→pause bug with aggressive JS play injection
-//   • Hardware acceleration via HybridComposition
-//   • DOM storage + content access enabled
-//   • Faster state sync (1.5 s vs 3 s)
-//   • Fullscreen layout fix (SizedBox.expand in landscape)
-//   • Memory cleanup on dispose (clearCache + about:blank)
+// Critical fix: setMediaPlaybackRequiresUserGesture(false) on Android
+// so the WebView page can autoplay without a user gesture, solving the
+// "loads then immediately pauses" bug.
 //
 
 class PivoProPlayer extends StatefulWidget {
@@ -56,12 +52,10 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   bool _disposed = false;
   bool _videoStarted = false;
   int _iframeRetries = 0;
-  int _autoplayAttempts = 0;
 
   Timer? _stateMonitor;
   Timer? _loadingFailsafe;
   Timer? _iframeTimeout;
-  Timer? _autoplayRetry;
   StreamSubscription? _stateSub;
 
   @override
@@ -71,7 +65,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    debugPrint('🌐 PivoProPlayer v7.0 — ${widget.channelName}');
+    debugPrint('🌐 PivoProPlayer v6.0 — ${widget.channelName}');
     debugPrint('   URL: ${widget.url}');
     _initWebView();
     _startStateMonitor();
@@ -81,7 +75,9 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_disposed) return;
+    if (_disposed) {
+      return;
+    }
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _js('window.pause()');
@@ -96,24 +92,18 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     _wvc = WebViewController();
 
     // ╔══════════════════════════════════════════════════════════════╗
-    // ║ CRITICAL FIX: Complete Android WebView optimization         ║
-    // ║ - Autoplay without gesture                                  ║
-    // ║ - Hardware acceleration via HybridComposition               ║
-    // ║ - DOM storage + content access for player pages             ║
+    // ║ CRITICAL FIX: Allow autoplay without user gesture           ║
+    // ║ This is the root cause of "loads then pauses" on Android    ║
     // ╚══════════════════════════════════════════════════════════════╝
     final platform = _wvc.platform;
     if (platform is AndroidWebViewController) {
       AndroidWebViewController.enableDebugging(false);
       platform.setMediaPlaybackRequiresUserGesture(false);
-
-      // Enable hardware-accelerated rendering & DOM storage
-      platform.setOnShowFileSelector((_) async => []);
     }
 
     _wvc
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
-      ..setUserAgent(PlayerConfig.userAgent)
       ..setNavigationDelegate(NavigationDelegate(
         onPageStarted: _onPageStarted,
         onPageFinished: _onPageFinished,
@@ -138,54 +128,22 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   void _onPageFinished(String url) {
     debugPrint('✅ Page finished: $url');
-    // Aggressive autoplay injection with exponential retry
-    _autoplayAttempts = 0;
-    _attemptAutoplay();
-    _startIframeTimeout();
-  }
-
-  /// Aggressively try to force autoplay on all video elements.
-  /// Uses exponential delay: 200ms, 500ms, 1000ms, 2000ms
-  void _attemptAutoplay() {
-    _autoplayRetry?.cancel();
-    if (_disposed || !mounted || _videoStarted) return;
-    if (_autoplayAttempts >= 4) return;
-
-    final delay = [200, 500, 1000, 2000][_autoplayAttempts];
-    _autoplayRetry = Timer(Duration(milliseconds: delay), () {
-      if (_disposed || !mounted || _videoStarted) return;
-      _autoplayAttempts++;
-
-      // Inject JS that forces play on all video elements + calls window.play()
-      _js('''
-        if(window.play) window.play();
-        document.querySelectorAll('video').forEach(function(v){
-          v.muted=false;
-          v.autoplay=true;
-          v.play().catch(function(){v.muted=true;v.play()});
-        });
-        document.querySelectorAll('iframe').forEach(function(f){
-          try{f.contentDocument.querySelectorAll('video').forEach(function(v){
-            v.play().catch(function(){})
-          })}catch(e){}
-        });
-      ''');
-
-      debugPrint(
-          '▶️ Autoplay attempt $_autoplayAttempts/4 (delay: ${delay}ms)');
-
-      // Schedule next attempt
-      if (_autoplayAttempts < 4 && !_videoStarted) {
-        _attemptAutoplay();
+    // Trigger play after page is fully loaded
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!_disposed && mounted) {
+        _js('window.play()');
       }
     });
+    _startIframeTimeout();
   }
 
   void _onWebResourceError(WebResourceError err) {
     final isCritical = err.errorType == WebResourceErrorType.hostLookup ||
         err.errorType == WebResourceErrorType.timeout ||
         err.errorType == WebResourceErrorType.connect;
-    if (!isCritical) return;
+    if (!isCritical) {
+      return;
+    }
 
     debugPrint('❌ WebView error: ${err.description}');
     _iframeRetries++;
@@ -224,8 +182,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
       switch (type) {
         case 'playerReady':
           debugPrint('✅ HTML player ready');
-          // Force autoplay when player reports ready
-          _attemptAutoplay();
           break;
         case 'playingStarted':
           _onPlayingStarted(data);
@@ -290,7 +246,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   void _onPlayingStarted(Map<String, dynamic> data) {
     _loadingFailsafe?.cancel();
     _iframeTimeout?.cancel();
-    _autoplayRetry?.cancel();
     _videoStarted = true;
     _iframeRetries = 0;
 
@@ -310,7 +265,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   void _onStreamStalled() {
     debugPrint('⚠️ Stream stalled');
     if (mounted) setState(() => _videoState.update(stalled: true));
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 4), () {
       if (!_disposed && mounted && _videoState.stallDetected) {
         _js('window.nextServer()');
       }
@@ -358,8 +313,7 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   void _startStateMonitor() {
     _stateMonitor?.cancel();
-    // Faster sync: 1.5 s (was 3 s)
-    _stateMonitor = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+    _stateMonitor = Timer.periodic(const Duration(seconds: 3), (_) {
       if (_disposed || !mounted) return;
       _js('if(window.FlutterBridge)window.FlutterBridge.sendStateUpdate()');
     });
@@ -408,7 +362,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   // ── Controls ──────────────────────────────────────────────────────────────
 
   Future<void> _toggleMute() => _js('window.toggleMute()');
-
   Future<void> _toggleFullscreen() async {
     setState(() => _isFullscreen = !_isFullscreen);
     if (_isFullscreen) {
@@ -446,11 +399,9 @@ class _PivoProPlayerState extends State<PivoProPlayer>
       _videoState.reset();
       _iframeRetries = 0;
       _videoStarted = false;
-      _autoplayAttempts = 0;
     });
     _loadingFailsafe?.cancel();
     _iframeTimeout?.cancel();
-    _autoplayRetry?.cancel();
     _startLoadingFailsafe();
     _startIframeTimeout();
     await _wvc.reload();
@@ -474,15 +425,10 @@ class _PivoProPlayerState extends State<PivoProPlayer>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // FIXED: Use SizedBox.expand + Center for proper fullscreen centering
-          SizedBox.expand(
-            child: Center(
-              child: _isFullscreen
-                  ? WebViewWidget(controller: _wvc)
-                  : AspectRatio(
-                      aspectRatio: _getAspectRatio(),
-                      child: WebViewWidget(controller: _wvc),
-                    ),
+          Center(
+            child: AspectRatio(
+              aspectRatio: _getAspectRatio(),
+              child: WebViewWidget(controller: _wvc),
             ),
           ),
           Positioned.fill(
@@ -611,7 +557,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
     _stateMonitor?.cancel();
     _loadingFailsafe?.cancel();
     _iframeTimeout?.cancel();
-    _autoplayRetry?.cancel();
     _stateSub?.cancel();
     _unified.dispose();
     _videoState.dispose();
@@ -620,7 +565,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
     );
-    // Clean up WebView memory
     _wvc.loadRequest(Uri.parse('about:blank'));
     super.dispose();
   }
