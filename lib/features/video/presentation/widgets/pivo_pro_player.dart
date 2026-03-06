@@ -365,7 +365,12 @@ class _PivoProPlayerState extends State<PivoProPlayer>
   Future<void> _toggleFullscreen() async {
     setState(() => _isFullscreen = !_isFullscreen);
     if (_isFullscreen) {
-      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      // Edge-to-edge: render behind notch/cutout
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+      ));
       await SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -384,8 +389,6 @@ class _PivoProPlayerState extends State<PivoProPlayer>
 
   double _getAspectRatio() {
     switch (_arType) {
-      case AspectRatioType.ratio4_3:
-        return 4 / 3;
       case AspectRatioType.stretch:
         final s = MediaQuery.of(context).size;
         return s.width / s.height;
@@ -446,14 +449,34 @@ class _PivoProPlayerState extends State<PivoProPlayer>
               onServerSelect: (idx) => _js('window.switchToServer($idx)'),
             ),
           ),
-          if (_videoState.isLoading || _videoState.isBuffering)
+          // Loading overlay only during initial load (not mid-stream buffering)
+          if (_videoState.isLoading && !_videoState.isBuffering)
             VideoLoadingWidget(
-              message: _videoState.isBuffering
-                  ? (_videoState.stallDetected
-                      ? 'Reconectando...'
-                      : 'Cargando...')
-                  : 'Conectando...',
-              isBuffering: _videoState.isBuffering,
+              message: 'Conectando...',
+              isBuffering: false,
+              serverInfo: _videoState.totalServers > 1
+                  ? '${_videoState.serverIndex + 1}/${_videoState.totalServers}'
+                  : null,
+            ),
+
+          // Minimal buffering indicator (no full-screen blur overlay)
+          if (_videoState.isBuffering && !_videoState.isLoading)
+            const Center(
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation(Colors.white70),
+                ),
+              ),
+            ),
+
+          // Stall detection: show reconnecting overlay
+          if (_videoState.stallDetected && !_videoState.isLoading)
+            VideoLoadingWidget(
+              message: 'Reconectando...',
+              isBuffering: true,
               serverInfo: _videoState.totalServers > 1
                   ? '${_videoState.serverIndex + 1}/${_videoState.totalServers}'
                   : null,

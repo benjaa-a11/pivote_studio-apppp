@@ -429,7 +429,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_disposed) return;
     setState(() => _isFullScreen = !_isFullScreen);
     if (_isFullScreen) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      // Edge-to-edge: render behind notch/cutout
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+      ));
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -450,8 +455,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       case AspectRatioType.auto:
       case AspectRatioType.ratio16_9:
         return 16 / 9;
-      case AspectRatioType.ratio4_3:
-        return 4 / 3;
       case AspectRatioType.stretch:
         final s = MediaQuery.of(context).size;
         return s.width / s.height;

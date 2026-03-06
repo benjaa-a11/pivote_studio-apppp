@@ -66,6 +66,10 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
   bool _videoStarted = false;
   int _retries = 0;
 
+  // MPD streams need faster failure detection for high-demand events
+  static const int _maxMpdRetries = 1;
+  static const Duration _mpdLoadTimeout = Duration(seconds: 6);
+
   // State
   bool _isLoading = true;
   bool _isBuffering = false;
@@ -190,7 +194,10 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
         debugPrint(
             '❌ ExoPlayer error: ${event.errorCode} — ${event.errorMessage}');
         _retries++;
-        if (_retries > PlayerConfig.maxIframeRetries) {
+        // Fast escalation: only 1 internal retry, then let parent try next server
+        if (_retries > _maxMpdRetries) {
+          debugPrint(
+              '🔄 MPD failed after $_retries attempts → escalating to parent');
           setState(() {
             _isLoading = false;
             _hasError = true;
@@ -231,20 +238,17 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
 
   void _startLoadTimeout() {
     _loadTimeout?.cancel();
-    _loadTimeout = Timer(PlayerConfig.iframeLoadTimeout, () {
+    // Use faster MPD-specific timeout for quicker failover
+    _loadTimeout = Timer(_mpdLoadTimeout, () {
       if (_disposed || !mounted || _videoStarted) return;
-      debugPrint('⏱ ExoPlayer load timeout');
-      _retries++;
-      if (_retries > PlayerConfig.maxIframeRetries) {
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-          _errorMessage = 'El servidor no respondió a tiempo';
-        });
-        widget.onAllServersFailed?.call();
-      } else {
-        _resetAndReload();
-      }
+      debugPrint('⏱ ExoPlayer load timeout → escalating to parent');
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = 'El servidor no respondió a tiempo';
+      });
+      // Skip internal retries on timeout — let parent try next server immediately
+      widget.onAllServersFailed?.call();
     });
   }
 
@@ -258,7 +262,12 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
   Future<void> _toggleFullscreen() async {
     setState(() => _isFullscreen = !_isFullscreen);
     if (_isFullscreen) {
-      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      // Edge-to-edge: render behind notch/cutout
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+      ));
       await SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -277,8 +286,6 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
 
   double _getAspectRatio() {
     switch (_arType) {
-      case AspectRatioType.ratio4_3:
-        return 4 / 3;
       case AspectRatioType.stretch:
         final s = MediaQuery.of(context).size;
         return s.width / s.height;
@@ -330,14 +337,27 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
             ),
           ),
 
-          // ── 3. Loading ──────────────────────────────────────────
-          if (_isLoading || (_isBuffering && !_isPlaying))
+          // ── 3. Loading (only during initial load, not mid-stream buffering)
+          if (_isLoading)
             VideoLoadingWidget(
               message: 'Cargando...',
-              isBuffering: _isBuffering,
+              isBuffering: false,
               serverInfo: widget.totalServers > 1
                   ? '${widget.currentServer}/${widget.totalServers}'
                   : null,
+            ),
+
+          // ── 3b. Minimal buffering indicator (no blur overlay)
+          if (_isBuffering && !_isLoading && _isPlaying)
+            const Center(
+              child: SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation(Colors.white70),
+                ),
+              ),
             ),
 
           // ── 4. Error ────────────────────────────────────────────

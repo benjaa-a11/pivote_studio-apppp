@@ -8,7 +8,6 @@ library player_enums;
 enum AspectRatioType {
   auto,
   ratio16_9,
-  ratio4_3,
   stretch,
 }
 
@@ -126,8 +125,6 @@ extension AspectRatioTypeExtension on AspectRatioType {
         return 'Auto';
       case AspectRatioType.ratio16_9:
         return '16:9';
-      case AspectRatioType.ratio4_3:
-        return '4:3';
       case AspectRatioType.stretch:
         return 'Estirar';
     }
@@ -138,8 +135,6 @@ extension AspectRatioTypeExtension on AspectRatioType {
       case AspectRatioType.auto:
         return AspectRatioType.ratio16_9;
       case AspectRatioType.ratio16_9:
-        return AspectRatioType.ratio4_3;
-      case AspectRatioType.ratio4_3:
         return AspectRatioType.stretch;
       case AspectRatioType.stretch:
         return AspectRatioType.auto;

@@ -92,11 +92,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
       },
       child: Scaffold(
         backgroundColor: isDark ? Colors.black : Colors.white,
-        body: SafeArea(
-          child: isLandscape
-              ? _buildLandscapeLayout()
-              : _buildPortraitLayout(context, isDark),
-        ),
+        body: isLandscape
+            ? _buildLandscapeLayout()
+            : SafeArea(
+                child: _buildPortraitLayout(context, isDark),
+              ),
       ),
     );
   }
