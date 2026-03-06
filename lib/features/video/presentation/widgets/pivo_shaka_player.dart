@@ -153,6 +153,7 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
       case 'buffering':
         setState(() {
           _isBuffering = true;
+          _isLoading = false;
           _hasError = false;
         });
         break;
@@ -332,7 +333,7 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
           // ── 3. Loading ──────────────────────────────────────────
           if (_isLoading || (_isBuffering && !_isPlaying))
             VideoLoadingWidget(
-              message: _isBuffering ? 'Cargando...' : 'Conectando...',
+              message: 'Cargando...',
               isBuffering: _isBuffering,
               serverInfo: widget.totalServers > 1
                   ? '${widget.currentServer}/${widget.totalServers}'

@@ -160,22 +160,23 @@ class ExoPlayerPlatformView(
         if (isDisposed) return
 
         // ── Load Control: aggressive buffering for live sports ──
+        // ── Aggressive startup: play ASAP, then fill buffer in background ──
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs */ 15_000,    // 15s min buffer
-                /* maxBufferMs */ 50_000,    // 50s max buffer
-                /* bufferForPlayback */ 2_000,  // Start playing after 2s
-                /* bufferForPlaybackAfterRebuffer */ 4_000 // 4s after rebuffer
+                /* minBufferMs */  8_000,       // 8s min buffer (keeps stability)
+                /* maxBufferMs */ 50_000,       // 50s max (long runway for live)
+                /* bufferForPlayback */    500,  // Start after just 500ms!
+                /* bufferForPlaybackAfterRebuffer */ 2_000 // 2s after rebuffer
             )
             .setPrioritizeTimeOverSizeThresholds(true)
-            .setBackBuffer(/* backBufferDurationMs */ 30_000, /* retainBackBufferFromKeyframe */ true)
+            .setBackBuffer(30_000, true)
             .build()
 
         // ── HTTP DataSource with custom headers ──
         val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(userAgent)
-            .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(15_000)
+            .setConnectTimeoutMs(10_000)
+            .setReadTimeoutMs(10_000)
             .setAllowCrossProtocolRedirects(true)
 
         if (headers != null && headers.isNotEmpty()) {
