@@ -147,89 +147,141 @@ class SoccerMatchCard extends StatelessWidget {
   }
 
   Widget _buildLivePulse(ThemeData theme) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.4, end: 1.0),
-      duration: const Duration(milliseconds: 1000),
-      builder: (context, value, child) {
-        return Container(
-          width: 5,
-          height: 5,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.error.withValues(alpha: value),
-            shape: BoxShape.circle,
-          ),
-        );
-      },
-    );
+    return LivePulseIndicator(color: theme.colorScheme.error, size: 5.0);
   }
 
   Widget _buildTeamRow(SoccerTeam team, int? currentScore, ThemeData theme,
       bool isDark, bool isHome) {
-    return Row(
+    final redCardsCount =
+        match.redCards.where((c) => c.teamId == team.id).length;
+    final goals = match.goals.where((g) => g.teamId == team.id).map((g) {
+      return '${g.playerShortName} ${g.timeToDisplay}';
+    }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Team Logo Container
-        Container(
-          width: 28,
-          height: 28,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.03)
-                : Colors.black.withValues(alpha: 0.02),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: CachedNetworkImage(
-            cacheManager: ImageCacheHelper.customCacheManager,
-            imageUrl: team.logoUrl ?? '',
-            fit: BoxFit.contain,
-            errorWidget: (context, url, error) =>
-                const Icon(Icons.shield_outlined, size: 14),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Team Name
-        Expanded(
-          child: Text(
-            team.name,
-            style: GoogleFonts.dmSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        // Score (if available)
-        if (currentScore != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: match.isLive
-                  ? theme.colorScheme.error.withValues(alpha: 0.05)
-                  : (isDark
-                      ? Colors.white.withValues(alpha: 0.03)
-                      : Colors.black.withValues(alpha: 0.02)),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              currentScore.toString(),
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: match.isLive
-                    ? theme.colorScheme.error
-                    : theme.colorScheme.onSurface,
+        Row(
+          children: [
+            // Team Logo Container
+            Container(
+              width: 28,
+              height: 28,
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.02),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: CachedNetworkImage(
+                cacheManager: ImageCacheHelper.customCacheManager,
+                imageUrl: team.logoUrl ?? '',
+                fit: BoxFit.contain,
+                errorWidget: (context, url, error) =>
+                    const Icon(Icons.shield_outlined, size: 14),
               ),
             ),
-          )
-        else
-          Text(
-            '-',
-            style: GoogleFonts.dmSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: theme.hintColor.withValues(alpha: 0.3),
+            const SizedBox(width: 12),
+            // Team Name
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      team.name,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (redCardsCount > 0) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      width: 10,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.red[700],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: Center(
+                        child: Text(
+                          redCardsCount.toString(),
+                          style: GoogleFonts.dmSans(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // Score (if available)
+            if (currentScore != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: match.isLive
+                      ? theme.colorScheme.error.withValues(alpha: 0.05)
+                      : (isDark
+                          ? Colors.white.withValues(alpha: 0.03)
+                          : Colors.black.withValues(alpha: 0.02)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  currentScore.toString(),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: match.isLive
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurface,
+                  ),
+                ),
+              )
+            else
+              Text(
+                '-',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: theme.hintColor.withValues(alpha: 0.3),
+                ),
+              ),
+          ],
+        ),
+        if (goals.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 40, top: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.sports_soccer_rounded,
+                  size: 10,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    goals.join(', '),
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      height: 1.2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
       ],
@@ -246,5 +298,52 @@ class SoccerMatchCard extends StatelessWidget {
       return startTime;
     }
     return startTime;
+  }
+}
+
+class LivePulseIndicator extends StatefulWidget {
+  final Color color;
+  final double size;
+
+  const LivePulseIndicator({super.key, required this.color, this.size = 5.0});
+
+  @override
+  State<LivePulseIndicator> createState() => _LivePulseIndicatorState();
+}
+
+class _LivePulseIndicatorState extends State<LivePulseIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1000))
+      ..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0.2, end: 1.0)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) => Container(
+        width: widget.size,
+        height: widget.size,
+        decoration: BoxDecoration(
+          color: widget.color.withValues(alpha: _animation.value),
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
   }
 }

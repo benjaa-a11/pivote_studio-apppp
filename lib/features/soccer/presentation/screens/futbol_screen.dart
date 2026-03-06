@@ -30,35 +30,24 @@ class _FutbolScreenState extends State<FutbolScreen> {
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
               SliverAppBar(
-                expandedHeight: 130,
                 floating: true,
                 pinned: true,
                 elevation: 0,
                 backgroundColor: theme.scaffoldBackgroundColor,
-                flexibleSpace: FlexibleSpaceBar(
-                  titlePadding:
-                      const EdgeInsetsDirectional.only(start: 16, bottom: 8),
-                  collapseMode: CollapseMode.parallax,
-                  title: Text(
-                    'Fútbol en vivo',
-                    style: GoogleFonts.syne(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  background: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 8),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: WorldCupCountdown(),
-                      ),
-                    ],
+                centerTitle: false,
+                title: Text(
+                  'Fútbol en vivo',
+                  style: GoogleFonts.syne(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
+                actions: [
+                  _buildLiveBadgeHeader(context, soccerProvider, theme),
+                  const SizedBox(width: 16),
+                ],
               ),
             ];
           },
@@ -94,6 +83,12 @@ class _FutbolScreenState extends State<FutbolScreen> {
         key: const ValueKey('soccer_scroll_view'),
         physics: const ClampingScrollPhysics(),
         slivers: [
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
+              child: WorldCupCountdown(),
+            ),
+          ),
           SliverToBoxAdapter(
             child: _buildLeagueCarousel(soccerData, theme),
           ),
@@ -543,6 +538,50 @@ class _FutbolScreenState extends State<FutbolScreen> {
                 ),
                 const TextSpan(text: ' PLATFORM'),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLiveBadgeHeader(
+      BuildContext context, SoccerProvider provider, ThemeData theme) {
+    if (provider.isLoading || provider.soccerData == null) {
+      return const SizedBox.shrink();
+    }
+
+    final liveCount =
+        provider.soccerData!.matches.where((m) => m.isLive).length;
+    if (liveCount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.error.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.error,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$liveCount VIVO',
+            style: GoogleFonts.dmSans(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: theme.colorScheme.error,
+              letterSpacing: 0.5,
             ),
           ),
         ],
