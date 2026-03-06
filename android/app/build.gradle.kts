@@ -78,6 +78,13 @@ dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
     
     /* =========================
+       MEDIA3 EXOPLAYER (MPD/DASH + ClearKey DRM)
+       ========================= */
+    implementation("androidx.media3:media3-exoplayer:1.5.1")
+    implementation("androidx.media3:media3-exoplayer-dash:1.5.1")
+    implementation("androidx.media3:media3-ui:1.5.1")
+
+    /* =========================
        DESUGARING (requerido por flutter_local_notifications)
        ========================= */
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
