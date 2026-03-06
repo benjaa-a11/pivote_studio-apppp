@@ -143,7 +143,18 @@ class Channel {
       if (type!.toLowerCase() == 'hls') return StreamType.m3u8;
     }
 
-    // Priority 2: Detect from URL extension
+    // Priority 2: Check if the current stream has DRM keys (always DASH/MPD)
+    final currentStream = streamUrl.isNotEmpty
+        ? streamUrl.firstWhere(
+            (s) => s.url == url,
+            orElse: () => streamUrl.first,
+          )
+        : null;
+    if (currentStream != null && currentStream.hasDrm) {
+      return StreamType.dash;
+    }
+
+    // Priority 3: Detect from URL extension
     if (url.contains('.mpd')) {
       return StreamType.dash;
     } else if (url.contains('.m3u8') || url.contains('m3u')) {
@@ -237,8 +248,8 @@ class StreamSource {
   bool get hasDrm =>
       k1 != null && k2 != null && k1!.isNotEmpty && k2!.isNotEmpty;
 
-  /// Returns true if this is a DASH stream
-  bool get isDash => url.contains('.mpd');
+  /// Returns true if this is a DASH stream (detected by URL or DRM keys)
+  bool get isDash => url.contains('.mpd') || hasDrm;
 
   /// Returns true if this is an HLS stream
   bool get isHls => url.contains('.m3u8') || url.contains('m3u');

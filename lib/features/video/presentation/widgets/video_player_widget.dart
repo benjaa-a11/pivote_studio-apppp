@@ -97,7 +97,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_disposed || _useWebPlayer) return;
+    if (_disposed || _useWebPlayer || _useShakaPlayer) return;
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _engine?.pause();
@@ -180,20 +180,24 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         '── Server ${_serverIndex + 1}/${widget.channel.streamUrl.length}');
     debugPrint('   URL: ${url.substring(0, min(80, url.length))}');
 
-    // URL resolution
-    _setPlayerState(PlayerState.resolvingUrl);
-    try {
-      final resolved = await _resolveUrl(url);
-      if (resolved != null && resolved.isNotEmpty) url = resolved;
-    } catch (_) {}
+    // Detect stream type — skip URL resolution for MPD/DRM
+    final isMpd = _currentStream != null &&
+        (_currentStream!.isDash || _currentStream!.hasDrm);
+    final isWeb = !isMpd && _isWebStream(url);
+
+    // URL resolution (only for HLS/M3U8 — MPD manifests don't need it)
+    if (!isMpd && !isWeb) {
+      _setPlayerState(PlayerState.resolvingUrl);
+      try {
+        final resolved = await _resolveUrl(url);
+        if (resolved != null && resolved.isNotEmpty) url = resolved;
+      } catch (_) {}
+    }
 
     if (url.isEmpty) {
       await _nextServer();
       return;
     }
-
-    // Detect stream type
-    final isWeb = _isWebStream(url);
 
     // Server timeout
     final timeoutSec = PlayerConfig.baseServerTimeout.inSeconds +
@@ -225,8 +229,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _setPlayerState(PlayerState.playing);
       _serverTimeout?.cancel();
       _loadingFailsafe?.cancel();
-    } else if (_currentStream != null && _currentStream!.isDash) {
-      debugPrint('🌐 Mode: Shaka WebView (MPD)');
+    } else if (isMpd) {
+      debugPrint('🌐 Mode: Shaka WebView (MPD/DRM)');
       _safeSetState(() {
         _useWebPlayer = false;
         _useShakaPlayer = true;
