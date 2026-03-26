@@ -108,9 +108,11 @@ class _ModernDialog extends StatelessWidget {
     final iconData = DialogStyles.getIcon(type);
 
     return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
       child: Dialog(
-        backgroundColor: theme.colorScheme.surface,
+        backgroundColor: isDark 
+            ? theme.colorScheme.surface.withValues(alpha: 0.8)
+            : Colors.white.withValues(alpha: 0.9),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DialogStyles.borderRadius),
@@ -127,17 +129,31 @@ class _ModernDialog extends StatelessWidget {
             children: [
               // Icon Badge
               Container(
-                width: 64,
-                height: 64,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
-                  color: iconBgColor,
+                  gradient: LinearGradient(
+                    colors: [
+                      iconBgColor,
+                      iconBgColor.withValues(alpha: 0.5),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: iconColor.withValues(alpha: 0.2),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
                 ),
                 child: Center(
                   child: Icon(
                     iconData,
                     color: iconColor,
-                    size: 32,
+                    size: 34,
                   ),
                 ),
               ),
@@ -243,16 +259,23 @@ class _DialogButton extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        HapticFeedback.lightImpact();
+        HapticFeedback.mediumImpact();
         onTap();
       },
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 16),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: getBgColor(),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: isPrimary ? [
+            BoxShadow(
+              color: getBgColor().withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ] : null,
         ),
         child: Text(
           label,
@@ -260,6 +283,7 @@ class _DialogButton extends StatelessWidget {
             fontSize: 15,
             fontWeight: FontWeight.bold,
             color: getTextColor(),
+            letterSpacing: 0.3,
           ),
         ),
       ),
@@ -281,15 +305,25 @@ class _ModernBottomSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final mq = MediaQuery.of(context);
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: mq.size.height * 0.92,
-      ),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
+    final isDark = theme.brightness == Brightness.dark;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: mq.size.height * 0.92,
+          ),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface.withValues(alpha: isDark ? 0.85 : 0.9),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: 0.1),
+              width: 1,
+            ),
+          ),
+          child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Drag handle
@@ -309,7 +343,9 @@ class _ModernBottomSheet extends StatelessWidget {
               : Flexible(child: child),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 }
 

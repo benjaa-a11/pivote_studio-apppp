@@ -73,26 +73,26 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            gradient: LinearGradient(
+            borderRadius: BorderRadius.circular(24),
+            gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF0EA5E9).withValues(alpha: 0.15),
-                Colors.white.withValues(alpha: 0.05),
+                Color(0xFF304FFE), // FIFA Electric Blue
+                Color(0xFF1E3A8A), // Navy Blue
               ],
             ),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1.5,
+              color: Colors.white.withValues(alpha: 0.2),
+              width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0EA5E9).withValues(alpha: 0.1),
-                blurRadius: 32,
-                spreadRadius: -10,
+                color: const Color(0xFF304FFE).withValues(alpha: 0.3),
+                blurRadius: 20,
+                spreadRadius: -5,
               ),
             ],
           ),
@@ -104,39 +104,44 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: Colors.white.withValues(alpha: 0.1),
                 ),
                 child: Image.asset(
                   'assets/FWC-26/2026-FIFA-World-Cup256x-white.png',
-                  height: 48,
+                  height: 40,
                   fit: BoxFit.contain,
                 ),
               ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    hasStarted ? 'MUNDIAL 2026' : 'CUENTA REGRESIVA',
-                    style: GoogleFonts.syne(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 2.0,
-                      color: const Color(0xFF0EA5E9),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasStarted ? 'MUNDIAL 2026' : 'CUENTA REGRESIVA',
+                      style: GoogleFonts.syne(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.5,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
                     ),
-                  ),
-                  Text(
-                    'FIFA WORLD CUP™',
-                    style: GoogleFonts.syne(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'FIFA WORLD CUP 26™',
+                        style: GoogleFonts.syne(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -171,26 +176,33 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             LayoutBuilder(
               builder: (context, constraints) {
                 // Adjust sizing based on available width
-                double boxSize = 64;
-                double fontSize = 24;
-                if (constraints.maxWidth < 320) {
-                  boxSize = 54;
-                  fontSize = 20;
+                double boxSize = 60;
+                double fontSize = 22;
+                double separatorWidth = 12;
+                
+                if (constraints.maxWidth < 300) {
+                  boxSize = 48;
+                  fontSize = 18;
+                  separatorWidth = 8;
                 }
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildModernTimeUnit(days.toString(), 'DÍAS', boxSize, fontSize),
-                    _buildModernSeparator(boxSize),
-                    _buildModernTimeUnit(
-                        hours.toString().padLeft(2, '0'), 'HS', boxSize, fontSize),
-                    _buildModernSeparator(boxSize),
-                    _buildModernTimeUnit(
-                        minutes.toString().padLeft(2, '0'), 'MIN', boxSize, fontSize),
-                    _buildModernSeparator(boxSize),
-                    _buildModernTimeUnit(
-                        seconds.toString().padLeft(2, '0'), 'SEG', boxSize, fontSize),
-                  ],
+
+                return FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildModernTimeUnit(days.toString(), 'DÍAS', boxSize, fontSize),
+                      _buildModernSeparator(boxSize, separatorWidth),
+                      _buildModernTimeUnit(
+                          hours.toString().padLeft(2, '0'), 'HS', boxSize, fontSize),
+                      _buildModernSeparator(boxSize, separatorWidth),
+                      _buildModernTimeUnit(
+                          minutes.toString().padLeft(2, '0'), 'MIN', boxSize, fontSize),
+                      _buildModernSeparator(boxSize, separatorWidth),
+                      _buildModernTimeUnit(
+                          seconds.toString().padLeft(2, '0'), 'SEG', boxSize, fontSize),
+                    ],
+                  ),
                 );
               },
             ),
@@ -209,24 +221,24 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         Container(
           width: boxSize,
           height: boxSize + 10,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(20),
+            decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.15),
+              color: Colors.white.withValues(alpha: 0.2),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0EA5E9).withValues(alpha: 0.15),
-                blurRadius: 15,
-                spreadRadius: -5,
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+              children: [
               ScaleTransition(
                 scale: _pulseAnimation,
                 child: Text(
@@ -248,24 +260,24 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
           style: GoogleFonts.dmSans(
             fontSize: 9,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1.5,
-            color: const Color(0xFF0EA5E9).withValues(alpha: 0.8),
+            letterSpacing: 1.0,
+            color: Colors.white.withValues(alpha: 0.7),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildModernSeparator(double boxSize) {
+  Widget _buildModernSeparator(double boxSize, double horizontalPadding) {
     return Container(
-      height: boxSize + 30,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      height: boxSize,
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Center(
         child: Container(
-          width: 4,
-          height: 4,
+          width: 3,
+          height: 3,
           decoration: BoxDecoration(
-            color: const Color(0xFF0EA5E9).withValues(alpha: 0.4),
+            color: Colors.white.withValues(alpha: 0.3),
             shape: BoxShape.circle,
           ),
         ),

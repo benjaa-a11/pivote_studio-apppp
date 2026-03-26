@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
@@ -15,15 +16,32 @@ class MatchesHero extends StatefulWidget {
 }
 
 class _MatchesHeroState extends State<MatchesHero> {
+  Timer? _uiTimer;
+  Timer? _refreshTimer;
+
   @override
   void initState() {
     super.initState();
-    // Actualizar cada minuto para refrescar estados
-    Future.delayed(const Duration(minutes: 1), () {
+    // Refrescar la UI internamente cada minuto
+    _uiTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
       if (mounted) {
         setState(() {});
       }
     });
+
+    // Realizar consulta al servidor cada hora
+    _refreshTimer = Timer.periodic(const Duration(hours: 1), (timer) {
+      if (mounted) {
+        context.read<SoccerProvider>().fetchData(silent: true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _uiTimer?.cancel();
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   @override

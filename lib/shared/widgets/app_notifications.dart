@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -15,8 +16,8 @@ class AppNotifications {
       _ToastConfig(
         message: message,
         color: isDark ? AppTheme.darkSuccess : AppTheme.lightSuccess,
-        gradient: const [Color(0xFF00C896), Color(0xFF00A878)],
-        icon: Icons.check_rounded,
+        gradient: const [Color(0xFF34D399), Color(0xFF059669)], // More modern greens
+        icon: Icons.check_circle_rounded,
         label: 'Éxito',
       ),
     );
@@ -29,8 +30,8 @@ class AppNotifications {
       _ToastConfig(
         message: message,
         color: isDark ? AppTheme.darkDanger : AppTheme.lightDanger,
-        gradient: const [Color(0xFFFF5A5A), Color(0xFFE03A3A)],
-        icon: Icons.close_rounded,
+        gradient: const [Color(0xFFF87171), Color(0xFFDC2626)], // More modern reds
+        icon: Icons.error_rounded,
         label: 'Error',
       ),
     );
@@ -56,7 +57,7 @@ class AppNotifications {
       _ToastConfig(
         message: message,
         color: Theme.of(context).colorScheme.primary,
-        gradient: const [Color(0xFF5B8AF5), Color(0xFF3D6AE0)],
+        gradient: const [Color(0xFF60A5FA), Color(0xFF2563EB)], // FIFA/Modern Blues
         icon: Icons.info_rounded,
         label: 'Info',
       ),
@@ -192,134 +193,120 @@ class _PremiumToastState extends State<_PremiumToast>
         position: _slide,
         child: ScaleTransition(
           scale: _scale,
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.07)
-                    : cfg.color.withValues(alpha: 0.15),
-                width: 1.0,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: cfg.color.withValues(alpha: 0.2),
-                  blurRadius: 30,
-                  spreadRadius: -4,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Content row
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-                    child: Row(
-                      children: [
-                        // Left accent + icon
-                        ScaleTransition(
-                          scale: _iconPop,
-                          child: Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: cfg.gradient,
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: cfg.color.withValues(alpha: 0.4),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child:
-                                Icon(cfg.icon, color: Colors.white, size: 22),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-
-                        // Text
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                cfg.label,
-                                style: GoogleFonts.syne(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: cfg.color,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                cfg.message,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.4,
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.85)
-                                      : Colors.black.withValues(alpha: 0.75),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Close hint
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.swipe_rounded,
-                          size: 16,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.2),
-                        ),
-                      ],
+              borderRadius: BorderRadius.circular(24),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark 
+                        ? const Color(0xFF1C1C1E).withValues(alpha: 0.7) 
+                        : Colors.white.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : cfg.color.withValues(alpha: 0.1),
+                      width: 1.2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.06),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
                   ),
-
-                  // Animated progress bar
-                  AnimatedBuilder(
-                    animation: _progress,
-                    builder: (_, __) {
-                      return ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Content row
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                        child: Row(
+                          children: [
+                            // Left accent + icon
+                            ScaleTransition(
+                              scale: _iconPop,
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: cfg.gradient,
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: cfg.color.withValues(alpha: 0.3),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child:
+                                    Icon(cfg.icon, color: Colors.white, size: 24),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+    
+                            // Text
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    cfg.label.toUpperCase(),
+                                    style: GoogleFonts.syne(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: cfg.color,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    cfg.message,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.dmSans(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.3,
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.9)
+                                          : Colors.black.withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        child: LinearProgressIndicator(
-                          value: _progress.value,
-                          minHeight: 3,
-                          backgroundColor:
-                              cfg.color.withValues(alpha: isDark ? 0.12 : 0.08),
-                          valueColor: AlwaysStoppedAnimation<Color>(cfg.color),
-                        ),
-                      );
-                    },
+                      ),
+    
+                      // Animated progress bar
+                      AnimatedBuilder(
+                        animation: _progress,
+                        builder: (_, __) {
+                          return LinearProgressIndicator(
+                            value: _progress.value,
+                            minHeight: 2.5,
+                            backgroundColor: Colors.transparent,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              cfg.color.withValues(alpha: 0.5),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
         ),
       ),
     );

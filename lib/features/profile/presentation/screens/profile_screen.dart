@@ -425,78 +425,92 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSecurityShield(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.primary.withValues(alpha: 0.15),
-              theme.colorScheme.primary.withValues(alpha: 0.05),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [
+                      theme.colorScheme.primary.withValues(alpha: 0.15),
+                      theme.colorScheme.primary.withValues(alpha: 0.05),
+                    ]
+                  : [
+                      theme.colorScheme.primary.withValues(alpha: 0.1),
+                      theme.colorScheme.primary.withValues(alpha: 0.02),
+                    ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(
+              color: theme.colorScheme.primary.withValues(alpha: 0.2),
+              width: 1.5,
+            ),
           ),
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(
-            color: theme.colorScheme.primary.withValues(alpha: 0.2),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.primary,
+                      theme.colorScheme.primary.withValues(alpha: 0.8),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  FontAwesomeIcons.shieldHalved,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Escudo de Privacidad',
+                      style: GoogleFonts.syne(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tus datos están cifrados con tecnología de grado militar.',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w500,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.check_circle_rounded,
                 color: theme.colorScheme.primary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                size: 20,
               ),
-              child: const Icon(
-                Icons.shield_rounded,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Escudo de Privacidad',
-                    style: GoogleFonts.syne(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Tus datos están cifrados y protegidos.',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.verified_user_rounded,
-              color: theme.colorScheme.primary,
-              size: 20,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
