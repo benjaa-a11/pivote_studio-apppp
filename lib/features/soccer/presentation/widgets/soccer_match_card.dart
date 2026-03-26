@@ -7,11 +7,13 @@ import 'package:pivote/core/services/image_cache_helper.dart';
 class SoccerMatchCard extends StatelessWidget {
   final SoccerMatch match;
   final SoccerData data;
+  final bool isLast;
 
   const SoccerMatchCard({
     super.key,
     required this.match,
     required this.data,
+    this.isLast = false,
   });
 
   @override
@@ -26,53 +28,19 @@ class SoccerMatchCard extends StatelessWidget {
         orElse: () => SoccerTeam(
             id: '', name: match.awayTeam, shortName: match.awayTeam));
 
-    final league = data.leagues.firstWhere((l) => l.id == match.leagueId,
-        orElse: () => SoccerLeague(
-            id: match.leagueId,
-            name: match.leagueId.toUpperCase(),
-            shortName: match.leagueId.toUpperCase(),
-            country: ''));
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        border: Border(
+        border: isLast ? null : Border(
           bottom: BorderSide(
-            color: theme.dividerColor.withValues(alpha: 0.1),
+            color: theme.dividerColor.withValues(alpha: 0.08),
             width: 1,
           ),
         ),
       ),
       child: Column(
         children: [
-          // League Header within Card
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              children: [
-                Text(
-                  league.name.toUpperCase(),
-                  style: GoogleFonts.dmSans(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
-                    color: theme.colorScheme.primary.withValues(alpha: 0.7),
-                  ),
-                ),
-                const Spacer(),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 8,
-                  color: theme.hintColor.withValues(alpha: 0.2),
-                ),
-              ],
-            ),
-          ),
-          Divider(
-            height: 1,
-            color: theme.dividerColor.withValues(alpha: 0.05),
-          ),
-          const SizedBox(height: 12),
           Row(
             children: [
               // Status and Time Column

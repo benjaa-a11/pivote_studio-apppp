@@ -216,7 +216,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       title: '¿Eliminar tu cuenta?',
       message:
           'Esta acción es permanente e irreversible. Todos tus datos, favoritos e historial de visualización se borrarán para siempre.',
-      confirmLabel: 'Eliminar permanentemente',
+      confirmLabel: 'Eliminar',
       cancelLabel: 'Cancelar',
       isDestructive: true,
       type: AppDialogType.error,
