@@ -257,33 +257,38 @@ class _RadiosScreenState extends State<RadiosScreen>
         );
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        color: Colors.transparent, // For better hit testing
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.03)
+              : Colors.black.withValues(alpha: 0.02),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
+            width: 1,
+          ),
+        ),
         child: Row(
           children: [
             // Station Logo
             Hero(
               tag: 'radio_tile_logo_${radio.id}',
               child: Container(
-                width: 64,
-                height: 64,
+                width: 60,
+                height: 60,
                 decoration: ShapeDecoration(
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.05)
                       : Colors.black.withValues(alpha: 0.05),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  shadows: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
                   child: CachedNetworkImage(
                     imageUrl: radio.logoUrl,
                     fit: BoxFit.cover,
@@ -291,15 +296,13 @@ class _RadiosScreenState extends State<RadiosScreen>
                         Container(color: Colors.transparent),
                     errorWidget: (context, _, __) => Icon(
                       Icons.radio_rounded,
-                      color: isDark
-                          ? Colors.white24
-                          : Colors.black12, // Fixed from black24
+                      color: isDark ? Colors.white24 : Colors.black12,
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 16),
             // Station Info
             Expanded(
               child: Column(
@@ -308,7 +311,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                   Text(
                     radio.name,
                     style: GoogleFonts.syne(
-                      fontSize: 17,
+                      fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: isCurrent
                           ? Theme.of(context).colorScheme.primary
@@ -318,42 +321,51 @@ class _RadiosScreenState extends State<RadiosScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    radio.frequency,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: textColor.withValues(alpha: 0.5),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if (isCurrent && audioManager.isPlaying) ...[
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withValues(alpha: 0.4),
+                                blurRadius: 4,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        radio.frequency,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: textColor.withValues(alpha: 0.5),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            // Play indicator or Chevron
+            // Play indicator if current
             if (isCurrent && audioManager.isPlaying)
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .primary
-                      .withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.graphic_eq_rounded,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 22,
-                ),
-              )
-            else
               Icon(
-                Icons.chevron_right_rounded,
-                color: textColor.withValues(alpha: 0.3),
-                size: 28,
+                Icons.graphic_eq_rounded,
+                color: Theme.of(context).colorScheme.primary,
+                size: 24,
               ),
           ],
         ),

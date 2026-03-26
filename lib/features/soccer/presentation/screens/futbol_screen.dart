@@ -29,35 +29,10 @@ class _FutbolScreenState extends State<FutbolScreen> {
         child: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
-              SliverAppBar(
-                expandedHeight: 130,
-                floating: true,
-                pinned: true,
-                elevation: 0,
-                backgroundColor: theme.scaffoldBackgroundColor,
-                flexibleSpace: FlexibleSpaceBar(
-                  titlePadding:
-                      const EdgeInsetsDirectional.only(start: 16, bottom: 8),
-                  collapseMode: CollapseMode.parallax,
-                  title: Text(
-                    'Fútbol en vivo',
-                    style: GoogleFonts.syne(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  background: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(height: 8),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: WorldCupCountdown(),
-                      ),
-                    ],
-                  ),
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: WorldCupCountdown(),
                 ),
               ),
             ];
