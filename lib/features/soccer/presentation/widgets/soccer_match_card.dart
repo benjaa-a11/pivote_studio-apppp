@@ -26,8 +26,15 @@ class SoccerMatchCard extends StatelessWidget {
         orElse: () => SoccerTeam(
             id: '', name: match.awayTeam, shortName: match.awayTeam));
 
+    final league = data.leagues.firstWhere((l) => l.id == match.leagueId,
+        orElse: () => SoccerLeague(
+            id: match.leagueId,
+            name: match.leagueId.toUpperCase(),
+            shortName: match.leagueId.toUpperCase(),
+            country: ''));
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
@@ -36,84 +43,117 @@ class SoccerMatchCard extends StatelessWidget {
           ),
         ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          // Status and Time Column
-          SizedBox(
-            width: 60,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
+          // League Header within Card
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
               children: [
-                if (match.isLive) ...[
-                  _buildLiveBadge(theme),
-                  const SizedBox(height: 4),
-                  Text(
-                    match.timeStatus,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.error,
-                    ),
-                    textAlign: TextAlign.center,
+                Text(
+                  league.name.toUpperCase(),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.7),
                   ),
-                ] else if (match.isFinished)
-                  Text(
-                    match.timeStatus.toUpperCase(),
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: theme.hintColor.withValues(alpha: 0.6),
-                    ),
-                    textAlign: TextAlign.center,
-                  )
-                else if (match.timeStatus.toLowerCase().contains('prog') ||
-                    match.timeStatus.toLowerCase().contains('aplaz') ||
-                    match.timeStatus.toLowerCase().contains('susp'))
-                  Text(
-                    '${match.timeStatus}\n${_formatStartTime(match.startTime)}',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: theme.colorScheme.primary,
-                    ),
-                    textAlign: TextAlign.center,
-                  )
-                else
-                  Text(
-                    _formatStartTime(match.startTime),
-                    style: GoogleFonts.dmSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 8,
+                  color: theme.hintColor.withValues(alpha: 0.2),
+                ),
               ],
             ),
           ),
+          Divider(
+            height: 1,
+            color: theme.dividerColor.withValues(alpha: 0.05),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              // Status and Time Column
+              SizedBox(
+                width: 70,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (match.isLive) ...[
+                      _buildLiveBadge(theme),
+                      const SizedBox(height: 6),
+                      Text(
+                        match.timeStatus,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: theme.colorScheme.error,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ] else if (match.isFinished)
+                      Text(
+                        match.timeStatus.toUpperCase(),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: theme.hintColor.withValues(alpha: 0.5),
+                          letterSpacing: 0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      )
+                    else
+                      Text(
+                        _formatStartTime(match.startTime),
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                  ],
+                ),
+              ),
 
-          const SizedBox(width: 8),
+              // Vertical Divider
+              Container(
+                height: 40,
+                width: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 12),
+                color: theme.dividerColor.withValues(alpha: 0.08),
+              ),
 
-          // Match Details: Teams and Score
-          Expanded(
-            child: Column(
-              children: [
-                _buildTeamRow(
-                    homeTeam,
-                    match.score.isNotEmpty ? match.score[0] : null,
-                    theme,
-                    isDark,
-                    true),
-                const SizedBox(height: 12),
-                _buildTeamRow(
-                    awayTeam,
-                    match.score.isNotEmpty ? match.score[1] : null,
-                    theme,
-                    isDark,
-                    false),
-              ],
-            ),
+              // Match Details: Teams and Score
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildTeamRow(
+                        homeTeam,
+                        match.score.isNotEmpty ? match.score[0] : null,
+                        theme,
+                        isDark,
+                        true),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(
+                        height: 1,
+                        color: theme.dividerColor.withValues(alpha: 0.04),
+                      ),
+                    ),
+                    _buildTeamRow(
+                        awayTeam,
+                        match.score.isNotEmpty ? match.score[1] : null,
+                        theme,
+                        isDark,
+                        false),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -192,31 +232,39 @@ class SoccerMatchCard extends StatelessWidget {
           child: Text(
             team.name,
             style: GoogleFonts.dmSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        // Score Divider
+        if (currentScore != null)
+          Container(
+            height: 16,
+            width: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            color: theme.dividerColor.withValues(alpha: 0.08),
+          ),
         // Score (if available)
         if (currentScore != null)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: match.isLive
-                  ? theme.colorScheme.error.withValues(alpha: 0.05)
+                  ? theme.colorScheme.error.withValues(alpha: 0.08)
                   : (isDark
-                      ? Colors.white.withValues(alpha: 0.03)
-                      : Colors.black.withValues(alpha: 0.02)),
-              borderRadius: BorderRadius.circular(6),
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.black.withValues(alpha: 0.03)),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               currentScore.toString(),
               style: GoogleFonts.dmSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
                 color: match.isLive
                     ? theme.colorScheme.error
                     : theme.colorScheme.onSurface,
@@ -227,9 +275,9 @@ class SoccerMatchCard extends StatelessWidget {
           Text(
             '-',
             style: GoogleFonts.dmSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: theme.hintColor.withValues(alpha: 0.3),
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: theme.hintColor.withValues(alpha: 0.2),
             ),
           ),
       ],

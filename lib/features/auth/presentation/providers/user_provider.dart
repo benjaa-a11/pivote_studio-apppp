@@ -311,6 +311,27 @@ class UserProvider with ChangeNotifier {
     }
   }
 
+  /// Delete user account and all data
+  Future<void> deleteAccount() async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      debugPrint('🔵 UserProvider: Starting Account Deletion...');
+      await AuthService.deleteAccount();
+
+      // Clear local state after successful deletion
+      await clearUser();
+      debugPrint('✅ UserProvider: Account deletion complete');
+    } catch (e) {
+      debugPrint('❌ UserProvider: Error deleting account: $e');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Refresh user data from Firestore
   Future<void> refreshUser() async {
     debugPrint('🔵 UserProvider: Refreshing user data...');

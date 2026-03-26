@@ -453,6 +453,34 @@ class AuthService {
     }
   }
 
+  /// Delete user account and data
+  static Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No hay usuario autenticado',
+      );
+    }
+
+    try {
+      _requireFirebase();
+      debugPrint('🔵 Deleting user account and data: ${user.uid}');
+
+      // 1. Delete Firestore data
+      await _firestore.collection(_usersCollection).doc(user.uid).delete();
+
+      // 2. Delete Auth account
+      // This may require recent login
+      await user.delete();
+
+      debugPrint('✅ Account and data deleted successfully');
+    } catch (e) {
+      debugPrint('❌ Error deleting account: $e');
+      rethrow;
+    }
+  }
+
   /// Map Firebase Auth error codes to professional Spanish messages
   static String getErrorMessage(dynamic error) {
     debugPrint('🔍 Processing error: $error');

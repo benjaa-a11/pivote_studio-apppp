@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -37,7 +38,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
       vsync: this,
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
@@ -65,38 +66,37 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     final seconds = _timeLeft.inSeconds % 60;
 
     final hasStarted = _timeLeft == Duration.zero;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
-              : [const Color(0xFF1E293B), const Color(0xFF0F172A)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0EA5E9).withValues(alpha: 0.2),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF0EA5E9).withValues(alpha: 0.15),
+                Colors.white.withValues(alpha: 0.05),
+              ],
+            ),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0EA5E9).withValues(alpha: 0.1),
+                blurRadius: 32,
+                spreadRadius: -10,
+              ),
+            ],
           ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.05),
-          width: 1,
-        ),
-      ),
-      child: Column(
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Logo & Title
@@ -195,6 +195,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
               },
             ),
         ],
+          ),
+        ),
       ),
     );
   }
@@ -206,42 +208,48 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
       children: [
         Container(
           width: boxSize,
-          height: boxSize,
+          height: boxSize + 10,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(18),
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 4,
+                color: const Color(0xFF0EA5E9).withValues(alpha: 0.15),
+                blurRadius: 15,
+                spreadRadius: -5,
               ),
             ],
           ),
-          child: Center(
-            child: ScaleTransition(
-              scale: _pulseAnimation,
-              child: Text(
-                value,
-                style: GoogleFonts.syne(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ScaleTransition(
+                scale: _pulseAnimation,
+                child: Text(
+                  value,
+                  style: GoogleFonts.syne(
+                    fontSize: fontSize + 2,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -1,
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Text(
           label,
           style: GoogleFonts.dmSans(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
+            color: const Color(0xFF0EA5E9).withValues(alpha: 0.8),
           ),
         ),
       ],
@@ -250,17 +258,15 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
 
   Widget _buildModernSeparator(double boxSize) {
     return Container(
-      height: boxSize + 20, // Add space for label to align properly
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      alignment: Alignment.topCenter,
-      child: Padding(
-        padding: EdgeInsets.only(top: (boxSize / 2) - 12),
-        child: Text(
-          ':',
-          style: GoogleFonts.syne(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF0EA5E9).withValues(alpha: 0.6),
+      height: boxSize + 30,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Center(
+        child: Container(
+          width: 4,
+          height: 4,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0EA5E9).withValues(alpha: 0.4),
+            shape: BoxShape.circle,
           ),
         ),
       ),

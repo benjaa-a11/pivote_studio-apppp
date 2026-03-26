@@ -12,112 +12,192 @@ class PrivacySecurityScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
           'Privacidad y Seguridad',
-          style: GoogleFonts.syne(fontWeight: FontWeight.bold),
+          style: GoogleFonts.syne(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
         centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSecurityHeader(context),
-            const SizedBox(height: 40),
-            _buildInfoSection(
-              context,
-              title: 'Protección de Datos',
-              icon: Icons.lock_outline,
-              content:
-                  'Utilizamos tecnología de cifrado de extremo a extremo para asegurar que tus datos personales estén protegidos en todo momento durante la transmisión a nuestros servidores de Firebase.',
-            ),
-            const SizedBox(height: 24),
-            _buildInfoSection(
-              context,
-              title: 'Uso de la Información',
-              icon: Icons.visibility_off_outlined,
-              content:
-                  'Tu historial de visualización y canales favoritos se guardan localmente y en tu nube privada de Pivote. Nunca compartimos tu información con terceros con fines publicitarios.',
-            ),
-            const SizedBox(height: 24),
-            _buildInfoSection(
-              context,
-              title: 'Control Total',
-              icon: Icons.tune,
-              content:
-                  'Tienes el control completo sobre tus datos. Puedes borrar tu historial de búsqueda, historial de canales o incluso solicitar la eliminación de tu cuenta desde la configuración.',
-            ),
-            const SizedBox(height: 40),
-            _buildActionItem(
-              context,
-              title: 'Cambiar Contraseña',
-              icon: Icons.password_outlined,
-              onTap: () {},
-            ),
-            _buildActionItem(
-              context,
-              title: 'Verificar Identidad',
-              subtitle: 'Añadir verificación en dos pasos',
-              icon: Icons.verified_user_outlined,
-              onTap: () {},
-            ),
-            _buildActionItem(
-              context,
-              title: 'Cerrar todas las sesiones',
-              icon: Icons.phonelink_erase_outlined,
-              color: Colors.red,
-              onTap: () {},
-            ),
-          ],
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded,
+              color: theme.colorScheme.onSurface),
+          onPressed: () => Navigator.pop(context),
         ),
+      ),
+      body: Stack(
+        children: [
+          // Decorative background glow
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSecurityHeader(context),
+                  const SizedBox(height: 48),
+                  _buildSectionTitle(theme, 'Tu privacidad'),
+                  const SizedBox(height: 16),
+                  _buildInfoCard(
+                    context,
+                    title: 'Protección de Identidad',
+                    subtitle: 'Cifrado de grado bancario',
+                    icon: Icons.fingerprint_rounded,
+                    content:
+                        'Tus credenciales nunca se almacenan en texto plano. Utilizamos protocolos OAuth 2.0 y hashing avanzado para asegurar tu acceso.',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInfoCard(
+                    context,
+                    title: 'Transparencia de Datos',
+                    subtitle: 'Nada que ocultar',
+                    icon: Icons.analytics_outlined,
+                    content:
+                        'Pivote Studio no rastrea tu actividad fuera de la aplicación. Tus datos de uso son anónimos y se utilizan solo para mejorar la estabilidad del streaming.',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInfoCard(
+                    context,
+                    title: 'Nube Privada',
+                    subtitle: 'Sincronización segura',
+                    icon: Icons.cloud_done_outlined,
+                    content:
+                        'Tus favoritos e historial se sincronizan mediante túneles SSL/TLS ultra seguros hacia tu base de datos privada en Firebase.',
+                  ),
+                  const SizedBox(height: 48),
+                  _buildSectionTitle(theme, 'Acciones de Seguridad'),
+                  const SizedBox(height: 16),
+                  _buildActionItem(
+                    context,
+                    title: 'Ver historial de accesos',
+                    icon: Icons.history_toggle_off_rounded,
+                    onTap: () {},
+                  ),
+                  _buildActionItem(
+                    context,
+                    title: 'Gestión de Sesiones',
+                    subtitle: 'Cerrar en otros dispositivos',
+                    icon: Icons.devices_other_rounded,
+                    onTap: () {},
+                  ),
+                  _buildActionItem(
+                    context,
+                    title: 'Solicitar mis datos',
+                    icon: Icons.download_done_rounded,
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 40),
+                  Center(
+                    child: Text(
+                      'Última actualización: Marzo 2026',
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(ThemeData theme, String title) {
+    return Text(
+      title.toUpperCase(),
+      style: GoogleFonts.dmSans(
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.2,
+        color: theme.colorScheme.primary,
       ),
     );
   }
 
   Widget _buildSecurityHeader(BuildContext context) {
+    final theme = Theme.of(context);
     return AppAnimations.smoothFadeIn(
       child: Container(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
         width: double.infinity,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFD4B455), Color(0xFFC4A445)],
+          gradient: LinearGradient(
+            colors: [
+              theme.colorScheme.primary,
+              theme.colorScheme.primary.withValues(alpha: 0.8),
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFD4B455).withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
             ),
           ],
         ),
         child: Column(
           children: [
-            const Icon(FontAwesomeIcons.shieldHalved,
-                color: Colors.white, size: 56),
-            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                FontAwesomeIcons.shieldHalved,
+                color: Colors.white,
+                size: 50,
+              ),
+            ),
+            const SizedBox(height: 24),
             Text(
               'Estás Protegido',
               style: GoogleFonts.syne(
                 color: Colors.white,
-                fontSize: 24,
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Tu seguridad es nuestra máxima prioridad.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 14,
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Text(
+                'SEGURIDAD NIVEL ELITE',
+                style: GoogleFonts.dmSans(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
               ),
             ),
           ],
@@ -126,49 +206,77 @@ class PrivacySecurityScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoSection(
+  Widget _buildInfoCard(
     BuildContext context, {
     required String title,
+    required String subtitle,
     required IconData icon,
     required String content,
   }) {
     final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.03)
+            : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.1),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text(
-                title,
-                style: GoogleFonts.dmSans(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 17,
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: Icon(icon, color: theme.colorScheme.primary, size: 24),
               ),
-              const SizedBox(height: 6),
-              Text(
-                content,
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.syne(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 12,
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          Text(
+            content,
+            style: GoogleFonts.dmSans(
+              fontSize: 14,
+              height: 1.6,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -185,24 +293,35 @@ class PrivacySecurityScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        tileColor: theme.colorScheme.surfaceContainerHighest.withAlpha(51),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        tileColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.05)),
+          side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.1)),
         ),
-        leading: Icon(icon, color: color ?? theme.colorScheme.primary),
+        leading: Icon(icon, color: color ?? theme.colorScheme.primary, size: 26),
         title: Text(
           title,
           style: GoogleFonts.dmSans(
-            fontWeight: FontWeight.w600,
-            color: color,
+            fontWeight: FontWeight.bold,
+            color: color ?? theme.colorScheme.onSurface,
+            fontSize: 15,
           ),
         ),
         subtitle: subtitle != null
-            ? Text(subtitle, style: GoogleFonts.dmSans(fontSize: 12))
+            ? Text(
+                subtitle,
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+              )
             : null,
-        trailing: const Icon(Icons.chevron_right, size: 20),
+        trailing: Icon(
+          Icons.arrow_forward_ios_rounded,
+          size: 14,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+        ),
       ),
     );
   }

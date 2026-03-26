@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -185,8 +186,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       _buildSectionHeader(theme, 'Seguridad'),
                       const SizedBox(height: 16),
                       _buildPasswordSection(theme),
+                      const SizedBox(height: 24),
+                      _buildSecurityInfo(theme),
                       const SizedBox(height: 40),
                       _buildSaveButton(theme),
+                      const SizedBox(height: 20),
+                      _buildDeleteAccountButton(theme),
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
@@ -200,6 +206,105 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: const Center(child: CircularProgressIndicator()),
             ),
         ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog() async {
+    final confirmed = await AppDialogs.showConfirm(
+      context: context,
+      title: '¿Eliminar tu cuenta?',
+      message:
+          'Esta acción es permanente e irreversible. Todos tus datos, favoritos e historial de visualización se borrarán para siempre.',
+      confirmLabel: 'Eliminar permanentemente',
+      cancelLabel: 'Cancelar',
+      isDestructive: true,
+      type: AppDialogType.error,
+    );
+
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+      try {
+        if (!mounted) return;
+        await Provider.of<UserProvider>(context, listen: false).deleteAccount();
+        if (mounted) {
+          AppNotifications.showSuccess(
+              context, 'Tu cuenta ha sido eliminada. Lamentamos verte partir.');
+          // El listener de Auth en main.dart se encargará de redirigir al login
+        }
+      } catch (e) {
+        if (mounted) {
+          if (e.toString().contains('requires-recent-login')) {
+            AppNotifications.showError(context,
+                'Por seguridad, debes haber iniciado sesión recientemente para realizar esta acción.');
+          } else {
+            AppNotifications.showError(
+                context, 'Error al eliminar cuenta: ${e.toString()}');
+          }
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Widget _buildSecurityInfo(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.privacy_tip_rounded, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Tu seguridad es nuestra prioridad',
+                  style: GoogleFonts.syne(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Pivote Studio utiliza cifrado de extremo a extremo para proteger tus datos. Nunca compartimos tu información personal con terceros.',
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeleteAccountButton(ThemeData theme) {
+    return TextButton.icon(
+      onPressed: _showDeleteAccountDialog,
+      icon: const Icon(Icons.delete_forever_rounded, size: 20),
+      label: Text(
+        'ELIMINAR MI CUENTA',
+        style: GoogleFonts.dmSans(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
+      ),
+      style: TextButton.styleFrom(
+        foregroundColor: theme.colorScheme.error,
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
       ),
     );
   }
