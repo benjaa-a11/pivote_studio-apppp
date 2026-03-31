@@ -1,8 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Clean professional loading overlay
+/// Clean professional loading overlay for all video players.
+///
+/// Renders a solid black background with a centered, animated loading
+/// indicator.  No blur, no transparency — the widget sits flush with
+/// the player canvas so it never leaks over the navigation header.
 class VideoLoadingWidget extends StatefulWidget {
   final String message;
   final String? subMessage;
@@ -25,22 +28,24 @@ class VideoLoadingWidget extends StatefulWidget {
 
 class _VideoLoadingWidgetState extends State<VideoLoadingWidget>
     with SingleTickerProviderStateMixin {
-  late AnimationController _fadeCtrl;
-  late Animation<double> _fadeAnim;
+  late AnimationController _pulseCtrl;
+  late Animation<double> _pulseAnim;
 
   @override
   void initState() {
     super.initState();
-    _fadeCtrl = AnimationController(
-      duration: const Duration(milliseconds: 300),
+    _pulseCtrl = AnimationController(
+      duration: const Duration(milliseconds: 1800),
       vsync: this,
-    )..forward();
-    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    )..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
-    _fadeCtrl.dispose();
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
@@ -48,51 +53,111 @@ class _VideoLoadingWidgetState extends State<VideoLoadingWidget>
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
 
-    return FadeTransition(
-      opacity: _fadeAnim,
-      child: SizedBox.expand(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            color: Colors.black.withAlpha(100),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Animated ring spinner ──────────────────────────────
+            SizedBox(
+              width: 52,
+              height: 52,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
+                  // Outer glow ring
+                  AnimatedBuilder(
+                    animation: _pulseAnim,
+                    builder: (context, child) {
+                      return Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: primary.withAlpha(
+                                (30 * _pulseAnim.value).toInt()),
+                            width: 3,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  // Actual spinner
                   SizedBox(
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                     child: CircularProgressIndicator(
-                      strokeWidth: 3,
+                      strokeWidth: 2.5,
+                      strokeCap: StrokeCap.round,
                       valueColor: AlwaysStoppedAnimation(primary),
                     ),
                   ),
-                  if (widget.serverInfo != null) ...[
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withAlpha(150),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: Colors.white.withAlpha(20), width: 1),
-                      ),
-                      child: Text(
-                        'Servidor ${widget.serverInfo}',
-                        style: GoogleFonts.dmSans(
-                          color: Colors.white70,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
-          ),
+
+            const SizedBox(height: 20),
+
+            // ── Message ──────────────────────────────────────────
+            AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (context, _) {
+                return Opacity(
+                  opacity: _pulseAnim.value,
+                  child: Text(
+                    widget.message,
+                    style: GoogleFonts.dmSans(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              },
+            ),
+
+            // ── Sub-message (retry info) ─────────────────────────
+            if (widget.subMessage != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                widget.subMessage!,
+                style: GoogleFonts.dmSans(
+                  color: Colors.white38,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+
+            // ── Server badge ─────────────────────────────────────
+            if (widget.serverInfo != null) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(8),
+                  borderRadius: BorderRadius.circular(20),
+                  border:
+                      Border.all(color: Colors.white.withAlpha(15), width: 1),
+                ),
+                child: Text(
+                  'Servidor ${widget.serverInfo}',
+                  style: GoogleFonts.dmSans(
+                    color: Colors.white54,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
