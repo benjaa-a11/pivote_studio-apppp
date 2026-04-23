@@ -290,22 +290,10 @@ class MatchCard extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Team logo with container
-        Container(
+        // Team logo — clean, no background
+        SizedBox(
           width: 68,
           height: 68,
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.black.withValues(alpha: 0.02),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : Colors.black.withValues(alpha: 0.04),
-            ),
-          ),
           child: logoUrl.isNotEmpty
               ? CachedNetworkImage(
                   cacheManager: ImageCacheHelper.customCacheManager,
