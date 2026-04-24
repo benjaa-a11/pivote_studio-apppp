@@ -9,13 +9,11 @@ import 'package:pivote/features/favorites/presentation/providers/favorites_provi
 import 'package:pivote/core/theme/theme_provider.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/core/services/cache_manager_service.dart';
-import 'package:pivote/features/favorites/data/services/viewing_history_service.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/features/profile/presentation/widgets/section_header.dart';
 import 'package:pivote/features/profile/presentation/screens/storage_manager_screen.dart';
-import 'package:pivote/features/profile/presentation/screens/history_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/support_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/privacy_security_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/notifications_settings_screen.dart';
@@ -34,7 +32,6 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final String _appVersion = '2.0.0';
   String _cacheSize = 'Calculando...';
-  int _historyCount = 0;
 
   @override
   void initState() {
@@ -44,11 +41,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadCacheInfo() async {
     final size = await CacheManagerService.getFormattedCacheSize();
-    final count = await ViewingHistoryService.getHistoryCount();
     if (mounted) {
       setState(() {
         _cacheSize = size;
-        _historyCount = count;
       });
     }
   }
@@ -68,8 +63,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 24),
                 _buildStats(context),
                 const SizedBox(height: 24),
-                _buildSecurityShield(context),
-                const SizedBox(height: 12),
 
                 // UI Sections
                 _buildSection(
@@ -268,7 +261,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     GreetingService.getGreeting(),
                                     style:
                                         theme.textTheme.titleMedium?.copyWith(
-                                      color: Colors.white.withAlpha(179),
+                                      color: isDark ? Colors.black87 : Colors.white.withAlpha(179),
                                       fontWeight: FontWeight.w500,
                                       letterSpacing: 0.5,
                                     ),
@@ -278,7 +271,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     user != null ? user.name : 'Cargando...',
                                     style: theme.textTheme.headlineMedium
                                         ?.copyWith(
-                                      color: Colors.white,
+                                      color: isDark ? Colors.black : Colors.white,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: -0.5,
                                     ),
@@ -288,14 +281,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   Text(
                                     user?.email ?? '',
                                     style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: Colors.white.withAlpha(204),
+                                      color: isDark ? Colors.black54 : Colors.white.withAlpha(204),
                                       fontWeight: FontWeight.w500,
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
                                   const SizedBox(height: 24),
                                   Material(
-                                    color: Colors.white.withAlpha(38),
+                                    color: isDark ? Colors.black.withAlpha(15) : Colors.white.withAlpha(38),
                                     borderRadius: BorderRadius.circular(100),
                                     child: InkWell(
                                       onTap: () {
@@ -313,20 +306,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           borderRadius:
                                               BorderRadius.circular(100),
                                           border: Border.all(
-                                              color:
-                                                  Colors.white.withAlpha(76)),
+                                              color: isDark
+                                                  ? Colors.black.withAlpha(40)
+                                                  : Colors.white.withAlpha(76)),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Icon(Icons.edit_rounded,
-                                                color: Colors.white, size: 16),
+                                            Icon(Icons.edit_rounded,
+                                                color: isDark ? Colors.black87 : Colors.white, size: 16),
                                             const SizedBox(width: 8),
                                             Text(
                                               'Editar Perfil',
                                               style: theme.textTheme.labelMedium
                                                   ?.copyWith(
-                                                color: Colors.white,
+                                                color: isDark ? Colors.black87 : Colors.white,
                                                 fontWeight: FontWeight.bold,
                                                 letterSpacing: 0.5,
                                               ),
@@ -423,99 +417,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSecurityShield(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isDark
-                  ? [
-                      theme.colorScheme.primary.withValues(alpha: 0.15),
-                      theme.colorScheme.primary.withValues(alpha: 0.05),
-                    ]
-                  : [
-                      theme.colorScheme.primary.withValues(alpha: 0.1),
-                      theme.colorScheme.primary.withValues(alpha: 0.02),
-                    ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(
-              color: theme.colorScheme.primary.withValues(alpha: 0.2),
-              width: 1.5,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      theme.colorScheme.primary,
-                      theme.colorScheme.primary.withValues(alpha: 0.8),
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                      blurRadius: 15,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  FontAwesomeIcons.shieldHalved,
-                  color: Colors.white,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Escudo de Privacidad',
-                      style: GoogleFonts.syne(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Tus datos están cifrados con tecnología de grado militar.',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 12,
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                        fontWeight: FontWeight.w500,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.check_circle_rounded,
-                color: theme.colorScheme.primary,
-                size: 20,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildAppearanceSection(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -559,16 +461,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             context,
             MaterialPageRoute(
                 builder: (context) => const StorageManagerScreen()),
-          ),
-        ),
-        _buildOptionTile(
-          context,
-          icon: Icons.history,
-          title: 'Historial',
-          subtitle: '$_historyCount canales vistos',
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const HistoryScreen()),
           ),
         ),
       ],

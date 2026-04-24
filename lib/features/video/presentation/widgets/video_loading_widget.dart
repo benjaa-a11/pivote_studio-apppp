@@ -21,10 +21,10 @@ class VideoLoadingWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black,
-      child: Center(
+      child: const Center(
         child: PivoteLoader(
-          size: 60,
-          strokeWidth: 5,
+          size: 45,
+          strokeWidth: 4.5,
         ),
       ),
     );

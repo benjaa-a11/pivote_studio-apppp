@@ -42,7 +42,7 @@ class _PivoteLoaderState extends State<PivoteLoader>
   @override
   Widget build(BuildContext context) {
     // Default to a premium cyan color if not specified
-    final activeColor = widget.color ?? const Color(0xFF25b09b);
+    final activeColor = widget.color ?? Theme.of(context).colorScheme.primary;
 
     return AnimatedBuilder(
       animation: _controller,
