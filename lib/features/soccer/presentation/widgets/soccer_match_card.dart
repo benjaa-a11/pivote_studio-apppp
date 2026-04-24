@@ -84,9 +84,12 @@ class SoccerMatchCard extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
-                    _buildTeamRow(homeTeam,
+                    _buildTeamRow(
+                        homeTeam,
                         match.score.isNotEmpty ? match.score[0] : null,
-                        theme, isDark, true),
+                        theme,
+                        isDark,
+                        true),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Row(
@@ -103,9 +106,12 @@ class SoccerMatchCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    _buildTeamRow(awayTeam,
+                    _buildTeamRow(
+                        awayTeam,
                         match.score.isNotEmpty ? match.score[1] : null,
-                        theme, isDark, false),
+                        theme,
+                        isDark,
+                        false),
                   ],
                 ),
               ),
@@ -137,8 +143,7 @@ class SoccerMatchCard extends StatelessWidget {
           Column(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: (isDark ? Colors.white : Colors.black)
                       .withValues(alpha: 0.04),
@@ -211,10 +216,8 @@ class SoccerMatchCard extends StatelessWidget {
             cacheManager: ImageCacheHelper.customCacheManager,
             imageUrl: team.logoUrl ?? '',
             fit: BoxFit.contain,
-            errorWidget: (context, url, error) =>
-                Icon(Icons.shield_outlined,
-                    size: 16,
-                    color: theme.hintColor.withValues(alpha: 0.4)),
+            errorWidget: (context, url, error) => Icon(Icons.shield_outlined,
+                size: 16, color: theme.hintColor.withValues(alpha: 0.4)),
           ),
         ),
         const SizedBox(width: 10),
@@ -239,8 +242,7 @@ class SoccerMatchCard extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 2),
                   child: Text(
                     hasGoals
-                        .map((g) =>
-                            '${g.playerShortName} ${g.timeToDisplay}')
+                        .map((g) => '${g.playerShortName} ${g.timeToDisplay}')
                         .join(', '),
                     style: GoogleFonts.dmSans(
                       fontSize: 10,
@@ -276,8 +278,7 @@ class SoccerMatchCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: match.isLive
                   ? Border.all(
-                      color:
-                          theme.colorScheme.error.withValues(alpha: 0.15))
+                      color: theme.colorScheme.error.withValues(alpha: 0.15))
                   : null,
             ),
             child: Text(

@@ -9,6 +9,7 @@ import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -139,7 +140,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: PivoteLoader(size: 40))
           : _historyChannels.isEmpty
               ? _buildEmptyState()
               : ListView.builder(

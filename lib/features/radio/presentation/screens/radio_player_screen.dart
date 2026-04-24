@@ -8,6 +8,7 @@ import 'package:pivote/features/radio/data/models/radio.dart' as radio_model;
 import 'package:pivote/features/radio/presentation/providers/audio_manager.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class RadioPlayerScreen extends StatefulWidget {
   final radio_model.Radio radio;
@@ -327,7 +328,10 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                         ? Colors.white.withValues(alpha: 0.05)
                         : Colors.black.withValues(alpha: 0.05),
                     child: const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: PivoteLoader(
+                        size: 30,
+                        strokeWidth: 3,
+                      ),
                     ),
                   ),
                   errorWidget: (context, url, error) => Container(
@@ -427,9 +431,10 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                       ? const SizedBox(
                           width: 32,
                           height: 32,
-                          child: CircularProgressIndicator(
+                          child: PivoteLoader(
                             color: Colors.white,
                             strokeWidth: 3,
+                            size: 32,
                           ),
                         )
                       : Icon(

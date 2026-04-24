@@ -7,6 +7,7 @@ import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -203,7 +204,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           if (_isLoading)
             Container(
               color: Colors.black45,
-              child: const Center(child: CircularProgressIndicator()),
+              child: const Center(child: PivoteLoader(size: 40)),
             ),
         ],
       ),

@@ -496,7 +496,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'Tus datos están cifrados con tecnología de grado militar.',
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.6),
                         fontWeight: FontWeight.w500,
                         height: 1.3,
                       ),

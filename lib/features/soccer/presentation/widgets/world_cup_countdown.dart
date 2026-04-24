@@ -155,7 +155,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
                 spreadRadius: -5,
               ),
               BoxShadow(
-                color: _fifaElectricBlue.withValues(alpha: _glowAnimation.value * 0.3),
+                color: _fifaElectricBlue.withValues(
+                    alpha: _glowAnimation.value * 0.3),
                 blurRadius: 40,
                 spreadRadius: -8,
               ),
@@ -202,8 +203,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
 
                 // Main content
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 20, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
@@ -455,8 +456,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     );
   }
 
-  Widget _buildCountdownSection(
-      int days, int hours, int minutes, int seconds) {
+  Widget _buildCountdownSection(int days, int hours, int minutes, int seconds) {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Responsive sizing
@@ -490,8 +490,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
               SizedBox(width: separatorGap),
               _buildBlinkingSeparator(cardHeight),
               SizedBox(width: separatorGap),
-              _buildTimeCard(hours.toString().padLeft(2, '0'), 'HRS',
-                  cardWidth, cardHeight, fontSize, labelSize),
+              _buildTimeCard(hours.toString().padLeft(2, '0'), 'HRS', cardWidth,
+                  cardHeight, fontSize, labelSize),
               SizedBox(width: separatorGap),
               _buildBlinkingSeparator(cardHeight),
               SizedBox(width: separatorGap),

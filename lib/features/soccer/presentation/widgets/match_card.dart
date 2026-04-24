@@ -9,6 +9,7 @@ import 'package:pivote/features/video/presentation/providers/channel_provider.da
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class MatchCard extends StatelessWidget {
   final SoccerMatch match;
@@ -70,7 +71,8 @@ class MatchCard extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: isLive
-                ? theme.colorScheme.error.withValues(alpha: isDark ? 0.15 : 0.08)
+                ? theme.colorScheme.error
+                    .withValues(alpha: isDark ? 0.15 : 0.08)
                 : Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
             blurRadius: isLive ? 16 : 12,
             offset: const Offset(0, 4),
@@ -178,9 +180,10 @@ class MatchCard extends StatelessWidget {
                     child: SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(
+                      child: PivoteLoader(
                         strokeWidth: 2,
                         color: Colors.white24,
+                        size: 16,
                       ),
                     ),
                   ),
@@ -248,15 +251,14 @@ class MatchCard extends StatelessWidget {
           ),
 
           // Live indicator
-          if (isLive)
-            _HeroLiveIndicator(theme: theme),
+          if (isLive) _HeroLiveIndicator(theme: theme),
         ],
       ),
     );
   }
 
-  Widget _buildTeamsSection(BuildContext context, dynamic teamA,
-      dynamic teamB, ThemeData theme, bool isDark) {
+  Widget _buildTeamsSection(BuildContext context, dynamic teamA, dynamic teamB,
+      ThemeData theme, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -265,8 +267,8 @@ class MatchCard extends StatelessWidget {
         children: [
           // Team A
           Expanded(
-            child: _buildTeam(context, teamA.shortName, teamA.logoUrl ?? '',
-                theme, isDark),
+            child: _buildTeam(
+                context, teamA.shortName, teamA.logoUrl ?? '', theme, isDark),
           ),
 
           // Center: Score or Time
@@ -277,8 +279,8 @@ class MatchCard extends StatelessWidget {
 
           // Team B
           Expanded(
-            child: _buildTeam(context, teamB.shortName, teamB.logoUrl ?? '',
-                theme, isDark),
+            child: _buildTeam(
+                context, teamB.shortName, teamB.logoUrl ?? '', theme, isDark),
           ),
         ],
       ),
@@ -309,9 +311,10 @@ class MatchCard extends StatelessWidget {
                     child: SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(
+                      child: PivoteLoader(
                         strokeWidth: 2,
                         color: Colors.white24,
+                        size: 20,
                       ),
                     ),
                   ),
@@ -353,8 +356,7 @@ class MatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCenterInfo(
-      BuildContext context, ThemeData theme, bool isDark) {
+  Widget _buildCenterInfo(BuildContext context, ThemeData theme, bool isDark) {
     String timeText = '';
     try {
       final parts = match.startTime.split(' ');
@@ -391,8 +393,7 @@ class MatchCard extends StatelessWidget {
                   color: theme.colorScheme.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                      color:
-                          theme.colorScheme.primary.withValues(alpha: 0.15)),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.15)),
                 ),
                 child: Text(
                   timeStatus.toUpperCase(),
@@ -441,16 +442,12 @@ class MatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildScoreDisplay(
-      ThemeData theme, bool isDark, bool isFinished) {
-    final homeScore =
-        match.score.isNotEmpty ? match.score[0].toString() : '0';
-    final awayScore =
-        match.score.length > 1 ? match.score[1].toString() : '0';
+  Widget _buildScoreDisplay(ThemeData theme, bool isDark, bool isFinished) {
+    final homeScore = match.score.isNotEmpty ? match.score[0].toString() : '0';
+    final awayScore = match.score.length > 1 ? match.score[1].toString() : '0';
 
-    final scoreColor = isLive
-        ? theme.colorScheme.error
-        : theme.colorScheme.onSurface;
+    final scoreColor =
+        isLive ? theme.colorScheme.error : theme.colorScheme.onSurface;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -465,9 +462,7 @@ class MatchCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              match.timeStatus.isNotEmpty
-                  ? match.timeStatus
-                  : 'EN VIVO',
+              match.timeStatus.isNotEmpty ? match.timeStatus : 'EN VIVO',
               style: GoogleFonts.dmSans(
                 fontSize: 9,
                 fontWeight: FontWeight.w900,
@@ -544,8 +539,7 @@ class MatchCard extends StatelessWidget {
         child: isLive
             ? _buildLiveButton(context, hasMultipleChannels, theme, isDark)
             : match.isWatchable
-                ? _buildWatchButton(
-                    context, hasMultipleChannels, theme, isDark)
+                ? _buildWatchButton(context, hasMultipleChannels, theme, isDark)
                 : _buildComingSoonButton(context, theme, isDark),
       ),
     );
@@ -573,8 +567,7 @@ class MatchCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
               elevation: 0,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             ),
           ),
         ),
@@ -608,8 +601,7 @@ class MatchCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
               elevation: 0,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             ),
           ),
         ),
@@ -709,8 +701,7 @@ class MatchCard extends StatelessWidget {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color:
-                      theme.hintColor.withValues(alpha: 0.15),
+                  color: theme.hintColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -748,8 +739,7 @@ class MatchCard extends StatelessWidget {
             const SizedBox(height: 8),
             ...match.tvChannels.map((soccerChannel) {
               if (soccerChannel.id == null) return const SizedBox.shrink();
-              final channel =
-                  channelProvider.getChannelById(soccerChannel.id!);
+              final channel = channelProvider.getChannelById(soccerChannel.id!);
 
               if (channel == null) return const SizedBox.shrink();
 
@@ -773,23 +763,21 @@ class MatchCard extends StatelessWidget {
                   padding: const EdgeInsets.all(6),
                   child: channel.logoUrl.isNotEmpty
                       ? CachedNetworkImage(
-                          cacheManager:
-                              ImageCacheHelper.customCacheManager,
+                          cacheManager: ImageCacheHelper.customCacheManager,
                           imageUrl: channel.logoUrl.first,
                           fit: BoxFit.contain,
                           memCacheWidth: 150,
                           memCacheHeight: 150,
-                          fadeInDuration:
-                              const Duration(milliseconds: 100),
-                          fadeOutDuration:
-                              const Duration(milliseconds: 50),
+                          fadeInDuration: const Duration(milliseconds: 100),
+                          fadeOutDuration: const Duration(milliseconds: 50),
                           placeholder: (context, url) => const Center(
                             child: SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(
+                              child: PivoteLoader(
                                 strokeWidth: 2,
                                 color: Colors.white24,
+                                size: 16,
                               ),
                             ),
                           ),
@@ -836,8 +824,7 @@ class MatchCard extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          PlayerScreen(channel: channel),
+                      builder: (context) => PlayerScreen(channel: channel),
                     ),
                   );
                 },

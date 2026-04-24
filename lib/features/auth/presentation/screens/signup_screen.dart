@@ -5,6 +5,7 @@ import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/features/home/presentation/screens/main_screen.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -373,7 +374,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       elevation: 8,
                     ),
                     child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? const PivoteLoader(color: Colors.white, size: 24)
                         : const Text('Crear cuenta',
                             style: TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.bold)),
@@ -399,7 +400,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -413,7 +415,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         child: Text(
                           'Tus datos están seguros. Al registrarte aceptas nuestra Política de Privacidad y Términos.',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.6),
                             height: 1.4,
                           ),
                         ),

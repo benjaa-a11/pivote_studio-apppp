@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pivote/core/services/cache_manager_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class StorageManagerScreen extends StatefulWidget {
   const StorageManagerScreen({super.key});
@@ -108,7 +109,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: PivoteLoader(size: 40))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -313,8 +314,8 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
             ? const SizedBox(
                 height: 24,
                 width: 24,
-                child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2),
+                child:
+                    PivoteLoader(color: Colors.white, strokeWidth: 2, size: 24),
               )
             : Text(
                 'Limpiar Todo por Completo',

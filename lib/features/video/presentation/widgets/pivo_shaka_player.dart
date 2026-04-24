@@ -6,6 +6,7 @@ import 'package:pivote/features/video/presentation/widgets/exo_player_widget.dar
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -345,13 +346,10 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
           // ── 3b. Minimal buffering indicator (no blur overlay)
           if (_isBuffering && !_isLoading && _isPlaying)
             const Center(
-              child: SizedBox(
-                width: 36,
-                height: 36,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation(Colors.white70),
-                ),
+              child: PivoteLoader(
+                size: 36,
+                strokeWidth: 3,
+                color: Colors.white70,
               ),
             ),
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/dialog_styles.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 export 'package:pivote/core/theme/dialog_styles.dart' show AppDialogType;
 
@@ -110,7 +111,7 @@ class _ModernDialog extends StatelessWidget {
     return BackdropFilter(
       filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
       child: Dialog(
-        backgroundColor: isDark 
+        backgroundColor: isDark
             ? theme.colorScheme.surface.withValues(alpha: 0.8)
             : Colors.white.withValues(alpha: 0.9),
         elevation: 0,
@@ -269,13 +270,15 @@ class _DialogButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: getBgColor(),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: isPrimary ? [
-            BoxShadow(
-              color: getBgColor().withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ] : null,
+          boxShadow: isPrimary
+              ? [
+                  BoxShadow(
+                    color: getBgColor().withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
@@ -316,7 +319,8 @@ class _ModernBottomSheet extends StatelessWidget {
             maxHeight: mq.size.height * 0.92,
           ),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surface.withValues(alpha: isDark ? 0.85 : 0.9),
+            color: theme.colorScheme.surface
+                .withValues(alpha: isDark ? 0.85 : 0.9),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             border: Border.all(
               color: theme.dividerColor.withValues(alpha: 0.1),
@@ -324,28 +328,28 @@ class _ModernBottomSheet extends StatelessWidget {
             ),
           ),
           child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 8),
-            child: Container(
-              width: 48,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.dividerColor,
-                borderRadius: BorderRadius.circular(4),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Padding(
+                padding: const EdgeInsets.only(top: 12, bottom: 8),
+                child: Container(
+                  width: 48,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.dividerColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
               ),
-            ),
+              scrollable
+                  ? Flexible(child: SingleChildScrollView(child: child))
+                  : Flexible(child: child),
+            ],
           ),
-          scrollable
-              ? Flexible(child: SingleChildScrollView(child: child))
-              : Flexible(child: child),
-        ],
+        ),
       ),
-    ),
-  ),
-);
+    );
   }
 }
 
@@ -375,9 +379,10 @@ class _ModernLoadingDialog extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(
+                PivoteLoader(
                   color: theme.colorScheme.primary,
                   strokeWidth: 3,
+                  size: 40,
                 ),
                 const SizedBox(height: 24),
                 Text(

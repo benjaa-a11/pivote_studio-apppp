@@ -4,6 +4,7 @@ import 'package:pivote/core/services/notification_service.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class NotificationsSettingsScreen extends StatefulWidget {
   const NotificationsSettingsScreen({super.key});
@@ -142,7 +143,7 @@ class _NotificationsSettingsScreenState
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: PivoteLoader(size: 40))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(

@@ -6,6 +6,7 @@ import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
@@ -29,8 +30,7 @@ class FavoritesScreen extends StatelessWidget {
               slivers: [
                 // Header
                 SliverToBoxAdapter(
-                  child: _buildHeader(
-                      context, theme, isDark, favoritesProvider,
+                  child: _buildHeader(context, theme, isDark, favoritesProvider,
                       favoriteChannels.length),
                 ),
 
@@ -80,9 +80,10 @@ class FavoritesScreen extends StatelessWidget {
                             SizedBox(
                               width: 12,
                               height: 12,
-                              child: CircularProgressIndicator(
+                              child: PivoteLoader(
                                 strokeWidth: 1.5,
                                 color: theme.hintColor.withValues(alpha: 0.3),
+                                size: 12,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -170,8 +171,7 @@ class FavoritesScreen extends StatelessWidget {
             Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () =>
-                    _showClearDialog(context, favoritesProvider),
+                onTap: () => _showClearDialog(context, favoritesProvider),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   width: 40,
@@ -180,8 +180,7 @@ class FavoritesScreen extends StatelessWidget {
                     color: theme.colorScheme.error.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color:
-                          theme.colorScheme.error.withValues(alpha: 0.12),
+                      color: theme.colorScheme.error.withValues(alpha: 0.12),
                     ),
                   ),
                   child: Icon(
@@ -239,8 +238,7 @@ class FavoritesScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.sort_rounded,
-                  size: 14,
-                  color: theme.hintColor.withValues(alpha: 0.4)),
+                  size: 14, color: theme.hintColor.withValues(alpha: 0.4)),
               const SizedBox(width: 4),
               Text(
                 'Recientes primero',
@@ -257,8 +255,7 @@ class FavoritesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(
-      BuildContext context, ThemeData theme, bool isDark) {
+  Widget _buildEmptyState(BuildContext context, ThemeData theme, bool isDark) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -326,8 +323,8 @@ class FavoritesScreen extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: isDark ? AppTheme.darkBg : Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -364,8 +361,7 @@ class FavoritesScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Icon(Icons.favorite_rounded,
-                    size: 10,
-                    color: theme.hintColor.withValues(alpha: 0.15)),
+                    size: 10, color: theme.hintColor.withValues(alpha: 0.15)),
               ),
               Container(
                 width: 30,
@@ -428,8 +424,8 @@ class FavoritesScreen extends StatelessWidget {
             ),
             backgroundColor: theme.colorScheme.primary,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             margin: const EdgeInsets.all(16),
           ),
         );

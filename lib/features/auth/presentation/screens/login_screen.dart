@@ -6,6 +6,7 @@ import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/features/auth/presentation/screens/signup_screen.dart';
 import 'package:pivote/features/home/presentation/screens/main_screen.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -327,8 +328,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       elevation: 8,
                     ),
                     child: _isLoading
-                        ? CircularProgressIndicator(
-                            color: theme.scaffoldBackgroundColor)
+                        ? PivoteLoader(
+                            color: theme.scaffoldBackgroundColor, size: 24)
                         : const Text('Entrar',
                             style: TextStyle(
                                 fontSize: 18, fontWeight: FontWeight.bold)),

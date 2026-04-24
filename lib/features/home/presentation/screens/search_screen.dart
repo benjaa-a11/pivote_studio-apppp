@@ -136,9 +136,7 @@ class _SearchScreenState extends State<SearchScreen>
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppTheme.darkBg2
-                          : AppTheme.lightBg2,
+                      color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isDark
@@ -187,13 +185,23 @@ class _SearchScreenState extends State<SearchScreen>
 
           // Search field
           Container(
-            height: 50,
+            height: 52,
             decoration: BoxDecoration(
               color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: _searchFocusNode.hasFocus
+                  ? [
+                      BoxShadow(
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ]
+                  : null,
               border: Border.all(
                 color: _searchFocusNode.hasFocus
-                    ? theme.colorScheme.primary.withValues(alpha: 0.3)
+                    ? theme.colorScheme.primary.withValues(alpha: 0.5)
                     : (isDark
                         ? AppTheme.darkBorder.withValues(alpha: 0.3)
                         : AppTheme.lightBorder),
@@ -209,7 +217,7 @@ class _SearchScreenState extends State<SearchScreen>
               },
               onSubmitted: _onSearch,
               textInputAction: TextInputAction.search,
-              autofocus: true,
+              autofocus: false,
               style: GoogleFonts.dmSans(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
@@ -258,8 +266,7 @@ class _SearchScreenState extends State<SearchScreen>
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
@@ -278,8 +285,8 @@ class _SearchScreenState extends State<SearchScreen>
         children: [
           // Search History
           if (_searchHistory.isNotEmpty) ...[
-            _buildSectionHeader(theme, 'Recientes',
-                icon: Icons.history_rounded, onAction: () async {
+            _buildSectionHeader(theme, 'Recientes', icon: Icons.history_rounded,
+                onAction: () async {
               await SearchService.clearSearchHistory();
               _loadSearchHistory();
             }),
@@ -305,12 +312,18 @@ class _SearchScreenState extends State<SearchScreen>
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               children: [
-                _buildCategoryChip('Deportes', Icons.sports_soccer, theme, isDark),
-                _buildCategoryChip('Noticias', Icons.newspaper_rounded, theme, isDark),
-                _buildCategoryChip('Música', Icons.music_note_rounded, theme, isDark),
-                _buildCategoryChip('Películas', Icons.movie_rounded, theme, isDark),
-                _buildCategoryChip('Infantil', Icons.child_care_rounded, theme, isDark),
-                _buildCategoryChip('Documentales', Icons.public_rounded, theme, isDark),
+                _buildCategoryChip(
+                    'Deportes', Icons.sports_soccer, theme, isDark),
+                _buildCategoryChip(
+                    'Noticias', Icons.newspaper_rounded, theme, isDark),
+                _buildCategoryChip(
+                    'Música', Icons.music_note_rounded, theme, isDark),
+                _buildCategoryChip(
+                    'Películas', Icons.movie_rounded, theme, isDark),
+                _buildCategoryChip(
+                    'Infantil', Icons.child_care_rounded, theme, isDark),
+                _buildCategoryChip(
+                    'Documentales', Icons.public_rounded, theme, isDark),
               ],
             ),
           ),
@@ -393,8 +406,7 @@ class _SearchScreenState extends State<SearchScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.history_rounded,
-                  size: 13,
-                  color: theme.hintColor.withValues(alpha: 0.5)),
+                  size: 13, color: theme.hintColor.withValues(alpha: 0.5)),
               const SizedBox(width: 6),
               Text(
                 query,

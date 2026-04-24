@@ -251,7 +251,8 @@ class PrivacySecurityScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.2),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -316,12 +317,14 @@ class PrivacySecurityScreen extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        tileColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+        tileColor:
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.1)),
         ),
-        leading: Icon(icon, color: color ?? theme.colorScheme.primary, size: 26),
+        leading:
+            Icon(icon, color: color ?? theme.colorScheme.primary, size: 26),
         title: Text(
           title,
           style: GoogleFonts.dmSans(

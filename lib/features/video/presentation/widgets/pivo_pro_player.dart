@@ -8,6 +8,7 @@ import 'package:pivote/features/video/presentation/widgets/custom_video_controls
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -457,13 +458,10 @@ class _PivoProPlayerState extends State<PivoProPlayer>
           // Minimal buffering indicator (no full-screen blur overlay)
           if (_videoState.isBuffering && !_videoState.isLoading)
             const Center(
-              child: SizedBox(
-                width: 36,
-                height: 36,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation(Colors.white70),
-                ),
+              child: PivoteLoader(
+                size: 36,
+                strokeWidth: 3,
+                color: Colors.white70,
               ),
             ),
 

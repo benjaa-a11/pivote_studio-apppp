@@ -7,6 +7,7 @@ import 'package:pivote/features/soccer/presentation/providers/soccer_provider.da
 import 'package:pivote/features/soccer/presentation/widgets/world_cup_countdown.dart';
 import 'package:pivote/features/soccer/presentation/widgets/soccer_match_card.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class FutbolScreen extends StatefulWidget {
   const FutbolScreen({super.key});
@@ -72,10 +73,8 @@ class _FutbolScreenState extends State<FutbolScreen>
   }
 
   Widget _buildScreenHeader(ThemeData theme, SoccerProvider provider) {
-    final liveCount = provider.soccerData?.matches
-            .where((m) => m.isLive)
-            .length ??
-        0;
+    final liveCount =
+        provider.soccerData?.matches.where((m) => m.isLive).length ?? 0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
@@ -127,8 +126,7 @@ class _FutbolScreenState extends State<FutbolScreen>
             ),
           ),
           // Live count badge
-          if (liveCount > 0)
-            _buildLiveCountBadge(theme, liveCount),
+          if (liveCount > 0) _buildLiveCountBadge(theme, liveCount),
         ],
       ),
     );
@@ -210,10 +208,10 @@ class _FutbolScreenState extends State<FutbolScreen>
           SizedBox(
             width: 40,
             height: 40,
-            child: CircularProgressIndicator(
+            child: PivoteLoader(
               color: theme.colorScheme.primary,
               strokeWidth: 3,
-              strokeCap: StrokeCap.round,
+              size: 40,
             ),
           ),
           const SizedBox(height: 16),
@@ -286,16 +284,13 @@ class _FutbolScreenState extends State<FutbolScreen>
               border: Border.all(
                 color: isSelected
                     ? theme.colorScheme.primary
-                    : (isDark
-                        ? AppTheme.darkBorder
-                        : AppTheme.lightBorder),
+                    : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
                 width: isSelected ? 2.5 : 1.5,
               ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: theme.colorScheme.primary
-                            .withValues(alpha: 0.2),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.2),
                         blurRadius: 12,
                         spreadRadius: 1,
                       )
@@ -341,9 +336,7 @@ class _FutbolScreenState extends State<FutbolScreen>
               style: GoogleFonts.dmSans(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.hintColor,
+                color: isSelected ? theme.colorScheme.primary : theme.hintColor,
               ),
             ),
           ),
@@ -366,9 +359,7 @@ class _FutbolScreenState extends State<FutbolScreen>
   Widget _buildMatchesList(SoccerData data, ThemeData theme) {
     final filteredMatches = _selectedLeagueId == 'all'
         ? data.matches
-        : data.matches
-            .where((m) => m.leagueId == _selectedLeagueId)
-            .toList();
+        : data.matches.where((m) => m.leagueId == _selectedLeagueId).toList();
 
     Map<String, List<SoccerMatch>> grouped = {};
     for (var match in filteredMatches) {
@@ -455,8 +446,7 @@ class _FutbolScreenState extends State<FutbolScreen>
               theme.colorScheme.primary,
               theme.colorScheme.primary.withValues(alpha: 0.06),
             ),
-          if (upcomingCount > 0 && finishedCount > 0)
-            const SizedBox(width: 8),
+          if (upcomingCount > 0 && finishedCount > 0) const SizedBox(width: 8),
           // Finished chip
           if (finishedCount > 0)
             _buildInfoChip(
@@ -575,9 +565,10 @@ class _FutbolScreenState extends State<FutbolScreen>
                     child: CachedNetworkImage(
                       imageUrl: league.logoUrl!,
                       fit: BoxFit.contain,
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.emoji_events_rounded,
-                              color: Colors.amber, size: 18),
+                      errorWidget: (context, url, error) => const Icon(
+                          Icons.emoji_events_rounded,
+                          color: Colors.amber,
+                          size: 18),
                     ),
                   )
                 else
@@ -642,8 +633,8 @@ class _FutbolScreenState extends State<FutbolScreen>
                 // Live indicator for this league
                 if (liveMatchesInLeague > 0)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -708,12 +699,14 @@ class _FutbolScreenState extends State<FutbolScreen>
                     color: theme.colorScheme.error.withValues(alpha: 0.1)),
               ),
               child: Icon(Icons.cloud_off_rounded,
-                  size: 56, color: theme.colorScheme.error.withValues(alpha: 0.7)),
+                  size: 56,
+                  color: theme.colorScheme.error.withValues(alpha: 0.7)),
             ),
             const SizedBox(height: 28),
             Text(
               '¡Vaya! Hubo un problema',
-              style: GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w800),
+              style:
+                  GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
@@ -730,8 +723,8 @@ class _FutbolScreenState extends State<FutbolScreen>
                 onPressed: () => provider.retry(),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: Text('REINTENTAR',
-                    style:
-                        GoogleFonts.dmSans(fontWeight: FontWeight.w800, fontSize: 13)),
+                    style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w800, fontSize: 13)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: theme.brightness == Brightness.dark
@@ -766,8 +759,7 @@ class _FutbolScreenState extends State<FutbolScreen>
                     .withValues(alpha: 0.04),
               ),
               child: Icon(Icons.sports_soccer_rounded,
-                  size: 56,
-                  color: theme.hintColor.withValues(alpha: 0.3)),
+                  size: 56, color: theme.hintColor.withValues(alpha: 0.3)),
             ),
             const SizedBox(height: 24),
             Text(
@@ -846,8 +838,7 @@ class _FutbolScreenState extends State<FutbolScreen>
                 TextSpan(
                   text: 'SPORTS',
                   style: TextStyle(
-                      color:
-                          theme.colorScheme.primary.withValues(alpha: 0.4)),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.4)),
                 ),
                 const TextSpan(text: ' PLATFORM'),
               ],

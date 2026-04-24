@@ -22,6 +22,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 import 'package:pivote/shared/screens/firebase_required_screen.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -161,9 +162,10 @@ class _AuthenticationWrapper extends StatelessWidget {
                       const SizedBox(
                         width: 40,
                         height: 40,
-                        child: CircularProgressIndicator(
+                        child: PivoteLoader(
                           color: AppTheme.darkAccent,
                           strokeWidth: 3,
+                          size: 40,
                         ),
                       ),
                     ],

@@ -5,6 +5,7 @@ import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/data/services/epg_service.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/video_player_widget.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -377,7 +378,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
             SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(
+              child: PivoteLoader(
+                size: 18,
                 strokeWidth: 2,
                 color: theme.colorScheme.primary,
               ),
