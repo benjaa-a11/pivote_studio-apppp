@@ -270,7 +270,7 @@ class _PremiumToastState extends State<_PremiumToast>
                               children: [
                                 Text(
                                   cfg.label.toUpperCase(),
-                                  style: GoogleFonts.syne(
+                                  style: GoogleFonts.spaceGrotesk(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                     color: cfg.color,
@@ -282,7 +282,7 @@ class _PremiumToastState extends State<_PremiumToast>
                                   cfg.message,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.dmSans(
+                                  style: GoogleFonts.spaceGrotesk(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     height: 1.3,

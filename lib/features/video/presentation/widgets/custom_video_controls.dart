@@ -313,7 +313,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 children: [
                   Text(
                     widget.channelName,
-                    style: GoogleFonts.syne(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: widget.isFullScreen ? 17 : 16,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -348,7 +348,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                       const SizedBox(width: 7),
                       Text(
                         'EN VIVO',
-                        style: GoogleFonts.dmSans(
+                        style: GoogleFonts.spaceGrotesk(
                           fontWeight: FontWeight.w700,
                           fontSize: 11,
                           color: widget.controller.isPlaying
@@ -378,7 +378,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                           ),
                           child: Text(
                             '${widget.currentServer}/${widget.totalServers}',
-                            style: GoogleFonts.dmSans(
+                            style: GoogleFonts.spaceGrotesk(
                               fontWeight: FontWeight.w700,
                               fontSize: 11,
                               color: Colors.white,
@@ -486,7 +486,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   const SizedBox(width: 6),
                   Text(
                     label,
-                    style: GoogleFonts.dmSans(
+                    style: GoogleFonts.spaceGrotesk(
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                       color: Colors.white,

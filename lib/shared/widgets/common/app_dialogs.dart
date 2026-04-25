@@ -163,7 +163,7 @@ class _ModernDialog extends StatelessWidget {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.syne(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.onSurface,
@@ -174,7 +174,7 @@ class _ModernDialog extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 15,
                   height: 1.5,
                   color: theme.colorScheme.onSurface.withAlpha(170), // ~0.65
@@ -282,7 +282,7 @@ class _DialogButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: GoogleFonts.dmSans(
+          style: GoogleFonts.spaceGrotesk(
             fontSize: 15,
             fontWeight: FontWeight.bold,
             color: getTextColor(),
@@ -387,7 +387,7 @@ class _ModernLoadingDialog extends StatelessWidget {
                 const SizedBox(height: 24),
                 Text(
                   message,
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                     color: theme.colorScheme.onSurface,

@@ -55,7 +55,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
               '${league.name} ${match.stage.isNotEmpty ? '- ${match.stage}' : ''}',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: theme.hintColor,
@@ -103,7 +103,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 Expanded(
                   child: Text(
                     homeTeam.name,
-                    style: GoogleFonts.syne(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: theme.colorScheme.onSurface,
@@ -116,7 +116,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 Expanded(
                   child: Text(
                     awayTeam.name,
-                    style: GoogleFonts.syne(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: theme.colorScheme.onSurface,
@@ -151,7 +151,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                         const SizedBox(height: 12),
                         Text(
                           'Aún no hay goles en este partido.',
-                          style: GoogleFonts.dmSans(
+                          style: GoogleFonts.spaceGrotesk(
                             fontSize: 14,
                             color: theme.hintColor.withValues(alpha: 0.7),
                             fontWeight: FontWeight.w500,
@@ -189,7 +189,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                                   const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
                                 '⚽',
-                                style: GoogleFonts.dmSans(fontSize: 16),
+                                style: GoogleFonts.spaceGrotesk(fontSize: 16),
                               ),
                             ),
 
@@ -220,7 +220,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
       children: [
         Text(
           goal.playerShortName,
-          style: GoogleFonts.dmSans(
+          style: GoogleFonts.spaceGrotesk(
             fontSize: 14,
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
@@ -229,7 +229,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
         ),
         Text(
           goal.timeToDisplay,
-          style: GoogleFonts.dmSans(
+          style: GoogleFonts.spaceGrotesk(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: theme.hintColor,
@@ -276,7 +276,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
         children: [
           Text(
             timeText,
-            style: GoogleFonts.syne(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 24,
               fontWeight: FontWeight.w900,
               color: theme.colorScheme.primary,
@@ -285,7 +285,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'HOY',
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 12,
               fontWeight: FontWeight.bold,
               color: theme.hintColor,
@@ -303,7 +303,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
           children: [
             Text(
               homeScore,
-              style: GoogleFonts.syne(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 36,
                 fontWeight: FontWeight.w900,
                 color: scoreColor,
@@ -313,7 +313,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text(
                 ':',
-                style: GoogleFonts.syne(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 28,
                   fontWeight: FontWeight.w900,
                   color: scoreColor.withValues(alpha: 0.4),
@@ -322,7 +322,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
             ),
             Text(
               awayScore,
-              style: GoogleFonts.syne(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 36,
                 fontWeight: FontWeight.w900,
                 color: scoreColor,
@@ -340,8 +340,10 @@ class MatchDetailsBottomSheet extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
-            isLive ? (match.timeStatus.isNotEmpty ? match.timeStatus : 'EN VIVO') : 'FINAL',
-            style: GoogleFonts.dmSans(
+            isLive
+                ? (match.timeStatus.isNotEmpty ? match.timeStatus : 'EN VIVO')
+                : 'FINAL',
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 11,
               fontWeight: FontWeight.w900,
               color: isLive

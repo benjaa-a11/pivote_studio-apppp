@@ -133,7 +133,7 @@ class _NotificationsSettingsScreenState
       appBar: AppBar(
         title: Text(
           'Notificaciones',
-          style: GoogleFonts.syne(
+          style: GoogleFonts.spaceGrotesk(
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -193,7 +193,7 @@ class _NotificationsSettingsScreenState
                             children: [
                               Text(
                                 'Notificaciones Push',
-                                style: GoogleFonts.dmSans(
+                                style: GoogleFonts.spaceGrotesk(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -203,7 +203,7 @@ class _NotificationsSettingsScreenState
                                 _notificationsEnabled
                                     ? 'Recibirás notificaciones'
                                     : 'No recibirás notificaciones',
-                                style: GoogleFonts.dmSans(
+                                style: GoogleFonts.spaceGrotesk(
                                   fontSize: 13,
                                   color: theme.colorScheme.onSurface
                                       .withAlpha(128),
@@ -225,7 +225,7 @@ class _NotificationsSettingsScreenState
                   // Information Section
                   Text(
                     '¿Qué notificaciones recibirás?',
-                    style: GoogleFonts.dmSans(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -267,7 +267,7 @@ class _NotificationsSettingsScreenState
                         icon: const Icon(Icons.send),
                         label: Text(
                           'Enviar notificación de prueba',
-                          style: GoogleFonts.dmSans(
+                          style: GoogleFonts.spaceGrotesk(
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -327,7 +327,7 @@ class _NotificationsSettingsScreenState
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -335,7 +335,7 @@ class _NotificationsSettingsScreenState
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 12,
                     color: theme.colorScheme.onSurface.withAlpha(128),
                   ),

@@ -63,7 +63,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                 children: [
                   Text(
                     'Radio',
-                    style: GoogleFonts.syne(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 32,
                       fontWeight: FontWeight.w700,
                       color: textColor,
@@ -86,7 +86,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                         ),
                         child: Text(
                           '${provider.radios.length}',
-                          style: GoogleFonts.dmSans(
+                          style: GoogleFonts.spaceGrotesk(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: theme.colorScheme.primary,
@@ -151,7 +151,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                     alignment: Alignment.center,
                     child: Text(
                       category.toUpperCase(),
-                      style: GoogleFonts.dmSans(
+                      style: GoogleFonts.spaceGrotesk(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: isSelected
@@ -200,7 +200,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                   const SizedBox(height: 16),
                   Text(
                     'No se encontraron radios',
-                    style: GoogleFonts.dmSans(
+                    style: GoogleFonts.spaceGrotesk(
                       color: isDark ? Colors.white38 : Colors.black38,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -310,7 +310,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                 children: [
                   Text(
                     radio.name,
-                    style: GoogleFonts.syne(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: isCurrent
@@ -347,7 +347,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                       ],
                       Text(
                         radio.frequency,
-                        style: GoogleFonts.dmSans(
+                        style: GoogleFonts.spaceGrotesk(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: textColor.withValues(alpha: 0.5),

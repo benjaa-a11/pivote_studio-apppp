@@ -16,7 +16,7 @@ class SupportScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Ayuda y Soporte',
-          style: GoogleFonts.syne(fontWeight: FontWeight.bold),
+          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -31,7 +31,7 @@ class SupportScreen extends StatelessWidget {
             const SizedBox(height: 40),
             Text(
               'Preguntas Frecuentes',
-              style: GoogleFonts.syne(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
@@ -90,7 +90,7 @@ class SupportScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               '¿Necesitas ayuda?',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 color: Colors.white,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -100,7 +100,7 @@ class SupportScreen extends StatelessWidget {
             Text(
               'Nuestro equipo está disponible para ayudarte con cualquier problema o duda.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 color: Colors.white.withValues(alpha: 0.9),
                 fontSize: 14,
               ),
@@ -156,7 +156,7 @@ class SupportScreen extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               label,
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
@@ -180,7 +180,7 @@ class SupportScreen extends StatelessWidget {
         child: ExpansionTile(
           title: Text(
             question,
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontWeight: FontWeight.w600,
               fontSize: 15,
             ),
@@ -191,7 +191,7 @@ class SupportScreen extends StatelessWidget {
           children: [
             Text(
               answer,
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 14,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 height: 1.5,
@@ -209,7 +209,7 @@ class SupportScreen extends StatelessWidget {
         Center(
           child: Text(
             'Síguenos',
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontWeight: FontWeight.bold,
               color: Colors.grey,
             ),

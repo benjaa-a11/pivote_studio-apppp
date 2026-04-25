@@ -160,7 +160,7 @@ class _SearchScreenState extends State<SearchScreen>
                   children: [
                     Text(
                       'Buscar',
-                      style: GoogleFonts.syne(
+                      style: GoogleFonts.spaceGrotesk(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
@@ -170,7 +170,7 @@ class _SearchScreenState extends State<SearchScreen>
                     if (_isSearching)
                       Text(
                         '${Provider.of<ChannelProvider>(context).channels.length} resultados',
-                        style: GoogleFonts.dmSans(
+                        style: GoogleFonts.spaceGrotesk(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                           color: theme.hintColor,
@@ -218,14 +218,14 @@ class _SearchScreenState extends State<SearchScreen>
               onSubmitted: _onSearch,
               textInputAction: TextInputAction.search,
               autofocus: false,
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.onSurface,
               ),
               decoration: InputDecoration(
                 hintText: 'Buscar canales, categorías...',
-                hintStyle: GoogleFonts.dmSans(
+                hintStyle: GoogleFonts.spaceGrotesk(
                   fontSize: 14,
                   color: theme.hintColor.withValues(alpha: 0.5),
                   fontWeight: FontWeight.w500,
@@ -351,7 +351,7 @@ class _SearchScreenState extends State<SearchScreen>
         ],
         Text(
           title,
-          style: GoogleFonts.syne(
+          style: GoogleFonts.spaceGrotesk(
             fontSize: 16,
             fontWeight: FontWeight.w800,
             color: theme.colorScheme.onSurface,
@@ -369,7 +369,7 @@ class _SearchScreenState extends State<SearchScreen>
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 child: Text(
                   'Limpiar',
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
@@ -410,7 +410,7 @@ class _SearchScreenState extends State<SearchScreen>
               const SizedBox(width: 6),
               Text(
                 query,
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontWeight: FontWeight.w600,
                   fontSize: 12,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
@@ -455,7 +455,7 @@ class _SearchScreenState extends State<SearchScreen>
                 const SizedBox(width: 6),
                 Text(
                   label,
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                     color: theme.colorScheme.onSurface,
@@ -515,7 +515,7 @@ class _SearchScreenState extends State<SearchScreen>
               const SizedBox(height: 24),
               Text(
                 'Sin resultados',
-                style: GoogleFonts.syne(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: theme.colorScheme.onSurface,
@@ -524,7 +524,7 @@ class _SearchScreenState extends State<SearchScreen>
               const SizedBox(height: 8),
               Text(
                 'Intenta con otras palabras o\nrevisa la ortografía.',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 13,
                   height: 1.5,
                   color: theme.hintColor,
@@ -551,7 +551,7 @@ class _SearchScreenState extends State<SearchScreen>
               const SizedBox(width: 8),
               Text(
                 '${channels.length} ${channels.length == 1 ? 'canal encontrado' : 'canales encontrados'}',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: theme.hintColor,
@@ -560,7 +560,7 @@ class _SearchScreenState extends State<SearchScreen>
               const Spacer(),
               Text(
                 '"${_searchController.text}"',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: theme.colorScheme.primary.withValues(alpha: 0.7),

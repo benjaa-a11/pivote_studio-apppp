@@ -250,7 +250,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
             children: [
               Text(
                 'RADIO EN VIVO',
-                style: GoogleFonts.syne(
+                style: GoogleFonts.spaceGrotesk(
                   color: textColor.withValues(alpha: 0.4),
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -359,7 +359,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
         Text(
           widget.radio.name,
           textAlign: TextAlign.center,
-          style: GoogleFonts.syne(
+          style: GoogleFonts.spaceGrotesk(
             color: textColor,
             fontSize: 28,
             fontWeight: FontWeight.w700,
@@ -370,7 +370,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
         Text(
           widget.radio.frequency,
           textAlign: TextAlign.center,
-          style: GoogleFonts.dmSans(
+          style: GoogleFonts.spaceGrotesk(
             color: textColor.withValues(alpha: 0.5),
             fontSize: 18,
             fontWeight: FontWeight.w500,

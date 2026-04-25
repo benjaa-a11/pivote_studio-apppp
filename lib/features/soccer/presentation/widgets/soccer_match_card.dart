@@ -132,7 +132,7 @@ class SoccerMatchCard extends StatelessWidget {
           const SizedBox(height: 5),
           Text(
             match.timeStatus,
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 12,
               fontWeight: FontWeight.w800,
               color: theme.colorScheme.error,
@@ -153,7 +153,7 @@ class SoccerMatchCard extends StatelessWidget {
                   match.timeStatus.isNotEmpty
                       ? match.timeStatus.toUpperCase()
                       : 'FINAL',
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 9,
                     fontWeight: FontWeight.w900,
                     color: theme.hintColor.withValues(alpha: 0.5),
@@ -175,7 +175,7 @@ class SoccerMatchCard extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 _formatStartTime(match.startTime),
-                style: GoogleFonts.syne(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
                   color: theme.colorScheme.onSurface,
@@ -228,7 +228,7 @@ class SoccerMatchCard extends StatelessWidget {
             children: [
               Text(
                 team.name,
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w700,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
@@ -244,7 +244,7 @@ class SoccerMatchCard extends StatelessWidget {
                     hasGoals
                         .map((g) => '${g.playerShortName} ${g.timeToDisplay}')
                         .join(', '),
-                    style: GoogleFonts.dmSans(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                       color: theme.hintColor.withValues(alpha: 0.6),
@@ -284,7 +284,7 @@ class SoccerMatchCard extends StatelessWidget {
             child: Text(
               currentScore.toString(),
               textAlign: TextAlign.center,
-              style: GoogleFonts.syne(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
                 color: match.isLive
@@ -298,7 +298,7 @@ class SoccerMatchCard extends StatelessWidget {
             padding: const EdgeInsets.only(left: 10),
             child: Text(
               '–',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
                 color: theme.hintColor.withValues(alpha: 0.2),
@@ -402,7 +402,7 @@ class _AnimatedLiveBadgeState extends State<_AnimatedLiveBadge>
               const SizedBox(width: 4),
               Text(
                 'VIVO',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 8,
                   fontWeight: FontWeight.w900,
                   color: widget.theme.colorScheme.error,

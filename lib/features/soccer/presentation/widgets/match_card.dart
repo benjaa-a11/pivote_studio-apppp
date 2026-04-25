@@ -247,7 +247,7 @@ class MatchCard extends StatelessWidget {
               children: [
                 Text(
                   league.name,
-                  style: GoogleFonts.syne(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: theme.colorScheme.onSurface,
@@ -261,7 +261,7 @@ class MatchCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     match.stage,
-                    style: GoogleFonts.dmSans(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: theme.hintColor,
@@ -365,7 +365,7 @@ class MatchCard extends StatelessWidget {
           child: Center(
             child: Text(
               teamName,
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: theme.colorScheme.onSurface,
@@ -422,7 +422,7 @@ class MatchCard extends StatelessWidget {
                 ),
                 child: Text(
                   timeStatus.toUpperCase(),
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 9,
                     fontWeight: FontWeight.w900,
                     color: theme.colorScheme.primary,
@@ -433,7 +433,7 @@ class MatchCard extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 timeText,
-                style: GoogleFonts.syne(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
                   color: theme.colorScheme.primary.withValues(alpha: 0.8),
@@ -444,7 +444,7 @@ class MatchCard extends StatelessWidget {
         else ...[
           Text(
             'HOY',
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 10,
               fontWeight: FontWeight.w700,
               color: theme.hintColor,
@@ -454,7 +454,7 @@ class MatchCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             timeText,
-            style: GoogleFonts.syne(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 22,
               fontWeight: FontWeight.w900,
               color: theme.colorScheme.primary,
@@ -488,7 +488,7 @@ class MatchCard extends StatelessWidget {
             ),
             child: Text(
               match.timeStatus.isNotEmpty ? match.timeStatus : 'EN VIVO',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 9,
                 fontWeight: FontWeight.w900,
                 color: theme.colorScheme.error,
@@ -507,7 +507,7 @@ class MatchCard extends StatelessWidget {
             ),
             child: Text(
               'FINAL',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 9,
                 fontWeight: FontWeight.w900,
                 color: theme.hintColor.withValues(alpha: 0.5),
@@ -522,7 +522,7 @@ class MatchCard extends StatelessWidget {
           children: [
             Text(
               homeScore,
-              style: GoogleFonts.syne(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 28,
                 fontWeight: FontWeight.w900,
                 color: scoreColor,
@@ -532,7 +532,7 @@ class MatchCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
                 ':',
-                style: GoogleFonts.syne(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   color: scoreColor.withValues(alpha: 0.4),
@@ -541,7 +541,7 @@ class MatchCard extends StatelessWidget {
             ),
             Text(
               awayScore,
-              style: GoogleFonts.syne(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 28,
                 fontWeight: FontWeight.w900,
                 color: scoreColor,
@@ -580,7 +580,7 @@ class MatchCard extends StatelessWidget {
             icon: const FaIcon(FontAwesomeIcons.solidCirclePlay, size: 16),
             label: Text(
               'Ver en vivo',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
@@ -614,7 +614,7 @@ class MatchCard extends StatelessWidget {
             icon: const FaIcon(FontAwesomeIcons.circlePlay, size: 16),
             label: Text(
               'Ver partido',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),
@@ -689,7 +689,7 @@ class MatchCard extends StatelessWidget {
           const SizedBox(width: 10),
           Text(
             'Próximamente',
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: theme.hintColor.withValues(alpha: 0.5),
@@ -736,7 +736,7 @@ class MatchCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
                 'Selecciona un canal',
-                style: GoogleFonts.syne(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: theme.colorScheme.onSurface,
@@ -747,7 +747,7 @@ class MatchCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
                 '${match.homeTeam} vs ${match.awayTeam}',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: theme.hintColor,
@@ -822,7 +822,7 @@ class MatchCard extends StatelessWidget {
                 ),
                 title: Text(
                   channel.name,
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
@@ -938,7 +938,7 @@ class _HeroLiveIndicatorState extends State<_HeroLiveIndicator>
               const SizedBox(width: 6),
               Text(
                 'EN VIVO',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 9,
                   fontWeight: FontWeight.w900,
                   color: widget.theme.colorScheme.error,

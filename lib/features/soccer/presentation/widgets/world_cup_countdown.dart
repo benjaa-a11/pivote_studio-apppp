@@ -329,7 +329,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             children: [
               Text(
                 hasStarted ? '¡EN CURSO!' : 'CUENTA REGRESIVA',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 2.0,
@@ -341,7 +341,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
                 fit: BoxFit.scaleDown,
                 child: Text(
                   'FIFA WORLD CUP 26™',
-                  style: GoogleFonts.syne(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
@@ -393,7 +393,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
           const SizedBox(width: 6),
           Text(
             'WE ARE 26',
-            style: GoogleFonts.syne(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 10,
               fontWeight: FontWeight.w900,
               letterSpacing: 2.5,
@@ -434,7 +434,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             children: [
               Text(
                 '¡El torneo ha comenzado!',
-                style: GoogleFonts.syne(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
@@ -443,7 +443,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
               const SizedBox(height: 2),
               Text(
                 'Canadá · México · Estados Unidos',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: Colors.white.withValues(alpha: 0.6),
@@ -558,7 +558,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
                       scale: _pulseAnimation,
                       child: Text(
                         value,
-                        style: GoogleFonts.syne(
+                        style: GoogleFonts.spaceGrotesk(
                           fontSize: fontSize,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
@@ -576,7 +576,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         const SizedBox(height: 8),
         Text(
           label,
-          style: GoogleFonts.dmSans(
+          style: GoogleFonts.spaceGrotesk(
             fontSize: labelSize,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.5,
@@ -654,7 +654,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
           child: Text(
             _hostCities[_currentCityIndex],
             key: ValueKey<int>(_currentCityIndex),
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 10,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.0,
@@ -665,7 +665,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         const SizedBox(width: 6),
         Text(
           '• 16 SEDES',
-          style: GoogleFonts.dmSans(
+          style: GoogleFonts.spaceGrotesk(
             fontSize: 9,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.5,

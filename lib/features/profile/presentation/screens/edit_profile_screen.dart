@@ -131,7 +131,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         title: Text(
           'Editar Perfil',
-          style: GoogleFonts.syne(
+          style: GoogleFonts.spaceGrotesk(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
           ),
@@ -268,7 +268,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               Expanded(
                 child: Text(
                   'Tu seguridad es nuestra prioridad',
-                  style: GoogleFonts.syne(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onSurface,
@@ -280,7 +280,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           const SizedBox(height: 12),
           Text(
             'Pivote Studio utiliza cifrado de extremo a extremo para proteger tus datos. Nunca compartimos tu información personal con terceros.',
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 13,
               color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               height: 1.5,
@@ -297,7 +297,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       icon: const Icon(Icons.delete_forever_rounded, size: 20),
       label: Text(
         'ELIMINAR MI CUENTA',
-        style: GoogleFonts.dmSans(
+        style: GoogleFonts.spaceGrotesk(
           fontSize: 13,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
@@ -375,7 +375,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       children: [
         Text(
           title,
-          style: GoogleFonts.dmSans(
+          style: GoogleFonts.spaceGrotesk(
             fontSize: 14,
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.primary,
@@ -415,7 +415,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: TextFormField(
         controller: controller,
         obscureText: isPassword,
-        style: GoogleFonts.dmSans(
+        style: GoogleFonts.spaceGrotesk(
           fontWeight: FontWeight.w500,
           color: theme.colorScheme.onSurface,
         ),
@@ -502,7 +502,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         child: Text(
           'GUARDAR CAMBIOS',
-          style: GoogleFonts.dmSans(
+          style: GoogleFonts.spaceGrotesk(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             letterSpacing: 1,

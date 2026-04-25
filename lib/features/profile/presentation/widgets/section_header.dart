@@ -41,7 +41,7 @@ class SectionHeader extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             title,
-            style: GoogleFonts.syne(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.grey[300] : Colors.grey[800],

@@ -89,7 +89,7 @@ class FavoritesScreen extends StatelessWidget {
                             const SizedBox(width: 8),
                             Text(
                               'Sincronizando...',
-                              style: GoogleFonts.dmSans(
+                              style: GoogleFonts.spaceGrotesk(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: theme.hintColor.withValues(alpha: 0.4),
@@ -147,7 +147,7 @@ class FavoritesScreen extends StatelessWidget {
               children: [
                 Text(
                   'Favoritos',
-                  style: GoogleFonts.syne(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.5,
@@ -157,7 +157,7 @@ class FavoritesScreen extends StatelessWidget {
                 if (count > 0)
                   Text(
                     'Tu colección personal',
-                    style: GoogleFonts.dmSans(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: theme.hintColor,
@@ -223,7 +223,7 @@ class FavoritesScreen extends StatelessWidget {
                 const SizedBox(width: 6),
                 Text(
                   '$count ${count == 1 ? 'canal' : 'canales'}',
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     fontWeight: FontWeight.w700,
                     color: theme.colorScheme.primary,
                     fontSize: 11,
@@ -242,7 +242,7 @@ class FavoritesScreen extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 'Recientes primero',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   color: theme.hintColor.withValues(alpha: 0.4),
@@ -283,7 +283,7 @@ class FavoritesScreen extends StatelessWidget {
             const SizedBox(height: 28),
             Text(
               'Sin favoritos aún',
-              style: GoogleFonts.syne(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: theme.colorScheme.onSurface,
@@ -292,7 +292,7 @@ class FavoritesScreen extends StatelessWidget {
             const SizedBox(height: 10),
             Text(
               'Mantén presionado cualquier canal o toca el ícono de corazón para agregarlo aquí.',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 color: theme.hintColor,
                 fontSize: 13,
                 height: 1.5,
@@ -315,7 +315,7 @@ class FavoritesScreen extends StatelessWidget {
                 icon: const Icon(Icons.explore_rounded, size: 18),
                 label: Text(
                   'Explorar canales',
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -380,7 +380,7 @@ class FavoritesScreen extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             'Sincronizado con tu cuenta',
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 9,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.5,
@@ -418,7 +418,7 @@ class FavoritesScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Text(
                   'Lista de favoritos limpia',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
+                  style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w600),
                 ),
               ],
             ),

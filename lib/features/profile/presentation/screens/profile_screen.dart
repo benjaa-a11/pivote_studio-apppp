@@ -261,7 +261,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     GreetingService.getGreeting(),
                                     style:
                                         theme.textTheme.titleMedium?.copyWith(
-                                      color: isDark ? Colors.black87 : Colors.white.withAlpha(179),
+                                      color: isDark
+                                          ? Colors.black87
+                                          : Colors.white.withAlpha(179),
                                       fontWeight: FontWeight.w500,
                                       letterSpacing: 0.5,
                                     ),
@@ -271,7 +273,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     user != null ? user.name : 'Cargando...',
                                     style: theme.textTheme.headlineMedium
                                         ?.copyWith(
-                                      color: isDark ? Colors.black : Colors.white,
+                                      color:
+                                          isDark ? Colors.black : Colors.white,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: -0.5,
                                     ),
@@ -281,14 +284,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   Text(
                                     user?.email ?? '',
                                     style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: isDark ? Colors.black54 : Colors.white.withAlpha(204),
+                                      color: isDark
+                                          ? Colors.black54
+                                          : Colors.white.withAlpha(204),
                                       fontWeight: FontWeight.w500,
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
                                   const SizedBox(height: 24),
                                   Material(
-                                    color: isDark ? Colors.black.withAlpha(15) : Colors.white.withAlpha(38),
+                                    color: isDark
+                                        ? Colors.black.withAlpha(15)
+                                        : Colors.white.withAlpha(38),
                                     borderRadius: BorderRadius.circular(100),
                                     child: InkWell(
                                       onTap: () {
@@ -314,13 +321,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Icon(Icons.edit_rounded,
-                                                color: isDark ? Colors.black87 : Colors.white, size: 16),
+                                                color: isDark
+                                                    ? Colors.black87
+                                                    : Colors.white,
+                                                size: 16),
                                             const SizedBox(width: 8),
                                             Text(
                                               'Editar Perfil',
                                               style: theme.textTheme.labelMedium
                                                   ?.copyWith(
-                                                color: isDark ? Colors.black87 : Colors.white,
+                                                color: isDark
+                                                    ? Colors.black87
+                                                    : Colors.white,
                                                 fontWeight: FontWeight.bold,
                                                 letterSpacing: 0.5,
                                               ),
@@ -403,12 +415,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 size: 20, color: theme.colorScheme.primary.withAlpha(179)),
             const SizedBox(height: 12),
             Text(value,
-                style: GoogleFonts.syne(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 )),
             Text(label,
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                     fontSize: 11,
                     color: theme.colorScheme.onSurface.withAlpha(128))),
           ],
@@ -416,8 +428,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-
 
   Widget _buildAppearanceSection(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -588,11 +598,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Icon(icon, color: theme.colorScheme.primary, size: 20),
         ),
         title: Text(title,
-            style:
-                GoogleFonts.dmSans(fontWeight: FontWeight.w600, fontSize: 15)),
+            style: GoogleFonts.spaceGrotesk(
+                fontWeight: FontWeight.w600, fontSize: 15)),
         subtitle: subtitle != null
             ? Text(subtitle,
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                     fontSize: 12,
                     color: theme.colorScheme.onSurface.withAlpha(153)))
             : null,
@@ -658,7 +668,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 24),
             Text(
               'Pivote Studio',
-              style: GoogleFonts.syne(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
                 color: theme.colorScheme.onSurface,
@@ -668,7 +678,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 8),
             Text(
               'Versión $_appVersion',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 14,
                 color: theme.colorScheme.onSurface.withAlpha(128),
                 fontWeight: FontWeight.w500,
@@ -686,7 +696,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 48),
             Text(
               '© 2026 Pivote. Todos los derechos reservados.',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 12,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
               ),
@@ -725,7 +735,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Expanded(
                   child: Text(
                     title,
-                    style: GoogleFonts.dmSans(
+                    style: GoogleFonts.spaceGrotesk(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,

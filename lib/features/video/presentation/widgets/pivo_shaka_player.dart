@@ -386,7 +386,7 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
               const SizedBox(height: 24),
               Text(
                 'No se pudo conectar',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   color: Colors.white,
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
@@ -396,7 +396,7 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
               const SizedBox(height: 8),
               Text(
                 _errorMessage ?? 'Error de reproducción',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                     color: Colors.white54, fontSize: 13, height: 1.5),
                 textAlign: TextAlign.center,
               ),
@@ -413,7 +413,7 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
                   ),
                   child: Text(
                     'Servidor ${widget.currentServer}/${widget.totalServers}',
-                    style: GoogleFonts.dmSans(
+                    style: GoogleFonts.spaceGrotesk(
                       color: Colors.white38,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -449,7 +449,7 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
                           color: Colors.white, size: 18),
                       const SizedBox(width: 8),
                       Text('Reintentar',
-                          style: GoogleFonts.dmSans(
+                          style: GoogleFonts.spaceGrotesk(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
                             fontSize: 15,

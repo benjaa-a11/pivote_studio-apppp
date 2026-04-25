@@ -716,7 +716,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               const SizedBox(height: 24),
               Text(
                 'No se pudo conectar',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   color: Colors.white,
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
@@ -726,7 +726,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               const SizedBox(height: 8),
               Text(
                 'Verifica tu conexión e intentá nuevamente.',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                     color: Colors.white54, fontSize: 13, height: 1.5),
                 textAlign: TextAlign.center,
               ),
@@ -743,7 +743,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                   ),
                   child: Text(
                     'Servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}',
-                    style: GoogleFonts.dmSans(
+                    style: GoogleFonts.spaceGrotesk(
                       color: Colors.white38,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -782,7 +782,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                       const SizedBox(width: 8),
                       Text(
                         'Reintentar',
-                        style: GoogleFonts.dmSans(
+                        style: GoogleFonts.spaceGrotesk(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
                           fontSize: 15,

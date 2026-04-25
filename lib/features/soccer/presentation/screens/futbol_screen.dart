@@ -107,7 +107,7 @@ class _FutbolScreenState extends State<FutbolScreen>
               children: [
                 Text(
                   'Fútbol',
-                  style: GoogleFonts.syne(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: theme.colorScheme.onSurface,
@@ -116,7 +116,7 @@ class _FutbolScreenState extends State<FutbolScreen>
                 ),
                 Text(
                   'Partidos de hoy',
-                  style: GoogleFonts.dmSans(
+                  style: GoogleFonts.spaceGrotesk(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: theme.hintColor,
@@ -149,7 +149,7 @@ class _FutbolScreenState extends State<FutbolScreen>
           const SizedBox(width: 6),
           Text(
             '$count EN VIVO',
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 10,
               fontWeight: FontWeight.w900,
               color: theme.colorScheme.error,
@@ -217,7 +217,7 @@ class _FutbolScreenState extends State<FutbolScreen>
           const SizedBox(height: 16),
           Text(
             'Cargando partidos...',
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: theme.hintColor,
@@ -333,7 +333,7 @@ class _FutbolScreenState extends State<FutbolScreen>
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                 color: isSelected ? theme.colorScheme.primary : theme.hintColor,
@@ -467,7 +467,7 @@ class _FutbolScreenState extends State<FutbolScreen>
             ),
             child: Text(
               '$totalCount total',
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 color: theme.hintColor,
@@ -495,7 +495,7 @@ class _FutbolScreenState extends State<FutbolScreen>
           const SizedBox(width: 5),
           Text(
             label,
-            style: GoogleFonts.dmSans(
+            style: GoogleFonts.spaceGrotesk(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: color,
@@ -589,7 +589,7 @@ class _FutbolScreenState extends State<FutbolScreen>
                     children: [
                       Text(
                         league.name,
-                        style: GoogleFonts.syne(
+                        style: GoogleFonts.spaceGrotesk(
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
                           color: theme.colorScheme.onSurface,
@@ -600,7 +600,7 @@ class _FutbolScreenState extends State<FutbolScreen>
                         children: [
                           Text(
                             league.country.toUpperCase(),
-                            style: GoogleFonts.dmSans(
+                            style: GoogleFonts.spaceGrotesk(
                               fontWeight: FontWeight.w700,
                               fontSize: 9,
                               letterSpacing: 1.0,
@@ -619,7 +619,7 @@ class _FutbolScreenState extends State<FutbolScreen>
                           const SizedBox(width: 8),
                           Text(
                             '${matches.length} ${matches.length == 1 ? 'partido' : 'partidos'}',
-                            style: GoogleFonts.dmSans(
+                            style: GoogleFonts.spaceGrotesk(
                               fontWeight: FontWeight.w600,
                               fontSize: 9,
                               color: theme.hintColor.withValues(alpha: 0.7),
@@ -647,7 +647,7 @@ class _FutbolScreenState extends State<FutbolScreen>
                         const SizedBox(width: 4),
                         Text(
                           '$liveMatchesInLeague',
-                          style: GoogleFonts.dmSans(
+                          style: GoogleFonts.spaceGrotesk(
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                             color: theme.colorScheme.error,
@@ -705,14 +705,14 @@ class _FutbolScreenState extends State<FutbolScreen>
             const SizedBox(height: 28),
             Text(
               '¡Vaya! Hubo un problema',
-              style:
-                  GoogleFonts.syne(fontSize: 20, fontWeight: FontWeight.w800),
+              style: GoogleFonts.spaceGrotesk(
+                  fontSize: 20, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
               'No pudimos conectar con los servidores. Por favor, intenta de nuevo.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                   color: theme.hintColor, fontSize: 13, height: 1.5),
             ),
             const SizedBox(height: 32),
@@ -723,7 +723,7 @@ class _FutbolScreenState extends State<FutbolScreen>
                 onPressed: () => provider.retry(),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
                 label: Text('REINTENTAR',
-                    style: GoogleFonts.dmSans(
+                    style: GoogleFonts.spaceGrotesk(
                         fontWeight: FontWeight.w800, fontSize: 13)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
@@ -764,7 +764,7 @@ class _FutbolScreenState extends State<FutbolScreen>
             const SizedBox(height: 24),
             Text(
               message ?? 'No hay partidos programados',
-              style: GoogleFonts.syne(
+              style: GoogleFonts.spaceGrotesk(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: theme.hintColor),
@@ -774,7 +774,7 @@ class _FutbolScreenState extends State<FutbolScreen>
             Text(
               'Tan pronto como se confirmen nuevos encuentros, aparecerán aquí.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                   color: theme.hintColor.withValues(alpha: 0.6),
                   fontSize: 13,
                   height: 1.5),
@@ -827,7 +827,7 @@ class _FutbolScreenState extends State<FutbolScreen>
           const SizedBox(height: 14),
           RichText(
             text: TextSpan(
-              style: GoogleFonts.dmSans(
+              style: GoogleFonts.spaceGrotesk(
                 fontSize: 9,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 2.0,

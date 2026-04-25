@@ -17,7 +17,7 @@ class PrivacySecurityScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Privacidad y Seguridad',
-          style: GoogleFonts.syne(
+          style: GoogleFonts.spaceGrotesk(
             fontWeight: FontWeight.bold,
             color: theme.colorScheme.onSurface,
           ),
@@ -108,7 +108,7 @@ class PrivacySecurityScreen extends StatelessWidget {
                   Center(
                     child: Text(
                       'Última actualización: Marzo 2026',
-                      style: GoogleFonts.dmSans(
+                      style: GoogleFonts.spaceGrotesk(
                         fontSize: 12,
                         color:
                             theme.colorScheme.onSurface.withValues(alpha: 0.4),
@@ -128,7 +128,7 @@ class PrivacySecurityScreen extends StatelessWidget {
   Widget _buildSectionTitle(ThemeData theme, String title) {
     return Text(
       title.toUpperCase(),
-      style: GoogleFonts.dmSans(
+      style: GoogleFonts.spaceGrotesk(
         fontSize: 12,
         fontWeight: FontWeight.bold,
         letterSpacing: 1.2,
@@ -178,7 +178,7 @@ class PrivacySecurityScreen extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               'Estás Protegido',
-              style: GoogleFonts.syne(
+              style: GoogleFonts.spaceGrotesk(
                 color: Colors.white,
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
@@ -193,7 +193,7 @@ class PrivacySecurityScreen extends StatelessWidget {
               ),
               child: Text(
                 'SEGURIDAD NIVEL ELITE',
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   color: Colors.white,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
@@ -267,7 +267,7 @@ class PrivacySecurityScreen extends StatelessWidget {
                       children: [
                         Text(
                           title,
-                          style: GoogleFonts.syne(
+                          style: GoogleFonts.spaceGrotesk(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                             color: theme.colorScheme.onSurface,
@@ -275,7 +275,7 @@ class PrivacySecurityScreen extends StatelessWidget {
                         ),
                         Text(
                           subtitle.toUpperCase(),
-                          style: GoogleFonts.dmSans(
+                          style: GoogleFonts.spaceGrotesk(
                             fontSize: 10,
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w800,
@@ -290,7 +290,7 @@ class PrivacySecurityScreen extends StatelessWidget {
               const SizedBox(height: 20),
               Text(
                 content,
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 14,
                   height: 1.6,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
@@ -327,7 +327,7 @@ class PrivacySecurityScreen extends StatelessWidget {
             Icon(icon, color: color ?? theme.colorScheme.primary, size: 26),
         title: Text(
           title,
-          style: GoogleFonts.dmSans(
+          style: GoogleFonts.spaceGrotesk(
             fontWeight: FontWeight.bold,
             color: color ?? theme.colorScheme.onSurface,
             fontSize: 15,
@@ -336,7 +336,7 @@ class PrivacySecurityScreen extends StatelessWidget {
         subtitle: subtitle != null
             ? Text(
                 subtitle,
-                style: GoogleFonts.dmSans(
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 ),

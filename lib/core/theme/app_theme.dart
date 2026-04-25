@@ -86,74 +86,75 @@ class AppTheme {
     dividerColor: darkBorder,
 
     // Tipografía con DM Sans (similar al CSS)
-    textTheme: GoogleFonts.dmSansTextTheme(ThemeData.dark().textTheme).copyWith(
+    textTheme:
+        GoogleFonts.spaceGroteskTextTheme(ThemeData.dark().textTheme).copyWith(
       // Títulos con Syne (como en el CSS: --font-head: 'Syne')
-      displayLarge: GoogleFonts.syne(
+      displayLarge: GoogleFonts.spaceGrotesk(
         fontSize: 32,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.02 * 32, // -0.02em
         color: darkText,
       ),
-      displayMedium: GoogleFonts.syne(
+      displayMedium: GoogleFonts.spaceGrotesk(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.02 * 28,
         color: darkText,
       ),
-      headlineMedium: GoogleFonts.syne(
+      headlineMedium: GoogleFonts.spaceGrotesk(
         fontSize: 24,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.02 * 24,
         color: darkText,
       ),
-      headlineSmall: GoogleFonts.syne(
+      headlineSmall: GoogleFonts.spaceGrotesk(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.02 * 20,
         color: darkText,
       ),
-      titleLarge: GoogleFonts.syne(
+      titleLarge: GoogleFonts.spaceGrotesk(
         fontSize: 18,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.02 * 18,
         color: darkText,
       ),
-      titleMedium: GoogleFonts.dmSans(
+      titleMedium: GoogleFonts.spaceGrotesk(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: darkText,
       ),
-      bodyLarge: GoogleFonts.dmSans(
+      bodyLarge: GoogleFonts.spaceGrotesk(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: darkText2,
         height: 1.6,
       ),
-      bodyMedium: GoogleFonts.dmSans(
+      bodyMedium: GoogleFonts.spaceGrotesk(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: darkText2,
         height: 1.6,
       ),
-      bodySmall: GoogleFonts.dmSans(
+      bodySmall: GoogleFonts.spaceGrotesk(
         fontSize: 13,
         fontWeight: FontWeight.w400,
         color: darkText3,
         height: 1.6,
       ),
-      labelLarge: GoogleFonts.dmSans(
+      labelLarge: GoogleFonts.spaceGrotesk(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
         color: darkText,
       ),
-      labelMedium: GoogleFonts.dmSans(
+      labelMedium: GoogleFonts.spaceGrotesk(
         fontSize: 12,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
         color: darkText2,
       ),
-      labelSmall: GoogleFonts.dmSans(
+      labelSmall: GoogleFonts.spaceGrotesk(
         fontSize: 11,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
@@ -177,7 +178,7 @@ class AppTheme {
       scrolledUnderElevation: 0,
       centerTitle: false,
       iconTheme: const IconThemeData(color: darkText),
-      titleTextStyle: GoogleFonts.syne(
+      titleTextStyle: GoogleFonts.spaceGrotesk(
         fontSize: 22,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.02 * 22,
@@ -190,13 +191,13 @@ class AppTheme {
       indicatorColor: darkAccentDim,
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return GoogleFonts.dmSans(
+          return GoogleFonts.spaceGrotesk(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: darkAccent,
           );
         }
-        return GoogleFonts.dmSans(
+        return GoogleFonts.spaceGrotesk(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: darkText2,
@@ -224,7 +225,7 @@ class AppTheme {
         borderSide: const BorderSide(color: darkDanger),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      hintStyle: GoogleFonts.dmSans(color: darkText3, fontSize: 13.5),
+      hintStyle: GoogleFonts.spaceGrotesk(color: darkText3, fontSize: 13.5),
     ),
 
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -236,7 +237,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
         ),
-        textStyle: GoogleFonts.dmSans(
+        textStyle: GoogleFonts.spaceGrotesk(
           fontWeight: FontWeight.w600,
           fontSize: 13,
         ),
@@ -251,7 +252,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
         ),
-        textStyle: GoogleFonts.dmSans(
+        textStyle: GoogleFonts.spaceGrotesk(
           fontWeight: FontWeight.w600,
           fontSize: 13,
         ),
@@ -285,7 +286,7 @@ class AppTheme {
 
     snackBarTheme: SnackBarThemeData(
       backgroundColor: darkBg3,
-      contentTextStyle: GoogleFonts.dmSans(
+      contentTextStyle: GoogleFonts.spaceGrotesk(
         color: darkText,
         fontSize: 14,
       ),
@@ -352,74 +353,74 @@ class AppTheme {
 
     // Tipografía con DM Sans
     textTheme:
-        GoogleFonts.dmSansTextTheme(ThemeData.light().textTheme).copyWith(
+        GoogleFonts.spaceGroteskTextTheme(ThemeData.light().textTheme).copyWith(
       // Títulos con Syne
-      displayLarge: GoogleFonts.syne(
+      displayLarge: GoogleFonts.spaceGrotesk(
         fontSize: 32,
         fontWeight: FontWeight.w800,
         letterSpacing: -0.02 * 32,
         color: lightText,
       ),
-      displayMedium: GoogleFonts.syne(
+      displayMedium: GoogleFonts.spaceGrotesk(
         fontSize: 28,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.02 * 28,
         color: lightText,
       ),
-      headlineMedium: GoogleFonts.syne(
+      headlineMedium: GoogleFonts.spaceGrotesk(
         fontSize: 24,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.02 * 24,
         color: lightText,
       ),
-      headlineSmall: GoogleFonts.syne(
+      headlineSmall: GoogleFonts.spaceGrotesk(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.02 * 20,
         color: lightText,
       ),
-      titleLarge: GoogleFonts.syne(
+      titleLarge: GoogleFonts.spaceGrotesk(
         fontSize: 18,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.02 * 18,
         color: lightText,
       ),
-      titleMedium: GoogleFonts.dmSans(
+      titleMedium: GoogleFonts.spaceGrotesk(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: lightText,
       ),
-      bodyLarge: GoogleFonts.dmSans(
+      bodyLarge: GoogleFonts.spaceGrotesk(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: lightText2,
         height: 1.6,
       ),
-      bodyMedium: GoogleFonts.dmSans(
+      bodyMedium: GoogleFonts.spaceGrotesk(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: lightText2,
         height: 1.6,
       ),
-      bodySmall: GoogleFonts.dmSans(
+      bodySmall: GoogleFonts.spaceGrotesk(
         fontSize: 13,
         fontWeight: FontWeight.w400,
         color: lightText3,
         height: 1.6,
       ),
-      labelLarge: GoogleFonts.dmSans(
+      labelLarge: GoogleFonts.spaceGrotesk(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
         color: lightText,
       ),
-      labelMedium: GoogleFonts.dmSans(
+      labelMedium: GoogleFonts.spaceGrotesk(
         fontSize: 12,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
         color: lightText2,
       ),
-      labelSmall: GoogleFonts.dmSans(
+      labelSmall: GoogleFonts.spaceGrotesk(
         fontSize: 11,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
@@ -443,7 +444,7 @@ class AppTheme {
       scrolledUnderElevation: 0,
       centerTitle: false,
       iconTheme: const IconThemeData(color: lightText),
-      titleTextStyle: GoogleFonts.syne(
+      titleTextStyle: GoogleFonts.spaceGrotesk(
         fontSize: 22,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.02 * 22,
@@ -456,13 +457,13 @@ class AppTheme {
       indicatorColor: lightAccentDim,
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return GoogleFonts.dmSans(
+          return GoogleFonts.spaceGrotesk(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: lightAccent,
           );
         }
-        return GoogleFonts.dmSans(
+        return GoogleFonts.spaceGrotesk(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           color: lightText2,
@@ -490,7 +491,7 @@ class AppTheme {
         borderSide: const BorderSide(color: lightDanger),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      hintStyle: GoogleFonts.dmSans(color: lightText3, fontSize: 13.5),
+      hintStyle: GoogleFonts.spaceGrotesk(color: lightText3, fontSize: 13.5),
     ),
 
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -502,7 +503,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
         ),
-        textStyle: GoogleFonts.dmSans(
+        textStyle: GoogleFonts.spaceGrotesk(
           fontWeight: FontWeight.w600,
           fontSize: 13,
         ),
@@ -528,7 +529,7 @@ class AppTheme {
 
     snackBarTheme: SnackBarThemeData(
       backgroundColor: lightBg3,
-      contentTextStyle: GoogleFonts.dmSans(
+      contentTextStyle: GoogleFonts.spaceGrotesk(
         color: lightText,
         fontSize: 14,
       ),
