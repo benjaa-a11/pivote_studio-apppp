@@ -30,7 +30,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final String _appVersion = '2.0.0';
+  final String _appVersion = '3.0.0';
   String _cacheSize = 'Calculando...';
 
   @override

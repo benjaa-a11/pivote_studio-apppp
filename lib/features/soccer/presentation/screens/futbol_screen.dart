@@ -202,28 +202,10 @@ class _FutbolScreenState extends State<FutbolScreen>
 
   Widget _buildLoadingState(ThemeData theme) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: PivoteLoader(
-              color: theme.colorScheme.primary,
-              strokeWidth: 3,
-              size: 40,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Cargando partidos...',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: theme.hintColor,
-            ),
-          ),
-        ],
+      child: PivoteLoader(
+        color: theme.colorScheme.primary,
+        strokeWidth: 3,
+        size: 40,
       ),
     );
   }

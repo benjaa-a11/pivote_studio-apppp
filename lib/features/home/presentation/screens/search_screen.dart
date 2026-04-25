@@ -109,14 +109,14 @@ class _SearchScreenState extends State<SearchScreen>
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 16),
+      padding: EdgeInsets.fromLTRB(16, topPadding + 10, 16, 14),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? AppTheme.darkBorder.withValues(alpha: 0.3)
-                : AppTheme.lightBorder.withValues(alpha: 0.5),
+                ? AppTheme.darkBorder.withValues(alpha: 0.25)
+                : AppTheme.lightBorder.withValues(alpha: 0.4),
             width: 1,
           ),
         ),
@@ -127,33 +127,28 @@ class _SearchScreenState extends State<SearchScreen>
           Row(
             children: [
               // Back button
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => Navigator.pop(context),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark
-                            ? AppTheme.darkBorder.withValues(alpha: 0.3)
-                            : AppTheme.lightBorder,
-                      ),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark
+                          ? AppTheme.darkBorder.withValues(alpha: 0.3)
+                          : AppTheme.lightBorder,
                     ),
-                    child: Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 16,
-                      color: theme.colorScheme.onSurface,
-                    ),
+                  ),
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 15,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
-              // Title
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,9 +156,9 @@ class _SearchScreenState extends State<SearchScreen>
                     Text(
                       'Buscar',
                       style: GoogleFonts.spaceGrotesk(
-                        fontSize: 22,
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                        letterSpacing: -0.4,
                         color: theme.colorScheme.onSurface,
                       ),
                     ),
@@ -173,7 +168,7 @@ class _SearchScreenState extends State<SearchScreen>
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: theme.hintColor,
+                          color: theme.colorScheme.primary.withValues(alpha: 0.7),
                         ),
                       ),
                   ],
@@ -181,29 +176,19 @@ class _SearchScreenState extends State<SearchScreen>
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
           // Search field
           Container(
-            height: 52,
+            height: 48,
             decoration: BoxDecoration(
               color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: _searchFocusNode.hasFocus
-                  ? [
-                      BoxShadow(
-                        color:
-                            theme.colorScheme.primary.withValues(alpha: 0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      )
-                    ]
-                  : null,
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: _searchFocusNode.hasFocus
                     ? theme.colorScheme.primary.withValues(alpha: 0.5)
                     : (isDark
-                        ? AppTheme.darkBorder.withValues(alpha: 0.3)
+                        ? AppTheme.darkBorder.withValues(alpha: 0.25)
                         : AppTheme.lightBorder),
                 width: _searchFocusNode.hasFocus ? 1.5 : 1,
               ),
@@ -213,7 +198,7 @@ class _SearchScreenState extends State<SearchScreen>
               focusNode: _searchFocusNode,
               onChanged: (q) {
                 _onSearch(q);
-                setState(() {}); // Update focus border
+                setState(() {});
               },
               onSubmitted: _onSearch,
               textInputAction: TextInputAction.search,
@@ -227,38 +212,34 @@ class _SearchScreenState extends State<SearchScreen>
                 hintText: 'Buscar canales, categorías...',
                 hintStyle: GoogleFonts.spaceGrotesk(
                   fontSize: 14,
-                  color: theme.hintColor.withValues(alpha: 0.5),
+                  color: theme.hintColor.withValues(alpha: 0.45),
                   fontWeight: FontWeight.w500,
                 ),
                 prefixIcon: Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 10),
+                  padding: const EdgeInsets.only(left: 12, right: 8),
                   child: Icon(
                     Icons.search_rounded,
                     color: _searchFocusNode.hasFocus
                         ? theme.colorScheme.primary
-                        : theme.hintColor.withValues(alpha: 0.5),
+                        : theme.hintColor.withValues(alpha: 0.45),
                     size: 20,
                   ),
                 ),
                 prefixIconConstraints:
-                    const BoxConstraints(minWidth: 44, maxHeight: 44),
+                    const BoxConstraints(minWidth: 40, maxHeight: 40),
                 suffixIcon: _searchController.text.isNotEmpty
-                    ? Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            _searchController.clear();
-                            _onSearch('');
-                          },
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.all(6),
-                            child: Icon(
-                              Icons.close_rounded,
-                              size: 16,
-                              color: theme.hintColor,
-                            ),
+                    ? GestureDetector(
+                        onTap: () {
+                          _searchController.clear();
+                          _onSearch('');
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 16,
+                            color: theme.hintColor,
                           ),
                         ),
                       )
@@ -266,7 +247,7 @@ class _SearchScreenState extends State<SearchScreen>
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(vertical: 13),
               ),
             ),
           ),
@@ -427,42 +408,38 @@ class _SearchScreenState extends State<SearchScreen>
       String label, IconData icon, ThemeData theme, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(right: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            _searchController.text = label;
-            _onSearch(label);
-          },
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isDark
-                    ? AppTheme.darkBorder.withValues(alpha: 0.3)
-                    : AppTheme.lightBorder,
-              ),
+      child: GestureDetector(
+        onTap: () {
+          _searchController.text = label;
+          _onSearch(label);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark
+                  ? AppTheme.darkBorder.withValues(alpha: 0.25)
+                  : AppTheme.lightBorder,
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon,
-                    size: 14,
-                    color: theme.colorScheme.primary.withValues(alpha: 0.7)),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: theme.colorScheme.onSurface,
-                  ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 13,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.8)),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.spaceGrotesk(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurface,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

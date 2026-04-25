@@ -10,7 +10,6 @@ import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
-import 'package:pivote/features/soccer/presentation/widgets/match_details_bottom_sheet.dart';
 
 class MatchCard extends StatelessWidget {
   final SoccerMatch match;
@@ -56,9 +55,7 @@ class MatchCard extends StatelessWidget {
     );
     final tournamentLogoUrl = league.logoUrl ?? '';
 
-    return GestureDetector(
-      onTap: () => _showMatchDetails(context, match, teamA, teamB, league),
-      child: Container(
+    return Container(
         width: cardWidth,
         height: 260,
         margin: const EdgeInsets.only(right: 14),
@@ -129,30 +126,9 @@ class MatchCard extends StatelessWidget {
             _buildFooter(context, theme, isDark),
           ],
         ),
-      ),
     );
   }
 
-  void _showMatchDetails(BuildContext context, SoccerMatch match,
-      SoccerTeam homeTeam, SoccerTeam awayTeam, SoccerLeague league) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          top: MediaQuery.of(context).padding.top + 40, // Avoid safe area top
-        ),
-        child: MatchDetailsBottomSheet(
-          match: match,
-          homeTeam: homeTeam,
-          awayTeam: awayTeam,
-          league: league,
-        ),
-      ),
-    );
-  }
 
   Widget _buildHeader(BuildContext context, SoccerLeague league,
       String tournamentLogoUrl, ThemeData theme, bool isDark) {

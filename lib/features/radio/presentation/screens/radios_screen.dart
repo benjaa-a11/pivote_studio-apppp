@@ -189,38 +189,78 @@ class _RadiosScreenState extends State<RadiosScreen>
           return SliverFillRemaining(
             hasScrollBody: false,
             child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.radio_rounded,
-                    size: 64,
-                    color: isDark ? Colors.white10 : Colors.black12,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No se encontraron radios',
-                    style: GoogleFonts.spaceGrotesk(
-                      color: isDark ? Colors.white38 : Colors.black38,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.radio_rounded,
+                        size: 36,
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    Text(
+                      'Sin emisoras disponibles',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Las emisoras aparecerán aquí cuando estén disponibles.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13,
+                        color: Theme.of(context).hintColor.withValues(alpha: 0.6),
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
         }
 
         return SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final radio = radios[index];
+                final isLast = index == radios.length - 1;
                 return Skeletonizer(
                   enabled: isLoading,
-                  child: _buildRadioItem(context, radio, audioManager, isDark),
+                  child: Column(
+                    children: [
+                      _buildRadioItem(context, radio, audioManager, isDark),
+                      if (!isLast)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.black.withValues(alpha: 0.04),
+                          ),
+                        ),
+                    ],
+                  ),
                 );
               },
               childCount: radios.length,
@@ -257,38 +297,25 @@ class _RadiosScreenState extends State<RadiosScreen>
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.03)
-              : Colors.black.withValues(alpha: 0.02),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.05),
-            width: 1,
-          ),
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
         child: Row(
           children: [
             // Station Logo
             Hero(
               tag: 'radio_tile_logo_${radio.id}',
               child: Container(
-                width: 60,
-                height: 60,
+                width: 56,
+                height: 56,
                 decoration: ShapeDecoration(
                   color: isDark
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : Colors.black.withValues(alpha: 0.05),
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.04),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   child: CachedNetworkImage(
                     imageUrl: radio.logoUrl,
                     fit: BoxFit.cover,
@@ -296,13 +323,14 @@ class _RadiosScreenState extends State<RadiosScreen>
                         Container(color: Colors.transparent),
                     errorWidget: (context, _, __) => Icon(
                       Icons.radio_rounded,
-                      color: isDark ? Colors.white24 : Colors.black12,
+                      size: 24,
+                      color: isDark ? Colors.white24 : Colors.black26,
                     ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             // Station Info
             Expanded(
               child: Column(
@@ -311,7 +339,7 @@ class _RadiosScreenState extends State<RadiosScreen>
                   Text(
                     radio.name,
                     style: GoogleFonts.spaceGrotesk(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: isCurrent
                           ? Theme.of(context).colorScheme.primary
@@ -321,51 +349,33 @@ class _RadiosScreenState extends State<RadiosScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      if (isCurrent && audioManager.isPlaying) ...[
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withValues(alpha: 0.4),
-                                blurRadius: 4,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Text(
-                        radio.frequency,
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: textColor.withValues(alpha: 0.5),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                  const SizedBox(height: 3),
+                  Text(
+                    radio.frequency,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: textColor.withValues(alpha: 0.45),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
             // Play indicator if current
             if (isCurrent && audioManager.isPlaying)
-              Icon(
-                Icons.graphic_eq_rounded,
-                color: Theme.of(context).colorScheme.primary,
-                size: 24,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.graphic_eq_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 18,
+                ),
               ),
           ],
         ),
