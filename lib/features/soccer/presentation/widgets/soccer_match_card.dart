@@ -1,9 +1,11 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/features/soccer/presentation/widgets/match_details_bottom_sheet.dart';
 
 class SoccerMatchCard extends StatelessWidget {
   final SoccerMatch match;
@@ -28,11 +30,33 @@ class SoccerMatchCard extends StatelessWidget {
     final awayTeam = data.teams.firstWhere((t) => t.id == match.awayTeamId,
         orElse: () => SoccerTeam(
             id: '', name: match.awayTeam, shortName: match.awayTeam));
+    final league = data.leagues.firstWhere((l) => l.id == match.leagueId,
+        orElse: () => SoccerLeague(id: match.leagueId, name: 'Desconocida', country: '', shortName: ''));
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {}, // Placeholder for future navigation
+        onTap: () {
+          HapticFeedback.lightImpact();
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) {
+              return ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.5,
+                ),
+                child: MatchDetailsBottomSheet(
+                  match: match,
+                  homeTeam: homeTeam,
+                  awayTeam: awayTeam,
+                  league: league,
+                ),
+              );
+            },
+          );
+        },
         splashColor: theme.colorScheme.primary.withValues(alpha: 0.04),
         highlightColor: theme.colorScheme.primary.withValues(alpha: 0.02),
         borderRadius: isLast

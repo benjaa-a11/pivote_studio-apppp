@@ -120,40 +120,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return SliverAppBar(
       expandedHeight: 380,
-      collapsedHeight: kToolbarHeight,
-      pinned: true,
+      pinned: false,
       stretch: true,
-      // Transparent when collapsed so it blends with scaffoldBg
       backgroundColor: theme.scaffoldBackgroundColor,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       automaticallyImplyLeading: false,
-      // Compact title shown only when header is fully collapsed
-      title: Row(
-        children: [
-          if (imagePath != null)
-            CircleAvatar(
-              radius: 16,
-              backgroundImage: FileImage(File(imagePath)),
-            )
-          else
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
-              child: Icon(Icons.person, size: 18, color: theme.colorScheme.primary),
-            ),
-          const SizedBox(width: 10),
-          Text(
-            user?.name ?? '',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-        ],
-      ),
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: EdgeInsets.zero,
         stretchModes: const [
