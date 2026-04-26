@@ -119,13 +119,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final imagePath = userProvider.profileImagePath;
 
     return SliverAppBar(
-      expandedHeight: 380, // Aumentado para que el botón no se corte
+      expandedHeight: 380,
+      collapsedHeight: kToolbarHeight,
       pinned: true,
       stretch: true,
-      backgroundColor: theme.colorScheme.primary,
+      // Transparent when collapsed so it blends with scaffoldBg
+      backgroundColor: theme.scaffoldBackgroundColor,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
+      scrolledUnderElevation: 0,
       automaticallyImplyLeading: false,
+      // Compact title shown only when header is fully collapsed
+      title: Row(
+        children: [
+          if (imagePath != null)
+            CircleAvatar(
+              radius: 16,
+              backgroundImage: FileImage(File(imagePath)),
+            )
+          else
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+              child: Icon(Icons.person, size: 18, color: theme.colorScheme.primary),
+            ),
+          const SizedBox(width: 10),
+          Text(
+            user?.name ?? '',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
       flexibleSpace: FlexibleSpaceBar(
+        titlePadding: EdgeInsets.zero,
         stretchModes: const [
           StretchMode.zoomBackground,
           StretchMode.blurBackground,
@@ -142,14 +172,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(50),
-              bottomRight: Radius.circular(50),
-            ),
           ),
           child: Stack(
             children: [
-              // Decorative Blobs with improved animation/depth
+              // Decorative blobs
               Positioned(
                 top: -50,
                 right: -40,
@@ -177,177 +203,166 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-              // Header Content
-              // Header Content with Glassmorphism Card
+              // Header content
               SafeArea(
                 child: Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 10),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(40),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 32, horizontal: 24),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(40),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Profile Image with Edit Button
+                        Stack(
                           children: [
-                            // Profile Image with Edit Button
-                            Stack(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: Colors.white, width: 3),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withAlpha(51),
-                                        blurRadius: 15,
-                                        offset: const Offset(0, 8),
-                                      ),
-                                    ],
-                                  ),
-                                  child: CircleAvatar(
-                                    radius: 60,
-                                    backgroundColor: Colors.white.withAlpha(51),
-                                    backgroundImage: imagePath != null
-                                        ? FileImage(File(imagePath))
-                                        : null,
-                                    child: imagePath == null
-                                        ? const Icon(Icons.person,
-                                            size: 60, color: Colors.white)
-                                        : null,
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 2,
-                                  right: 2,
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      HapticFeedback.mediumImpact();
-                                      userProvider.updateProfileImage();
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme.primary,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                            color: Colors.white, width: 2),
-                                      ),
-                                      child: Icon(
-                                        Icons.camera_alt,
-                                        color: isDark
-                                            ? Colors.black
-                                            : Colors.white,
-                                        size: 18,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            // User Details
-                            AppAnimations.smoothFadeIn(
-                              child: Column(
-                                children: [
-                                  Text(
-                                    GreetingService.getGreeting(),
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      color: isDark
-                                          ? Colors.black87
-                                          : Colors.white.withAlpha(179),
-                                      fontWeight: FontWeight.w500,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    user != null ? user.name : 'Cargando...',
-                                    style: theme.textTheme.headlineMedium
-                                        ?.copyWith(
-                                      color:
-                                          isDark ? Colors.black : Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: -0.5,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    user?.email ?? '',
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: isDark
-                                          ? Colors.black54
-                                          : Colors.white.withAlpha(204),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  Material(
-                                    color: isDark
-                                        ? Colors.black.withAlpha(15)
-                                        : Colors.white.withAlpha(38),
-                                    borderRadius: BorderRadius.circular(100),
-                                    child: InkWell(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const EditProfileScreen()));
-                                      },
-                                      borderRadius: BorderRadius.circular(100),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 20, vertical: 10),
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(100),
-                                          border: Border.all(
-                                              color: isDark
-                                                  ? Colors.black.withAlpha(40)
-                                                  : Colors.white.withAlpha(76)),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.edit_rounded,
-                                                color: isDark
-                                                    ? Colors.black87
-                                                    : Colors.white,
-                                                size: 16),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              'Editar Perfil',
-                                              style: theme.textTheme.labelMedium
-                                                  ?.copyWith(
-                                                color: isDark
-                                                    ? Colors.black87
-                                                    : Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                letterSpacing: 0.5,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: Colors.white, width: 3),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withAlpha(51),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 8),
                                   ),
                                 ],
+                              ),
+                              child: CircleAvatar(
+                                radius: 56,
+                                backgroundColor: Colors.white.withAlpha(51),
+                                backgroundImage: imagePath != null
+                                    ? FileImage(File(imagePath))
+                                    : null,
+                                child: imagePath == null
+                                    ? const Icon(Icons.person,
+                                        size: 56, color: Colors.white)
+                                    : null,
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 2,
+                              right: 2,
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  userProvider.updateProfileImage();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.white, width: 2),
+                                  ),
+                                  child: Icon(
+                                    Icons.camera_alt,
+                                    color: isDark
+                                        ? Colors.black
+                                        : Colors.white,
+                                    size: 16,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
+                        const SizedBox(height: 18),
+                        // User Details
+                        AppAnimations.smoothFadeIn(
+                          child: Column(
+                            children: [
+                              Text(
+                                GreetingService.getGreeting(),
+                                style:
+                                    theme.textTheme.titleMedium?.copyWith(
+                                  color: isDark
+                                      ? Colors.black87
+                                      : Colors.white.withAlpha(179),
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                user != null ? user.name : 'Cargando...',
+                                style: theme.textTheme.headlineMedium
+                                    ?.copyWith(
+                                  color:
+                                      isDark ? Colors.black : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                user?.email ?? '',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: isDark
+                                      ? Colors.black54
+                                      : Colors.white.withAlpha(204),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 20),
+                              Material(
+                                color: isDark
+                                    ? Colors.black.withAlpha(15)
+                                    : Colors.white.withAlpha(38),
+                                borderRadius: BorderRadius.circular(100),
+                                child: InkWell(
+                                  onTap: () {
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                const EditProfileScreen()));
+                                  },
+                                  borderRadius: BorderRadius.circular(100),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      borderRadius:
+                                          BorderRadius.circular(100),
+                                      border: Border.all(
+                                          color: isDark
+                                              ? Colors.black.withAlpha(40)
+                                              : Colors.white.withAlpha(76)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.edit_rounded,
+                                            color: isDark
+                                                ? Colors.black87
+                                                : Colors.white,
+                                            size: 16),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Editar Perfil',
+                                          style: theme.textTheme.labelMedium
+                                              ?.copyWith(
+                                            color: isDark
+                                                ? Colors.black87
+                                                : Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

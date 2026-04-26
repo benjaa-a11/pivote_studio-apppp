@@ -72,7 +72,7 @@ class SoccerMatchCard extends StatelessWidget {
                     colors: [
                       Colors.transparent,
                       isDark
-                          ? AppTheme.darkBorder.withValues(alpha: 0.3)
+                          ? AppTheme.darkBorder.withValues(alpha: 0.65)
                           : AppTheme.lightBorder.withValues(alpha: 0.5),
                       Colors.transparent,
                     ],
@@ -99,7 +99,7 @@ class SoccerMatchCard extends StatelessWidget {
                             child: Divider(
                               height: 1,
                               color: isDark
-                                  ? AppTheme.darkBorder.withValues(alpha: 0.15)
+                                  ? AppTheme.darkBorder.withValues(alpha: 0.55)
                                   : AppTheme.lightBorder.withValues(alpha: 0.3),
                             ),
                           ),

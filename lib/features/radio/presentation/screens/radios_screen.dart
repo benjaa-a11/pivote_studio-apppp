@@ -15,25 +15,12 @@ class RadiosScreen extends StatefulWidget {
   State<RadiosScreen> createState() => _RadiosScreenState();
 }
 
-class _RadiosScreenState extends State<RadiosScreen>
-    with SingleTickerProviderStateMixin {
+class _RadiosScreenState extends State<RadiosScreen> {
   final ScrollController _scrollController = ScrollController();
-  late AnimationController _animationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _animationController.forward();
-  }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _animationController.dispose();
     super.dispose();
   }
 
@@ -97,10 +84,6 @@ class _RadiosScreenState extends State<RadiosScreen>
                   ),
                 ],
               ),
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(60),
-                child: _buildCategoryFilters(context, isDark),
-              ),
             ),
 
             // Radio List Content
@@ -111,64 +94,6 @@ class _RadiosScreenState extends State<RadiosScreen>
     );
   }
 
-  Widget _buildCategoryFilters(BuildContext context, bool isDark) {
-    return Consumer<RadioProvider>(
-      builder: (context, provider, _) {
-        final theme = Theme.of(context);
-        final categories = provider.categories;
-
-        return Container(
-          height: 44,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              final category = categories[index];
-              final isSelected = provider.activeCategory == category;
-              final textColor = Theme.of(context).colorScheme.onSurface;
-
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () => provider.setActiveCategory(category),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? theme.colorScheme.primary
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isSelected
-                            ? Colors.transparent
-                            : textColor.withValues(alpha: 0.1),
-                        width: 1,
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      category.toUpperCase(),
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: isSelected
-                            ? Colors.white
-                            : textColor.withValues(alpha: 0.6),
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildSliverRadioList(BuildContext context, bool isDark) {
     return Consumer2<RadioProvider, AudioManager>(

@@ -23,14 +23,21 @@ class PivoteLoader extends StatefulWidget {
 class _PivoteLoaderState extends State<PivoteLoader>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 1),
+      // Slightly faster = snappier, more premium feel
+      duration: const Duration(milliseconds: 850),
     )..repeat();
+
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   @override
@@ -45,10 +52,10 @@ class _PivoteLoaderState extends State<PivoteLoader>
     final activeColor = widget.color ?? Theme.of(context).colorScheme.primary;
 
     return AnimatedBuilder(
-      animation: _controller,
+      animation: _animation,
       builder: (context, child) {
         return Transform.rotate(
-          angle: _controller.value * 2 * math.pi,
+          angle: _animation.value * 2 * math.pi,
           child: CustomPaint(
             size: Size(widget.size, widget.size),
             painter: _PivoteLoaderPainter(
@@ -77,23 +84,22 @@ class _PivoteLoaderPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
 
-    // We mimic conic-gradient(#0000 10%, #000) using a SweepGradient.
-    // 10% is 0.1 of a full circle.
+    // Comet-tail effect: transparent for first 15%, fades into full color
     final paint = Paint()
       ..shader = SweepGradient(
         colors: [
           color.withValues(alpha: 0.0),
           color.withValues(alpha: 0.0),
+          color.withValues(alpha: 0.25),
           color,
         ],
-        stops: const [0.0, 0.1, 1.0],
+        stops: const [0.0, 0.12, 0.65, 1.0],
         startAngle: 0.0,
         endAngle: 2 * math.pi,
       ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..strokeCap =
-          StrokeCap.round; // Added round caps for a more premium look.
+      ..strokeCap = StrokeCap.round;
 
     canvas.drawCircle(center, radius, paint);
   }
