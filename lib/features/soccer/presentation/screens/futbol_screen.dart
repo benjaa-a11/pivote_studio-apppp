@@ -19,8 +19,15 @@ class FutbolScreen extends StatefulWidget {
 class _FutbolScreenState extends State<FutbolScreen>
     with SingleTickerProviderStateMixin {
   String _selectedLeagueId = 'all';
+  // 0 = yesterday, 1 = today, 2 = tomorrow
+  int _selectedDayOffset = 1;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+
+  // FWC-26 accent colors
+  static const Color _fwcOrange = Color(0xFFE83600);
+  static const Color _fwcCyan = Color(0xFF3DFFC8);
+  static const Color _fwcPurple = Color(0xFF6B00CC);
 
   @override
   void initState() {
@@ -57,12 +64,16 @@ class _FutbolScreenState extends State<FutbolScreen>
               SliverToBoxAdapter(
                 child: _buildScreenHeader(theme, soccerProvider),
               ),
-              // World Cup Countdown
+              // World Cup Countdown Hero
               const SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: WorldCupCountdown(),
                 ),
+              ),
+              // Date selector
+              SliverToBoxAdapter(
+                child: _buildDateSelector(theme),
               ),
             ];
           },
@@ -75,28 +86,47 @@ class _FutbolScreenState extends State<FutbolScreen>
   Widget _buildScreenHeader(ThemeData theme, SoccerProvider provider) {
     final liveCount =
         provider.soccerData?.matches.where((m) => m.isLive).length ?? 0;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
       child: Row(
         children: [
+          // Colored accent bar
+          Container(
+            width: 4,
+            height: 36,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [_fwcOrange, _fwcPurple],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
           // Soccer icon
           Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  theme.colorScheme.primary.withValues(alpha: 0.15),
-                  theme.colorScheme.primary.withValues(alpha: 0.05),
+                  _fwcOrange.withValues(alpha: isDark ? 0.2 : 0.12),
+                  _fwcOrange.withValues(alpha: isDark ? 0.05 : 0.04),
                 ],
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: _fwcOrange.withValues(alpha: 0.2),
+                width: 1,
+              ),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.sports_soccer_rounded,
               size: 20,
-              color: theme.colorScheme.primary,
+              color: _fwcOrange,
             ),
           ),
           const SizedBox(width: 12),
@@ -115,9 +145,9 @@ class _FutbolScreenState extends State<FutbolScreen>
                   ),
                 ),
                 Text(
-                  'Partidos de hoy',
+                  'FIFA World Cup 26™ & más',
                   style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: theme.hintColor,
                   ),
@@ -128,6 +158,101 @@ class _FutbolScreenState extends State<FutbolScreen>
           // Live count badge
           if (liveCount > 0) _buildLiveCountBadge(theme, liveCount),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDateSelector(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    final now = DateTime.now();
+    final days = [
+      (DateTime(now.year, now.month, now.day - 1), 'Ayer'),
+      (DateTime(now.year, now.month, now.day), 'Hoy'),
+      (DateTime(now.year, now.month, now.day + 1), 'Mañana'),
+    ];
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.04)
+            : Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: List.generate(days.length, (i) {
+          final isSelected = _selectedDayOffset == i;
+          final accentColor = i == 0
+              ? _fwcPurple
+              : i == 1
+                  ? _fwcOrange
+                  : _fwcCyan;
+
+          return Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (_selectedDayOffset != i) {
+                  setState(() => _selectedDayOffset = i);
+                  _selectedLeagueId = 'all';
+                  _fadeController.reset();
+                  _fadeController.forward();
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? accentColor.withValues(alpha: isDark ? 0.2 : 0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isSelected
+                      ? Border.all(
+                          color: accentColor.withValues(alpha: 0.4),
+                          width: 1.5,
+                        )
+                      : null,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      days[i].$2,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13,
+                        fontWeight: isSelected
+                            ? FontWeight.w900
+                            : FontWeight.w600,
+                        color: isSelected
+                            ? accentColor
+                            : theme.hintColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${days[i].$1.day}/${days[i].$1.month}',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected
+                            ? accentColor.withValues(alpha: 0.7)
+                            : theme.hintColor.withValues(alpha: 0.35),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
       ),
     );
   }

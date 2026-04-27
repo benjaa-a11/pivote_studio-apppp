@@ -20,20 +20,22 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
   late AnimationController _pulseController;
   late AnimationController _shimmerController;
   late AnimationController _blinkController;
-  late AnimationController _glowController;
+  late AnimationController _floatController;
+  late AnimationController _entryController;
 
   late Animation<double> _pulseAnimation;
   late Animation<double> _shimmerAnimation;
   late Animation<double> _blinkAnimation;
-  late Animation<double> _glowAnimation;
+  late Animation<double> _floatAnimation;
+  late Animation<double> _entryAnimation;
 
   // Host cities rotation
   int _currentCityIndex = 0;
   late Timer _cityTimer;
 
   static const List<String> _hostCities = [
-    'New York/New Jersey',
-    'Los Angeles',
+    'New York / New Jersey',
+    'Los Ángeles',
     'Dallas',
     'Miami',
     'Atlanta',
@@ -50,12 +52,12 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     'Vancouver',
   ];
 
-  // FIFA 2026 Official Colors
-  static const Color _fifaDarkNavy = Color(0xFF0A1128);
-  static const Color _fifaRoyalBlue = Color(0xFF1B3A8C);
-  static const Color _fifaElectricBlue = Color(0xFF304FFE);
-  static const Color _fifaTeal = Color(0xFF00BCD4);
-  static const Color _fifaGold = Color(0xFFFFD700);
+  // FWC-26 Official Brand Colors (extracted from background image)
+  static const Color _fwcOrange = Color(0xFFE83600);
+  static const Color _fwcCyan = Color(0xFF3DFFC8);
+  static const Color _fwcPurple = Color(0xFF6B00CC);
+  static const Color _fwcLime = Color(0xFFC8FF00);
+  static const Color _fwcWhite = Color(0xFFFFFFFF);
 
   @override
   void initState() {
@@ -64,45 +66,54 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     _calculateTimeLeft();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() => _calculateTimeLeft());
-      }
+      if (mounted) setState(() => _calculateTimeLeft());
     });
+
+    // Entry animation
+    _entryController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _entryAnimation = CurvedAnimation(
+      parent: _entryController,
+      curve: Curves.easeOutCubic,
+    );
+    _entryController.forward();
 
     // Pulse animation for countdown numbers
     _pulseController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.04).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     // Shimmer animation
     _shimmerController = AnimationController(
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
       vsync: this,
     )..repeat();
-    _shimmerAnimation = Tween<double>(begin: -1.0, end: 2.0).animate(
+    _shimmerAnimation = Tween<double>(begin: -1.5, end: 2.5).animate(
       CurvedAnimation(parent: _shimmerController, curve: Curves.easeInOut),
     );
 
     // Blink animation for separators
     _blinkController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 900),
       vsync: this,
     )..repeat(reverse: true);
-    _blinkAnimation = Tween<double>(begin: 0.2, end: 1.0).animate(
+    _blinkAnimation = Tween<double>(begin: 0.15, end: 1.0).animate(
       CurvedAnimation(parent: _blinkController, curve: Curves.easeInOut),
     );
 
-    // Glow animation
-    _glowController = AnimationController(
+    // Float animation for logo
+    _floatController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
     )..repeat(reverse: true);
-    _glowAnimation = Tween<double>(begin: 0.15, end: 0.4).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    _floatAnimation = Tween<double>(begin: -3.0, end: 3.0).animate(
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
     );
 
     // City rotation timer
@@ -118,9 +129,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
   void _calculateTimeLeft() {
     final now = DateTime.now();
     _timeLeft = _targetDate.difference(now);
-    if (_timeLeft.isNegative) {
-      _timeLeft = Duration.zero;
-    }
+    if (_timeLeft.isNegative) _timeLeft = Duration.zero;
   }
 
   @override
@@ -130,7 +139,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     _pulseController.dispose();
     _shimmerController.dispose();
     _blinkController.dispose();
-    _glowController.dispose();
+    _floatController.dispose();
+    _entryController.dispose();
     super.dispose();
   }
 
@@ -142,267 +152,290 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     final seconds = _timeLeft.inSeconds % 60;
     final hasStarted = _timeLeft == Duration.zero;
 
-    return AnimatedBuilder(
-      animation: _glowAnimation,
-      builder: (context, child) {
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: _fifaTeal.withValues(alpha: _glowAnimation.value * 0.5),
-                blurRadius: 30,
-                spreadRadius: -5,
-              ),
-              BoxShadow(
-                color: _fifaElectricBlue.withValues(
-                    alpha: _glowAnimation.value * 0.3),
-                blurRadius: 40,
-                spreadRadius: -8,
-              ),
-            ],
+    return FadeTransition(
+      opacity: _entryAnimation,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.06),
+          end: Offset.zero,
+        ).animate(_entryAnimation),
+        child: _buildCard(days, hours, minutes, seconds, hasStarted),
+      ),
+    );
+  }
+
+  Widget _buildCard(
+      int days, int hours, int minutes, int seconds, bool hasStarted) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: Stack(
+        children: [
+          // === BACKGROUND IMAGE ===
+          Positioned.fill(
+            child: Image.asset(
+              'assets/FWC-26/fwc-26-background.png',
+              fit: BoxFit.cover,
+            ),
           ),
-          child: child,
-        );
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: AnimatedBuilder(
-          animation: _shimmerAnimation,
-          builder: (context, child) {
-            return CustomPaint(
-              foregroundPainter: _ShimmerPainter(
-                shimmerPosition: _shimmerAnimation.value,
-              ),
-              child: child,
-            );
-          },
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _fifaDarkNavy,
-                  Color(0xFF0F1E4A),
-                  _fifaRoyalBlue,
-                ],
-                stops: [0.0, 0.5, 1.0],
-              ),
-              border: Border.all(
-                color: _fifaTeal.withValues(alpha: 0.2),
-                width: 1,
+
+          // === DARK OVERLAY for readability ===
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xCC000000), // 80% black top-left
+                    Color(0xBB000000), // 73% mid
+                    Color(0x99000000), // 60% bottom-right
+                  ],
+                ),
               ),
             ),
-            child: Stack(
-              children: [
-                // Background decorative elements
-                _buildBackgroundDecorations(),
+          ),
 
-                // Main content
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Top: Host country flags + Logo + Title
-                      _buildHeader(hasStarted),
-                      const SizedBox(height: 6),
+          // === SHIMMER OVERLAY ===
+          Positioned.fill(
+            child: AnimatedBuilder(
+              animation: _shimmerAnimation,
+              builder: (context, _) {
+                return CustomPaint(
+                  painter: _ShimmerPainter(
+                    shimmerPosition: _shimmerAnimation.value,
+                    color: _fwcCyan,
+                  ),
+                );
+              },
+            ),
+          ),
 
-                      // Slogan
-                      _buildSlogan(),
-                      const SizedBox(height: 20),
-
-                      // Countdown or started state
-                      if (hasStarted)
-                        _buildTournamentStarted()
-                      else
-                        _buildCountdownSection(days, hours, minutes, seconds),
-
-                      const SizedBox(height: 16),
-
-                      // Host cities rotation
-                      _buildHostCityTicker(),
-                    ],
+          // === ACCENT BORDER ===
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(26),
+                  border: Border.all(
+                    color: _fwcCyan.withValues(alpha: 0.25),
+                    width: 1.5,
                   ),
                 ),
+              ),
+            ),
+          ),
+
+          // === MAIN CONTENT ===
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildHeader(hasStarted),
+                const SizedBox(height: 10),
+                _buildTagline(),
+                const SizedBox(height: 20),
+                if (hasStarted)
+                  _buildTournamentStarted()
+                else
+                  _buildCountdownSection(days, hours, minutes, seconds),
+                const SizedBox(height: 16),
+                _buildHostCityTicker(),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBackgroundDecorations() {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: Stack(
-          children: [
-            // Top right circular glow
-            Positioned(
-              top: -30,
-              right: -30,
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _fifaTeal.withValues(alpha: 0.08),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Bottom left glow
-            Positioned(
-              bottom: -20,
-              left: -20,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      _fifaElectricBlue.withValues(alpha: 0.06),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Subtle grid pattern
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _GridPatternPainter(),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(bool hasStarted) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Host country indicators
-        _buildFlagDot(const Color(0xFFFF0000)), // Canada
-        const SizedBox(width: 6),
-        _buildFlagDot(const Color(0xFF006847)), // Mexico
-        const SizedBox(width: 6),
-        _buildFlagDot(const Color(0xFF002868)), // USA
-        const SizedBox(width: 14),
-
-        // FIFA Logo
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.08),
-            border: Border.all(
-              color: _fifaGold.withValues(alpha: 0.3),
-              width: 1.5,
-            ),
-          ),
-          child: Image.asset(
-            'assets/FWC-26/2026-FIFA-World-Cup256x-white.png',
-            height: 36,
-            fit: BoxFit.contain,
-          ),
-        ),
-        const SizedBox(width: 14),
-
-        // Title
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                hasStarted ? '¡EN CURSO!' : 'CUENTA REGRESIVA',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 2.0,
-                  color: _fifaTeal.withValues(alpha: 0.9),
-                ),
-              ),
-              const SizedBox(height: 2),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  'FIFA WORLD CUP 26™',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFlagDot(Color color) {
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.5),
-            blurRadius: 4,
-            spreadRadius: 0,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSlogan() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: _fifaGold.withValues(alpha: 0.2),
-          width: 1,
+  Widget _buildHeader(bool hasStarted) {
+    return Row(
+      children: [
+        // FIFA Logo with float animation
+        AnimatedBuilder(
+          animation: _floatAnimation,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(0, _floatAnimation.value),
+              child: child,
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.black.withValues(alpha: 0.4),
+              border: Border.all(
+                color: _fwcCyan.withValues(alpha: 0.4),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _fwcCyan.withValues(alpha: 0.25),
+                  blurRadius: 16,
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: Image.asset(
+              'assets/FWC-26/2026-FIFA-World-Cup256x-white.png',
+              height: 38,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
-        color: _fifaGold.withValues(alpha: 0.06),
+        const SizedBox(width: 14),
+
+        // Title block
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Label chip
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _fwcCyan.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: _fwcCyan.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  hasStarted ? '🏆 EN CURSO' : '⏱ CUENTA REGRESIVA',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.8,
+                    color: _fwcCyan,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 5),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'FIFA WORLD CUP 26™',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    color: _fwcWhite,
+                    letterSpacing: 0.2,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Host flags column
+        Column(
+          children: [
+            _buildFlagPill('🇺🇸', 'USA'),
+            const SizedBox(height: 4),
+            _buildFlagPill('🇲🇽', 'MEX'),
+            const SizedBox(height: 4),
+            _buildFlagPill('🇨🇦', 'CAN'),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFlagPill(String flag, String code) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _fwcWhite.withValues(alpha: 0.1),
+          width: 0.8,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.stars_rounded,
-              size: 12, color: _fifaGold.withValues(alpha: 0.8)),
-          const SizedBox(width: 6),
+          Text(flag, style: const TextStyle(fontSize: 10)),
+          const SizedBox(width: 3),
           Text(
-            'WE ARE 26',
+            code,
             style: GoogleFonts.spaceGrotesk(
-              fontSize: 10,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 2.5,
-              color: _fifaGold.withValues(alpha: 0.9),
+              fontSize: 8,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+              color: _fwcWhite.withValues(alpha: 0.7),
             ),
           ),
-          const SizedBox(width: 6),
-          Icon(Icons.stars_rounded,
-              size: 12, color: _fifaGold.withValues(alpha: 0.8)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTagline() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildColorDot(_fwcOrange),
+        const SizedBox(width: 8),
+        _buildColorDot(_fwcCyan),
+        const SizedBox(width: 8),
+        _buildColorDot(_fwcPurple),
+        const SizedBox(width: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.black.withValues(alpha: 0.35),
+            border: Border.all(
+              color: _fwcLime.withValues(alpha: 0.4),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            'WE ARE 26 • 48 SELECCIONES',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2.0,
+              color: _fwcLime,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        _buildColorDot(_fwcLime),
+        const SizedBox(width: 8),
+        _buildColorDot(_fwcOrange),
+        const SizedBox(width: 8),
+        _buildColorDot(_fwcCyan),
+      ],
+    );
+  }
+
+  Widget _buildColorDot(Color color) {
+    return Container(
+      width: 5,
+      height: 5,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.6),
+            blurRadius: 4,
+          ),
         ],
       ),
     );
@@ -410,23 +443,30 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
 
   Widget _buildTournamentStarted() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: Colors.black.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _fifaTeal.withValues(alpha: 0.3)),
+        border: Border.all(color: _fwcCyan.withValues(alpha: 0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: _fwcCyan.withValues(alpha: 0.15),
+            blurRadius: 20,
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _fifaTeal.withValues(alpha: 0.2),
+              color: _fwcOrange.withValues(alpha: 0.2),
+              border: Border.all(color: _fwcOrange.withValues(alpha: 0.4)),
             ),
             child: const Icon(Icons.sports_soccer_rounded,
-                color: _fifaTeal, size: 24),
+                color: _fwcOrange, size: 24),
           ),
           const SizedBox(width: 14),
           Column(
@@ -437,16 +477,16 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: _fwcWhite,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text(
                 'Canadá · México · Estados Unidos',
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: _fwcWhite.withValues(alpha: 0.55),
                 ),
               ),
             ],
@@ -456,28 +496,28 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     );
   }
 
-  Widget _buildCountdownSection(int days, int hours, int minutes, int seconds) {
+  Widget _buildCountdownSection(
+      int days, int hours, int minutes, int seconds) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Responsive sizing
-        double cardWidth = 64;
-        double cardHeight = 72;
-        double fontSize = 26;
+        double cardWidth = 68;
+        double cardHeight = 76;
+        double fontSize = 28;
         double labelSize = 8;
-        double separatorGap = 8;
+        double separatorGap = 6;
 
         if (constraints.maxWidth < 340) {
-          cardWidth = 52;
-          cardHeight = 60;
-          fontSize = 20;
+          cardWidth = 56;
+          cardHeight = 64;
+          fontSize = 22;
           labelSize = 7;
-          separatorGap = 5;
+          separatorGap = 4;
         } else if (constraints.maxWidth < 300) {
-          cardWidth = 44;
-          cardHeight = 52;
+          cardWidth = 48;
+          cardHeight = 56;
           fontSize = 18;
           labelSize = 6;
-          separatorGap = 4;
+          separatorGap = 3;
         }
 
         return FittedBox(
@@ -485,23 +525,27 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildTimeCard(days.toString(), 'DÍAS', cardWidth, cardHeight,
-                  fontSize, labelSize),
+              _buildTimeCard(
+                  days.toString(), 'DÍAS', cardWidth, cardHeight, fontSize,
+                  labelSize, _fwcCyan),
               SizedBox(width: separatorGap),
               _buildBlinkingSeparator(cardHeight),
               SizedBox(width: separatorGap),
-              _buildTimeCard(hours.toString().padLeft(2, '0'), 'HRS', cardWidth,
-                  cardHeight, fontSize, labelSize),
+              _buildTimeCard(
+                  hours.toString().padLeft(2, '0'), 'HRS', cardWidth,
+                  cardHeight, fontSize, labelSize, _fwcOrange),
               SizedBox(width: separatorGap),
               _buildBlinkingSeparator(cardHeight),
               SizedBox(width: separatorGap),
-              _buildTimeCard(minutes.toString().padLeft(2, '0'), 'MIN',
-                  cardWidth, cardHeight, fontSize, labelSize),
+              _buildTimeCard(
+                  minutes.toString().padLeft(2, '0'), 'MIN', cardWidth,
+                  cardHeight, fontSize, labelSize, _fwcLime),
               SizedBox(width: separatorGap),
               _buildBlinkingSeparator(cardHeight),
               SizedBox(width: separatorGap),
-              _buildTimeCard(seconds.toString().padLeft(2, '0'), 'SEG',
-                  cardWidth, cardHeight, fontSize, labelSize),
+              _buildTimeCard(
+                  seconds.toString().padLeft(2, '0'), 'SEG', cardWidth,
+                  cardHeight, fontSize, labelSize, _fwcPurple),
             ],
           ),
         );
@@ -510,46 +554,81 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
   }
 
   Widget _buildTimeCard(String value, String label, double width, double height,
-      double fontSize, double labelSize) {
+      double fontSize, double labelSize, Color accentColor) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
             child: Container(
               width: width,
               height: height,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.white.withValues(alpha: 0.14),
-                    Colors.white.withValues(alpha: 0.06),
+                    Colors.black.withValues(alpha: 0.55),
+                    Colors.black.withValues(alpha: 0.40),
                   ],
                 ),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  width: 1,
+                  color: accentColor.withValues(alpha: 0.35),
+                  width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _fifaElectricBlue.withValues(alpha: 0.15),
-                    blurRadius: 12,
+                    color: accentColor.withValues(alpha: 0.2),
+                    blurRadius: 16,
+                    spreadRadius: -2,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Stack(
                 children: [
-                  // Horizontal split line (flip card effect)
-                  Center(
+                  // Subtle top shine
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
                     child: Container(
-                      height: 1,
-                      color: Colors.white.withValues(alpha: 0.06),
+                      height: height * 0.4,
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16)),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.06),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Bottom accent line
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 2.5,
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(16)),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            accentColor.withValues(alpha: 0.6),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   // Number
@@ -561,9 +640,15 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: fontSize,
                           fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: -1,
+                          color: _fwcWhite,
+                          letterSpacing: -1.5,
                           height: 1.0,
+                          shadows: [
+                            Shadow(
+                              color: accentColor.withValues(alpha: 0.5),
+                              blurRadius: 12,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -573,14 +658,20 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 7),
         Text(
           label,
           style: GoogleFonts.spaceGrotesk(
             fontSize: labelSize,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1.5,
-            color: _fifaTeal.withValues(alpha: 0.8),
+            letterSpacing: 1.8,
+            color: accentColor.withValues(alpha: 0.9),
+            shadows: [
+              Shadow(
+                color: accentColor.withValues(alpha: 0.4),
+                blurRadius: 6,
+              ),
+            ],
           ),
         ),
       ],
@@ -595,84 +686,92 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 4,
-              height: 4,
-              decoration: BoxDecoration(
-                color: _fifaGold.withValues(alpha: 0.8),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: _fifaGold.withValues(alpha: 0.4),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: 4,
-              height: 4,
-              decoration: BoxDecoration(
-                color: _fifaGold.withValues(alpha: 0.8),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: _fifaGold.withValues(alpha: 0.4),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-            ),
+            _buildSepDot(),
+            const SizedBox(height: 7),
+            _buildSepDot(),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildSepDot() {
+    return Container(
+      width: 4,
+      height: 4,
+      decoration: BoxDecoration(
+        color: _fwcWhite.withValues(alpha: 0.7),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: _fwcWhite.withValues(alpha: 0.3),
+            blurRadius: 5,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHostCityTicker() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.location_on_outlined,
-            size: 11, color: Colors.white.withValues(alpha: 0.35)),
-        const SizedBox(width: 6),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 600),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.3),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _fwcWhite.withValues(alpha: 0.08),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.location_on_rounded,
+              size: 11, color: _fwcOrange.withValues(alpha: 0.8)),
+          const SizedBox(width: 6),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.5),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: Text(
+              _hostCities[_currentCityIndex],
+              key: ValueKey<int>(_currentCityIndex),
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: _fwcWhite.withValues(alpha: 0.8),
               ),
-            );
-          },
-          child: Text(
-            _hostCities[_currentCityIndex],
-            key: ValueKey<int>(_currentCityIndex),
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.0,
-              color: Colors.white.withValues(alpha: 0.4),
             ),
           ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          '• 16 SEDES',
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.5,
-            color: Colors.white.withValues(alpha: 0.25),
+          const SizedBox(width: 8),
+          Container(
+            width: 1,
+            height: 10,
+            color: _fwcWhite.withValues(alpha: 0.15),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Text(
+            '16 SEDES',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.0,
+              color: _fwcCyan.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -680,8 +779,9 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
 /// Shimmer overlay painter
 class _ShimmerPainter extends CustomPainter {
   final double shimmerPosition;
+  final Color color;
 
-  _ShimmerPainter({required this.shimmerPosition});
+  _ShimmerPainter({required this.shimmerPosition, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -691,13 +791,13 @@ class _ShimmerPainter extends CustomPainter {
         end: Alignment.bottomRight,
         colors: [
           Colors.transparent,
-          Colors.white.withValues(alpha: 0.04),
+          color.withValues(alpha: 0.05),
           Colors.transparent,
         ],
         stops: [
-          (shimmerPosition - 0.3).clamp(0.0, 1.0),
+          (shimmerPosition - 0.4).clamp(0.0, 1.0),
           shimmerPosition.clamp(0.0, 1.0),
-          (shimmerPosition + 0.3).clamp(0.0, 1.0),
+          (shimmerPosition + 0.4).clamp(0.0, 1.0),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
@@ -708,26 +808,4 @@ class _ShimmerPainter extends CustomPainter {
   bool shouldRepaint(covariant _ShimmerPainter oldDelegate) {
     return oldDelegate.shimmerPosition != shimmerPosition;
   }
-}
-
-/// Subtle grid pattern painter
-class _GridPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.015)
-      ..strokeWidth = 0.5
-      ..style = PaintingStyle.stroke;
-
-    const spacing = 30.0;
-    for (double x = 0; x < size.width; x += spacing) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += spacing) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
