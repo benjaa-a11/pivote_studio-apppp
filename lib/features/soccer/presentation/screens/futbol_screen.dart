@@ -19,8 +19,6 @@ class FutbolScreen extends StatefulWidget {
 class _FutbolScreenState extends State<FutbolScreen>
     with SingleTickerProviderStateMixin {
   String _selectedLeagueId = 'all';
-  // 0 = yesterday, 1 = today, 2 = tomorrow
-  int _selectedDayOffset = 1;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -71,10 +69,6 @@ class _FutbolScreenState extends State<FutbolScreen>
                   child: WorldCupCountdown(),
                 ),
               ),
-              // Date selector
-              SliverToBoxAdapter(
-                child: _buildDateSelector(theme),
-              ),
             ];
           },
           body: _buildContent(soccerProvider, theme),
@@ -124,7 +118,7 @@ class _FutbolScreenState extends State<FutbolScreen>
               ),
             ),
             child: const Icon(
-              Icons.sports_soccer_rounded,
+              Icons.sports_soccer,
               size: 20,
               color: _fwcOrange,
             ),
@@ -162,100 +156,6 @@ class _FutbolScreenState extends State<FutbolScreen>
     );
   }
 
-  Widget _buildDateSelector(ThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
-    final now = DateTime.now();
-    final days = [
-      (DateTime(now.year, now.month, now.day - 1), 'Ayer'),
-      (DateTime(now.year, now.month, now.day), 'Hoy'),
-      (DateTime(now.year, now.month, now.day + 1), 'Mañana'),
-    ];
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.04)
-            : Colors.black.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.06),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: List.generate(days.length, (i) {
-          final isSelected = _selectedDayOffset == i;
-          final accentColor = i == 0
-              ? _fwcPurple
-              : i == 1
-                  ? _fwcOrange
-                  : _fwcCyan;
-
-          return Expanded(
-            child: GestureDetector(
-              onTap: () {
-                if (_selectedDayOffset != i) {
-                  setState(() => _selectedDayOffset = i);
-                  _selectedLeagueId = 'all';
-                  _fadeController.reset();
-                  _fadeController.forward();
-                }
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? accentColor.withValues(alpha: isDark ? 0.2 : 0.12)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  border: isSelected
-                      ? Border.all(
-                          color: accentColor.withValues(alpha: 0.4),
-                          width: 1.5,
-                        )
-                      : null,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      days[i].$2,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13,
-                        fontWeight: isSelected
-                            ? FontWeight.w900
-                            : FontWeight.w600,
-                        color: isSelected
-                            ? accentColor
-                            : theme.hintColor.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${days[i].$1.day}/${days[i].$1.month}',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected
-                            ? accentColor.withValues(alpha: 0.7)
-                            : theme.hintColor.withValues(alpha: 0.35),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
 
   Widget _buildLiveCountBadge(ThemeData theme, int count) {
     return Container(
@@ -407,7 +307,7 @@ class _FutbolScreenState extends State<FutbolScreen>
             child: Center(
               child: isAll
                   ? Icon(
-                      Icons.grid_view_rounded,
+                      Icons.apps_rounded,
                       size: 22,
                       color: isSelected
                           ? theme.colorScheme.primary

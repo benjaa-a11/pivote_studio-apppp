@@ -93,7 +93,7 @@ class MatchCard extends StatelessWidget {
                   colors: [
                     Colors.transparent,
                     isDark
-                        ? AppTheme.darkBorder.withValues(alpha: 0.85)
+                        ? AppTheme.darkBorder.withValues(alpha: 0.95)
                         : AppTheme.lightBorder.withValues(alpha: 0.5),
                     Colors.transparent,
                   ],
@@ -114,7 +114,7 @@ class MatchCard extends StatelessWidget {
                   colors: [
                     Colors.transparent,
                     isDark
-                        ? AppTheme.darkBorder.withValues(alpha: 0.85)
+                        ? AppTheme.darkBorder.withValues(alpha: 0.95)
                         : AppTheme.lightBorder.withValues(alpha: 0.5),
                     Colors.transparent,
                   ],

@@ -62,6 +62,16 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   void _onNavItemTapped(int index) {
     if (_selectedIndex == index) return;
+    
+    if (index == 1) {
+      try {
+        final soccerProvider = context.read<SoccerProvider>();
+        soccerProvider.refreshIfStale();
+      } catch (e) {
+        debugPrint('⚠️ Error al refrescar datos de fútbol: $e');
+      }
+    }
+
     setState(() {
       _selectedIndex = index;
     });

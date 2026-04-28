@@ -227,20 +227,20 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
 
           // === MAIN CONTENT ===
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 18),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
                 _buildHeader(hasStarted),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 _buildTagline(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 if (hasStarted)
                   _buildTournamentStarted()
                 else
                   _buildCountdownSection(days, hours, minutes, seconds),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildHostCityTicker(),
               ],
             ),
@@ -281,7 +281,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             ),
             child: Image.asset(
               'assets/FWC-26/2026-FIFA-World-Cup256x-white.png',
-              height: 38,
+              height: 30,
               fit: BoxFit.contain,
             ),
           ),
@@ -388,14 +388,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildColorDot(_fwcOrange),
-        const SizedBox(width: 8),
-        _buildColorDot(_fwcCyan),
-        const SizedBox(width: 8),
-        _buildColorDot(_fwcPurple),
-        const SizedBox(width: 12),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             color: Colors.black.withValues(alpha: 0.35),
@@ -414,12 +408,6 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             ),
           ),
         ),
-        const SizedBox(width: 12),
-        _buildColorDot(_fwcLime),
-        const SizedBox(width: 8),
-        _buildColorDot(_fwcOrange),
-        const SizedBox(width: 8),
-        _buildColorDot(_fwcCyan),
       ],
     );
   }
@@ -500,22 +488,22 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
       int days, int hours, int minutes, int seconds) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        double cardWidth = 68;
-        double cardHeight = 76;
-        double fontSize = 28;
+        double cardWidth = 56;
+        double cardHeight = 60;
+        double fontSize = 22;
         double labelSize = 8;
         double separatorGap = 6;
 
         if (constraints.maxWidth < 340) {
-          cardWidth = 56;
-          cardHeight = 64;
-          fontSize = 22;
+          cardWidth = 50;
+          cardHeight = 56;
+          fontSize = 18;
           labelSize = 7;
           separatorGap = 4;
         } else if (constraints.maxWidth < 300) {
-          cardWidth = 48;
-          cardHeight = 56;
-          fontSize = 18;
+          cardWidth = 42;
+          cardHeight = 48;
+          fontSize = 16;
           labelSize = 6;
           separatorGap = 3;
         }
@@ -714,7 +702,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
 
   Widget _buildHostCityTicker() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(12),

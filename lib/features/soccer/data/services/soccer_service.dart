@@ -61,7 +61,14 @@ class SoccerService {
   Future<SoccerData> _executeFetch() async {
     try {
       final apiUrl = await _getApiUrl();
-      final response = await http.get(Uri.parse(apiUrl));
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);

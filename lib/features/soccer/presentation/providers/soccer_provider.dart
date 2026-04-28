@@ -10,6 +10,7 @@ class SoccerProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   Timer? _updateTimer;
+  DateTime? _lastFetchedAt;
 
   SoccerData? get soccerData => _soccerData;
   bool get isLoading => _isLoading;
@@ -32,6 +33,7 @@ class SoccerProvider extends ChangeNotifier {
       _soccerData = newData;
       _isLoading = false;
       _error = null;
+      _lastFetchedAt = DateTime.now();
     } catch (e) {
       _error = e.toString();
       _isLoading = false;
@@ -50,6 +52,19 @@ class SoccerProvider extends ChangeNotifier {
   void retry() {
     fetchData();
     _startAutoUpdate();
+  }
+
+  void refreshIfStale() {
+    if (_lastFetchedAt == null) {
+      fetchData(silent: true);
+      return;
+    }
+    
+    final difference = DateTime.now().difference(_lastFetchedAt!);
+    if (difference.inSeconds > 60) {
+      debugPrint('🔄 SoccerProvider: Datos desactualizados (${difference.inSeconds}s), refrescando...');
+      fetchData(silent: true);
+    }
   }
 
   @override
