@@ -1,9 +1,19 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
-/// A highly advanced, professional loading indicator.
-/// Designed with a sleek, multi-layered aesthetic combining orbits,
-/// segmented rings, and glowing elements for a premium user experience.
+/// The official global loader for the Pivote app.
+/// Based on the user-provided CSS design:
+/// .loader {
+///   width: 50px;
+///   padding: 8px;
+///   aspect-ratio: 1;
+///   border-radius: 50%;
+///   background: #25b09b;
+///   --_m: 
+///     conic-gradient(#0000 10%,#000),
+///     linear-gradient(#000 0 0) content-box;
+///   ...
+/// }
 class PivoteLoader extends StatefulWidget {
   final double size;
   final double strokeWidth;
@@ -12,7 +22,7 @@ class PivoteLoader extends StatefulWidget {
   const PivoteLoader({
     super.key,
     this.size = 50.0,
-    this.strokeWidth = 3.0,
+    this.strokeWidth = 6.0, // Matches the 8px padding/50px ratio approximately
     this.color,
   });
 
@@ -21,50 +31,42 @@ class PivoteLoader extends StatefulWidget {
 }
 
 class _PivoteLoaderState extends State<PivoteLoader>
-    with TickerProviderStateMixin {
-  late AnimationController _mainRotationController;
-  late AnimationController _pulseController;
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-
-    // Main rotation, smooth and continuous, energetic pace
-    _mainRotationController = AnimationController(
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1000),
     )..repeat();
-
-    // Breathing pulse for the core and glow (heartbeat-like)
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
-    _mainRotationController.dispose();
-    _pulseController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Premium primary color fallback
-    final activeColor = widget.color ?? Theme.of(context).colorScheme.primary;
+    // Primary color from CSS or theme
+    final baseColor = widget.color ?? const Color(0xFF25B09B);
 
     return Center(
       child: AnimatedBuilder(
-        animation: Listenable.merge([_mainRotationController, _pulseController]),
+        animation: _controller,
         builder: (context, child) {
-          return CustomPaint(
-            size: Size(widget.size, widget.size),
-            painter: _AdvancedPivoteLoaderPainter(
-              color: activeColor,
-              strokeWidth: widget.strokeWidth,
-              rotationProgress: _mainRotationController.value,
-              pulseProgress: Curves.easeInOutSine.transform(_pulseController.value),
+          return SizedBox(
+            width: widget.size,
+            height: widget.size,
+            child: CustomPaint(
+              painter: _PivoteCSSLoaderPainter(
+                color: baseColor,
+                strokeWidth: widget.strokeWidth,
+                progress: _controller.value,
+              ),
             ),
           );
         },
@@ -73,161 +75,72 @@ class _PivoteLoaderState extends State<PivoteLoader>
   }
 }
 
-class _AdvancedPivoteLoaderPainter extends CustomPainter {
+class _PivoteCSSLoaderPainter extends CustomPainter {
   final Color color;
   final double strokeWidth;
-  final double rotationProgress;
-  final double pulseProgress;
+  final double progress;
 
-  _AdvancedPivoteLoaderPainter({
+  _PivoteCSSLoaderPainter({
     required this.color,
     required this.strokeWidth,
-    required this.rotationProgress,
-    required this.pulseProgress,
+    required this.progress,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
+    final radius = (size.width - strokeWidth) / 2;
     
-    // Scale the whole loader slightly with the pulse for a "breathing" effect
-    final scale = 0.95 + (pulseProgress * 0.05);
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.scale(scale);
-    canvas.translate(-center.dx, -center.dy);
-
-    // --- 0. Ambient Glow ---
-    final glowRadius = radius * 0.7 + (pulseProgress * radius * 0.15);
+    // 1. Subtle Glow Effect (Premium enhancement)
     final glowPaint = Paint()
-      ..color = color.withValues(alpha: 0.15 + (pulseProgress * 0.1))
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
-    canvas.drawCircle(center, glowRadius, glowPaint);
-
-    // --- 1. Outer Track (Thin, Static-ish background) ---
-    final outerRadius = radius - strokeWidth;
-    final outerTrackPaint = Paint()
-      ..color = color.withValues(alpha: 0.05)
+      ..color = color.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth * 0.5;
-    canvas.drawCircle(center, outerRadius, outerTrackPaint);
-
-    // --- 2. Outer Orbit (Two Comets, Clockwise) ---
-    final outerRect = Rect.fromCircle(center: center, radius: outerRadius);
-    final outerRotation = rotationProgress * 2 * math.pi;
+      ..strokeWidth = strokeWidth * 1.5
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
     
-    // We draw two arcs opposite to each other
-    _drawComet(
-      canvas: canvas,
-      rect: outerRect,
-      startAngle: outerRotation,
-      sweepAngle: math.pi * 0.7,
-      color: color,
-      strokeWidth: strokeWidth,
-    );
-    _drawComet(
-      canvas: canvas,
-      rect: outerRect,
-      startAngle: outerRotation + math.pi, // Opposite side
-      sweepAngle: math.pi * 0.7,
-      color: color,
-      strokeWidth: strokeWidth,
-    );
+    _drawArc(canvas, center, radius, glowPaint);
 
-    // --- 3. Middle Segmented Ring (Counter-Rotating) ---
-    final middleRadius = outerRadius - strokeWidth * 2.5;
-    if (middleRadius > 0) {
-      final middlePaint = Paint()
-        ..color = color.withValues(alpha: 0.5 + (pulseProgress * 0.3))
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth * 0.7
-        ..strokeCap = StrokeCap.round;
-
-      // 4 segments
-      const segmentCount = 4;
-      final segmentSweep = (math.pi * 2) / segmentCount * 0.5; // Half segment, half gap
-      final middleRotation = -(rotationProgress * 2 * math.pi) * 1.2; // 1.2x speed, counter-clockwise
-
-      for (int i = 0; i < segmentCount; i++) {
-        final startAngle = middleRotation + (i * (math.pi * 2 / segmentCount));
-        canvas.drawArc(
-          Rect.fromCircle(center: center, radius: middleRadius),
-          startAngle,
-          segmentSweep,
-          false,
-          middlePaint,
-        );
-      }
-    }
-
-    // --- 4. Inner Orbit (Fast Clockwise) ---
-    final innerRadius = middleRadius - strokeWidth * 2.0;
-    if (innerRadius > 0) {
-      final innerRect = Rect.fromCircle(center: center, radius: innerRadius);
-      final innerRotation = rotationProgress * 2 * math.pi * 2.0; // 2.0x speed
-      
-      _drawComet(
-        canvas: canvas,
-        rect: innerRect,
-        startAngle: innerRotation,
-        sweepAngle: math.pi * 0.9,
-        color: color.withValues(alpha: 0.8),
-        strokeWidth: strokeWidth * 0.8,
-      );
-    }
-
-    // --- 5. Pulsing Core ---
-    final coreRadius = strokeWidth * (0.8 + pulseProgress * 0.5);
-    final corePaint = Paint()
-      ..color = color.withValues(alpha: 0.9)
-      ..style = PaintingStyle.fill;
-    
-    // Core intense glow
-    final coreGlowPaint = Paint()
-      ..color = color.withValues(alpha: 0.6 * pulseProgress)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
-    
-    canvas.drawCircle(center, coreRadius * 2.5, coreGlowPaint);
-    canvas.drawCircle(center, coreRadius, corePaint);
-
-    canvas.restore();
-  }
-
-  void _drawComet({
-    required Canvas canvas,
-    required Rect rect,
-    required double startAngle,
-    required double sweepAngle,
-    required Color color,
-    required double strokeWidth,
-  }) {
-    final sweepRatio = sweepAngle / (math.pi * 2);
-    
-    final gradient = SweepGradient(
-      colors: [
-        color.withValues(alpha: 0.0),
-        color.withValues(alpha: 0.3),
-        color,
-        color, // ensure the rest of the gradient is covered
-      ],
-      stops: [
-        0.0,
-        sweepRatio * 0.5,
-        sweepRatio,
-        1.0,
-      ],
-      transform: GradientRotation(startAngle),
-    );
-
-    final paint = Paint()
-      ..shader = gradient.createShader(rect)
+    // 2. Main Loader Ring (Matches CSS)
+    final mainPaint = Paint()
+      ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
+      ..strokeCap = StrokeCap.round; // Using round for a more premium feel, but sharp is possible too
 
+    _drawArc(canvas, center, radius, mainPaint);
+    
+    // 3. Highlight/Shine (Premium enhancement)
+    final shinePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth * 0.4
+      ..strokeCap = StrokeCap.round;
+    
+    // Draw a shorter, thinner arc for the shine at the leading edge
+    final rotation = progress * 2 * math.pi;
+    final shineStart = rotation + (0.1 * 2 * math.pi) + (0.7 * 2 * math.pi); // Near the end of the arc
+    
     canvas.drawArc(
-      rect,
+      Rect.fromCircle(center: center, radius: radius),
+      shineStart - (math.pi / 2),
+      0.15 * 2 * math.pi,
+      false,
+      shinePaint,
+    );
+  }
+
+  void _drawArc(Canvas canvas, Offset center, double radius, Paint paint) {
+    final rotation = progress * 2 * math.pi;
+    
+    // The CSS conic-gradient(#0000 10%,#000) means:
+    // 0-10% is transparent (the gap)
+    // 10-100% is solid (the ring)
+    
+    final startAngle = (0.1 * 2 * math.pi) - (math.pi / 2) + rotation;
+    const sweepAngle = 0.9 * 2 * math.pi;
+    
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
       startAngle,
       sweepAngle,
       false,
@@ -236,10 +149,10 @@ class _AdvancedPivoteLoaderPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _AdvancedPivoteLoaderPainter oldDelegate) {
-    return oldDelegate.rotationProgress != rotationProgress ||
-        oldDelegate.pulseProgress != pulseProgress ||
-        oldDelegate.color != color ||
-        oldDelegate.strokeWidth != strokeWidth;
+  bool shouldRepaint(covariant _PivoteCSSLoaderPainter oldDelegate) {
+    return oldDelegate.progress != progress || 
+           oldDelegate.color != color || 
+           oldDelegate.strokeWidth != strokeWidth;
   }
 }
+

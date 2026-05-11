@@ -102,6 +102,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 24),
                 _buildLogoutButton(context),
+                const SizedBox(height: 32),
+                _buildArgentinaBadge(context),
                 const SizedBox(height: 48),
               ],
             ),
@@ -672,7 +674,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF74ACDF).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF74ACDF).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🇦🇷', style: TextStyle(fontSize: 14)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Por un argentino para los argentinos',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF74ACDF),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
 
             _buildModernActionTile(
               context,
@@ -737,6 +763,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildArgentinaBadge(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('🇦🇷', style: TextStyle(fontSize: 18)),
+            const SizedBox(width: 10),
+            Text(
+              'Desarrollada por un argentino para los argentinos',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Theme.of(context).hintColor.withValues(alpha: 0.6),
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: 40,
+          height: 3,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF74ACDF), Colors.white, Color(0xFF74ACDF)],
+            ),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
     );
   }
 
