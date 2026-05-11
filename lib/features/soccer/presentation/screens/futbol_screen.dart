@@ -24,7 +24,6 @@ class _FutbolScreenState extends State<FutbolScreen>
 
   // FWC-26 accent colors
   static const Color _fwcOrange = Color(0xFFE83600);
-  static const Color _fwcCyan = Color(0xFF3DFFC8);
   static const Color _fwcPurple = Color(0xFF6B00CC);
 
   @override

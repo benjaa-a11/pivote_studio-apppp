@@ -412,22 +412,6 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     );
   }
 
-  Widget _buildColorDot(Color color) {
-    return Container(
-      width: 5,
-      height: 5,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.6),
-            blurRadius: 4,
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildTournamentStarted() {
     return Container(
