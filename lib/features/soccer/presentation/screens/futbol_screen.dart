@@ -39,7 +39,7 @@ class _FutbolScreenState extends State<FutbolScreen>
     );
     _fadeController.forward();
   }
-
+ 
   @override
   void dispose() {
     _fadeController.dispose();
