@@ -194,6 +194,15 @@ class FavoritesProvider extends ChangeNotifier {
     await _syncToFirestore();
   }
 
+  /// Clear favorites locally (e.g. on logout) WITHOUT wiping remote Firestore data
+  void clearLocalFavorites() {
+    debugPrint('🔵 FavoritesProvider: Clearing local favorites cache...');
+    _favoriteIds.clear();
+    _favoriteAddedDates.clear();
+    notifyListeners();
+    _saveFavorites();
+  }
+
   /// Force refresh from Firestore
   Future<void> refreshFromFirestore() async {
     await _syncFromFirestore();

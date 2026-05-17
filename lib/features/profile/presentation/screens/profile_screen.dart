@@ -445,20 +445,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             activeThumbColor: theme.colorScheme.primary,
           ),
         ),
-        _buildOptionTile(
-          context,
-          icon: Icons.star_rounded,
-          title: 'Estilo Albiceleste ⭐⭐⭐',
-          subtitle: 'Especial Mundial (Celeste y Oro)',
-          iconColor: const Color(0xFFFCBF49),
-          iconBgColor: const Color(0xFF75AADB).withValues(alpha: 0.25),
-          trailing: Switch(
-            value: themeProvider.isAlbiceleste,
-            onChanged: (v) => themeProvider.toggleAlbiceleste(v),
-            activeThumbColor: const Color(0xFFFCBF49),
-            activeTrackColor: const Color(0xFF75AADB),
-          ),
-        ),
       ],
     );
   }

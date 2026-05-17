@@ -1,15 +1,18 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pivote/features/auth/data/models/user_model.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
+import 'package:pivote/core/services/notification_service.dart';
 
 class UserProvider with ChangeNotifier {
   UserModel? _user;
   String? _profileImagePath;
   bool _isLoading = false;
+  Timer? _syncTimer;
 
   UserModel? get user => _user;
   String? get profileImagePath => _profileImagePath;
@@ -24,7 +27,34 @@ class UserProvider with ChangeNotifier {
     debugPrint('🔵 UserProvider: Initializing...');
     await _loadUserData();
     await _loadProfileImage();
+    if (_user != null) {
+      startSyncTimer();
+    }
     debugPrint('✅ UserProvider: Initialization complete');
+  }
+
+  /// Start the 30-second periodic background check
+  void startSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+      if (_user != null) {
+        debugPrint('🔄 UserProvider: Running periodic 30-second Firestore check...');
+        try {
+          await refreshUser();
+        } catch (e) {
+          debugPrint('❌ UserProvider: Error during periodic background check: $e');
+        }
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  /// Stop the periodic background check
+  void stopSyncTimer() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    debugPrint('🛑 UserProvider: Background check timer stopped');
   }
 
   /// Load user data from Firestore (via AuthService)
@@ -37,16 +67,12 @@ class UserProvider with ChangeNotifier {
       _user = await AuthService.getUser();
 
       if (_user != null) {
-        debugPrint('✅ UserProvider: User data loaded: ${_user!.email}');
+        debugPrint('✅ UserProvider: User data loaded: ${_user!.email} (Suspended: ${_user!.isSuspended})');
       } else {
         debugPrint('⚠️ UserProvider: No user data found');
       }
     } catch (e) {
       debugPrint('❌ UserProvider: Error loading user data: $e');
-      if (e.toString().contains('user-suspended')) {
-        _user = null;
-        await clearUser();
-      }
       rethrow;
     } finally {
       _isLoading = false;
@@ -150,6 +176,19 @@ class UserProvider with ChangeNotifier {
       debugPrint('🔵 UserProvider: Starting Pivote Login...');
       _user = await AuthService.signIn(email, password);
       await _loadProfileImage();
+
+      // Start background polling check
+      startSyncTimer();
+
+      // Async FCM Token sync
+      NotificationService.getToken().then((token) {
+        if (token != null) {
+          AuthService.updateFcmToken(token);
+        }
+      }).catchError((err) {
+        debugPrint('⚠️ UserProvider: Error fetching FCM token on login: $err');
+      });
+
       debugPrint('✅ UserProvider: Login complete');
     } catch (e) {
       debugPrint('❌ UserProvider: Login error: $e');
@@ -174,6 +213,19 @@ class UserProvider with ChangeNotifier {
         name: name,
         lastName: lastName,
       );
+
+      // Start background polling check
+      startSyncTimer();
+
+      // Async FCM Token sync
+      NotificationService.getToken().then((token) {
+        if (token != null) {
+          AuthService.updateFcmToken(token);
+        }
+      }).catchError((err) {
+        debugPrint('⚠️ UserProvider: Error fetching FCM token on registration: $err');
+      });
+
       debugPrint('✅ UserProvider: Registration complete');
     } catch (e) {
       debugPrint('❌ UserProvider: Registration error: $e');
@@ -233,6 +285,7 @@ class UserProvider with ChangeNotifier {
   /// Clear user data (on logout)
   Future<void> clearUser() async {
     debugPrint('🔵 UserProvider: Clearing user data...');
+    stopSyncTimer();
 
     // Clear in-memory state
     _user = null;

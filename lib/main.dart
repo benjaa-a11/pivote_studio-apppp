@@ -22,6 +22,7 @@ import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 import 'package:pivote/shared/screens/firebase_required_screen.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/features/auth/presentation/screens/suspended_screen.dart';
 
 import 'package:pivote/core/services/app_activity_service.dart';
 
@@ -92,12 +93,8 @@ class PivoteApp extends StatelessWidget {
             child: MaterialApp(
               title: 'Pivote',
               debugShowCheckedModeBanner: false,
-              theme: themeProvider.isAlbiceleste
-                  ? AppTheme.albicelesteLightTheme
-                  : AppTheme.lightTheme,
-              darkTheme: themeProvider.isAlbiceleste
-                  ? AppTheme.albicelesteDarkTheme
-                  : AppTheme.darkTheme,
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
               themeMode:
                   themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
               home: const _AuthenticationWrapper(),
@@ -153,9 +150,22 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
           // Sync local UserProvider state as well
           if (mounted) {
             final userProvider = Provider.of<UserProvider>(context, listen: false);
+            final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
+
             if (userProvider.user == null) {
               await userProvider.refreshUser();
             }
+
+            // Trigger favorites sync too!
+            favoritesProvider.refreshFromFirestore();
+
+            // Trigger FCM token sync too!
+            NotificationService.getToken().then((token) {
+              if (token != null) {
+                AuthService.updateFcmToken(token);
+              }
+            });
+
             setState(() {
               _isLoggedIn = true;
               _isCheckingAuth = false;
@@ -172,37 +182,13 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
       }
     } catch (e) {
       debugPrint('❌ _AuthenticationWrapper: Error checking auth: $e');
-      if (e.toString().contains('user-suspended')) {
-        await AuthService.logout();
-        if (mounted) {
-          final userProvider = Provider.of<UserProvider>(context, listen: false);
-          userProvider.clearUser();
-          setState(() {
-            _isLoggedIn = false;
-            _isCheckingAuth = false;
-          });
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Tu cuenta ha sido suspendida por violar los términos del servicio.',
-                  style: TextStyle(color: Colors.white),
-                ),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 5),
-              ),
-            );
-          });
-        }
-      } else {
-        // Fallback to local session check if there's no internet/transient error
-        final loggedIn = await AuthService.isLoggedIn();
-        if (mounted) {
-          setState(() {
-            _isLoggedIn = loggedIn;
-            _isCheckingAuth = false;
-          });
-        }
+      // Fallback to local session check if there's no internet/transient error
+      final loggedIn = await AuthService.isLoggedIn();
+      if (mounted) {
+        setState(() {
+          _isLoggedIn = loggedIn;
+          _isCheckingAuth = false;
+        });
       }
     }
   }
@@ -227,8 +213,16 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
       return const LoginScreen();
     }
 
-    return Consumer2<ChannelProvider, SoccerProvider>(
-      builder: (context, channelProvider, soccerProvider, child) {
+    return Consumer3<UserProvider, ChannelProvider, SoccerProvider>(
+      builder: (context, userProvider, channelProvider, soccerProvider, child) {
+        // If user is suspended, show the elegant suspended account screen immediately
+        if (userProvider.user?.isSuspended == true) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            FlutterNativeSplash.remove();
+          });
+          return const SuspendedScreen();
+        }
+
         final isDataReady = channelProvider.isInitialized;
         if (isDataReady) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
