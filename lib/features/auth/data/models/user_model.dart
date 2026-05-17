@@ -1,40 +1,68 @@
 import 'dart:convert';
 
-/// Model representing a user in the application
+/// Model representing a user in the Pivote application.
+/// Stored in the Firestore 'usuarios' collection.
 class UserModel {
+  final String uid;
   final String name;
   final String lastName;
   final String email;
   final String? photoUrl;
+  final bool isVip;
+  final String userType; // 'standard', 'vip', 'admin'
+  final String? fcmToken;
+  final List<String> favorites;
+  final String? createdAt;
 
   UserModel({
+    required this.uid,
     required this.name,
     required this.lastName,
     required this.email,
     this.photoUrl,
+    this.isVip = false,
+    this.userType = 'standard',
+    this.fcmToken,
+    this.favorites = const [],
+    this.createdAt,
   });
 
-  /// Create UserModel from JSON
+  /// Create UserModel from Firestore document JSON
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
+      uid: json['uid'] as String? ?? '',
       name: json['name'] as String? ?? '',
       lastName: json['lastName'] as String? ?? '',
       email: json['email'] as String? ?? '',
       photoUrl: json['photoUrl'] as String?,
+      isVip: json['isVip'] as bool? ?? false,
+      userType: json['userType'] as String? ?? 'standard',
+      fcmToken: json['fcmToken'] as String?,
+      favorites: (json['favorites'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      createdAt: json['createdAt'] as String?,
     );
   }
 
-  /// Convert UserModel to JSON
+  /// Convert UserModel to JSON for Firestore storage
   Map<String, dynamic> toJson() {
     return {
+      'uid': uid,
       'name': name,
       'lastName': lastName,
       'email': email,
       'photoUrl': photoUrl,
+      'isVip': isVip,
+      'userType': userType,
+      'fcmToken': fcmToken,
+      'favorites': favorites,
+      'createdAt': createdAt,
     };
   }
 
-  /// Convert UserModel to JSON string for storage
+  /// Convert UserModel to JSON string for local storage
   String toJsonString() {
     return jsonEncode(toJson());
   }
@@ -59,34 +87,46 @@ class UserModel {
 
   /// Create a copy with updated fields
   UserModel copyWith({
+    String? uid,
     String? name,
     String? lastName,
     String? email,
     String? photoUrl,
+    bool? isVip,
+    String? userType,
+    String? fcmToken,
+    List<String>? favorites,
+    String? createdAt,
   }) {
     return UserModel(
+      uid: uid ?? this.uid,
       name: name ?? this.name,
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
       photoUrl: photoUrl ?? this.photoUrl,
+      isVip: isVip ?? this.isVip,
+      userType: userType ?? this.userType,
+      fcmToken: fcmToken ?? this.fcmToken,
+      favorites: favorites ?? this.favorites,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 
   @override
   String toString() =>
-      'UserModel(name: $name, lastName: $lastName, email: $email, photoUrl: $photoUrl)';
+      'UserModel(uid: $uid, name: $name, lastName: $lastName, email: $email, isVip: $isVip, userType: $userType)';
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is UserModel &&
+        other.uid == uid &&
         other.name == name &&
         other.lastName == lastName &&
-        other.email == email &&
-        other.photoUrl == photoUrl;
+        other.email == email;
   }
 
   @override
   int get hashCode =>
-      name.hashCode ^ lastName.hashCode ^ email.hashCode ^ photoUrl.hashCode;
+      uid.hashCode ^ name.hashCode ^ lastName.hashCode ^ email.hashCode;
 }

@@ -18,6 +18,7 @@ import 'package:pivote/features/profile/presentation/screens/support_screen.dart
 import 'package:pivote/features/profile/presentation/screens/privacy_security_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/notifications_settings_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:pivote/core/services/greeting_service.dart';
@@ -629,6 +630,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (context.mounted) {
         Provider.of<UserProvider>(context, listen: false).clearUser();
         AppNotifications.showInfo(context, 'Has cerrado sesión correctamente');
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
       }
     }
   }

@@ -34,11 +34,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final userProvider = context.read<UserProvider>();
 
-    // UI Loading state handled by UserProvider notification or local if needed
-    // But since UserProvider notifies listeners, we might not need local setState if we listened to it.
-    // However, mixing local and provider state can be tricky.
-    // Let's keep local loading for the button animation, but call provider.
-
     setState(() => _isLoading = true);
     try {
       await userProvider.login(
@@ -60,35 +55,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         final errorMessage = AuthService.getErrorMessage(e);
         AppNotifications.showError(context, errorMessage);
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-    try {
-      final userProvider = context.read<UserProvider>();
-      await userProvider.signInWithGoogle();
-
-      if (mounted) {
-        // Show success message
-        AppNotifications.showSuccess(context, 'Sesión iniciada con Google');
-
-        // Navigate to MainScreen
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const MainScreen(),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        final errorMessage = AuthService.getErrorMessage(e);
-        // Only show error if it's not a cancellation
-        if (!errorMessage.toLowerCase().contains('cancelado')) {
-          AppNotifications.showError(context, errorMessage);
-        }
         setState(() => _isLoading = false);
       }
     }
@@ -199,56 +165,9 @@ class _LoginScreenState extends State<LoginScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // Google Login Button
-              AppAnimations.staggeredSlideIn(
-                index: 0,
-                child: OutlinedButton(
-                  onPressed: _isLoading ? null : _handleGoogleSignIn,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: theme.dividerColor),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.network(
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
-                        height: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Continuar con Google',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.onSurface,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                      child: Divider(
-                          color: theme.dividerColor.withValues(alpha: 0.1))),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('o', style: theme.textTheme.bodyMedium),
-                  ),
-                  Expanded(
-                      child: Divider(
-                          color: theme.dividerColor.withValues(alpha: 0.1))),
-                ],
-              ),
-              const SizedBox(height: 24),
               // Email
               AppAnimations.staggeredSlideIn(
-                index: 1,
+                index: 0,
                 child: TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -262,10 +181,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(100),
                       borderSide: BorderSide.none,
                     ),
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.only(left: 16, right: 8),
+                      child: Icon(
+                        Icons.email_outlined,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        size: 20,
+                      ),
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Ingresa tu correo';
+                      return 'Ingresá tu correo';
                     }
                     if (!value.contains('@')) return 'Correo inválido';
                     return null;
@@ -275,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               // Password
               AppAnimations.staggeredSlideIn(
-                index: 2,
+                index: 1,
                 child: TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
@@ -288,6 +215,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(100),
                       borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.only(left: 16, right: 8),
+                      child: Icon(
+                        Icons.lock_outline_rounded,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        size: 20,
+                      ),
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -303,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Ingresa tu contraseña';
+                      return 'Ingresá tu contraseña';
                     }
                     if (value.length < 6) return 'Mínimo 6 caracteres';
                     return null;
@@ -313,7 +248,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 32),
               // Login Button
               AppAnimations.staggeredSlideIn(
-                index: 3,
+                index: 2,
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -339,18 +274,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               // Links
               AppAnimations.staggeredSlideIn(
-                index: 4,
+                index: 3,
                 child: Column(
                   children: [
-                    TextButton(
-                      onPressed: () {},
-                      child: Text(
-                        'Olvidé mi contraseña',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,

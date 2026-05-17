@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:pivote/features/auth/data/models/user_model.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
@@ -28,7 +27,7 @@ class UserProvider with ChangeNotifier {
     debugPrint('✅ UserProvider: Initialization complete');
   }
 
-  /// Load user data from Firestore
+  /// Load user data from Firestore (via AuthService)
   Future<void> _loadUserData() async {
     _isLoading = true;
     notifyListeners();
@@ -39,12 +38,6 @@ class UserProvider with ChangeNotifier {
 
       if (_user != null) {
         debugPrint('✅ UserProvider: User data loaded: ${_user!.email}');
-
-        // Download and cache profile image if URL exists
-        if (_user!.photoUrl != null && _user!.photoUrl!.isNotEmpty) {
-          debugPrint('🔵 UserProvider: Profile URL found, caching image...');
-          await _downloadAndCacheProfileImage(_user!.photoUrl!);
-        }
       } else {
         debugPrint('⚠️ UserProvider: No user data found');
       }
@@ -53,70 +46,6 @@ class UserProvider with ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
-    }
-  }
-
-  /// Download and cache profile image from URL
-  Future<void> _downloadAndCacheProfileImage(String url) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final cachedUrl = prefs.getString('cached_photo_url');
-      final currentPath = prefs.getString('profile_image_path');
-
-      // If URL hasn't changed and file exists, skip download
-      if (cachedUrl == url && currentPath != null) {
-        final file = File(currentPath);
-        if (await file.exists()) {
-          debugPrint('✅ UserProvider: Using cached profile image');
-          _profileImagePath = currentPath;
-          notifyListeners();
-          return;
-        }
-      }
-
-      debugPrint('🔵 UserProvider: Downloading profile image from: $url');
-
-      // Download new image
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('Timeout downloading profile image');
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final appDir = await getApplicationDocumentsDirectory();
-        final fileName =
-            'profile_cache_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final file = File('${appDir.path}/$fileName');
-
-        await file.writeAsBytes(response.bodyBytes);
-        debugPrint('✅ UserProvider: Profile image cached at: ${file.path}');
-
-        // Delete old cache if exists and it's different
-        if (currentPath != null && currentPath != file.path) {
-          final oldFile = File(currentPath);
-          if (await oldFile.exists()) {
-            try {
-              await oldFile.delete();
-              debugPrint('🗑️ UserProvider: Old cache deleted');
-            } catch (e) {
-              debugPrint('⚠️ UserProvider: Could not delete old cache: $e');
-            }
-          }
-        }
-
-        // Update state
-        _profileImagePath = file.path;
-        await prefs.setString('profile_image_path', file.path);
-        await prefs.setString('cached_photo_url', url);
-        notifyListeners();
-      } else {
-        debugPrint(
-            '⚠️ UserProvider: Failed to download image. Status: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('❌ UserProvider: Error caching profile image: $e');
     }
   }
 
@@ -134,7 +63,6 @@ class UserProvider with ChangeNotifier {
         } else {
           // File no longer exists, clear cache
           await prefs.remove('profile_image_path');
-          await prefs.remove('cached_photo_url');
           _profileImagePath = null;
           debugPrint(
               '⚠️ UserProvider: Cached image file not found, cleared cache');
@@ -146,7 +74,7 @@ class UserProvider with ChangeNotifier {
     }
   }
 
-  /// Update profile image - pick from gallery and upload
+  /// Update profile image - pick from gallery and save locally
   Future<void> updateProfileImage() async {
     final picker = ImagePicker();
 
@@ -198,24 +126,9 @@ class UserProvider with ChangeNotifier {
       await prefs.setString('profile_image_path', savedImage.path);
       notifyListeners();
 
-      // 4. Upload to Firebase Storage
-      debugPrint('🔵 UserProvider: Uploading to Firebase Storage...');
-      final downloadUrl = await AuthService.uploadProfileImage(savedImage);
-      debugPrint('✅ UserProvider: Upload complete: $downloadUrl');
-
-      // 5. Update user model and Firestore
-      if (_user != null) {
-        final updatedUser = _user!.copyWith(photoUrl: downloadUrl);
-        await AuthService.updateUser(updatedUser);
-        _user = updatedUser;
-
-        // Update cached URL
-        await prefs.setString('cached_photo_url', downloadUrl);
-        debugPrint('✅ UserProvider: User profile updated in Firestore');
-      }
+      debugPrint('✅ UserProvider: Profile image updated locally');
     } catch (e) {
       debugPrint('❌ UserProvider: Error updating profile image: $e');
-      // Optionally show error to user via callback
       rethrow;
     } finally {
       _isLoading = false;
@@ -223,41 +136,14 @@ class UserProvider with ChangeNotifier {
     }
   }
 
-  /// Sign in with Google - Robust Method
-  Future<void> signInWithGoogle() async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      debugPrint('🔵 UserProvider: Starting Google Sign-In...');
-      final user = await AuthService.signInWithGoogle();
-
-      if (user != null) {
-        // Reload user data immediately to update UI
-        await _loadUserData();
-        await _loadProfileImage();
-        debugPrint('✅ UserProvider: Google Sign-In complete');
-      }
-    } catch (e) {
-      debugPrint('❌ UserProvider: Google Sign-In error: $e');
-      rethrow;
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Sign in with Email/Password
+  /// Sign in with Email/Password (Pivote custom auth)
   Future<void> login(String email, String password) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      debugPrint('🔵 UserProvider: Starting Email Login...');
-      await AuthService.signIn(email, password);
-
-      // Load user data immediately
-      await _loadUserData();
+      debugPrint('🔵 UserProvider: Starting Pivote Login...');
+      _user = await AuthService.signIn(email, password);
       await _loadProfileImage();
       debugPrint('✅ UserProvider: Login complete');
     } catch (e) {
@@ -269,20 +155,20 @@ class UserProvider with ChangeNotifier {
     }
   }
 
-  /// Sign up with Email/Password
+  /// Sign up with Email/Password (Pivote custom auth)
   Future<void> register(
       String email, String password, String name, String lastName) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      debugPrint('🔵 UserProvider: Starting Registration...');
-      await AuthService.signUp(
-          email: email, password: password, name: name, lastName: lastName);
-
-      // Load user data immediately
-      await _loadUserData();
-      // No profile image to load for new user
+      debugPrint('🔵 UserProvider: Starting Pivote Registration...');
+      _user = await AuthService.signUp(
+        email: email,
+        password: password,
+        name: name,
+        lastName: lastName,
+      );
       debugPrint('✅ UserProvider: Registration complete');
     } catch (e) {
       debugPrint('❌ UserProvider: Registration error: $e');
@@ -293,14 +179,15 @@ class UserProvider with ChangeNotifier {
     }
   }
 
-  /// Update user password
-  Future<void> updatePassword(String newPassword) async {
+  /// Update user password (requires current password verification)
+  Future<void> updatePassword(
+      String currentPassword, String newPassword) async {
     try {
       _isLoading = true;
       notifyListeners();
 
       debugPrint('🔵 UserProvider: Updating password...');
-      await AuthService.updatePassword(newPassword);
+      await AuthService.updatePassword(currentPassword, newPassword);
       debugPrint('✅ UserProvider: Password updated successfully');
     } catch (e) {
       debugPrint('❌ UserProvider: Error updating password: $e');
@@ -349,10 +236,6 @@ class UserProvider with ChangeNotifier {
     // Clear cached data
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('profile_image_path');
-      await prefs.remove('cached_photo_url');
-
-      // Optionally delete cached image file
       final cachedPath = prefs.getString('profile_image_path');
       if (cachedPath != null) {
         final file = File(cachedPath);
@@ -360,6 +243,7 @@ class UserProvider with ChangeNotifier {
           await file.delete();
         }
       }
+      await prefs.remove('profile_image_path');
 
       debugPrint('✅ UserProvider: User data cleared');
     } catch (e) {
@@ -377,7 +261,6 @@ class UserProvider with ChangeNotifier {
 
   /// Check if user has profile image
   bool get hasProfileImage {
-    return _profileImagePath != null ||
-        (_user?.photoUrl != null && _user!.photoUrl!.isNotEmpty);
+    return _profileImagePath != null;
   }
 }

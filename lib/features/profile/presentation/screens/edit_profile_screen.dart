@@ -8,6 +8,7 @@ import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -69,11 +70,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // 2. Update Password if requested
       if (_changePasswordExpanded && _newPasswordController.text.isNotEmpty) {
-        // Note: Updating password typically requires re-authentication (entering current password).
-        // For simplicity in this demo, we assume the session is fresh enough or we catch the error.
-        // In a production app, you'd ask for re-auth credentials here.
         try {
-          await userProvider.updatePassword(_newPasswordController.text);
+          await userProvider.updatePassword(
+            _currentPasswordController.text,
+            _newPasswordController.text,
+          );
           if (mounted) {
             AppNotifications.showSuccess(context, 'Contraseña actualizada');
             _newPasswordController.clear();
@@ -231,7 +232,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         if (mounted) {
           AppNotifications.showSuccess(
               context, 'Tu cuenta ha sido eliminada. Lamentamos verte partir.');
-          // El listener de Auth en main.dart se encargará de redirigir al login
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
         }
       } catch (e) {
         if (mounted) {
@@ -459,11 +463,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
         if (_changePasswordExpanded) ...[
-          // Note: In a real app we would ask for current password too
+          _buildTextField(
+            controller: _currentPasswordController,
+            label: 'Contraseña Actual',
+            icon: Icons.lock_outline,
+            theme: theme,
+            isPassword: true,
+          ),
+          const SizedBox(height: 12),
           _buildTextField(
             controller: _newPasswordController,
             label: 'Nueva Contraseña',
-            icon: Icons.lock_outline,
+            icon: Icons.lock_reset,
             theme: theme,
             isPassword: true,
           ),

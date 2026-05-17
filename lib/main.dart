@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:media_kit/media_kit.dart';
@@ -40,6 +39,9 @@ void main() async {
   await FirebaseService.initialize();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await NotificationService.initializeWithoutPermission();
+
+  // Initialize custom auth session
+  await AuthService.initSession();
 
   SoccerService.prefetchLiveSoccerData();
   final audioManager = AudioManager();
@@ -104,79 +106,108 @@ class PivoteApp extends StatelessWidget {
   }
 }
 
-class _AuthenticationWrapper extends StatelessWidget {
+class _AuthenticationWrapper extends StatefulWidget {
   const _AuthenticationWrapper();
 
   @override
+  State<_AuthenticationWrapper> createState() => _AuthenticationWrapperState();
+}
+
+class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
+  bool _isCheckingAuth = true;
+  bool _isLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    if (!FirebaseService.isInitialized) {
+      setState(() {
+        _isCheckingAuth = false;
+        _isLoggedIn = false;
+      });
+      return;
+    }
+
+    final loggedIn = await AuthService.isLoggedIn();
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = loggedIn;
+        _isCheckingAuth = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: AuthService.authStateChanges,
-      builder: (context, authSnapshot) {
-        if (!FirebaseService.isInitialized) {
+    if (!FirebaseService.isInitialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        FlutterNativeSplash.remove();
+      });
+      return const FirebaseRequiredScreen();
+    }
+
+    if (_isCheckingAuth) {
+      return const SizedBox.shrink();
+    }
+
+    if (!_isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        FlutterNativeSplash.remove();
+      });
+      return const LoginScreen();
+    }
+
+    return Consumer2<ChannelProvider, SoccerProvider>(
+      builder: (context, channelProvider, soccerProvider, child) {
+        final isDataReady = channelProvider.isInitialized;
+        if (isDataReady) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             FlutterNativeSplash.remove();
           });
-          return const FirebaseRequiredScreen();
+          return const MainScreen();
         }
-        if (authSnapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox.shrink();
-        }
-        final user = authSnapshot.data;
-        if (user == null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            FlutterNativeSplash.remove();
-          });
-          return const LoginScreen();
-        }
-        return Consumer2<ChannelProvider, SoccerProvider>(
-          builder: (context, channelProvider, soccerProvider, child) {
-            final isDataReady = channelProvider.isInitialized;
-            if (isDataReady) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                FlutterNativeSplash.remove();
-              });
-              return const MainScreen();
-            }
-            return Scaffold(
-              backgroundColor: AppTheme.darkBg,
-              body: Center(
-                child: AppAnimations.smoothFadeInScale(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        padding: const EdgeInsets.all(20),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.darkBg,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Image.asset(
-                          'assets/logo.png',
-                          errorBuilder: (context, _, __) => const Icon(
-                            Icons.play_circle_fill,
-                            size: 60,
-                            color: AppTheme.darkAccent,
-                          ),
-                        ),
+        return Scaffold(
+          backgroundColor: AppTheme.darkBg,
+          body: Center(
+            child: AppAnimations.smoothFadeInScale(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(
+                      color: AppTheme.darkBg,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Image.asset(
+                      'assets/logo.png',
+                      errorBuilder: (context, _, __) => const Icon(
+                        Icons.play_circle_fill,
+                        size: 60,
+                        color: AppTheme.darkAccent,
                       ),
-                      const SizedBox(height: 32),
-                      const SizedBox(
-                        width: 40,
-                        height: 40,
-                        child: PivoteLoader(
-                          color: AppTheme.darkAccent,
-                          strokeWidth: 3,
-                          size: 40,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 32),
+                  const SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: PivoteLoader(
+                      color: AppTheme.darkAccent,
+                      strokeWidth: 3,
+                      size: 40,
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );

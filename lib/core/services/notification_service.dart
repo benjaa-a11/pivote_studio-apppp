@@ -3,7 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pivote/features/auth/data/services/auth_service.dart';
 
 /// Service to handle Firebase Cloud Messaging and local notifications
 class NotificationService {
@@ -149,13 +149,13 @@ class NotificationService {
   /// Save FCM token to Firestore
   static Future<void> _saveTokenToFirestore(String token) async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
+      final uid = AuthService.currentUserId;
+      if (uid == null) {
         debugPrint('⚠️ No user logged in, skipping token save');
         return;
       }
 
-      await _firestore.collection('usuarios-pivote').doc(user.uid).update({
+      await _firestore.collection('usuarios').doc(uid).update({
         'fcmToken': token,
         'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
       });
@@ -256,10 +256,10 @@ class NotificationService {
   /// Disable notifications (remove token from Firestore)
   static Future<void> disableNotifications() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final uid = AuthService.currentUserId;
+      if (uid == null) return;
 
-      await _firestore.collection('usuarios-pivote').doc(user.uid).update({
+      await _firestore.collection('usuarios').doc(uid).update({
         'fcmToken': FieldValue.delete(),
         'notificationsDisabled': true,
       });

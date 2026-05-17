@@ -20,7 +20,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
 
   @override
@@ -29,6 +31,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -60,35 +63,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (mounted) {
         final errorMessage = AuthService.getErrorMessage(e);
         AppNotifications.showError(context, errorMessage);
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isLoading = true);
-    try {
-      final userProvider = context.read<UserProvider>();
-      await userProvider.signInWithGoogle();
-
-      if (mounted) {
-        // Show success message
-        AppNotifications.showSuccess(context, 'Sesión iniciada con Google');
-
-        // Navigate to MainScreen
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const MainScreen(),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        final errorMessage = AuthService.getErrorMessage(e);
-        // Only show error if it's not a cancellation
-        if (!errorMessage.toLowerCase().contains('cancelado')) {
-          AppNotifications.showError(context, errorMessage);
-        }
         setState(() => _isLoading = false);
       }
     }
@@ -199,62 +173,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
           key: _formKey,
           child: Column(
             children: [
-              // Google Button
-              AppAnimations.staggeredSlideIn(
-                index: 0,
-                child: OutlinedButton(
-                  onPressed: _isLoading ? null : _handleGoogleSignIn,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: BorderSide(color: theme.dividerColor),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.network(
-                        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
-                        height: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Continuar con Google',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.onSurface,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                      child: Divider(
-                          color: theme.dividerColor.withValues(alpha: 0.1))),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('o', style: theme.textTheme.bodyMedium),
-                  ),
-                  Expanded(
-                      child: Divider(
-                          color: theme.dividerColor.withValues(alpha: 0.1))),
-                ],
-              ),
-              const SizedBox(height: 24),
               // Name and Last Name
               AppAnimations.staggeredSlideIn(
-                index: 1,
+                index: 0,
                 child: Row(
                   children: [
                     Expanded(
                       child: TextFormField(
                         controller: _nameController,
                         style: theme.textTheme.bodyLarge,
+                        textCapitalization: TextCapitalization.words,
                         decoration: InputDecoration(
                           hintText: 'Nombre',
                           fillColor: theme.colorScheme.surfaceContainerHighest
@@ -263,6 +191,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(100),
                             borderSide: BorderSide.none,
+                          ),
+                          prefixIcon: Padding(
+                            padding: const EdgeInsets.only(left: 14, right: 6),
+                            child: Icon(
+                              Icons.person_outline_rounded,
+                              color: theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.5),
+                              size: 18,
+                            ),
                           ),
                         ),
                         validator: (value) =>
@@ -274,6 +211,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       child: TextFormField(
                         controller: _lastNameController,
                         style: theme.textTheme.bodyLarge,
+                        textCapitalization: TextCapitalization.words,
                         decoration: InputDecoration(
                           hintText: 'Apellido',
                           fillColor: theme.colorScheme.surfaceContainerHighest
@@ -294,7 +232,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               const SizedBox(height: 12),
               // Email
               AppAnimations.staggeredSlideIn(
-                index: 2,
+                index: 1,
                 child: TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -308,10 +246,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       borderRadius: BorderRadius.circular(100),
                       borderSide: BorderSide.none,
                     ),
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.only(left: 16, right: 8),
+                      child: Icon(
+                        Icons.email_outlined,
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.5),
+                        size: 20,
+                      ),
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Ingresa tu correo';
+                      return 'Ingresá tu correo';
                     }
                     if (!value.contains('@')) return 'Correo inválido';
                     return null;
@@ -321,7 +268,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               const SizedBox(height: 12),
               // Password
               AppAnimations.staggeredSlideIn(
-                index: 3,
+                index: 2,
                 child: TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
@@ -334,6 +281,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(100),
                       borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.only(left: 16, right: 8),
+                      child: Icon(
+                        Icons.lock_outline_rounded,
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.5),
+                        size: 20,
+                      ),
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -349,9 +305,59 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Ingresa tu contraseña';
+                      return 'Ingresá tu contraseña';
                     }
                     if (value.length < 6) return 'Mínimo 6 caracteres';
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Confirm Password
+              AppAnimations.staggeredSlideIn(
+                index: 3,
+                child: TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: !_isConfirmPasswordVisible,
+                  style: theme.textTheme.bodyLarge,
+                  decoration: InputDecoration(
+                    hintText: 'Confirmar contraseña',
+                    fillColor: theme.colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.3),
+                    filled: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(100),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.only(left: 16, right: 8),
+                      child: Icon(
+                        Icons.lock_outline_rounded,
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.5),
+                        size: 20,
+                      ),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isConfirmPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                      onPressed: () => setState(() =>
+                          _isConfirmPasswordVisible =
+                              !_isConfirmPasswordVisible),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Confirmá tu contraseña';
+                    }
+                    if (value != _passwordController.text) {
+                      return 'Las contraseñas no coinciden';
+                    }
                     return null;
                   },
                 ),
@@ -382,7 +388,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              // Terms
               // Privacy Card
               AppAnimations.staggeredSlideIn(
                 index: 5,
@@ -413,7 +418,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: Text(
-                          'Tus datos están seguros. Al registrarte aceptas nuestra Política de Privacidad y Términos.',
+                          'Tus datos están seguros en Pivote. Tu contraseña se almacena encriptada y nunca se comparte.',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurface
                                 .withValues(alpha: 0.6),

@@ -1,216 +1,85 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/features/auth/data/models/user_model.dart';
 import 'package:pivote/core/services/firebase_service.dart';
-import 'package:flutter/services.dart';
 
-/// Service to manage user authentication and session using Firebase Auth
+/// Custom authentication exception for the Pivote auth system.
+class PivoteAuthException implements Exception {
+  final String code;
+  final String message;
+  PivoteAuthException({required this.code, required this.message});
+
+  @override
+  String toString() => 'PivoteAuthException(code: $code, message: $message)';
+}
+
+/// Fully custom authentication service for Pivote Studio.
+/// Uses Firestore 'usuarios' collection as the user database.
+/// Passwords are hashed with SHA-256 + random salt.
+/// Session is managed via SharedPreferences (no Firebase Auth).
 class AuthService {
-  static final FirebaseAuth _auth = FirebaseAuth.instance;
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // NOTE:
-  // - Android: no necesita clientId, pero para garantizar idToken estable usamos el Web OAuth Client ID
-  //   (google-services.json -> oauth_client client_type 3).
-  // - Web: usamos el flujo de FirebaseAuth (popup/redirect) por compatibilidad.
-  static const String _googleWebOAuthClientId =
-      '451817571128-ch6b02prjtv8njpek34v233bv3itfpjn.apps.googleusercontent.com';
+  static const String _usersCollection = 'usuarios';
+  static const String _sessionKey = 'pivote_session_uid';
+  static const String _sessionUserKey = 'pivote_session_user';
 
-  static const String _usersCollection = 'usuarios-pivote';
+  // Cached current user ID for synchronous access
+  static String? _cachedUid;
 
-  /// Stream of auth state changes
-  static Stream<User?> get authStateChanges => _auth.authStateChanges();
+  /// Get current user ID or null (synchronous, from cache)
+  static String? get currentUserId => _cachedUid;
 
-  /// Get current user ID or null
-  static String? get currentUserId => _auth.currentUser?.uid;
-
-  static void _requireFirebase() {
-    if (!FirebaseService.isInitialized) {
-      throw FirebaseAuthException(
-        code: 'firebase-not-initialized',
-        message:
-            'La app no pudo inicializar Firebase. Verifica la configuración e inténtalo de nuevo.',
-      );
-    }
-  }
-
-  /// Sign in with email and password
-  static Future<void> signIn(String email, String password) async {
+  /// Initialize session from SharedPreferences (call once at app start)
+  static Future<void> initSession() async {
     try {
-      _requireFirebase();
-      await _auth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
+      final prefs = await SharedPreferences.getInstance();
+      _cachedUid = prefs.getString(_sessionKey);
+      debugPrint('🔵 AuthService: Session initialized, uid=$_cachedUid');
     } catch (e) {
-      debugPrint('Error in email sign in: $e');
-      rethrow;
+      debugPrint('❌ AuthService: Error initializing session: $e');
     }
   }
 
-  /// Sign in with Google - ROBUST IMPLEMENTATION
-  static Future<User?> signInWithGoogle() async {
-    try {
-      _requireFirebase();
-      debugPrint('🔵 Starting Google Sign-In process...');
-
-      if (kIsWeb) {
-        final provider = GoogleAuthProvider()
-          ..addScope('email')
-          ..addScope('profile')
-          ..setCustomParameters(<String, String>{
-            'prompt': 'select_account',
-          });
-
-        try {
-          final userCredential = await _auth.signInWithPopup(provider);
-          final user = userCredential.user;
-          if (user == null) {
-            throw FirebaseAuthException(
-              code: 'null-user',
-              message: 'Error al obtener usuario de Firebase',
-            );
-          }
-          await _createOrUpdateUserDocument(
-            uid: user.uid,
-            email: user.email ?? '',
-            name: (user.displayName?.split(' ').firstOrNull) ?? 'Usuario',
-            lastName: (user.displayName?.split(' ').skip(1).join(' ')) ?? '',
-            photoUrl: user.photoURL,
-          );
-          return user;
-        } on FirebaseAuthException catch (e) {
-          // Popup puede ser bloqueado; damos fallback a redirect.
-          final code = e.code.toLowerCase();
-          if (code.contains('popup') || code.contains('cancel')) rethrow;
-
-          try {
-            await _auth.signInWithRedirect(provider);
-            // La sesión se completará tras el redirect; el wrapper de authStateChanges lo capturará.
-            return _auth.currentUser;
-          } catch (_) {
-            rethrow;
-          }
-        }
-      }
-
-      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-        throw FirebaseAuthException(
-          code: 'platform-not-supported',
-          message: 'Google Sign-In no está disponible en esta plataforma.',
-        );
-      }
-
-      final googleSignIn = GoogleSignIn(
-        serverClientId: _googleWebOAuthClientId,
-        scopes: const ['email', 'profile', 'openid'],
-      );
-
-      // 1. Force sign out to ensure account picker works reliably
-      try {
-        await googleSignIn.signOut();
-      } catch (e) {
-        debugPrint('⚠️ Error signing out from Google (non-fatal): $e');
-      }
-
-      // 2. Trigger the authentication flow
-      // IMPORTANTE: Asegúrate de que el SHA-1 y SHA-256 estén agregados en Firebase Console
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-
-      if (googleUser == null) {
-        debugPrint('⚠️ Google Sign-In canceled by user');
-        throw FirebaseAuthException(
-          code: 'sign_in_canceled',
-          message: 'Inicio de sesión cancelado',
-        );
-      }
-
-      debugPrint('✅ Google account selected: ${googleUser.email}');
-
-      // 3. Obtain the auth details
-      GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      // 4. Verify tokens
-      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-        debugPrint('❌ Failed to obtain Google tokens');
-        throw FirebaseAuthException(
-          code: 'missing-google-tokens',
-          message: 'Error de autenticación con Google (Tokens faltantes)',
-        );
-      }
-
-      debugPrint('✅ Google tokens obtained successfully');
-
-      // 5. Create credential
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      debugPrint('🔵 Signing in to Firebase with Google credential...');
-
-      // 6. Sign in to Firebase
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
-
-      if (userCredential.user == null) {
-        throw FirebaseAuthException(
-          code: 'null-user',
-          message: 'Error al obtener usuario de Firebase',
-        );
-      }
-
-      final user = userCredential.user!;
-      debugPrint('✅ Firebase sign-in successful: ${user.uid}');
-
-      // 7. Parse name
-      final nameParts = user.displayName?.split(' ') ?? ['Usuario', 'Google'];
-      final firstName = nameParts.first;
-      final lastName =
-          nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-
-      // 8. Update Firestore
-      await _createOrUpdateUserDocument(
-        uid: user.uid,
-        email: user.email ?? '',
-        name: firstName,
-        lastName: lastName,
-        photoUrl: user.photoURL,
-      );
-
-      return user;
-    } on PlatformException catch (e) {
-      final msg = (e.message ?? '').toLowerCase();
-      if (msg.contains('api') && msg.contains('10') ||
-          msg.contains('developer_error')) {
-        throw FirebaseAuthException(
-          code: 'google-developer-error',
-          message:
-              'Google Sign-In no está configurado correctamente (SHA-1/SHA-256 o OAuth).',
-        );
-      }
-      throw FirebaseAuthException(
-        code: 'google-platform-error',
-        message: e.message ?? 'Error de Google Sign-In',
-      );
-    } on FirebaseAuthException {
-      rethrow;
-    } catch (e, stackTrace) {
-      debugPrint('❌ Unexpected error in Google Sign-In: $e');
-      debugPrint('Stack trace: $stackTrace');
-      throw FirebaseAuthException(
-        code: 'unknown-error',
-        message: 'Error inesperado: $e',
-      );
-    }
+  /// Check if a user session exists
+  static Future<bool> isLoggedIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = prefs.getString(_sessionKey);
+    _cachedUid = uid;
+    return uid != null && uid.isNotEmpty;
   }
 
-  /// Sign up with email, password, name and lastName
-  static Future<void> signUp({
+  // ─── Password Hashing ───────────────────────────────────────────
+
+  /// Generate a random 16-byte salt
+  static String _generateSalt() {
+    final random = Random.secure();
+    final saltBytes = List<int>.generate(16, (_) => random.nextInt(256));
+    return base64Encode(saltBytes);
+  }
+
+  /// Hash a password with SHA-256 using a salt
+  static String _hashPassword(String password, String salt) {
+    final bytes = utf8.encode('$salt:$password');
+    final digest = sha256.convert(bytes);
+    return digest.toString();
+  }
+
+  /// Verify a password against a stored hash and salt
+  static bool _verifyPassword(String password, String storedHash, String salt) {
+    final computedHash = _hashPassword(password, salt);
+    return computedHash == storedHash;
+  }
+
+  // ─── Sign Up ────────────────────────────────────────────────────
+
+  /// Register a new user with email, password, name and lastName.
+  /// Stores user data in the 'usuarios' Firestore collection.
+  static Future<UserModel> signUp({
     required String email,
     required String password,
     required String name,
@@ -218,333 +87,394 @@ class AuthService {
   }) async {
     try {
       _requireFirebase();
-      debugPrint('🔵 Starting email sign-up...');
+      debugPrint('🔵 AuthService: Starting sign-up for $email...');
 
-      final userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
+      final normalizedEmail = email.trim().toLowerCase();
 
-      if (userCredential.user != null) {
-        final user = userCredential.user!;
-        debugPrint('✅ User created: ${user.uid}');
+      // 1. Check if email is already registered
+      final existing = await _firestore
+          .collection(_usersCollection)
+          .where('email', isEqualTo: normalizedEmail)
+          .limit(1)
+          .get();
 
-        // Create user document in Firestore
-        await _createOrUpdateUserDocument(
-          uid: user.uid,
-          email: email.trim(),
-          name: name.trim(),
-          lastName: lastName.trim(),
+      if (existing.docs.isNotEmpty) {
+        throw PivoteAuthException(
+          code: 'email-already-in-use',
+          message: 'Este correo electrónico ya está registrado.',
         );
-
-        // Update display name in Auth
-        final fullName = '${name.trim()} ${lastName.trim()}';
-        await user.updateDisplayName(fullName);
-
-        debugPrint('✅ Sign-up completed successfully');
       }
-    } catch (e) {
-      debugPrint('❌ Error in sign-up: $e');
-      rethrow;
-    }
-  }
 
-  /// Create or update user document in Firestore - VERSIÓN MEJORADA
-  static Future<void> _createOrUpdateUserDocument({
-    required String uid,
-    required String email,
-    required String name,
-    required String lastName,
-    String? photoUrl,
-  }) async {
-    try {
-      final userRef = _firestore.collection(_usersCollection).doc(uid);
+      // 2. Generate unique user ID
+      final uid = _firestore.collection(_usersCollection).doc().id;
 
-      // Check if user already exists
-      final doc = await userRef.get();
+      // 3. Hash the password
+      final salt = _generateSalt();
+      final hashedPassword = _hashPassword(password, salt);
 
+      // 4. Create user document
+      final now = DateTime.now().toIso8601String();
       final userData = {
         'uid': uid,
-        'name': name,
-        'lastName': lastName,
-        'email': email,
-        'favorites': [], // Initialize empty favorites
-        'updatedAt': FieldValue.serverTimestamp(),
+        'name': name.trim(),
+        'lastName': lastName.trim(),
+        'email': normalizedEmail,
+        'passwordHash': hashedPassword,
+        'passwordSalt': salt,
+        'isVip': false,
+        'userType': 'standard',
+        'fcmToken': null,
+        'favorites': <String>[],
+        'createdAt': now,
+        'updatedAt': now,
       };
 
-      if (photoUrl != null && photoUrl.isNotEmpty) {
-        userData['photoUrl'] = photoUrl;
+      await _firestore.collection(_usersCollection).doc(uid).set(userData);
+      debugPrint('✅ AuthService: User document created: $uid');
+
+      // 5. Save session locally
+      await _saveSession(uid, userData);
+
+      // 6. Return the user model
+      return UserModel.fromJson(userData);
+    } on PivoteAuthException {
+      rethrow;
+    } catch (e) {
+      debugPrint('❌ AuthService: Error in sign-up: $e');
+      throw PivoteAuthException(
+        code: 'signup-error',
+        message: 'Error al crear la cuenta. Inténtalo de nuevo.',
+      );
+    }
+  }
+
+  // ─── Sign In ────────────────────────────────────────────────────
+
+  /// Sign in with email and password.
+  static Future<UserModel> signIn(String email, String password) async {
+    try {
+      _requireFirebase();
+      debugPrint('🔵 AuthService: Starting sign-in for $email...');
+
+      final normalizedEmail = email.trim().toLowerCase();
+
+      // 1. Find user by email
+      final query = await _firestore
+          .collection(_usersCollection)
+          .where('email', isEqualTo: normalizedEmail)
+          .limit(1)
+          .get();
+
+      if (query.docs.isEmpty) {
+        throw PivoteAuthException(
+          code: 'user-not-found',
+          message: 'No encontramos una cuenta con este correo electrónico.',
+        );
       }
 
-      if (!doc.exists) {
-        // New user - create document
-        userData['createdAt'] = FieldValue.serverTimestamp();
-        await userRef.set(userData);
-        debugPrint('✅ New user document created in Firestore');
-      } else {
-        // Existing user - update document (merge to keep other fields)
-        await userRef.update(userData);
-        debugPrint('✅ User document updated in Firestore');
+      final doc = query.docs.first;
+      final data = doc.data();
+
+      // 2. Verify password
+      final storedHash = data['passwordHash'] as String? ?? '';
+      final storedSalt = data['passwordSalt'] as String? ?? '';
+
+      if (!_verifyPassword(password, storedHash, storedSalt)) {
+        throw PivoteAuthException(
+          code: 'wrong-password',
+          message: 'La contraseña es incorrecta.',
+        );
       }
+
+      debugPrint('✅ AuthService: Password verified for ${data['uid']}');
+
+      // 3. Update last login timestamp
+      await doc.reference.update({
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+
+      // 4. Save session locally
+      await _saveSession(data['uid'] as String, data);
+
+      // 5. Return user model
+      return UserModel.fromJson(data);
+    } on PivoteAuthException {
+      rethrow;
     } catch (e) {
-      debugPrint('❌ Error creating/updating user document: $e');
+      debugPrint('❌ AuthService: Error in sign-in: $e');
+      throw PivoteAuthException(
+        code: 'signin-error',
+        message: 'Error al iniciar sesión. Inténtalo de nuevo.',
+      );
+    }
+  }
+
+  // ─── Session Management ─────────────────────────────────────────
+
+  /// Save session to SharedPreferences
+  static Future<void> _saveSession(
+      String uid, Map<String, dynamic> userData) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_sessionKey, uid);
+
+      // Cache user data locally for fast loading
+      final safeData = Map<String, dynamic>.from(userData);
+      safeData.remove('passwordHash');
+      safeData.remove('passwordSalt');
+      await prefs.setString(_sessionUserKey, jsonEncode(safeData));
+
+      _cachedUid = uid;
+      debugPrint('✅ AuthService: Session saved for $uid');
+    } catch (e) {
+      debugPrint('❌ AuthService: Error saving session: $e');
+    }
+  }
+
+  /// Logout — clear session
+  static Future<void> logout() async {
+    try {
+      debugPrint('🔵 AuthService: Starting logout...');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_sessionKey);
+      await prefs.remove(_sessionUserKey);
+      _cachedUid = null;
+      debugPrint('✅ AuthService: Logout completed');
+    } catch (e) {
+      debugPrint('❌ AuthService: Error during logout: $e');
       rethrow;
     }
   }
+
+  // ─── User Data ──────────────────────────────────────────────────
 
   /// Get current user model from Firestore
   static Future<UserModel?> getUser() async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      debugPrint('⚠️ No current user in Firebase Auth');
-      return null;
-    }
-
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final uid = prefs.getString(_sessionKey);
+
+      if (uid == null || uid.isEmpty) {
+        debugPrint('⚠️ AuthService: No session found');
+        return null;
+      }
+
+      _cachedUid = uid;
+
+      // Try loading from Firestore first
       _requireFirebase();
-      debugPrint('🔵 Fetching user data from Firestore: ${user.uid}');
+      debugPrint('🔵 AuthService: Fetching user data from Firestore: $uid');
 
       final doc =
-          await _firestore.collection(_usersCollection).doc(user.uid).get();
+          await _firestore.collection(_usersCollection).doc(uid).get();
 
       if (doc.exists && doc.data() != null) {
-        debugPrint('✅ User data retrieved from Firestore');
+        debugPrint('✅ AuthService: User data retrieved from Firestore');
         return UserModel.fromJson(doc.data()!);
-      } else {
-        // Fallback if document doesn't exist but user is logged in
-        debugPrint('⚠️ User document not found in Firestore, using Auth data');
-        final nameParts = user.displayName?.split(' ') ?? ['Usuario', ''];
-        return UserModel(
-          name: nameParts.isNotEmpty ? nameParts.first : 'Usuario',
-          lastName: nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '',
-          email: user.email ?? '',
-          photoUrl: user.photoURL,
-        );
       }
-    } catch (e) {
-      debugPrint('❌ Error getting user data: $e');
+
+      // Fallback: load from local cache
+      final cachedUserJson = prefs.getString(_sessionUserKey);
+      if (cachedUserJson != null) {
+        debugPrint('⚠️ AuthService: Using cached user data');
+        return UserModel.fromJsonString(cachedUserJson);
+      }
+
       return null;
-    }
-  }
-
-  /// Check if user is logged in
-  static Future<bool> isLoggedIn() async {
-    final isLogged = _auth.currentUser != null;
-    debugPrint('🔍 User logged in: $isLogged');
-    return isLogged;
-  }
-
-  /// Logout user - VERSIÓN MEJORADA
-  static Future<void> logout() async {
-    try {
-      debugPrint('🔵 Starting logout process...');
-
-      await _auth.signOut();
-      if (!kIsWeb &&
-          !(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-        try {
-          final googleSignIn =
-              GoogleSignIn(serverClientId: _googleWebOAuthClientId);
-          await googleSignIn.signOut();
-        } catch (e) {
-          debugPrint('⚠️ Google sign out failed (non-fatal): $e');
-        }
-      }
-
-      debugPrint('✅ Logout completed successfully');
     } catch (e) {
-      debugPrint('❌ Error during logout: $e');
-      rethrow;
+      debugPrint('❌ AuthService: Error getting user data: $e');
+
+      // Last resort: try local cache
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final cachedUserJson = prefs.getString(_sessionUserKey);
+        if (cachedUserJson != null) {
+          return UserModel.fromJsonString(cachedUserJson);
+        }
+      } catch (_) {}
+
+      return null;
     }
   }
 
   /// Update user information in Firestore
   static Future<void> updateUser(UserModel user) async {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) {
-      debugPrint('⚠️ No current user to update');
+    if (_cachedUid == null) {
+      debugPrint('⚠️ AuthService: No current user to update');
       return;
     }
 
     try {
       _requireFirebase();
-      debugPrint('🔵 Updating user information...');
+      debugPrint('🔵 AuthService: Updating user information...');
 
       final updateData = {
         'name': user.name,
         'lastName': user.lastName,
         'email': user.email,
-        'updatedAt': FieldValue.serverTimestamp(),
+        'updatedAt': DateTime.now().toIso8601String(),
       };
 
       if (user.photoUrl != null) {
-        updateData['photoUrl'] = user.photoUrl as Object;
+        updateData['photoUrl'] = user.photoUrl!;
       }
 
       await _firestore
           .collection(_usersCollection)
-          .doc(currentUser.uid)
+          .doc(_cachedUid)
           .update(updateData);
 
-      // Also update Auth profile
-      final fullName = '${user.name} ${user.lastName}';
-      if (fullName != currentUser.displayName) {
-        await currentUser.updateDisplayName(fullName);
+      // Update local cache
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString(_sessionUserKey);
+      if (cachedJson != null) {
+        final cached = jsonDecode(cachedJson) as Map<String, dynamic>;
+        cached.addAll(updateData);
+        await prefs.setString(_sessionUserKey, jsonEncode(cached));
       }
 
-      if (user.photoUrl != null && user.photoUrl != currentUser.photoURL) {
-        await currentUser.updatePhotoURL(user.photoUrl);
-      }
-
-      debugPrint('✅ User information updated successfully');
+      debugPrint('✅ AuthService: User information updated successfully');
     } catch (e) {
-      debugPrint('❌ Error updating user: $e');
+      debugPrint('❌ AuthService: Error updating user: $e');
       rethrow;
     }
   }
 
-  /// Update password (requires recent login)
-  static Future<void> updatePassword(String newPassword) async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw FirebaseAuthException(
+  /// Update password (requires knowledge of old password)
+  static Future<void> updatePassword(
+      String currentPassword, String newPassword) async {
+    if (_cachedUid == null) {
+      throw PivoteAuthException(
         code: 'no-current-user',
-        message: 'No hay usuario autenticado',
+        message: 'No hay usuario autenticado.',
       );
     }
 
     try {
       _requireFirebase();
-      await user.updatePassword(newPassword);
-      debugPrint('✅ Password updated successfully');
-    } catch (e) {
-      debugPrint('❌ Error updating password: $e');
-      rethrow;
-    }
-  }
 
-  /// Upload profile image to Firebase Storage and return URL
-  static Future<String> uploadProfileImage(File imageFile) async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw FirebaseAuthException(
-        code: 'no-current-user',
-        message: 'No hay usuario autenticado',
+      // Fetch current user data to verify old password
+      final doc =
+          await _firestore.collection(_usersCollection).doc(_cachedUid).get();
+
+      if (!doc.exists) {
+        throw PivoteAuthException(
+          code: 'user-not-found',
+          message: 'Usuario no encontrado.',
+        );
+      }
+
+      final data = doc.data()!;
+      final storedHash = data['passwordHash'] as String? ?? '';
+      final storedSalt = data['passwordSalt'] as String? ?? '';
+
+      if (!_verifyPassword(currentPassword, storedHash, storedSalt)) {
+        throw PivoteAuthException(
+          code: 'wrong-password',
+          message: 'La contraseña actual es incorrecta.',
+        );
+      }
+
+      // Generate new hash
+      final newSalt = _generateSalt();
+      final newHash = _hashPassword(newPassword, newSalt);
+
+      await doc.reference.update({
+        'passwordHash': newHash,
+        'passwordSalt': newSalt,
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+
+      debugPrint('✅ AuthService: Password updated successfully');
+    } on PivoteAuthException {
+      rethrow;
+    } catch (e) {
+      debugPrint('❌ AuthService: Error updating password: $e');
+      throw PivoteAuthException(
+        code: 'password-update-error',
+        message: 'Error al actualizar la contraseña.',
       );
     }
+  }
+
+  /// Update FCM token for push notifications
+  static Future<void> updateFcmToken(String token) async {
+    if (_cachedUid == null) return;
 
     try {
-      _requireFirebase();
-      debugPrint('🔵 Uploading profile image...');
-
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('user_profiles')
-          .child('${user.uid}.jpg');
-
-      final uploadTask = await ref.putFile(imageFile);
-      final downloadUrl = await uploadTask.ref.getDownloadURL();
-
-      debugPrint('✅ Profile image uploaded: $downloadUrl');
-      return downloadUrl;
+      await _firestore.collection(_usersCollection).doc(_cachedUid).update({
+        'fcmToken': token,
+      });
+      debugPrint('✅ AuthService: FCM token updated');
     } catch (e) {
-      debugPrint('❌ Error uploading profile image: $e');
-      rethrow;
+      debugPrint('❌ AuthService: Error updating FCM token: $e');
     }
   }
 
-  /// Delete user account and data
+  /// Delete user account and all data
   static Future<void> deleteAccount() async {
-    final user = _auth.currentUser;
-    if (user == null) {
-      throw FirebaseAuthException(
+    if (_cachedUid == null) {
+      throw PivoteAuthException(
         code: 'no-current-user',
-        message: 'No hay usuario autenticado',
+        message: 'No hay usuario autenticado.',
       );
     }
 
     try {
       _requireFirebase();
-      debugPrint('🔵 Deleting user account and data: ${user.uid}');
+      debugPrint('🔵 AuthService: Deleting user account: $_cachedUid');
 
-      // 1. Delete Firestore data
-      await _firestore.collection(_usersCollection).doc(user.uid).delete();
+      // Delete Firestore document
+      await _firestore.collection(_usersCollection).doc(_cachedUid).delete();
 
-      // 2. Delete Auth account
-      // This may require recent login
-      await user.delete();
+      // Clear session
+      await logout();
 
-      debugPrint('✅ Account and data deleted successfully');
+      debugPrint('✅ AuthService: Account deleted successfully');
     } catch (e) {
-      debugPrint('❌ Error deleting account: $e');
+      debugPrint('❌ AuthService: Error deleting account: $e');
       rethrow;
     }
   }
 
-  /// Map Firebase Auth error codes to professional Spanish messages
-  static String getErrorMessage(dynamic error) {
-    debugPrint('🔍 Processing error: $error');
+  // ─── Helpers ────────────────────────────────────────────────────
 
-    if (error is! FirebaseAuthException) {
-      // Handle generic errors
-      final errorString = error.toString().toLowerCase();
-      if (errorString.contains('cancel') || errorString.contains('cancelad')) {
-        return 'Inicio de sesión cancelado.';
-      }
-      if (errorString.contains('network')) {
-        return 'Error de conexión. Revisa tu internet e inténtalo de nuevo.';
-      }
-      return 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.';
-    }
-
-    switch (error.code) {
-      case 'firebase-not-initialized':
-        return 'La app no pudo conectarse a Firebase. Reinstala/actualiza la app o contacta soporte.';
-      case 'platform-not-supported':
-        return 'Google no está disponible en esta plataforma.';
-      case 'google-developer-error':
-        return 'Google Sign-In no está configurado correctamente. Verifica SHA-1/SHA-256 y OAuth en Firebase.';
-      case 'google-platform-error':
-        return 'No se pudo abrir Google Sign-In. Intenta de nuevo.';
-      case 'sign_in_canceled':
-        return 'Inicio de sesión cancelado.';
-      case 'user-not-found':
-        return 'No hemos encontrado una cuenta con este correo electrónico.';
-      case 'wrong-password':
-        return 'La contraseña es incorrecta. Por favor, verifica tus datos.';
-      case 'email-already-in-use':
-        return 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
-      case 'invalid-email':
-        return 'El formato del correo electrónico no es válido.';
-      case 'user-disabled':
-        return 'Esta cuenta ha sido deshabilitada. Contacta al soporte.';
-      case 'operation-not-allowed':
-        return 'El inicio de sesión con este método no está habilitado.';
-      case 'weak-password':
-        return 'La contraseña es muy débil. Intenta con una más segura.';
-      case 'network-request-failed':
-        return 'Error de conexión. Revisa tu internet e inténtalo de nuevo.';
-      case 'too-many-requests':
-        return 'Demasiados intentos. Por favor, inténtalo más tarde.';
-      case 'account-exists-with-different-credential':
-        return 'Ya existe una cuenta con este correo usando otro método de inicio de sesión.';
-      case 'invalid-credential':
-        return 'Las credenciales proporcionadas son inválidas o han expirado.';
-      case 'popup-closed-by-user':
-      case 'cancelled-popup-request':
-        return 'Inicio de sesión cancelado.';
-      case 'missing-google-tokens':
-        return 'No se pudieron obtener los tokens de Google. Inténtalo de nuevo.';
-      case 'null-user':
-        return 'Error al obtener la información del usuario. Inténtalo de nuevo.';
-      case 'no-current-user':
-        return 'No hay usuario autenticado.';
-      default:
-        return 'Algo salió mal: ${error.message ?? "Error desconocido"}';
+  static void _requireFirebase() {
+    if (!FirebaseService.isInitialized) {
+      throw PivoteAuthException(
+        code: 'firebase-not-initialized',
+        message:
+            'La app no pudo conectarse. Verifica tu conexión e inténtalo de nuevo.',
+      );
     }
   }
-}
 
-extension on List<String> {
-  String? get firstOrNull => isEmpty ? null : first;
+  /// Map error codes to professional Spanish messages
+  static String getErrorMessage(dynamic error) {
+    debugPrint('🔍 AuthService: Processing error: $error');
+
+    if (error is PivoteAuthException) {
+      switch (error.code) {
+        case 'firebase-not-initialized':
+          return 'No se pudo conectar al servidor. Revisa tu internet.';
+        case 'email-already-in-use':
+          return 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
+        case 'user-not-found':
+          return 'No encontramos una cuenta con este correo electrónico.';
+        case 'wrong-password':
+          return 'La contraseña es incorrecta. Verificá tus datos.';
+        case 'no-current-user':
+          return 'No hay usuario autenticado.';
+        default:
+          return error.message;
+      }
+    }
+
+    final errorString = error.toString().toLowerCase();
+    if (errorString.contains('network') || errorString.contains('connection')) {
+      return 'Error de conexión. Revisa tu internet e inténtalo de nuevo.';
+    }
+
+    return 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.';
+  }
 }
