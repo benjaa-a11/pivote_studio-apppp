@@ -24,6 +24,8 @@ import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 import 'package:pivote/shared/screens/firebase_required_screen.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
+import 'package:pivote/core/services/app_activity_service.dart';
+
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await FirebaseService.initialize();
@@ -61,6 +63,7 @@ class PivoteApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AppActivityService()),
         ChangeNotifierProxyProvider<ThemeProvider, ChannelProvider>(
           create: (context) => ChannelProvider(context.read<ThemeProvider>()),
           update: (context, themeProvider, channelProvider) =>

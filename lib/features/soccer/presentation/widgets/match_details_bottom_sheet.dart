@@ -4,6 +4,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
+import 'package:pivote/core/services/app_activity_service.dart';
+import 'package:provider/provider.dart';
 
 class MatchDetailsBottomSheet extends StatelessWidget {
   final SoccerMatch match;
@@ -21,6 +23,16 @@ class MatchDetailsBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Track match details viewed safely by obtaining provider synchronously
+    final activityService = Provider.of<AppActivityService>(context, listen: false);
+    Future.delayed(Duration.zero, () {
+      try {
+        activityService.trackMatchView();
+      } catch (e) {
+        debugPrint('Error tracking match view: $e');
+      }
+    });
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 

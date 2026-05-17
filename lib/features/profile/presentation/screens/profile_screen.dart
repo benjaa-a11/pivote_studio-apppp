@@ -21,6 +21,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:pivote/core/services/greeting_service.dart';
+import 'package:pivote/core/services/app_activity_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -62,7 +63,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 const SizedBox(height: 24),
                 _buildStats(context),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
+                _buildActivitySection(context),
+                const SizedBox(height: 16),
 
                 // UI Sections
                 _buildSection(
@@ -820,5 +823,317 @@ class _ProfileScreenState extends State<ProfileScreen> {
         type: AppDialogType.success,
       );
     }
+  }
+
+  String _getArgentineRank(int totalSeconds) {
+    final minutes = totalSeconds / 60;
+    if (minutes < 5) {
+      return 'Cebador de Mate 🧉';
+    } else if (minutes < 30) {
+      return 'Pasador de Facturas 🥐';
+    } else if (minutes < 120) {
+      return 'Asador de Fin de Semana 🥩';
+    } else if (minutes < 480) {
+      return 'Convocado a la Scaloneta 🏆';
+    } else {
+      return 'Campeón del Mundo ⭐⭐⭐';
+    }
+  }
+
+  String _getArgentineRankDescription(int totalSeconds) {
+    final minutes = totalSeconds / 60;
+    if (minutes < 5) {
+      return 'Recién arrancás el viaje, ¡preparate unos amargos!';
+    } else if (minutes < 30) {
+      return 'Ya te movés por la app como quien busca medialunas.';
+    } else if (minutes < 120) {
+      return 'Un maestro del fuego. Manejás los canales con maestría.';
+    } else if (minutes < 480) {
+      return 'Tenés lugar asegurado en el banco. ¡Sos clave en el equipo!';
+    } else {
+      return '¡Qué elegancia la de Francia! Mentira, ¡somos el mejor país del mundo!';
+    }
+  }
+
+  String _getArgentineRankEmoji(int totalSeconds) {
+    final minutes = totalSeconds / 60;
+    if (minutes < 5) {
+      return '🧉';
+    } else if (minutes < 30) {
+      return '🥐';
+    } else if (minutes < 120) {
+      return '🥩';
+    } else if (minutes < 480) {
+      return '🏆';
+    } else {
+      return '👑';
+    }
+  }
+
+  Widget _buildActivitySection(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Consumer<AppActivityService>(
+      builder: (context, activityService, child) {
+        final totalSeconds = activityService.totalActiveSeconds;
+        final rank = _getArgentineRank(totalSeconds);
+        final description = _getArgentineRankDescription(totalSeconds);
+        final emoji = _getArgentineRankEmoji(totalSeconds);
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [
+                        theme.colorScheme.surfaceContainerHighest.withAlpha(80),
+                        theme.colorScheme.surfaceContainerHighest.withAlpha(40),
+                      ]
+                    : [
+                        Colors.white,
+                        theme.colorScheme.primary.withAlpha(15),
+                      ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: theme.colorScheme.primary.withAlpha(isDark ? 40 : 25),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(isDark ? 15 : 5),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title and Argentine badge
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Mi Actividad',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF74ACDF).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: const Color(0xFF74ACDF).withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('🇦🇷', style: TextStyle(fontSize: 11)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'PIVOTE PRO',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF74ACDF),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+
+                // Rank / Level Card
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withAlpha(isDark ? 20 : 15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withAlpha(isDark ? 40 : 30),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        emoji,
+                        style: const TextStyle(fontSize: 32),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'RANGO ARGENTO',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              rank,
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              description,
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 11,
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Stats Grid
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  childAspectRatio: 2.2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  children: [
+                    _buildActivityGridItem(
+                      context,
+                      title: 'Tiempo Activo',
+                      value: activityService.getFormattedActiveTime(),
+                      icon: Icons.timer_outlined,
+                      color: theme.colorScheme.primary,
+                    ),
+                    _buildActivityGridItem(
+                      context,
+                      title: 'Ingresos',
+                      value: '${activityService.sessionCount}',
+                      icon: Icons.login_rounded,
+                      color: const Color(0xFF74ACDF),
+                    ),
+                    _buildActivityGridItem(
+                      context,
+                      title: 'TV / Canales',
+                      value: '${activityService.channelsWatched} vistos',
+                      icon: Icons.tv_rounded,
+                      color: const Color(0xFF52C41A),
+                    ),
+                    _buildActivityGridItem(
+                      context,
+                      title: 'Radios / Fútbol',
+                      value: '${activityService.radiosListened} / ${activityService.matchesViewed}',
+                      icon: Icons.radio_outlined,
+                      color: const Color(0xFFFAAD14),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                
+                // Active date info
+                Center(
+                  child: Text(
+                    'Miembro activo desde el ${activityService.getFormattedStartDate()}',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityGridItem(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withAlpha(isDark ? 40 : 25),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: theme.dividerColor.withAlpha(15),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withAlpha(15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  value,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

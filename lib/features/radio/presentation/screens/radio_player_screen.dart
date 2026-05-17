@@ -9,6 +9,7 @@ import 'package:pivote/features/radio/presentation/providers/audio_manager.dart'
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/core/services/app_activity_service.dart';
 
 class RadioPlayerScreen extends StatefulWidget {
   final radio_model.Radio radio;
@@ -61,6 +62,11 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
       final audioManager = context.read<AudioManager>();
       if (audioManager.currentRadio?.id != widget.radio.id) {
         audioManager.playRadio(widget.radio);
+      }
+      try {
+        Provider.of<AppActivityService>(context, listen: false).trackRadioListen();
+      } catch (e) {
+        debugPrint('Error tracking radio listen: $e');
       }
     });
 

@@ -181,7 +181,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     _hideTimer?.cancel();
     if (!widget.controller.isPlaying || widget.controller.isBuffering) return;
 
-    _hideTimer = Timer(const Duration(seconds: 5), () {
+    _hideTimer = Timer(const Duration(seconds: 3), () {
       if (mounted &&
           widget.controller.isPlaying &&
           !widget.controller.isBuffering &&

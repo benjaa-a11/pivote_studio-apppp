@@ -6,6 +6,7 @@ import 'package:pivote/features/video/data/services/epg_service.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/video_player_widget.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/core/services/app_activity_service.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -45,6 +46,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
           SystemUiMode.manual,
           overlays: SystemUiOverlay.values,
         );
+
+        // Track channel watch
+        try {
+          Provider.of<AppActivityService>(context, listen: false).trackChannelWatch();
+        } catch (e) {
+          debugPrint('Error tracking channel watch: $e');
+        }
       }
     });
 
