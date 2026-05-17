@@ -10,6 +10,7 @@ class UserModel {
   final String? photoUrl;
   final bool isVip;
   final String userType; // 'standard', 'vip', 'admin'
+  final bool isSuspended;
   final String? fcmToken;
   final List<String> favorites;
   final String? createdAt;
@@ -22,6 +23,7 @@ class UserModel {
     this.photoUrl,
     this.isVip = false,
     this.userType = 'standard',
+    this.isSuspended = false,
     this.fcmToken,
     this.favorites = const [],
     this.createdAt,
@@ -37,6 +39,7 @@ class UserModel {
       photoUrl: json['photoUrl'] as String?,
       isVip: json['isVip'] as bool? ?? false,
       userType: json['userType'] as String? ?? 'standard',
+      isSuspended: json['isSuspended'] as bool? ?? false,
       fcmToken: json['fcmToken'] as String?,
       favorites: (json['favorites'] as List<dynamic>?)
               ?.map((e) => e.toString())
@@ -56,6 +59,7 @@ class UserModel {
       'photoUrl': photoUrl,
       'isVip': isVip,
       'userType': userType,
+      'isSuspended': isSuspended,
       'fcmToken': fcmToken,
       'favorites': favorites,
       'createdAt': createdAt,
@@ -94,6 +98,7 @@ class UserModel {
     String? photoUrl,
     bool? isVip,
     String? userType,
+    bool? isSuspended,
     String? fcmToken,
     List<String>? favorites,
     String? createdAt,
@@ -106,6 +111,7 @@ class UserModel {
       photoUrl: photoUrl ?? this.photoUrl,
       isVip: isVip ?? this.isVip,
       userType: userType ?? this.userType,
+      isSuspended: isSuspended ?? this.isSuspended,
       fcmToken: fcmToken ?? this.fcmToken,
       favorites: favorites ?? this.favorites,
       createdAt: createdAt ?? this.createdAt,
@@ -114,7 +120,7 @@ class UserModel {
 
   @override
   String toString() =>
-      'UserModel(uid: $uid, name: $name, lastName: $lastName, email: $email, isVip: $isVip, userType: $userType)';
+      'UserModel(uid: $uid, name: $name, lastName: $lastName, email: $email, isVip: $isVip, userType: $userType, isSuspended: $isSuspended)';
 
   @override
   bool operator ==(Object other) {
@@ -123,10 +129,15 @@ class UserModel {
         other.uid == uid &&
         other.name == name &&
         other.lastName == lastName &&
-        other.email == email;
+        other.email == email &&
+        other.isSuspended == isSuspended;
   }
 
   @override
   int get hashCode =>
-      uid.hashCode ^ name.hashCode ^ lastName.hashCode ^ email.hashCode;
+      uid.hashCode ^
+      name.hashCode ^
+      lastName.hashCode ^
+      email.hashCode ^
+      isSuspended.hashCode;
 }

@@ -107,6 +107,11 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
         elevation: 0,
         backgroundColor: Colors.transparent,
         centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: theme.colorScheme.onSurface),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: _isLoading
           ? const Center(child: PivoteLoader(size: 40))

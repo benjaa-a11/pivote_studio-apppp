@@ -113,7 +113,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       Border.all(color: Colors.white.withValues(alpha: 0.1)),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
                   onPressed: () => Navigator.pop(context),
                   padding: EdgeInsets.zero,
                 ),

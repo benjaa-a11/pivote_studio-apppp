@@ -173,8 +173,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
-            iconSize: 28,
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            iconSize: 20,
             style: IconButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.onSurface,
             ),

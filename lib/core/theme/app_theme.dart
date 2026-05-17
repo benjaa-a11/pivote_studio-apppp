@@ -556,4 +556,92 @@ class AppTheme {
       ),
     ),
   );
+
+  static ThemeData get albicelesteDarkTheme {
+    final base = darkTheme;
+    const primaryCeleste = Color(0xFF75AADB);
+    const accentGold = Color(0xFFFCBF49);
+    const darkNavyBg = Color(0xFF09101A);
+    const darkNavyBg1 = Color(0xFF0E1A29);
+    const darkNavyBg2 = Color(0xFF142438);
+    const darkNavyBg3 = Color(0xFF1B2E47);
+    
+    return base.copyWith(
+      scaffoldBackgroundColor: darkNavyBg,
+      cardColor: darkNavyBg2,
+      dividerColor: const Color(0xFF263C54),
+      colorScheme: base.colorScheme.copyWith(
+        primary: primaryCeleste,
+        secondary: accentGold,
+        surface: darkNavyBg1,
+        surfaceContainerHighest: darkNavyBg3,
+        outline: const Color(0xFF263C54),
+      ),
+      appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: darkNavyBg1,
+      ),
+      navigationBarTheme: base.navigationBarTheme.copyWith(
+        backgroundColor: darkNavyBg1,
+        indicatorColor: primaryCeleste.withValues(alpha: 0.15),
+      ),
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        fillColor: darkNavyBg3,
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: primaryCeleste, width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: Color(0xFF263C54)),
+        ),
+      ),
+      progressIndicatorTheme: base.progressIndicatorTheme.copyWith(
+        color: primaryCeleste,
+      ),
+    );
+  }
+
+  static ThemeData get albicelesteLightTheme {
+    final base = lightTheme;
+    const primaryCeleste = Color(0xFF4A90E2);
+    const accentGold = Color(0xFFFCBF49);
+    const softSkyBg = Color(0xFFF2F7FC);
+    const softSkyBg1 = Color(0xFFFFFFFF);
+    const softSkyBg2 = Color(0xFFE6F0FA);
+    const softSkyBg3 = Color(0xFFD6E4F0);
+    
+    return base.copyWith(
+      scaffoldBackgroundColor: softSkyBg,
+      cardColor: softSkyBg1,
+      dividerColor: softSkyBg3,
+      colorScheme: base.colorScheme.copyWith(
+        primary: primaryCeleste,
+        secondary: accentGold,
+        surface: softSkyBg1,
+        surfaceContainerHighest: softSkyBg2,
+        outline: softSkyBg3,
+      ),
+      appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: softSkyBg1,
+      ),
+      navigationBarTheme: base.navigationBarTheme.copyWith(
+        backgroundColor: softSkyBg1,
+        indicatorColor: primaryCeleste.withValues(alpha: 0.15),
+      ),
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        fillColor: softSkyBg1,
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: primaryCeleste, width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: const BorderSide(color: Color(0xFFD6E4F0)),
+        ),
+      ),
+      progressIndicatorTheme: base.progressIndicatorTheme.copyWith(
+        color: primaryCeleste,
+      ),
+    );
+  }
 }

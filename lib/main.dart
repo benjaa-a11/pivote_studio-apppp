@@ -92,8 +92,12 @@ class PivoteApp extends StatelessWidget {
             child: MaterialApp(
               title: 'Pivote',
               debugShowCheckedModeBanner: false,
-              theme: AppTheme.lightTheme,
-              darkTheme: AppTheme.darkTheme,
+              theme: themeProvider.isAlbiceleste
+                  ? AppTheme.albicelesteLightTheme
+                  : AppTheme.lightTheme,
+              darkTheme: themeProvider.isAlbiceleste
+                  ? AppTheme.albicelesteDarkTheme
+                  : AppTheme.darkTheme,
               themeMode:
                   themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
               home: const _AuthenticationWrapper(),
@@ -132,12 +136,74 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
       return;
     }
 
-    final loggedIn = await AuthService.isLoggedIn();
-    if (mounted) {
-      setState(() {
-        _isLoggedIn = loggedIn;
-        _isCheckingAuth = false;
-      });
+    try {
+      final loggedIn = await AuthService.isLoggedIn();
+      if (loggedIn) {
+        // Let's verify with Firestore that the user isn't suspended!
+        final user = await AuthService.getUser();
+        if (user == null) {
+          await AuthService.logout();
+          if (mounted) {
+            setState(() {
+              _isLoggedIn = false;
+              _isCheckingAuth = false;
+            });
+          }
+        } else {
+          // Sync local UserProvider state as well
+          if (mounted) {
+            final userProvider = Provider.of<UserProvider>(context, listen: false);
+            if (userProvider.user == null) {
+              await userProvider.refreshUser();
+            }
+            setState(() {
+              _isLoggedIn = true;
+              _isCheckingAuth = false;
+            });
+          }
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _isLoggedIn = false;
+            _isCheckingAuth = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ _AuthenticationWrapper: Error checking auth: $e');
+      if (e.toString().contains('user-suspended')) {
+        await AuthService.logout();
+        if (mounted) {
+          final userProvider = Provider.of<UserProvider>(context, listen: false);
+          userProvider.clearUser();
+          setState(() {
+            _isLoggedIn = false;
+            _isCheckingAuth = false;
+          });
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Tu cuenta ha sido suspendida por violar los términos del servicio.',
+                  style: TextStyle(color: Colors.white),
+                ),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 5),
+              ),
+            );
+          });
+        }
+      } else {
+        // Fallback to local session check if there's no internet/transient error
+        final loggedIn = await AuthService.isLoggedIn();
+        if (mounted) {
+          setState(() {
+            _isLoggedIn = loggedIn;
+            _isCheckingAuth = false;
+          });
+        }
+      }
     }
   }
 

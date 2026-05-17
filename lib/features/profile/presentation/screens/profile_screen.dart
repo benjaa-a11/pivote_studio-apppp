@@ -431,16 +431,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildAppearanceSection(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
-    return _buildOptionTile(
-      context,
-      icon: themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-      title: 'Modo ${themeProvider.isDarkMode ? 'Oscuro' : 'Claro'}',
-      subtitle: 'Configuración visual de la app',
-      trailing: Switch(
-        value: themeProvider.isDarkMode,
-        onChanged: (v) => themeProvider.toggleTheme(),
-        activeThumbColor: Theme.of(context).colorScheme.primary,
-      ),
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        _buildOptionTile(
+          context,
+          icon: themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+          title: 'Modo ${themeProvider.isDarkMode ? 'Oscuro' : 'Claro'}',
+          subtitle: 'Configuración visual de la app',
+          trailing: Switch(
+            value: themeProvider.isDarkMode,
+            onChanged: (v) => themeProvider.toggleTheme(),
+            activeThumbColor: theme.colorScheme.primary,
+          ),
+        ),
+        _buildOptionTile(
+          context,
+          icon: Icons.star_rounded,
+          title: 'Estilo Albiceleste ⭐⭐⭐',
+          subtitle: 'Especial Mundial (Celeste y Oro)',
+          iconColor: const Color(0xFFFCBF49),
+          iconBgColor: const Color(0xFF75AADB).withValues(alpha: 0.25),
+          trailing: Switch(
+            value: themeProvider.isAlbiceleste,
+            onChanged: (v) => themeProvider.toggleAlbiceleste(v),
+            activeThumbColor: const Color(0xFFFCBF49),
+            activeTrackColor: const Color(0xFF75AADB),
+          ),
+        ),
+      ],
     );
   }
 
@@ -577,6 +596,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       {required IconData icon,
       required String title,
       String? subtitle,
+      Color? iconColor,
+      Color? iconBgColor,
       Widget? trailing,
       VoidCallback? onTap}) {
     final theme = Theme.of(context);
@@ -592,10 +613,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withAlpha(26),
+            color: iconBgColor ?? theme.colorScheme.primary.withAlpha(26),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+          child: Icon(icon, color: iconColor ?? theme.colorScheme.primary, size: 20),
         ),
         title: Text(title,
             style: GoogleFonts.spaceGrotesk(

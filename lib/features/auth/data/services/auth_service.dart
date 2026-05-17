@@ -186,6 +186,13 @@ class AuthService {
         );
       }
 
+      if (data['isSuspended'] == true) {
+        throw PivoteAuthException(
+          code: 'user-suspended',
+          message: 'Tu cuenta ha sido suspendida por violar los términos del servicio.',
+        );
+      }
+
       debugPrint('✅ AuthService: Password verified for ${data['uid']}');
 
       // 3. Update last login timestamp
@@ -270,7 +277,16 @@ class AuthService {
 
       if (doc.exists && doc.data() != null) {
         debugPrint('✅ AuthService: User data retrieved from Firestore');
-        return UserModel.fromJson(doc.data()!);
+        final data = doc.data()!;
+        if (data['isSuspended'] == true) {
+          debugPrint('⚠️ AuthService: User is suspended!');
+          await logout();
+          throw PivoteAuthException(
+            code: 'user-suspended',
+            message: 'Tu cuenta ha sido suspendida por violar los términos del servicio.',
+          );
+        }
+        return UserModel.fromJson(data);
       }
 
       // Fallback: load from local cache

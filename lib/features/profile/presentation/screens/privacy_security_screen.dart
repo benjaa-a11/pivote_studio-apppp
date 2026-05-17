@@ -26,7 +26,7 @@ class PrivacySecurityScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded,
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
               color: theme.colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),

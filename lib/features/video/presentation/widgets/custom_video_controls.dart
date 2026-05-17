@@ -295,13 +295,13 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
           children: [
             if (widget.isFullScreen && widget.onFullScreenToggle != null) ...[
               _buildControlButton(
-                icon: Icons.arrow_back_rounded,
+                icon: Icons.arrow_back_ios_new_rounded,
                 onPressed: () {
                   _onControlInteraction();
                   widget.onFullScreenToggle!();
                 },
-                size: 22,
-                padding: const EdgeInsets.all(8),
+                size: 16,
+                padding: const EdgeInsets.all(10),
               ),
               const SizedBox(width: 12),
             ],

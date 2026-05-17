@@ -3,15 +3,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {
   bool _isDarkMode = true;
+  bool _isAlbiceleste = false;
 
   ThemeProvider() {
     _loadTheme();
   }
 
   bool get isDarkMode => _isDarkMode;
+  bool get isAlbiceleste => _isAlbiceleste;
 
   Future<void> toggleTheme() async {
     _isDarkMode = !_isDarkMode;
+    await _saveTheme();
+    notifyListeners();
+  }
+
+  Future<void> toggleAlbiceleste(bool enabled) async {
+    _isAlbiceleste = enabled;
     await _saveTheme();
     notifyListeners();
   }
@@ -21,10 +29,12 @@ class ThemeProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       // Ensure dark mode is always default, even if no preference is saved
       _isDarkMode = prefs.getBool('isDarkMode') ?? true;
+      _isAlbiceleste = prefs.getBool('isAlbiceleste') ?? false;
       notifyListeners();
     } catch (e) {
-      // If there's any error loading preferences, default to dark mode
+      // If there's any error loading preferences, default to standard dark mode
       _isDarkMode = true;
+      _isAlbiceleste = false;
       debugPrint('Error loading theme, defaulting to dark mode: $e');
     }
   }
@@ -33,6 +43,7 @@ class ThemeProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isDarkMode', _isDarkMode);
+      await prefs.setBool('isAlbiceleste', _isAlbiceleste);
     } catch (e) {
       debugPrint('Error saving theme: $e');
     }

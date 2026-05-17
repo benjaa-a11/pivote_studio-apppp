@@ -43,6 +43,11 @@ class UserProvider with ChangeNotifier {
       }
     } catch (e) {
       debugPrint('❌ UserProvider: Error loading user data: $e');
+      if (e.toString().contains('user-suspended')) {
+        _user = null;
+        await clearUser();
+      }
+      rethrow;
     } finally {
       _isLoading = false;
       notifyListeners();
