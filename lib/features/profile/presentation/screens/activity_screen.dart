@@ -38,7 +38,7 @@ class ActivityScreen extends StatelessWidget {
           final emoji = activityService.getArgentineRankEmoji();
 
           return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

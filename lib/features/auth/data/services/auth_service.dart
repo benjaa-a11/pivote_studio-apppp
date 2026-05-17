@@ -123,6 +123,7 @@ class AuthService {
         'passwordSalt': salt,
         'isVip': false,
         'userType': 'standard',
+        'isSuspended': false,
         'fcmToken': null,
         'favorites': <String>[],
         'createdAt': now,

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
-import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
-import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
@@ -161,41 +159,6 @@ class _SuspendedScreenState extends State<SuspendedScreen> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Logout / Close Session Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 58,
-                      child: OutlinedButton(
-                        onPressed: _isChecking ? null : () async {
-                          final userProvider = context.read<UserProvider>();
-                          final favoritesProvider = context.read<FavoritesProvider>();
-                          favoritesProvider.clearLocalFavorites();
-                          userProvider.stopSyncTimer();
-                          await AuthService.logout();
-                          await userProvider.clearUser();
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
-                            width: 1.5,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Cerrar Sesión',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AppTheme.darkText : AppTheme.lightText,
-                          ),
-                        ),
                       ),
                     ),
                   ],
