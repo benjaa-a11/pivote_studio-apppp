@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/home/data/services/search_service.dart';
 import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 import 'package:pivote/core/theme/app_theme.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -22,6 +23,25 @@ class _SearchScreenState extends State<SearchScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
+  // Curated category palettes
+  static final Map<String, List<Color>> _categoryGradients = {
+    'Deportes': [const Color(0xFF00B4DB), const Color(0xFF0083B0)],      // Vibrant blue/cyan
+    'Noticias': [const Color(0xFFED213A), const Color(0xFF93291E)],      // Crimson/red
+    'Música': [const Color(0xFF8E2DE2), const Color(0xFF4A00E0)],        // Violet/indigo
+    'Películas': [const Color(0xFF11998E), const Color(0xFF38EF7D)],     // Teal/green
+    'Infantil': [const Color(0xFFF9D423), const Color(0xFFFF4E50)],      // Orange/amber
+    'Documentales': [const Color(0xFF00C6FF), const Color(0xFF0072FF)],  // Deep sky blue
+  };
+
+  static final Map<String, IconData> _categoryIcons = {
+    'Deportes': Icons.sports_soccer_rounded,
+    'Noticias': Icons.newspaper_rounded,
+    'Música': Icons.music_note_rounded,
+    'Películas': Icons.movie_rounded,
+    'Infantil': Icons.child_care_rounded,
+    'Documentales': Icons.public_rounded,
+  };
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +55,11 @@ class _SearchScreenState extends State<SearchScreen>
       curve: Curves.easeOut,
     );
     _animationController.forward();
+
+    // Listen to focus changes to refresh search bar glow
+    _searchFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _loadSearchHistory() async {
@@ -59,6 +84,9 @@ class _SearchScreenState extends State<SearchScreen>
       _isSearching = query.isNotEmpty;
     });
     Provider.of<ChannelProvider>(context, listen: false).searchChannels(query);
+    if (query.isNotEmpty) {
+      SearchService.saveSearchQuery(query).then((_) => _loadSearchHistory());
+    }
   }
 
   @override
@@ -84,7 +112,7 @@ class _SearchScreenState extends State<SearchScreen>
             // Content
             Expanded(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 350),
+                duration: const Duration(milliseconds: 300),
                 switchInCurve: Curves.easeOut,
                 switchOutCurve: Curves.easeIn,
                 transitionBuilder: (child, animation) {
@@ -109,14 +137,14 @@ class _SearchScreenState extends State<SearchScreen>
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(16, topPadding + 10, 16, 14),
+      padding: EdgeInsets.fromLTRB(16, topPadding + 10, 16, 16),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(
             color: isDark
-                ? AppTheme.darkBorder.withValues(alpha: 0.25)
-                : AppTheme.lightBorder.withValues(alpha: 0.4),
+                ? AppTheme.darkBorder.withValues(alpha: 0.15)
+                : AppTheme.lightBorder.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -128,47 +156,50 @@ class _SearchScreenState extends State<SearchScreen>
             children: [
               // Back button
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  Provider.of<ChannelProvider>(context, listen: false).searchChannels('');
+                  Navigator.pop(context);
+                },
                 child: Container(
-                  width: 38,
-                  height: 38,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: isDark
-                          ? AppTheme.darkBorder.withValues(alpha: 0.3)
+                          ? AppTheme.darkBorder.withValues(alpha: 0.2)
                           : AppTheme.lightBorder,
                     ),
                   ),
                   child: Icon(
                     Icons.arrow_back_ios_new_rounded,
-                    size: 15,
+                    size: 14,
                     color: theme.colorScheme.onSurface,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Buscar',
+                      'Buscador',
                       style: GoogleFonts.spaceGrotesk(
-                        fontSize: 20,
+                        fontSize: 22,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: -0.4,
+                        letterSpacing: -0.6,
                         color: theme.colorScheme.onSurface,
                       ),
                     ),
                     if (_isSearching)
                       Text(
-                        '${Provider.of<ChannelProvider>(context).channels.length} resultados',
+                        '${Provider.of<ChannelProvider>(context).channels.length} canales encontrados',
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
                         ),
                       ),
                   ],
@@ -176,22 +207,32 @@ class _SearchScreenState extends State<SearchScreen>
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
-          // Search field
-          Container(
-            height: 48,
+          // Glowing Search field
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: 52,
             decoration: BoxDecoration(
               color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _searchFocusNode.hasFocus
-                    ? theme.colorScheme.primary.withValues(alpha: 0.5)
+                    ? theme.colorScheme.primary
                     : (isDark
                         ? AppTheme.darkBorder.withValues(alpha: 0.25)
                         : AppTheme.lightBorder),
                 width: _searchFocusNode.hasFocus ? 1.5 : 1,
               ),
+              boxShadow: _searchFocusNode.hasFocus
+                  ? [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withAlpha(isDark ? 25 : 12),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : [],
             ),
             child: TextField(
               controller: _searchController,
@@ -209,20 +250,24 @@ class _SearchScreenState extends State<SearchScreen>
                 color: theme.colorScheme.onSurface,
               ),
               decoration: InputDecoration(
-                hintText: 'Buscar canales, categorías...',
+                hintText: 'Buscá canales, películas, categorías...',
                 hintStyle: GoogleFonts.spaceGrotesk(
                   fontSize: 14,
                   color: theme.hintColor.withValues(alpha: 0.45),
                   fontWeight: FontWeight.w500,
                 ),
                 prefixIcon: Padding(
-                  padding: const EdgeInsets.only(left: 12, right: 8),
-                  child: Icon(
-                    Icons.search_rounded,
-                    color: _searchFocusNode.hasFocus
-                        ? theme.colorScheme.primary
-                        : theme.hintColor.withValues(alpha: 0.45),
-                    size: 20,
+                  padding: const EdgeInsets.only(left: 14, right: 10),
+                  child: AnimatedRotation(
+                    turns: _searchFocusNode.hasFocus ? 0.25 : 0.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: Icon(
+                      Icons.search_rounded,
+                      color: _searchFocusNode.hasFocus
+                          ? theme.colorScheme.primary
+                          : theme.hintColor.withValues(alpha: 0.45),
+                      size: 22,
+                    ),
                   ),
                 ),
                 prefixIconConstraints:
@@ -234,12 +279,12 @@ class _SearchScreenState extends State<SearchScreen>
                           _onSearch('');
                         },
                         child: Container(
-                          margin: const EdgeInsets.only(right: 8),
+                          margin: const EdgeInsets.only(right: 10),
                           padding: const EdgeInsets.all(6),
                           child: Icon(
                             Icons.close_rounded,
-                            size: 16,
-                            color: theme.hintColor,
+                            size: 18,
+                            color: theme.colorScheme.onSurface.withAlpha(128),
                           ),
                         ),
                       )
@@ -247,7 +292,7 @@ class _SearchScreenState extends State<SearchScreen>
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
           ),
@@ -261,22 +306,26 @@ class _SearchScreenState extends State<SearchScreen>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: ListView(
-        physics: const ClampingScrollPhysics(),
+        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         children: [
           // Search History
           if (_searchHistory.isNotEmpty) ...[
-            _buildSectionHeader(theme, 'Recientes', icon: Icons.history_rounded,
-                onAction: () async {
-              await SearchService.clearSearchHistory();
-              _loadSearchHistory();
-            }),
+            _buildSectionHeader(
+              theme,
+              'Búsquedas Recientes',
+              icon: Icons.history_rounded,
+              onAction: () async {
+                await SearchService.clearSearchHistory();
+                _loadSearchHistory();
+              },
+            ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: _searchHistory
-                  .take(8)
+                  .take(6)
                   .map((query) => _buildHistoryChip(query, theme, isDark))
                   .toList(),
             ),
@@ -284,35 +333,25 @@ class _SearchScreenState extends State<SearchScreen>
           ],
 
           // Quick Categories
-          _buildSectionHeader(theme, 'Categorías',
-              icon: Icons.category_rounded),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 38,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              children: [
-                _buildCategoryChip(
-                    'Deportes', Icons.sports_soccer, theme, isDark),
-                _buildCategoryChip(
-                    'Noticias', Icons.newspaper_rounded, theme, isDark),
-                _buildCategoryChip(
-                    'Música', Icons.music_note_rounded, theme, isDark),
-                _buildCategoryChip(
-                    'Películas', Icons.movie_rounded, theme, isDark),
-                _buildCategoryChip(
-                    'Infantil', Icons.child_care_rounded, theme, isDark),
-                _buildCategoryChip(
-                    'Documentales', Icons.public_rounded, theme, isDark),
-              ],
-            ),
+          _buildSectionHeader(theme, 'Explorar Categorías',
+              icon: Icons.grid_view_rounded),
+          const SizedBox(height: 14),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            childAspectRatio: 2.3,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            children: _categoryGradients.keys.map((cat) {
+              return _buildPremiumCategoryCard(cat, theme, isDark);
+            }).toList(),
           ),
           const SizedBox(height: 28),
 
           // Popular Channels
-          _buildSectionHeader(theme, 'Populares',
-              icon: Icons.trending_up_rounded),
+          _buildSectionHeader(theme, 'Canales Populares',
+              icon: Icons.local_fire_department_rounded),
           const SizedBox(height: 16),
           _buildPopularChannels(provider),
         ],
@@ -325,9 +364,11 @@ class _SearchScreenState extends State<SearchScreen>
     return Row(
       children: [
         if (icon != null) ...[
-          Icon(icon,
-              size: 16,
-              color: theme.colorScheme.primary.withValues(alpha: 0.7)),
+          Icon(
+            icon,
+            size: 18,
+            color: theme.colorScheme.primary,
+          ),
           const SizedBox(width: 8),
         ],
         Text(
@@ -340,21 +381,20 @@ class _SearchScreenState extends State<SearchScreen>
         ),
         const Spacer(),
         if (onAction != null)
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onAction,
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                child: Text(
-                  'Limpiar',
-                  style: GoogleFonts.spaceGrotesk(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
+          GestureDetector(
+            onTap: onAction,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.error.withAlpha(15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Limpiar',
+                style: GoogleFonts.spaceGrotesk(
+                  color: theme.colorScheme.error,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
                 ),
               ),
             ),
@@ -364,79 +404,113 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   Widget _buildHistoryChip(String query, ThemeData theme, bool isDark) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          _searchController.text = query;
-          _onSearch(query);
-        },
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isDark
-                  ? AppTheme.darkBorder.withValues(alpha: 0.3)
-                  : AppTheme.lightBorder,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.history_rounded,
-                  size: 13, color: theme.hintColor.withValues(alpha: 0.5)),
-              const SizedBox(width: 6),
-              Text(
-                query,
-                style: GoogleFonts.spaceGrotesk(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                ),
+    return AppAnimations.smoothFadeIn(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            _searchController.text = query;
+            _onSearch(query);
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark
+                    ? AppTheme.darkBorder.withValues(alpha: 0.2)
+                    : AppTheme.lightBorder,
               ),
-            ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.history_rounded,
+                    size: 14, color: theme.colorScheme.primary.withAlpha(150)),
+                const SizedBox(width: 6),
+                Text(
+                  query,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildCategoryChip(
-      String label, IconData icon, ThemeData theme, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
+  Widget _buildPremiumCategoryCard(String category, ThemeData theme, bool isDark) {
+    final gradient = _categoryGradients[category] ?? [Colors.grey, Colors.blueGrey];
+    final icon = _categoryIcons[category] ?? Icons.category_rounded;
+
+    return AppAnimations.smoothFadeIn(
       child: GestureDetector(
         onTap: () {
-          _searchController.text = label;
-          _onSearch(label);
+          _searchController.text = category;
+          _onSearch(category);
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark
-                  ? AppTheme.darkBorder.withValues(alpha: 0.25)
-                  : AppTheme.lightBorder,
+            gradient: LinearGradient(
+              colors: gradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: gradient.first.withAlpha(40),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Stack(
             children: [
-              Icon(icon,
-                  size: 13,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.8)),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.spaceGrotesk(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  color: theme.colorScheme.onSurface,
+              // Circular background glow
+              Positioned(
+                right: -15,
+                bottom: -15,
+                child: Icon(
+                  icon,
+                  size: 64,
+                  color: Colors.white.withAlpha(35),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(50),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      category,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -455,12 +529,14 @@ class _SearchScreenState extends State<SearchScreen>
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 1.05,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
       ),
       itemCount: channels.length,
       itemBuilder: (context, index) {
-        return ChannelCard(channel: channels[index]);
+        return AppAnimations.smoothFadeIn(
+          child: ChannelCard(channel: channels[index]),
+        );
       },
     );
   }
@@ -471,43 +547,97 @@ class _SearchScreenState extends State<SearchScreen>
 
     if (channels.isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Premium Circular gradient Search Off illustration
               Container(
-                padding: const EdgeInsets.all(24),
+                width: 110,
+                height: 110,
                 decoration: BoxDecoration(
-                  color: (isDark ? Colors.white : Colors.black)
-                      .withValues(alpha: 0.04),
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [
+                            theme.colorScheme.primary.withAlpha(40),
+                            Colors.transparent,
+                          ]
+                        : [
+                            theme.colorScheme.primary.withAlpha(15),
+                            Colors.transparent,
+                          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withAlpha(30),
+                    width: 1.5,
+                  ),
                 ),
-                child: Icon(
-                  Icons.search_off_rounded,
-                  size: 48,
-                  color: theme.hintColor.withValues(alpha: 0.3),
+                child: Center(
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withAlpha(20),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.search_off_rounded,
+                      size: 32,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
               Text(
-                'Sin resultados',
+                'Sin Resultados',
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
                   color: theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Intenta con otras palabras o\nrevisa la ortografía.',
+                'No encontramos nada que coincida con "${_searchController.text}". ¡Intentá buscando otra cosa!',
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 13,
                   height: 1.5,
-                  color: theme.hintColor,
-                  fontWeight: FontWeight.w500,
+                  color: theme.colorScheme.onSurface.withAlpha(140),
+                  fontWeight: FontWeight.w600,
                 ),
                 textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 36),
+
+              // Proactive Smart Suggestions Section
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '💡 Quizás te interese...',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  _buildSuggestionChip('Deportes', theme, isDark),
+                  _buildSuggestionChip('Noticias', theme, isDark),
+                  _buildSuggestionChip('Películas', theme, isDark),
+                  _buildSuggestionChip('Música', theme, isDark),
+                ],
               ),
             ],
           ),
@@ -520,27 +650,34 @@ class _SearchScreenState extends State<SearchScreen>
       children: [
         // Results info bar
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Row(
             children: [
               Icon(Icons.filter_list_rounded,
-                  size: 15, color: theme.hintColor.withValues(alpha: 0.5)),
+                  size: 16, color: theme.colorScheme.primary.withAlpha(180)),
               const SizedBox(width: 8),
               Text(
                 '${channels.length} ${channels.length == 1 ? 'canal encontrado' : 'canales encontrados'}',
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: theme.hintColor,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface.withAlpha(160),
                 ),
               ),
               const Spacer(),
-              Text(
-                '"${_searchController.text}"',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.7),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '"${_searchController.text}"',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
               ),
             ],
@@ -549,8 +686,8 @@ class _SearchScreenState extends State<SearchScreen>
         Divider(
           height: 1,
           color: isDark
-              ? AppTheme.darkBorder.withValues(alpha: 0.15)
-              : AppTheme.lightBorder.withValues(alpha: 0.3),
+              ? AppTheme.darkBorder.withValues(alpha: 0.1)
+              : AppTheme.lightBorder.withValues(alpha: 0.2),
         ),
         // Grid
         Expanded(
@@ -560,16 +697,45 @@ class _SearchScreenState extends State<SearchScreen>
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               childAspectRatio: 1.05,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
             itemCount: channels.length,
             itemBuilder: (context, index) {
-              return ChannelCard(channel: channels[index]);
+              return AppAnimations.smoothFadeIn(
+                child: ChannelCard(channel: channels[index]),
+              );
             },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSuggestionChip(String query, ThemeData theme, bool isDark) {
+    return GestureDetector(
+      onTap: () {
+        _searchController.text = query;
+        _onSearch(query);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withAlpha(15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.primary.withAlpha(30),
+          ),
+        ),
+        child: Text(
+          query,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+      ),
     );
   }
 }

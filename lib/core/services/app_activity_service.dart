@@ -171,4 +171,49 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
     final year = _firstActiveDate!.year;
     return '$day/$month/$year';
   }
+
+  String getArgentineRank() {
+    final minutes = totalActiveSeconds / 60;
+    if (minutes < 5) {
+      return 'Cebador de Mate';
+    } else if (minutes < 30) {
+      return 'Pasador de Facturas';
+    } else if (minutes < 120) {
+      return 'Asador de Fin de Semana';
+    } else if (minutes < 480) {
+      return 'Convocado a la Scaloneta';
+    } else {
+      return 'Campeón del Mundo ⭐⭐⭐';
+    }
+  }
+
+  String getArgentineRankDescription() {
+    final minutes = totalActiveSeconds / 60;
+    if (minutes < 5) {
+      return 'Recién arrancás el viaje, ¡preparate unos amargos!';
+    } else if (minutes < 30) {
+      return 'Ya te movés por la app como quien busca medialunas.';
+    } else if (minutes < 120) {
+      return 'Un maestro del fuego. Manejás los canales con maestría.';
+    } else if (minutes < 480) {
+      return 'Tenés lugar asegurado en el banco. ¡Sos clave en el equipo!';
+    } else {
+      return '¡Qué elegancia la de Francia! Mentira, ¡somos el mejor país del mundo!';
+    }
+  }
+
+  String getArgentineRankEmoji() {
+    final minutes = totalActiveSeconds / 60;
+    if (minutes < 5) {
+      return '🧉';
+    } else if (minutes < 30) {
+      return '🥐';
+    } else if (minutes < 120) {
+      return '🥩';
+    } else if (minutes < 480) {
+      return '🏆';
+    } else {
+      return '👑';
+    }
+  }
 }
