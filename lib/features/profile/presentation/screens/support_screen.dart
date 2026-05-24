@@ -141,7 +141,7 @@ class SupportScreen extends StatelessWidget {
   Widget _buildContactButton(
     BuildContext context, {
     required String label,
-    required IconData icon,
+    required dynamic icon,
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
@@ -157,7 +157,9 @@ class SupportScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 18),
+            icon is IconData
+                ? Icon(icon, color: Colors.white, size: 18)
+                : FaIcon(icon, color: Colors.white, size: 18),
             const SizedBox(width: 8),
             Text(
               label,
@@ -235,8 +237,10 @@ class SupportScreen extends StatelessWidget {
     );
   }
 
-  Widget _socialIcon(IconData icon) {
-    return Icon(icon, color: Colors.grey.withValues(alpha: 0.6), size: 28);
+  Widget _socialIcon(dynamic icon) {
+    return icon is IconData
+        ? Icon(icon, color: Colors.grey.withValues(alpha: 0.6), size: 28)
+        : FaIcon(icon, color: Colors.grey.withValues(alpha: 0.6), size: 28);
   }
 
   void _launchURL(String url) async {

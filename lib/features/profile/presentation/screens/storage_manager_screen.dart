@@ -187,7 +187,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
         ),
         child: Column(
           children: [
-            const Icon(FontAwesomeIcons.database,
+            const Icon(Icons.storage_rounded,
                 color: Colors.white, size: 40),
             const SizedBox(height: 16),
             Text(

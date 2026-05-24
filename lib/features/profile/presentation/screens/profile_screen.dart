@@ -386,11 +386,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Row(
             children: [
               _buildStatItem(context, totalChannels.toString(), 'Canales',
-                  FontAwesomeIcons.tv),
+                  Icons.tv_rounded),
               _buildStatItem(context, favoriteChannels.toString(), 'Favoritos',
-                  FontAwesomeIcons.heart),
+                  Icons.favorite_rounded),
               _buildStatItem(context, categories.toString(), 'Categorías',
-                  FontAwesomeIcons.layerGroup),
+                  Icons.layers_rounded),
             ],
           ),
         );

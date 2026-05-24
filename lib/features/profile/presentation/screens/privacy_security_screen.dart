@@ -170,7 +170,7 @@ class PrivacySecurityScreen extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: const Icon(
-                FontAwesomeIcons.shieldHalved,
+                Icons.shield_rounded,
                 color: Colors.white,
                 size: 50,
               ),
