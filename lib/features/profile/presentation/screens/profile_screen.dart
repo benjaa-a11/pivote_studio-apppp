@@ -23,6 +23,7 @@ import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:pivote/core/services/greeting_service.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
+import 'package:pivote/core/services/wakelock_service.dart';
 import 'package:pivote/features/profile/presentation/screens/activity_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -431,6 +432,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildAppearanceSection(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final wakelockService = Provider.of<WakelockService>(context);
     final theme = Theme.of(context);
     return Column(
       children: [
@@ -442,6 +444,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           trailing: Switch(
             value: themeProvider.isDarkMode,
             onChanged: (v) => themeProvider.toggleTheme(),
+            activeThumbColor: theme.colorScheme.primary,
+          ),
+        ),
+        _buildOptionTile(
+          context,
+          icon: wakelockService.keepScreenOn
+              ? Icons.brightness_high_rounded
+              : Icons.brightness_low_rounded,
+          title: 'Pantalla siempre encendida',
+          subtitle: wakelockService.keepScreenOn
+              ? 'La pantalla no se apagará'
+              : 'La pantalla se apagará normalmente',
+          trailing: Switch(
+            value: wakelockService.keepScreenOn,
+            onChanged: (v) => wakelockService.setKeepScreenOn(v),
             activeThumbColor: theme.colorScheme.primary,
           ),
         ),

@@ -6,7 +6,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
@@ -87,7 +86,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
 
     WidgetsBinding.instance.addObserver(this);
-    WakelockPlus.enable();
 
     debugPrint('🎬 VideoPlayerWidget v6.0 — ${widget.channel.name}');
 
@@ -118,7 +116,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _engine?.dispose();
     _unified?.dispose();
     _fadeCtrl.dispose();
-    WakelockPlus.disable();
     super.dispose();
   }
 

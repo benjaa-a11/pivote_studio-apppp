@@ -35,6 +35,14 @@ class AudioManager extends ChangeNotifier {
   Stream<Duration> get bufferedPositionStream =>
       _audioPlayer.bufferedPositionStream;
 
+  // Volume control
+  double get volume => _audioPlayer.volume;
+  Stream<double> get volumeStream => _audioPlayer.volumeStream;
+  Future<void> setVolume(double value) async {
+    await _audioPlayer.setVolume(value);
+    notifyListeners();
+  }
+
   Future<void> initialize() async {
     if (_isInitialized) return;
     _isInitialized = true;
