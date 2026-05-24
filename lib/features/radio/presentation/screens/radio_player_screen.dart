@@ -458,91 +458,48 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
 
   Widget _buildPlayerArt(BuildContext context, double artSize, bool isDark) {
     return Center(
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Outer glassmorphism ring with pulsing blur
-          Container(
-            width: artSize + 28,
-            height: artSize + 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark ? Colors.white.withValues(alpha: 0.02) : Colors.black.withValues(alpha: 0.01),
-              border: Border.all(
-                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
-                width: 1,
-              ),
+      child: Container(
+        width: artSize,
+        height: artSize,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+              blurRadius: 30,
+              offset: const Offset(0, 12),
+              spreadRadius: -4,
             ),
-          ),
-          // Vinyl record simulator / shadow
-          Container(
-            width: artSize + 8,
-            height: artSize + 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.black.withValues(alpha: 0.15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.25),
-                  blurRadius: 35,
-                  offset: const Offset(0, 15),
-                  spreadRadius: -5,
-                ),
-              ],
-            ),
-          ),
-          // Rotating album art
-          RotationTransition(
-            turns: _rotateController,
-            child: Hero(
-              tag: 'radio_tile_logo_${widget.radio.id}',
-              child: Container(
-                width: artSize,
-                height: artSize,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                ),
-                child: ClipOval(
-                  child: CachedNetworkImage(
-                    cacheManager: ImageCacheHelper.customCacheManager,
-                    imageUrl: widget.radio.logoUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                      child: const Center(
-                        child: PivoteLoader(
-                          size: 30,
-                          strokeWidth: 3,
-                        ),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                      child: Icon(
-                        Icons.radio_rounded,
-                        color: isDark ? Colors.white24 : Colors.black12,
-                        size: artSize * 0.4,
-                      ),
-                    ),
+          ],
+        ),
+        child: Hero(
+          tag: 'radio_tile_logo_${widget.radio.id}',
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: CachedNetworkImage(
+              cacheManager: ImageCacheHelper.customCacheManager,
+              imageUrl: widget.radio.logoUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                child: const Center(
+                  child: PivoteLoader(
+                    size: 30,
+                    strokeWidth: 3,
                   ),
                 ),
               ),
-            ),
-          ),
-          // Center record vinyl pin-hole
-          Container(
-            width: 14,
-            height: 14,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Theme.of(context).scaffoldBackgroundColor,
-              border: Border.all(
-                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.3),
-                width: 2.5,
+              errorWidget: (context, url, error) => Container(
+                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+                child: Icon(
+                  Icons.radio_rounded,
+                  color: isDark ? Colors.white24 : Colors.black12,
+                  size: artSize * 0.4,
+                ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -874,26 +831,23 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
               const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    Clipboard.setData(ClipboardData(text: widget.radio.streamUrl.first));
-                    AppNotifications.showInfo(context, 'Enlace de stream copiado al portapapeles');
-                  },
-                  icon: const Icon(Icons.copy_rounded, size: 18),
-                  label: Text(
-                    'COPIAR ENLACE DE TRANSMISIÓN',
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'ENTENDIDO',
                     style: GoogleFonts.spaceGrotesk(
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                       letterSpacing: 0.5,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.15)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                 ),

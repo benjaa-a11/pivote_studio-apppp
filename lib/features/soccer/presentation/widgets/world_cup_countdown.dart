@@ -176,106 +176,162 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
 
   Widget _buildCard(
       int days, int hours, int minutes, int seconds, bool hasStarted) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: _fwcCyan.withValues(alpha: 0.15),
-            blurRadius: 40,
-            spreadRadius: -10,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Stack(
-          children: [
-            // === BACKGROUND IMAGE ===
-            Positioned.fill(
-              child: Image.asset(
-                'assets/FWC-26/fwc-26-background.png',
-                fit: BoxFit.cover,
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double maxWidth = constraints.maxWidth;
+        final bool isCompact = maxWidth < 380;
 
-            // === DYNAMIC GRADIENT OVERLAY ===
-            Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _glowAnimation,
-                builder: (context, _) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        center: const Alignment(-0.5, -0.6),
-                        radius: 1.5,
+        // Dynamically compute sizing for time boxes to ensure 100% responsivity
+        final double horizontalPadding = isCompact ? 12 : 18;
+        final double separatorsWidth = 3 * (isCompact ? 10 : 16);
+        final double availableWidthForBoxes = maxWidth - (horizontalPadding * 2) - separatorsWidth;
+        
+        final double timeBoxWidth = (availableWidthForBoxes / 4).clamp(52.0, 75.0);
+        final double timeBoxHeight = timeBoxWidth * 1.15;
+        final double valueFontSize = (timeBoxWidth * 0.44).clamp(16.0, 30.0);
+        final double labelFontSize = (timeBoxWidth * 0.16).clamp(8.0, 10.0);
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: _fwcCyan.withValues(alpha: 0.15),
+                blurRadius: 40,
+                spreadRadius: -10,
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(32),
+            child: Stack(
+              children: [
+                // === DEEP SPACE FUTURISTIC GLOW BACKGROUND ===
+                Positioned.fill(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                         colors: [
-                          _fwcPurple.withValues(alpha: 0.4 * _glowAnimation.value),
-                          Colors.black.withValues(alpha: 0.85),
-                          Colors.black.withValues(alpha: 0.95),
+                          Color(0xFF070014), // Ultra deep space purple
+                          Color(0xFF00081C), // Deep stadium blue
+                          Color(0xFF00140E), // Deep field green/cyan
                         ],
-                        stops: const [0.0, 0.6, 1.0],
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-
-            // === SHIMMER SWIPE ===
-            Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _shimmerAnimation,
-                builder: (context, _) {
-                  return CustomPaint(
-                    painter: _PremiumShimmerPainter(
-                      progress: _shimmerAnimation.value,
-                      color: _fwcCyan,
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // === CONTENT ===
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildHeader(hasStarted),
-                  const SizedBox(height: 20),
-                  _buildCountdownSection(days, hours, minutes, seconds, hasStarted),
-                  const SizedBox(height: 24),
-                  _buildFooter(),
-                ],
-              ),
-            ),
-
-            // === ARGENTINE ACCENT CORNER ===
-            Positioned(
-              top: -15,
-              right: -15,
-              child: Transform.rotate(
-                angle: 0.4,
-                child: Container(
-                  width: 60,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _argBlue.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-              ),
+
+                // === BACKGROUND IMAGE OVERLAY (With glowing pitch fallback) ===
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.22,
+                    child: Image.asset(
+                      'assets/FWC-26/fwc-26-background.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return CustomPaint(
+                          painter: _SoccerPitchPainter(),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                // === DYNAMIC RADIAL GLOW OVERLAY ===
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: _glowAnimation,
+                    builder: (context, _) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            center: const Alignment(-0.5, -0.6),
+                            radius: 1.5,
+                            colors: [
+                              _fwcPurple.withValues(alpha: 0.35 * _glowAnimation.value),
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.7),
+                            ],
+                            stops: const [0.0, 0.7, 1.0],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // === SHIMMER SWIPE ===
+                Positioned.fill(
+                  child: AnimatedBuilder(
+                    animation: _shimmerAnimation,
+                    builder: (context, _) {
+                      return CustomPaint(
+                        painter: _PremiumShimmerPainter(
+                          progress: _shimmerAnimation.value,
+                          color: _fwcCyan,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // === CONTENT ===
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
+                    vertical: isCompact ? 16 : 24,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildHeader(hasStarted, isCompact),
+                      SizedBox(height: isCompact ? 16 : 24),
+                      _buildCountdownSection(
+                        days,
+                        hours,
+                        minutes,
+                        seconds,
+                        hasStarted,
+                        timeBoxWidth: timeBoxWidth,
+                        timeBoxHeight: timeBoxHeight,
+                        valueFontSize: valueFontSize,
+                        labelFontSize: labelFontSize,
+                        isCompact: isCompact,
+                      ),
+                      SizedBox(height: isCompact ? 16 : 24),
+                      _buildFooter(isCompact),
+                    ],
+                  ),
+                ),
+
+                // === ARGENTINE ACCENT CORNER ===
+                Positioned(
+                  top: -15,
+                  right: -15,
+                  child: Transform.rotate(
+                    angle: 0.4,
+                    child: Container(
+                      width: 60,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _argBlue.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader(bool hasStarted) {
+  Widget _buildHeader(bool hasStarted, bool isCompact) {
     return Row(
       children: [
         // Logo with float
@@ -288,7 +344,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             );
           },
           child: Container(
-            padding: const EdgeInsets.all(10),
+            padding: EdgeInsets.all(isCompact ? 6 : 10),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
@@ -300,12 +356,19 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             ),
             child: Image.asset(
               'assets/FWC-26/2026-FIFA-World-Cup256x-white.png',
-              height: 40,
+              height: isCompact ? 30 : 40,
               fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) {
+                return Icon(
+                  Icons.emoji_events_rounded,
+                  color: Colors.white,
+                  size: isCompact ? 18 : 24,
+                );
+              },
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: isCompact ? 10 : 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,16 +376,16 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
               Text(
                 hasStarted ? 'EN CURSO' : 'CUENTA REGRESIVA',
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 10,
+                  fontSize: isCompact ? 8 : 10,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: 2.5,
+                  letterSpacing: isCompact ? 1.5 : 2.5,
                   color: _fwcCyan,
                 ),
               ),
               Text(
                 'WORLD CUP 26™',
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 22,
+                  fontSize: isCompact ? 18 : 22,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
                   letterSpacing: -0.5,
@@ -333,20 +396,21 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         ),
         // Argentine Mini-Flag (Subtle detail)
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8, vertical: 4),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: _argBlue.withValues(alpha: 0.3)),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('🇦🇷', style: TextStyle(fontSize: 12)),
-              const SizedBox(width: 4),
+              Text('🇦🇷', style: TextStyle(fontSize: isCompact ? 10 : 12)),
+              SizedBox(width: isCompact ? 2 : 4),
               Text(
                 'ARG',
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 10,
+                  fontSize: isCompact ? 8 : 10,
                   fontWeight: FontWeight.bold,
                   color: _argBlue,
                 ),
@@ -358,14 +422,25 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     );
   }
 
-  Widget _buildCountdownSection(int days, int hours, int minutes, int seconds, bool hasStarted) {
+  Widget _buildCountdownSection(
+    int days,
+    int hours,
+    int minutes,
+    int seconds,
+    bool hasStarted, {
+    required double timeBoxWidth,
+    required double timeBoxHeight,
+    required double valueFontSize,
+    required double labelFontSize,
+    required bool isCompact,
+  }) {
     if (hasStarted) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         child: Text(
           '¡EL MUNDIAL HA EMPEZADO!',
           style: GoogleFonts.spaceGrotesk(
-            fontSize: 24,
+            fontSize: isCompact ? 18 : 24,
             fontWeight: FontWeight.w900,
             color: _fwcLime,
             shadows: [Shadow(color: _fwcLime.withValues(alpha: 0.5), blurRadius: 20)],
@@ -377,18 +452,58 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildTimeBox(days.toString(), 'DÍAS', _fwcCyan),
-        _buildSeparator(),
-        _buildTimeBox(hours.toString().padLeft(2, '0'), 'HORAS', _fwcOrange),
-        _buildSeparator(),
-        _buildTimeBox(minutes.toString().padLeft(2, '0'), 'MIN', _fwcLime),
-        _buildSeparator(),
-        _buildTimeBox(seconds.toString().padLeft(2, '0'), 'SEG', _fwcPurple),
+        _buildTimeBox(
+          days.toString(),
+          'DÍAS',
+          _fwcCyan,
+          width: timeBoxWidth,
+          height: timeBoxHeight,
+          valueSize: valueFontSize,
+          labelSize: labelFontSize,
+        ),
+        _buildSeparator(isCompact),
+        _buildTimeBox(
+          hours.toString().padLeft(2, '0'),
+          'HORAS',
+          _fwcOrange,
+          width: timeBoxWidth,
+          height: timeBoxHeight,
+          valueSize: valueFontSize,
+          labelSize: labelFontSize,
+        ),
+        _buildSeparator(isCompact),
+        _buildTimeBox(
+          minutes.toString().padLeft(2, '0'),
+          'MIN',
+          _fwcLime,
+          width: timeBoxWidth,
+          height: timeBoxHeight,
+          valueSize: valueFontSize,
+          labelSize: labelFontSize,
+        ),
+        _buildSeparator(isCompact),
+        _buildTimeBox(
+          seconds.toString().padLeft(2, '0'),
+          'SEG',
+          _fwcPurple,
+          width: timeBoxWidth,
+          height: timeBoxHeight,
+          valueSize: valueFontSize,
+          labelSize: labelFontSize,
+        ),
       ],
     );
   }
 
-  Widget _buildTimeBox(String value, String label, Color accentColor) {
+  Widget _buildTimeBox(
+    String value,
+    String label,
+    Color accentColor, {
+    required double width,
+    required double height,
+    required double valueSize,
+    required double labelSize,
+  }) {
     return Column(
       children: [
         AnimatedBuilder(
@@ -400,29 +515,29 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             );
           },
           child: Container(
-            width: 65,
-            height: 75,
+            width: width,
+            height: height,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(width * 0.3),
               color: Colors.white.withValues(alpha: 0.05),
-              border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1.5),
+              border: Border.all(color: accentColor.withValues(alpha: 0.35), width: 1.5),
               boxShadow: [
                 BoxShadow(
-                  color: accentColor.withValues(alpha: 0.1),
+                  color: accentColor.withValues(alpha: 0.12),
                   blurRadius: 15,
-                  spreadRadius: -5,
+                  spreadRadius: -4,
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(width * 0.3),
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                 child: Center(
                   child: Text(
                     value,
                     style: GoogleFonts.spaceGrotesk(
-                      fontSize: 30,
+                      fontSize: valueSize,
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
                       letterSpacing: -1,
@@ -437,9 +552,9 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         Text(
           label,
           style: GoogleFonts.spaceGrotesk(
-            fontSize: 9,
+            fontSize: labelSize,
             fontWeight: FontWeight.w800,
-            letterSpacing: 1.5,
+            letterSpacing: 1.2,
             color: accentColor,
           ),
         ),
@@ -447,32 +562,41 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
     );
   }
 
-  Widget _buildSeparator() {
+  Widget _buildSeparator(bool isCompact) {
     return FadeTransition(
       opacity: _blinkAnimation,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white30, shape: BoxShape.circle)),
-          const SizedBox(height: 8),
-          Container(width: 4, height: 4, decoration: const BoxDecoration(color: Colors.white30, shape: BoxShape.circle)),
+          Container(
+            width: isCompact ? 3 : 4,
+            height: isCompact ? 3 : 4,
+            decoration: const BoxDecoration(color: Colors.white30, shape: BoxShape.circle),
+          ),
+          SizedBox(height: isCompact ? 6 : 8),
+          Container(
+            width: isCompact ? 3 : 4,
+            height: isCompact ? 3 : 4,
+            decoration: const BoxDecoration(color: Colors.white30, shape: BoxShape.circle),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(bool isCompact) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: isCompact ? 12 : 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.location_on_rounded, size: 14, color: _fwcOrange),
-          const SizedBox(width: 8),
+          Icon(Icons.location_on_rounded, size: isCompact ? 12 : 14, color: _fwcOrange),
+          SizedBox(width: isCompact ? 6 : 8),
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
@@ -480,7 +604,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
                 _hostCities[_currentCityIndex].toUpperCase(),
                 key: ValueKey(_currentCityIndex),
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 10,
+                  fontSize: isCompact ? 8.5 : 10,
                   fontWeight: FontWeight.w800,
                   color: Colors.white70,
                   letterSpacing: 1.0,
@@ -489,7 +613,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: isCompact ? 6 : 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
@@ -499,7 +623,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             child: Text(
               '16 SEDES',
               style: GoogleFonts.spaceGrotesk(
-                fontSize: 8,
+                fontSize: isCompact ? 7.5 : 8,
                 fontWeight: FontWeight.w900,
                 color: _fwcCyan,
               ),
@@ -549,3 +673,36 @@ class _PremiumShimmerPainter extends CustomPainter {
       oldDelegate.progress != progress;
 }
 
+class _SoccerPitchPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF00FFD1).withValues(alpha: 0.07)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    // Outer boundary
+    canvas.drawRect(Rect.fromLTWH(8, 8, size.width - 16, size.height - 16), paint);
+
+    // Center line
+    final double midX = size.width / 2;
+    canvas.drawLine(Offset(midX, 8), Offset(midX, size.height - 8), paint);
+
+    // Center circle
+    canvas.drawCircle(Offset(midX, size.height / 2), size.height * 0.28, paint);
+    canvas.drawCircle(Offset(midX, size.height / 2), 3, paint..style = PaintingStyle.fill);
+
+    // Penalty areas
+    final double areaHeight = size.height * 0.65;
+    final double areaWidth = size.width * 0.15;
+    final double areaY = (size.height - areaHeight) / 2;
+
+    // Left area
+    canvas.drawRect(Rect.fromLTWH(8, areaY, areaWidth, areaHeight), paint..style = PaintingStyle.stroke);
+    // Right area
+    canvas.drawRect(Rect.fromLTWH(size.width - 8 - areaWidth, areaY, areaWidth, areaHeight), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
