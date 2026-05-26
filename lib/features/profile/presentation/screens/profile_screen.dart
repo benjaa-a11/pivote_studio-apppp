@@ -24,6 +24,7 @@ import 'package:pivote/core/services/greeting_service.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/wakelock_service.dart';
 import 'package:pivote/features/profile/presentation/screens/activity_screen.dart';
+import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -72,7 +73,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   context,
                   title: 'Mi Actividad',
                   icon: Icons.analytics_outlined,
-                  children: [_buildActivityTile(context)],
+                  children: [
+                    _buildActivityTile(context),
+                    _buildDiagnosticsTile(context),
+                  ],
                 ),
 
                 _buildSection(
@@ -878,6 +882,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildDiagnosticsTile(BuildContext context) {
+    return _buildOptionTile(
+      context,
+      icon: Icons.speed_rounded,
+      title: 'Diagnóstico de Streaming',
+      subtitle: 'Medidor de velocidad y latencia de red',
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const DiagnosticsScreen(),
+        ),
+      ),
     );
   }
 }

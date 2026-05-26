@@ -116,22 +116,46 @@ class FavoritesScreen extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context, ThemeData theme, bool isDark,
       FavoritesProvider favoritesProvider, int count) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 16, 14),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? AppTheme.darkBorder.withValues(alpha: 0.15)
+                : AppTheme.lightBorder.withValues(alpha: 0.3),
+            width: 1.2,
+          ),
+        ),
+      ),
       child: Row(
         children: [
-          // Icon
+          // Heart Icon Container (Polished)
           Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  theme.colorScheme.primary.withValues(alpha: 0.15),
-                  theme.colorScheme.primary.withValues(alpha: 0.05),
+                  theme.colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.14),
+                  theme.colorScheme.primary.withValues(alpha: isDark ? 0.06 : 0.04),
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.35 : 0.25),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.08 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Icon(
               Icons.favorite_rounded,
@@ -140,53 +164,56 @@ class FavoritesScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          // Title
+          // Title and Subtitle
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   'Favoritos',
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.6,
                     color: theme.colorScheme.onSurface,
+                    height: 1.1,
                   ),
                 ),
-                if (count > 0)
-                  Text(
-                    'Tu colección personal',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: theme.hintColor,
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  count > 0 ? 'Tu colección personal' : 'Guardá tus canales preferidos',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
                   ),
+                ),
               ],
             ),
           ),
-          // Delete button
+          // Delete button (Trash bin matching rest of app)
           if (count > 0)
             Material(
               color: Colors.transparent,
               child: InkWell(
                 onTap: () => _showClearDialog(context, favoritesProvider),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 child: Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.error.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(12),
+                    color: theme.colorScheme.error.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: theme.colorScheme.error.withValues(alpha: 0.12),
+                      color: theme.colorScheme.error.withValues(alpha: 0.15),
+                      width: 1.2,
                     ),
                   ),
                   child: Icon(
                     Icons.delete_outline_rounded,
                     size: 18,
-                    color: theme.colorScheme.error.withValues(alpha: 0.7),
+                    color: theme.colorScheme.error,
                   ),
                 ),
               ),

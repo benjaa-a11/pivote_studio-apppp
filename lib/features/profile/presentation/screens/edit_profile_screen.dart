@@ -9,6 +9,7 @@ import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
+import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -110,34 +111,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.black26 : Colors.white54,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.arrow_back_ios_new_rounded,
-                color: theme.colorScheme.onSurface, size: 16),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Editar Perfil',
-          style: GoogleFonts.spaceGrotesk(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        centerTitle: true,
+      appBar: const PivoteAppBar(
+        title: 'Editar Perfil',
+        subtitle: 'Actualizá tus datos personales',
       ),
       body: Stack(
         children: [

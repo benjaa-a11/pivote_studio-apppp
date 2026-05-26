@@ -25,14 +25,15 @@ class _SearchHeaderState extends State<SearchHeader> {
     final greeting = GreetingService.getGreeting();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(
-            color: theme.dividerTheme.color ??
-                theme.dividerColor.withValues(alpha: 0.1),
-            width: 1,
+            color: isDark
+                ? AppTheme.darkBorder.withValues(alpha: 0.2)
+                : AppTheme.lightBorder.withValues(alpha: 0.4),
+            width: 1.2,
           ),
         ),
       ),
@@ -62,7 +63,7 @@ class _SearchHeaderState extends State<SearchHeader> {
                               greeting,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.7),
+                                    .withValues(alpha: 0.65),
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13,
                               ),
@@ -78,7 +79,7 @@ class _SearchHeaderState extends State<SearchHeader> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 1),
+                    const SizedBox(height: 2),
                     // User Name
                     Skeletonizer(
                       enabled: isLoading,
@@ -87,7 +88,7 @@ class _SearchHeaderState extends State<SearchHeader> {
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w900,
                           color: theme.colorScheme.onSurface,
-                          fontSize: 20,
+                          fontSize: 22,
                           letterSpacing: -0.8,
                           height: 1.1,
                         ),
@@ -102,7 +103,7 @@ class _SearchHeaderState extends State<SearchHeader> {
           ),
           const SizedBox(width: 12),
 
-          // High-End Search Button
+          // High-End Glowing Search Button
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -112,26 +113,35 @@ class _SearchHeaderState extends State<SearchHeader> {
                   AppAnimations.createFadeRoute(const SearchScreen()),
                 );
               },
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.all(10),
+              borderRadius: BorderRadius.circular(14),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(11),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : Colors.black.withValues(alpha: 0.03),
-                  borderRadius: BorderRadius.circular(16),
+                      ? theme.colorScheme.primary.withValues(alpha: 0.05)
+                      : theme.colorScheme.primary.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: (isDark ? Colors.white : Colors.black)
-                        .withValues(alpha: 0.05),
-                    width: 1,
+                    color: theme.colorScheme.primary.withValues(
+                        alpha: isDark ? 0.22 : 0.18),
+                    width: 1.2,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(
+                          alpha: isDark ? 0.08 : 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Hero(
                   tag: 'search_icon',
                   child: Icon(
                     Icons.search_rounded,
-                    size: 24,
-                    color: theme.colorScheme.primary.withValues(alpha: 0.8),
+                    size: 22,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
               ),

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
@@ -13,19 +14,9 @@ class SupportScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Ayuda y Soporte',
-          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: theme.colorScheme.onSurface),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: const PivoteAppBar(
+        title: 'Ayuda y Soporte',
+        subtitle: 'Resolvé tus dudas y contactanos',
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),

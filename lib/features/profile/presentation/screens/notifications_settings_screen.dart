@@ -5,6 +5,7 @@ import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 
 class NotificationsSettingsScreen extends StatefulWidget {
   const NotificationsSettingsScreen({super.key});
@@ -130,22 +131,9 @@ class _NotificationsSettingsScreenState
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Notificaciones',
-          style: GoogleFonts.spaceGrotesk(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        backgroundColor: theme.colorScheme.surface,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: theme.colorScheme.onSurface),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: const PivoteAppBar(
+        title: 'Notificaciones',
+        subtitle: 'Avisos de partidos y novedades',
       ),
       body: _isLoading
           ? const Center(child: PivoteLoader(size: 40))

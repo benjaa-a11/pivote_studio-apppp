@@ -10,6 +10,7 @@ import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -82,58 +83,34 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Text(
-          'Historial',
-          style: GoogleFonts.spaceGrotesk(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        flexibleSpace: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-        centerTitle: true,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
-                  onPressed: () => Navigator.pop(context),
-                  padding: EdgeInsets.zero,
-                ),
-              ),
-            ),
-          ),
-        ),
+      appBar: PivoteAppBar(
+        title: 'Historial',
+        subtitle: 'Canales vistos recientemente',
         actions: [
           if (_historyChannels.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE7714D).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  onPressed: () => _showClearHistoryDialog(context),
-                  icon: const Icon(Icons.delete_outline_rounded,
-                      color: Color(0xFFE7714D)),
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _showClearHistoryDialog(context),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.error.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      size: 20,
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
                 ),
               ),
             ),

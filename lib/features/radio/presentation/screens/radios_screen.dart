@@ -7,6 +7,7 @@ import 'package:pivote/features/radio/presentation/providers/radio_provider.dart
 import 'package:pivote/features/radio/presentation/providers/audio_manager.dart';
 import 'package:pivote/features/radio/data/models/radio.dart' as radio_model;
 import 'package:pivote/features/radio/presentation/screens/radio_player_screen.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 
 class RadiosScreen extends StatefulWidget {
   const RadiosScreen({super.key});
@@ -38,51 +39,126 @@ class _RadiosScreenState extends State<RadiosScreen> {
           controller: _scrollController,
           physics: const ClampingScrollPhysics(),
           slivers: [
-            // Floating Header
+            // Floating Header (Premium unified design)
             SliverAppBar(
               floating: true,
               snap: true,
               elevation: 0,
               backgroundColor: theme.scaffoldBackgroundColor,
               automaticallyImplyLeading: false,
-              titleSpacing: 24,
-              title: Row(
-                children: [
-                  Text(
-                    'Radio',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                      letterSpacing: -0.5,
+              toolbarHeight: 72,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  decoration: BoxDecoration(
+                    color: theme.scaffoldBackgroundColor,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: isDark
+                            ? AppTheme.darkBorder.withValues(alpha: 0.15)
+                            : AppTheme.lightBorder.withValues(alpha: 0.3),
+                        width: 1.2,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Consumer<RadioProvider>(
-                    builder: (context, provider, _) {
-                      if (provider.isLoading || provider.radios.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Radio Icon Container (Polished)
+                      Container(
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
-                          color:
-                              theme.colorScheme.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${provider.radios.length}',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: theme.colorScheme.primary,
+                          gradient: LinearGradient(
+                            colors: [
+                              theme.colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.14),
+                              theme.colorScheme.primary.withValues(alpha: isDark ? 0.06 : 0.04),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.35 : 0.25),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.08 : 0.04),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      );
-                    },
+                        child: Icon(
+                          Icons.radio_rounded,
+                          size: 20,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Title and Subtitle
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Radio',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.6,
+                                color: textColor,
+                                height: 1.1,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Emisoras de transmisión en vivo',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Station count badge
+                      Consumer<RadioProvider>(
+                        builder: (context, provider, _) {
+                          if (provider.isLoading || provider.radios.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              '${provider.radios.length} VIVAS',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                color: theme.colorScheme.primary,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
 

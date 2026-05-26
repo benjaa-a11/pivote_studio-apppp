@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
+import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 
 class ActivityScreen extends StatelessWidget {
   const ActivityScreen({super.key});
@@ -14,22 +17,9 @@ class ActivityScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Mi Actividad',
-          style: GoogleFonts.spaceGrotesk(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: theme.colorScheme.onSurface),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: const PivoteAppBar(
+        title: 'Mi Actividad',
+        subtitle: 'Estadísticas e insignias de reproducción',
       ),
       body: Consumer<AppActivityService>(
         builder: (context, activityService, child) {
@@ -420,6 +410,98 @@ class ActivityScreen extends StatelessWidget {
                                 fontSize: 12,
                                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                                 height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    // Diagnostics Banner (Interactive Connection Diagnostic entry point)
+                    AppAnimations.smoothFadeIn(
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: isDark
+                                ? [
+                                    theme.colorScheme.primary.withValues(alpha: 0.12),
+                                    Colors.transparent,
+                                  ]
+                                : [
+                                    theme.colorScheme.primary.withValues(alpha: 0.06),
+                                    Colors.transparent,
+                                  ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.15),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.speed_rounded,
+                                color: theme.colorScheme.primary,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '¿Se corta el streaming?',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Realizá un diagnóstico de velocidad y latencia de red.',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 11,
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const DiagnosticsScreen(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.primary,
+                                foregroundColor: isDark ? AppTheme.darkBg : Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
+                                'Probar',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ],

@@ -7,6 +7,7 @@ import 'package:pivote/features/favorites/presentation/providers/favorites_provi
 import 'package:pivote/features/video/presentation/widgets/video_player_widget.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
+import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -161,7 +162,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  // Header minimalista y elegante
   Widget _buildHeader(BuildContext context, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -179,25 +179,49 @@ class _PlayerScreenState extends State<PlayerScreen> {
               foregroundColor: Theme.of(context).colorScheme.onSurface,
             ),
           ),
-          Consumer<FavoritesProvider>(
-            builder: (context, favoritesProvider, child) {
-              final isFavorite =
-                  favoritesProvider.isFavorite(_currentChannel.id);
-              return IconButton(
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // High-end quality diagnostics shortcut
+              IconButton(
                 onPressed: () {
                   HapticFeedback.lightImpact();
-                  favoritesProvider.toggleFavorite(_currentChannel);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DiagnosticsScreen(),
+                    ),
+                  );
                 },
                 icon: Icon(
-                  isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                  color: isFavorite ? Colors.red : null,
-                  size: 28,
+                  Icons.speed_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
                 ),
-                style: IconButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.onSurface,
-                ),
-              );
-            },
+                tooltip: 'Diagnóstico de Streaming',
+              ),
+              const SizedBox(width: 4),
+              Consumer<FavoritesProvider>(
+                builder: (context, favoritesProvider, child) {
+                  final isFavorite =
+                      favoritesProvider.isFavorite(_currentChannel.id);
+                  return IconButton(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      favoritesProvider.toggleFavorite(_currentChannel);
+                    },
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
+                      color: isFavorite ? Colors.red : null,
+                      size: 28,
+                    ),
+                    style: IconButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),

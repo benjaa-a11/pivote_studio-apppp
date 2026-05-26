@@ -4,6 +4,7 @@ import 'package:pivote/core/services/cache_manager_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 
 class StorageManagerScreen extends StatefulWidget {
   const StorageManagerScreen({super.key});
@@ -98,19 +99,9 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text(
-          'Almacenamiento',
-          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: theme.colorScheme.onSurface),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: const PivoteAppBar(
+        title: 'Almacenamiento',
+        subtitle: 'Administrá el espacio de la app',
       ),
       body: _isLoading
           ? const Center(child: PivoteLoader(size: 40))

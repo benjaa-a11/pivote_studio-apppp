@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 
 class PrivacySecurityScreen extends StatelessWidget {
   const PrivacySecurityScreen({super.key});
@@ -13,22 +14,9 @@ class PrivacySecurityScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Text(
-          'Privacidad y Seguridad',
-          style: GoogleFonts.spaceGrotesk(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: theme.colorScheme.onSurface),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: const PivoteAppBar(
+        title: 'Privacidad y Seguridad',
+        subtitle: 'Configuraciones y políticas',
       ),
       body: Stack(
         children: [

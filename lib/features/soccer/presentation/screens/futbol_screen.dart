@@ -81,14 +81,25 @@ class _FutbolScreenState extends State<FutbolScreen>
         provider.soccerData?.matches.where((m) => m.isLive).length ?? 0;
     final isDark = theme.brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? AppTheme.darkBorder.withValues(alpha: 0.15)
+                : AppTheme.lightBorder.withValues(alpha: 0.3),
+            width: 1.2,
+          ),
+        ),
+      ),
       child: Row(
         children: [
           // Colored accent bar
           Container(
             width: 4,
-            height: 36,
+            height: 38,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(4),
               gradient: const LinearGradient(
@@ -99,22 +110,31 @@ class _FutbolScreenState extends State<FutbolScreen>
             ),
           ),
           const SizedBox(width: 12),
-          // Soccer icon
+          // Soccer icon container (Unified & polished)
           Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  _fwcOrange.withValues(alpha: isDark ? 0.2 : 0.12),
-                  _fwcOrange.withValues(alpha: isDark ? 0.05 : 0.04),
+                  _fwcOrange.withValues(alpha: isDark ? 0.22 : 0.14),
+                  _fwcOrange.withValues(alpha: isDark ? 0.06 : 0.04),
                 ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: _fwcOrange.withValues(alpha: 0.2),
-                width: 1,
+                color: _fwcOrange.withValues(alpha: isDark ? 0.35 : 0.25),
+                width: 1.2,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: _fwcOrange.withValues(alpha: isDark ? 0.08 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: const Icon(
               Icons.sports_soccer,
@@ -127,6 +147,7 @@ class _FutbolScreenState extends State<FutbolScreen>
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   'Fútbol',
@@ -134,15 +155,17 @@ class _FutbolScreenState extends State<FutbolScreen>
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: theme.colorScheme.onSurface,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.6,
+                    height: 1.1,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   'FIFA World Cup 26™ & más',
                   style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: theme.hintColor,
+                    color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
                   ),
                 ),
               ],

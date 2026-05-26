@@ -137,7 +137,7 @@ class _SearchScreenState extends State<SearchScreen>
     final topPadding = MediaQuery.of(context).padding.top;
 
     return Container(
-      padding: EdgeInsets.fromLTRB(16, topPadding + 10, 16, 16),
+      padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 16),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
         border: Border(
@@ -145,7 +145,7 @@ class _SearchScreenState extends State<SearchScreen>
             color: isDark
                 ? AppTheme.darkBorder.withValues(alpha: 0.15)
                 : AppTheme.lightBorder.withValues(alpha: 0.3),
-            width: 1,
+            width: 1.2,
           ),
         ),
       ),
@@ -154,28 +154,38 @@ class _SearchScreenState extends State<SearchScreen>
           // Top row: Back + Title
           Row(
             children: [
-              // Back button
-              GestureDetector(
-                onTap: () {
-                  Provider.of<ChannelProvider>(context, listen: false).searchChannels('');
-                  Navigator.pop(context);
-                },
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
+              // Unified Back button
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    Provider.of<ChannelProvider>(context, listen: false)
+                        .searchChannels('');
+                    Navigator.pop(context);
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
                       color: isDark
-                          ? AppTheme.darkBorder.withValues(alpha: 0.2)
-                          : AppTheme.lightBorder,
+                          ? AppTheme.darkBg2.withValues(alpha: 0.5)
+                          : AppTheme.lightBg2.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? AppTheme.darkBorder.withValues(alpha: 0.3)
+                            : AppTheme.lightBorder,
+                        width: 1,
+                      ),
                     ),
-                  ),
-                  child: Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 14,
-                    color: theme.colorScheme.onSurface,
+                    child: Center(
+                      child: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 14,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -207,14 +217,16 @@ class _SearchScreenState extends State<SearchScreen>
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          // Glowing Search field
+          // Glowing Search field (Overhauled & shift-proof)
           AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 52,
+            duration: const Duration(milliseconds: 250),
+            height: 54,
             decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
+              color: isDark
+                  ? AppTheme.darkBg2.withValues(alpha: 0.6)
+                  : AppTheme.lightBg2.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: _searchFocusNode.hasFocus
@@ -222,13 +234,15 @@ class _SearchScreenState extends State<SearchScreen>
                     : (isDark
                         ? AppTheme.darkBorder.withValues(alpha: 0.25)
                         : AppTheme.lightBorder),
-                width: _searchFocusNode.hasFocus ? 1.5 : 1,
+                width: 1.5, // Constant width prevents layout shift (jitter)
               ),
               boxShadow: _searchFocusNode.hasFocus
                   ? [
                       BoxShadow(
-                        color: theme.colorScheme.primary.withAlpha(isDark ? 25 : 12),
-                        blurRadius: 16,
+                        color: theme.colorScheme.primary
+                            .withValues(alpha: isDark ? 0.22 : 0.12),
+                        blurRadius: 20,
+                        spreadRadius: 1,
                         offset: const Offset(0, 4),
                       ),
                     ]
@@ -244,6 +258,14 @@ class _SearchScreenState extends State<SearchScreen>
               onSubmitted: _onSearch,
               textInputAction: TextInputAction.search,
               autofocus: false,
+              cursorColor: theme.colorScheme.primary,
+              cursorWidth: 2.2,
+              cursorRadius: const Radius.circular(2),
+              selectionTheme: SelectionThemeData(
+                cursorColor: theme.colorScheme.primary,
+                selectionColor: theme.colorScheme.primary.withValues(alpha: 0.25),
+                selectionHandleColor: theme.colorScheme.primary,
+              ),
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
@@ -284,7 +306,7 @@ class _SearchScreenState extends State<SearchScreen>
                           child: Icon(
                             Icons.close_rounded,
                             size: 18,
-                            color: theme.colorScheme.onSurface.withAlpha(128),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                           ),
                         ),
                       )
@@ -292,7 +314,10 @@ class _SearchScreenState extends State<SearchScreen>
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 15),
               ),
             ),
           ),
