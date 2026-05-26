@@ -261,11 +261,6 @@ class _SearchScreenState extends State<SearchScreen>
               cursorColor: theme.colorScheme.primary,
               cursorWidth: 2.2,
               cursorRadius: const Radius.circular(2),
-              selectionTheme: SelectionThemeData(
-                cursorColor: theme.colorScheme.primary,
-                selectionColor: theme.colorScheme.primary.withValues(alpha: 0.25),
-                selectionHandleColor: theme.colorScheme.primary,
-              ),
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,

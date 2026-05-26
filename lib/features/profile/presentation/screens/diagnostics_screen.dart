@@ -149,7 +149,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     await Future.delayed(const Duration(milliseconds: 1000));
 
     if (!mounted) return;
-    HapticFeedback.doubleTap();
+    HapticFeedback.heavyImpact();
     setState(() {
       _isTesting = false;
       _testCompleted = true;

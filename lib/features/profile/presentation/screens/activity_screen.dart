@@ -415,6 +415,8 @@ class ActivityScreen extends StatelessWidget {
                           ],
                         ),
                       ),
+                    ),
+                    const SizedBox(height: 16),
                     // Diagnostics Banner (Interactive Connection Diagnostic entry point)
                     AppAnimations.smoothFadeIn(
                       child: Container(
