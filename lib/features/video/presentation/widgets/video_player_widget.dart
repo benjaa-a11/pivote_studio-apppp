@@ -37,7 +37,18 @@ import 'package:google_fonts/google_fonts.dart';
 
 class VideoPlayerWidget extends StatefulWidget {
   final Channel channel;
-  const VideoPlayerWidget({super.key, required this.channel});
+  final Widget Function(
+    BuildContext context,
+    UnifiedVideoController controller,
+    bool isFullScreen,
+    VoidCallback toggleFullScreen,
+  )? controlsBuilder;
+
+  const VideoPlayerWidget({
+    super.key,
+    required this.channel,
+    this.controlsBuilder,
+  });
 
   @override
   State<VideoPlayerWidget> createState() => _VideoPlayerWidgetState();
@@ -557,25 +568,32 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             // ── 2. Native Controls (only libmpv path) ──────────────────
             if (!_useWebPlayer && !_useShakaPlayer && _unified != null)
               Positioned.fill(
-                child: CustomVideoControls(
-                  controller: _unified!,
-                  channelName: widget.channel.name,
-                  onFullScreenToggle: _toggleFullScreen,
-                  isFullScreen: _isFullScreen,
-                  aspectRatioLabel: _aspectRatio.label,
-                  onAspectRatioChange: _changeAspectRatio,
-                  onMuteToggle: _toggleMute,
-                  isMuted: _isMuted,
-                  currentServer: _serverIndex + 1,
-                  totalServers: widget.channel.streamUrl.length,
-                  onServerSelect: (idx) {
-                    _serverIndex = idx;
-                    _retryCount = 0;
-                    _serverAttempt = 0;
-                    _setPlayerState(PlayerState.connecting);
-                    _tryServer();
-                  },
-                ),
+                child: widget.controlsBuilder != null
+                    ? widget.controlsBuilder!(
+                        context,
+                        _unified!,
+                        _isFullScreen,
+                        _toggleFullScreen,
+                      )
+                    : CustomVideoControls(
+                        controller: _unified!,
+                        channelName: widget.channel.name,
+                        onFullScreenToggle: _toggleFullScreen,
+                        isFullScreen: _isFullScreen,
+                        aspectRatioLabel: _aspectRatio.label,
+                        onAspectRatioChange: _changeAspectRatio,
+                        onMuteToggle: _toggleMute,
+                        isMuted: _isMuted,
+                        currentServer: _serverIndex + 1,
+                        totalServers: widget.channel.streamUrl.length,
+                        onServerSelect: (idx) {
+                          _serverIndex = idx;
+                          _retryCount = 0;
+                          _serverAttempt = 0;
+                          _setPlayerState(PlayerState.connecting);
+                          _tryServer();
+                        },
+                      ),
               ),
 
             // ── 3. Fade-in animation ────────────────────────────────────

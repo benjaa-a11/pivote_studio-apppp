@@ -24,6 +24,7 @@ abstract class UnifiedVideoController {
   Future<void> setVolume(double v);
   Future<void> setMuted(bool muted);
   Future<void> retry();
+  Future<void> seek(Duration position);
 
   void addListener(void Function() listener);
   void removeListener(void Function() listener);
@@ -77,6 +78,8 @@ class _IPTVControllerAdapter implements UnifiedVideoController {
   Future<void> setMuted(bool m) => _engine.setMuted(m);
   @override
   Future<void> retry() => _engine.reconnect();
+  @override
+  Future<void> seek(Duration position) => _engine.player.seek(position);
 
   @override
   void addListener(void Function() l) => _engine.addListener(l);
@@ -239,6 +242,8 @@ class _WebControllerAdapter implements UnifiedVideoController {
   Future<void> setMuted(bool m) => _js(m ? 'window.mute()' : 'window.unmute()');
   @override
   Future<void> retry() => _js('window.retryCurrentServer()');
+  @override
+  Future<void> seek(Duration position) => _js('window.seek(${position.inSeconds})');
 
   Future<void> _js(String script) async {
     if (_disposed) return;

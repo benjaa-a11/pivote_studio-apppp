@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
-import 'package:pivote/features/video/presentation/screens/player_screen.dart';
+import 'package:pivote/features/movies/presentation/screens/movie_player_screen.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 
@@ -292,7 +292,7 @@ class MovieDetailScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               AppAnimations.createFadeRoute(
-                                PlayerScreen(channel: movie.toChannel()),
+                                MoviePlayerScreen(movie: movie),
                               ),
                             );
                           },

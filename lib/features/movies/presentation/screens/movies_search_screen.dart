@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/features/movies/presentation/providers/movies_provider.dart';
 import 'package:pivote/features/movies/presentation/widgets/movie_card.dart';
 import 'package:pivote/core/theme/app_theme.dart';
@@ -20,6 +21,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
   final FocusNode _focusNode = FocusNode();
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
+  List<String> _history = [];
 
   // Genre-based color palettes for category chips
   static final Map<String, List<Color>> _genreGradients = {
@@ -46,6 +48,8 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _animController.forward();
 
+    _loadHistory();
+
     // auto-focus search field when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
@@ -58,6 +62,54 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
     _focusNode.dispose();
     _animController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList('movie_search_history') ?? [];
+      setState(() {
+        _history = saved;
+      });
+    } catch (e) {
+      debugPrint('Error loading search history: $e');
+    }
+  }
+
+  Future<void> _saveHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('movie_search_history', _history);
+    } catch (e) {
+      debugPrint('Error saving search history: $e');
+    }
+  }
+
+  void _addQueryToHistory(String query) {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+    setState(() {
+      _history.remove(trimmed);
+      _history.insert(0, trimmed);
+      if (_history.length > 8) {
+        _history.removeRange(8, _history.length);
+      }
+    });
+    _saveHistory();
+  }
+
+  void _removeHistoryItem(String query) {
+    setState(() {
+      _history.remove(query);
+    });
+    _saveHistory();
+  }
+
+  void _clearAllHistory() {
+    setState(() {
+      _history.clear();
+    });
+    _saveHistory();
   }
 
   void _onSearchChanged(String query) {
@@ -226,6 +278,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
               controller: _searchController,
               focusNode: _focusNode,
               onChanged: _onSearchChanged,
+              onSubmitted: _addQueryToHistory,
               textInputAction: TextInputAction.search,
               cursorColor: theme.colorScheme.primary,
               cursorWidth: 2.2,
@@ -292,10 +345,101 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
       child: CustomScrollView(
         physics: const ClampingScrollPhysics(),
         slivers: [
+          // Recent searches
+          if (_history.isNotEmpty) ...[
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.history_rounded,
+                            size: 18, color: theme.colorScheme.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Búsquedas Recientes',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    GestureDetector(
+                      onTap: _clearAllHistory,
+                      child: Text(
+                        'Limpiar todo',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 38,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    physics: const ClampingScrollPhysics(),
+                    itemCount: _history.length,
+                    itemBuilder: (context, index) {
+                      final item = _history[index];
+                      return Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        child: InputChip(
+                          label: Text(
+                            item,
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          backgroundColor: isDark
+                              ? AppTheme.darkBg2.withValues(alpha: 0.5)
+                              : AppTheme.lightBg2.withValues(alpha: 0.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color: isDark
+                                  ? AppTheme.darkBorder.withValues(alpha: 0.2)
+                                  : AppTheme.lightBorder,
+                            ),
+                          ),
+                          onPressed: () {
+                            _searchController.text = item;
+                            _onSearchChanged(item);
+                            _addQueryToHistory(item);
+                          },
+                          onDeleted: () => _removeHistoryItem(item),
+                          deleteIcon: Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+
           // Genre Quick Cards
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
               child: Row(
                 children: [
                   Icon(Icons.grid_view_rounded,
@@ -337,7 +481,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
           // Popular Movies
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 26, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
               child: Row(
                 children: [
                   Icon(Icons.local_fire_department_rounded,
@@ -386,6 +530,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
         onTap: () {
           _searchController.text = genre;
           _onSearchChanged(genre);
+          _addQueryToHistory(genre);
         },
         child: Container(
           decoration: BoxDecoration(
@@ -435,7 +580,6 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
     );
   }
 
-  // ── Search Results ────────────────────────────────────────────────────────
   Widget _buildResults(
       MoviesProvider provider, ThemeData theme, bool isDark) {
     final results = provider.movies;
@@ -443,6 +587,14 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
     if (results.isEmpty) {
       return _buildNoResults(theme, isDark);
     }
+
+    final query = _searchController.text.toLowerCase();
+    final suggestions = provider.allMovies
+        .where((m) => m.title.toLowerCase().contains(query) &&
+            m.title.toLowerCase() != query)
+        .take(3)
+        .map((m) => m.title)
+        .toList();
 
     return CustomScrollView(
       physics: const ClampingScrollPhysics(),
@@ -486,6 +638,74 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
             ),
           ),
         ),
+
+        // Real-time suggestions row
+        if (suggestions.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Row(
+                children: [
+                  Icon(Icons.lightbulb_outline_rounded,
+                      size: 14, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Quizás quisiste decir:',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 28,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        physics: const ClampingScrollPhysics(),
+                        itemCount: suggestions.length,
+                        itemBuilder: (context, index) {
+                          final suggestion = suggestions[index];
+                          return GestureDetector(
+                            onTap: () {
+                              _searchController.text = suggestion;
+                              _onSearchChanged(suggestion);
+                              _addQueryToHistory(suggestion);
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary
+                                    .withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: theme.colorScheme.primary
+                                      .withValues(alpha: 0.15),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  suggestion,
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 10,
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
 
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
