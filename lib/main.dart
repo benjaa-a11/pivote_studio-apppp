@@ -23,6 +23,7 @@ import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 import 'package:pivote/shared/screens/firebase_required_screen.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/features/auth/presentation/screens/suspended_screen.dart';
+import 'package:pivote/features/movies/presentation/providers/movies_provider.dart';
 
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/wakelock_service.dart';
@@ -78,6 +79,7 @@ class PivoteApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RadioProvider()),
         ChangeNotifierProvider(create: (_) => SoccerProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => MoviesProvider()),
         ChangeNotifierProvider.value(value: audioManager),
       ],
       child: Consumer<ThemeProvider>(

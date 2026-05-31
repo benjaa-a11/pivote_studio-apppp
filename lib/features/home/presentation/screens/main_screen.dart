@@ -9,6 +9,7 @@ import 'package:pivote/features/soccer/presentation/screens/futbol_screen.dart';
 import 'package:pivote/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:pivote/features/radio/presentation/screens/radios_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/profile_screen.dart';
+import 'package:pivote/features/movies/presentation/screens/movies_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -26,6 +27,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final List<Widget> _screens = [
     const HomeScreen(),
     const FutbolScreen(),
+    const MoviesScreen(),
     const FavoritesScreen(),
     const RadiosScreen(),
     const ProfileScreen(),
@@ -291,7 +293,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               icon: AppAnimations.pulseIcon(
                 isSelected: false,
                 child: Icon(
-                  Icons.favorite_outline_rounded,
+                  Icons.movie_filter_outlined,
                   size: 22,
                   color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
                       Colors.grey,
@@ -299,6 +301,26 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               ),
               selectedIcon: AppAnimations.pulseIcon(
                 isSelected: _selectedIndex == 2,
+                child: Icon(
+                  Icons.movie_filter_rounded,
+                  size: 22,
+                  color: selectedColor,
+                ),
+              ),
+              label: 'Películas',
+            ),
+            NavigationDestination(
+              icon: AppAnimations.pulseIcon(
+                isSelected: false,
+                child: Icon(
+                  Icons.favorite_outline_rounded,
+                  size: 22,
+                  color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
+                      Colors.grey,
+                ),
+              ),
+              selectedIcon: AppAnimations.pulseIcon(
+                isSelected: _selectedIndex == 3,
                 child: Icon(
                   Icons.favorite_rounded,
                   size: 22,
@@ -318,7 +340,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 ),
               ),
               selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 3,
+                isSelected: _selectedIndex == 4,
                 child: FaIcon(
                   FontAwesomeIcons.radio,
                   size: 22,
@@ -342,7 +364,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 ),
               ),
               selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 4,
+                isSelected: _selectedIndex == 5,
                 child: SvgPicture.asset(
                   'assets/icons/user_active_16.svg',
                   width: 22,
