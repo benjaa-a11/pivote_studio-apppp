@@ -566,7 +566,6 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                       overlayColor: AppTheme.darkAccent.withValues(alpha: 0.2),
                       thumbShape: const RoundSliderThumbShape(
                         enabledThumbRadius: 7,
-                        pressedThumbRadius: 10,
                       ),
                       overlayShape: const RoundSliderOverlayShape(
                         overlayRadius: 16,

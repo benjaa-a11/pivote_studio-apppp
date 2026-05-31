@@ -172,6 +172,13 @@ class ExoPlayerController {
     } catch (_) {}
   }
 
+  Future<void> seekTo(Duration position) async {
+    if (_disposed || _methodChannel == null) return;
+    try {
+      await _methodChannel!.invokeMethod('seekTo', {'position': position.inMilliseconds});
+    } catch (_) {}
+  }
+
   void addListener(ExoPlayerEventCallback cb) => _listeners.add(cb);
   void removeListener(ExoPlayerEventCallback cb) => _listeners.remove(cb);
 

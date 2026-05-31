@@ -528,6 +528,8 @@ class _ExoUnifiedAdapter implements UnifiedVideoController {
   Future<void> setMuted(bool muted) => _exo.setMuted(muted);
   @override
   Future<void> retry() async => _state._handleRefresh();
+  @override
+  Future<void> seek(Duration position) => _exo.seekTo(position);
 
   @override
   void addListener(void Function() l) {} // State managed by widget setState
