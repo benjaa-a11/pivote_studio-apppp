@@ -8,6 +8,7 @@ import 'package:pivote/features/movies/presentation/providers/movies_provider.da
 import 'package:pivote/features/movies/presentation/widgets/movie_card.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
 import 'package:pivote/features/movies/presentation/screens/movie_detail_screen.dart';
+import 'package:pivote/features/movies/presentation/screens/movies_search_screen.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 
@@ -19,7 +20,6 @@ class MoviesScreen extends StatefulWidget {
 }
 
 class _MoviesScreenState extends State<MoviesScreen> {
-  final TextEditingController _searchController = TextEditingController();
   final PageController _carouselController = PageController(viewportFraction: 0.92);
   int _activeCarouselIndex = 0;
 
@@ -34,7 +34,6 @@ class _MoviesScreenState extends State<MoviesScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     _carouselController.dispose();
     super.dispose();
   }
@@ -54,21 +53,15 @@ class _MoviesScreenState extends State<MoviesScreen> {
           strokeWidth: 2.5,
           onRefresh: () => moviesProvider.loadMovies(force: true),
           child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             slivers: [
               // 1. Sleek Top Header
               SliverToBoxAdapter(
                 child: _buildHeader(theme, isDark),
               ),
 
-              // 2. Interactive Search Box
-              SliverToBoxAdapter(
-                child: _buildSearchBox(theme, isDark, moviesProvider),
-              ),
-
-              // 3. Featured Banner Carousel (only if no active search/filters)
-              if (moviesProvider.searchQuery.isEmpty &&
-                  moviesProvider.selectedGenre == 'Todos' &&
+              // 2. Featured Banner Carousel (only if no genre filter)
+              if (moviesProvider.selectedGenre == 'Todos' &&
                   !moviesProvider.isLoading &&
                   moviesProvider.featuredMovies.isNotEmpty)
                 SliverToBoxAdapter(
@@ -80,10 +73,10 @@ class _MoviesScreenState extends State<MoviesScreen> {
                 child: _buildGenreFilterCarousel(theme, isDark, moviesProvider),
               ),
 
-              // 5. Trending / Popular Row (only if no search)
-              if (moviesProvider.searchQuery.isEmpty &&
-                  !moviesProvider.isLoading &&
-                  moviesProvider.trendingMovies.isNotEmpty) ...[
+              // 4. Trending / Popular Row
+              if (!moviesProvider.isLoading &&
+                  moviesProvider.trendingMovies.isNotEmpty &&
+                  moviesProvider.selectedGenre == 'Todos') ...[
                 SliverToBoxAdapter(
                   child: _buildSectionTitle(theme, 'Tendencias Populares', isDark),
                 ),
@@ -203,75 +196,53 @@ class _MoviesScreenState extends State<MoviesScreen> {
               ],
             ),
           ),
+          const SizedBox(width: 12),
+          // Search Icon Button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  AppAnimations.createFadeRoute(const MoviesSearchScreen()),
+                );
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? theme.colorScheme.primary.withValues(alpha: 0.05)
+                      : theme.colorScheme.primary.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: theme.colorScheme.primary
+                        .withValues(alpha: isDark ? 0.22 : 0.18),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary
+                          .withValues(alpha: isDark ? 0.08 : 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.search_rounded,
+                  size: 22,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSearchBox(ThemeData theme, bool isDark, MoviesProvider provider) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        height: 52,
-        decoration: BoxDecoration(
-          color: isDark
-              ? AppTheme.darkBg2.withValues(alpha: 0.6)
-              : AppTheme.lightBg2.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark
-                ? AppTheme.darkBorder.withValues(alpha: 0.25)
-                : AppTheme.lightBorder,
-            width: 1.2,
-          ),
-        ),
-        child: TextField(
-          controller: _searchController,
-          onChanged: (val) {
-            provider.setSearchQuery(val);
-          },
-          cursorColor: theme.colorScheme.primary,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurface,
-          ),
-          decoration: InputDecoration(
-            hintText: 'Buscar películas, directores, géneros...',
-            hintStyle: GoogleFonts.spaceGrotesk(
-              fontSize: 13,
-              color: theme.hintColor.withValues(alpha: 0.45),
-              fontWeight: FontWeight.w500,
-            ),
-            prefixIcon: Icon(
-              Icons.search_rounded,
-              color: theme.hintColor.withValues(alpha: 0.45),
-              size: 20,
-            ),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? GestureDetector(
-                    onTap: () {
-                      _searchController.clear();
-                      provider.setSearchQuery('');
-                      setState(() {});
-                    },
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  )
-                : null,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(vertical: 14),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildFeaturedCarousel(ThemeData theme, bool isDark, List<Movie> featured) {
     return Column(
@@ -616,7 +587,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'No se encontraron películas',
+              'No hay películas en este género',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -624,7 +595,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              'Intenta ajustar los filtros de género o realiza\nuna nueva búsqueda.',
+              'Intentá seleccionar otro género o\nlimpiar el filtro activo.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: isDark ? Colors.grey[500] : Colors.grey[600],
                     height: 1.5,
@@ -633,10 +604,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () {
-                _searchController.clear();
-                provider.clearFilters();
-              },
+              onPressed: provider.clearFilters,
               icon: const Icon(Icons.refresh_rounded, size: 20),
               label: const Text('Limpiar filtros'),
               style: ElevatedButton.styleFrom(

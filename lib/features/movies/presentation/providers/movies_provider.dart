@@ -49,7 +49,8 @@ class MoviesProvider extends ChangeNotifier {
       
       final matchesSearch = _searchQuery.isEmpty ||
           movie.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          movie.genres.any((g) => g.toLowerCase().contains(_searchQuery.toLowerCase()));
+          movie.genres.any((g) => g.toLowerCase().contains(_searchQuery.toLowerCase())) ||
+          movie.directors.any((d) => d.toLowerCase().contains(_searchQuery.toLowerCase()));
 
       return matchesGenre && matchesSearch;
     }).toList();

@@ -119,7 +119,7 @@ class MovieDetailScreen extends StatelessWidget {
           Positioned.fill(
             top: MediaQuery.of(context).padding.top + 70,
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 10, 20, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
