@@ -30,8 +30,6 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
   // Results
   double _finalSpeed = 0.0;
   int _finalPing = 0;
-  double _finalStability = 0.0;
-  double _finalLoss = 0.0;
   bool _testCompleted = false;
 
   @override
@@ -107,7 +105,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     if (targetSpeedBase > 120.0) targetSpeedBase = 118.5;
 
     // Oscillate gauge needle to simulate high-end download testing
-    final stepsCount = 35;
+    const stepsCount = 35;
     for (int i = 0; i < stepsCount; i++) {
       await Future.delayed(const Duration(milliseconds: 80));
       if (!mounted) return;
@@ -155,8 +153,6 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
       _testCompleted = true;
       _finalSpeed = _currentSpeed;
       _finalPing = _pingMs;
-      _finalStability = 96.5 + Random().nextDouble() * 3.0;
-      _finalLoss = _pingMs > 100 ? 0.2 : 0.0;
       _testStep = 'Prueba finalizada. Tu conexión está diagnosticada.';
     });
   }
@@ -274,7 +270,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
 
             // Premium Circular Speed Gauge
             Center(
-              child: Container(
+              child: SizedBox(
                 width: 250,
                 height: 250,
                 child: AnimatedBuilder(

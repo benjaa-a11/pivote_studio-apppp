@@ -1,5 +1,3 @@
-import 'package:pivote/features/video/data/models/channel.dart';
-
 class Movie {
   final String id;
   final String title;
@@ -15,6 +13,9 @@ class Movie {
   final List<String> directors;
   final bool isFeatured;
   final bool isTrending;
+  final Duration lastPosition;
+  final List<String> subtitleUrls;
+  final List<String> audioTracks;
 
   Movie({
     required this.id,
@@ -31,6 +32,9 @@ class Movie {
     required this.directors,
     this.isFeatured = false,
     this.isTrending = false,
+    this.lastPosition = Duration.zero,
+    this.subtitleUrls = const [],
+    this.audioTracks = const [],
   });
 
   factory Movie.fromJson(Map<String, dynamic> json) {
@@ -49,6 +53,9 @@ class Movie {
       directors: List<String>.from(json['directors'] ?? []),
       isFeatured: json['isFeatured'] ?? false,
       isTrending: json['isTrending'] ?? false,
+      lastPosition: Duration(milliseconds: json['lastPositionMs'] ?? 0),
+      subtitleUrls: List<String>.from(json['subtitleUrls'] ?? []),
+      audioTracks: List<String>.from(json['audioTracks'] ?? []),
     );
   }
 
@@ -68,25 +75,49 @@ class Movie {
       'directors': directors,
       'isFeatured': isFeatured,
       'isTrending': isTrending,
+      'lastPositionMs': lastPosition.inMilliseconds,
+      'subtitleUrls': subtitleUrls,
+      'audioTracks': audioTracks,
     };
   }
 
-  /// Converts this Movie into a Channel so it can play seamlessly in PlayerScreen
-  Channel toChannel() {
-    return Channel(
-      id: 'movie_$id',
-      name: title,
-      category: 'Películas',
-      logoUrl: [posterUrl, posterUrl], // [0] dark mode, [1] light mode
-      streamUrl: [
-        StreamSource(
-          url: streamUrl,
-          label: 'Servidor Principal (Auto)',
-        ),
-      ],
-      description: description,
-      type: streamUrl.contains('.mpd') ? 'dash' : (streamUrl.contains('.m3u8') ? 'hls' : 'mp4'),
-      quality: 'Full HD',
+  Movie copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? posterUrl,
+    String? backdropUrl,
+    double? rating,
+    int? year,
+    String? duration,
+    List<String>? genres,
+    String? streamUrl,
+    List<String>? cast,
+    List<String>? directors,
+    bool? isFeatured,
+    bool? isTrending,
+    Duration? lastPosition,
+    List<String>? subtitleUrls,
+    List<String>? audioTracks,
+  }) {
+    return Movie(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      posterUrl: posterUrl ?? this.posterUrl,
+      backdropUrl: backdropUrl ?? this.backdropUrl,
+      rating: rating ?? this.rating,
+      year: year ?? this.year,
+      duration: duration ?? this.duration,
+      genres: genres ?? this.genres,
+      streamUrl: streamUrl ?? this.streamUrl,
+      cast: cast ?? this.cast,
+      directors: directors ?? this.directors,
+      isFeatured: isFeatured ?? this.isFeatured,
+      isTrending: isTrending ?? this.isTrending,
+      lastPosition: lastPosition ?? this.lastPosition,
+      subtitleUrls: subtitleUrls ?? this.subtitleUrls,
+      audioTracks: audioTracks ?? this.audioTracks,
     );
   }
 }

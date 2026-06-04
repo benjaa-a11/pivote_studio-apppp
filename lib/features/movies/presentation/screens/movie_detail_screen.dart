@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
 import 'package:pivote/features/movies/presentation/screens/movie_player_screen.dart';
+import 'package:pivote/features/movies/presentation/providers/movies_provider.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 
@@ -17,6 +19,13 @@ class MovieDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final moviesProvider = context.watch<MoviesProvider>();
+    final freshMovie = moviesProvider.allMovies.firstWhere(
+      (m) => m.id == movie.id,
+      orElse: () => movie,
+    );
+    final savedPosition = freshMovie.lastPosition;
+    final totalDuration = moviesProvider.getMovieDuration(movie.id);
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
@@ -129,28 +138,31 @@ class MovieDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Poster
-                      Container(
-                        width: 120,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.4),
-                              blurRadius: 15,
-                              offset: const Offset(0, 8),
+                      Hero(
+                        tag: 'movie_poster_${movie.id}',
+                        child: Container(
+                          width: 120,
+                          height: 180,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              width: 1.5,
                             ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: CachedNetworkImage(
-                            imageUrl: movie.posterUrl,
-                            fit: BoxFit.cover,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.45),
+                                blurRadius: 15,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: CachedNetworkImage(
+                              imageUrl: movie.posterUrl,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),
@@ -260,69 +272,228 @@ class MovieDetailScreen extends StatelessWidget {
 
                   const SizedBox(height: 28),
 
-                  // 4. Large Action Play Button
+                  // 4. Action Play Button (Continue vs Start)
                   AppAnimations.smoothFadeIn(
                     duration: const Duration(milliseconds: 400),
                     child: Center(
-                      child: Container(
-                        width: double.infinity,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppTheme.darkAccent,
-                              AppTheme.darkAccent.withValues(alpha: 0.8),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.darkAccent.withValues(alpha: 0.35),
-                              blurRadius: 15,
-                              spreadRadius: 1,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            HapticFeedback.heavyImpact();
-                            Navigator.push(
-                              context,
-                              AppAnimations.createFadeRoute(
-                                MoviePlayerScreen(movie: movie),
-                              ),
+                      child: Builder(
+                        builder: (context) {
+                          if (savedPosition > const Duration(seconds: 10)) {
+                            final double progress = totalDuration > Duration.zero
+                                ? (savedPosition.inMilliseconds / totalDuration.inMilliseconds).clamp(0.0, 1.0)
+                                : 0.0;
+
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    // Continue Watching
+                                    Expanded(
+                                      flex: 3,
+                                      child: Container(
+                                        height: 56,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              AppTheme.darkAccent,
+                                              AppTheme.darkAccent.withValues(alpha: 0.8),
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(18),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppTheme.darkAccent.withValues(alpha: 0.25),
+                                              blurRadius: 15,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: ElevatedButton(
+                                          onPressed: () {
+                                            HapticFeedback.heavyImpact();
+                                            Navigator.push(
+                                              context,
+                                              AppAnimations.createFadeRoute(
+                                                MoviePlayerScreen(
+                                                  movie: freshMovie,
+                                                  startPosition: savedPosition,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.transparent,
+                                            foregroundColor: AppTheme.darkBg,
+                                            elevation: 0,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(18),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                Icons.play_arrow_rounded,
+                                                size: 28,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'CONTINUAR VIENDO',
+                                                style: GoogleFonts.spaceGrotesk(
+                                                  fontWeight: FontWeight.w900,
+                                                  fontSize: 13,
+                                                  letterSpacing: 0.5,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Restart from beginning
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.replay_rounded,
+                                        color: isDark ? Colors.white : AppTheme.lightText,
+                                        size: 24,
+                                      ),
+                                      tooltip: 'Reproducir desde el inicio',
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
+                                        padding: const EdgeInsets.all(16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(18),
+                                          side: BorderSide(
+                                            color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                                          ),
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        HapticFeedback.heavyImpact();
+                                        Navigator.push(
+                                          context,
+                                          AppAnimations.createFadeRoute(
+                                            MoviePlayerScreen(
+                                              movie: freshMovie,
+                                              startPosition: Duration.zero,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                // Progress Bar
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: progress,
+                                        backgroundColor: isDark ? Colors.white12 : Colors.black12,
+                                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.darkAccent),
+                                        minHeight: 5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Te quedaste en ${_formatDuration(savedPosition)}',
+                                          style: GoogleFonts.spaceGrotesk(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
+                                          ),
+                                        ),
+                                        if (totalDuration > Duration.zero)
+                                          Text(
+                                            '${(progress * 100).toInt()}% visto',
+                                            style: GoogleFonts.spaceGrotesk(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppTheme.darkAccent,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
                             );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: AppTheme.darkBg,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.play_arrow_rounded,
-                                size: 28,
+                          } else {
+                            return Container(
+                              width: double.infinity,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppTheme.darkAccent,
+                                    AppTheme.darkAccent.withValues(alpha: 0.8),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.darkAccent.withValues(alpha: 0.35),
+                                    blurRadius: 15,
+                                    spreadRadius: 1,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'REPRODUCIR PELÍCULA',
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14,
-                                  letterSpacing: 0.8,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  HapticFeedback.heavyImpact();
+                                  Navigator.push(
+                                    context,
+                                    AppAnimations.createFadeRoute(
+                                      MoviePlayerScreen(
+                                        movie: freshMovie,
+                                        startPosition: Duration.zero,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: AppTheme.darkBg,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.play_arrow_rounded,
+                                      size: 28,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'REPRODUCIR PELÍCULA',
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 14,
+                                        letterSpacing: 0.8,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
+                            );
+                          }
+                        },
                       ),
                     ),
                   ),
@@ -499,5 +670,17 @@ class MovieDetailScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '$hours:${twoDigits(minutes)}:${twoDigits(seconds)}';
+    }
+    return '${twoDigits(minutes)}:${twoDigits(seconds)}';
   }
 }
