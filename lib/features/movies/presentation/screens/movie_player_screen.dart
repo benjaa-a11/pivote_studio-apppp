@@ -36,7 +36,8 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
   double _opacity = 0.0;
 
   // Controls Visibility
-  bool _showControls = true;
+  bool _showControls = false; // Start hidden while loading
+  bool _hasShownInitialControls = false;
   Timer? _hideControlsTimer;
   Timer? _progressSaveTimer;
 
@@ -74,13 +75,21 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
     // Watch engine state changes
     _engine.addListener(_onEngineStateChange);
 
-    _startHideControlsTimer();
     _startProgressSaving();
   }
 
   void _onEngineStateChange() {
     if (!mounted) return;
     
+    // When playback starts, show controls briefly if we haven't shown them yet
+    if (_engine.state.status == MoviePlayerStatus.playing && !_hasShownInitialControls) {
+      _hasShownInitialControls = true;
+      setState(() {
+        _showControls = true;
+      });
+      _startHideControlsTimer();
+    }
+
     // Automatically hide controls after movie starts playing
     if (_engine.state.status == MoviePlayerStatus.playing && _showControls && _hideControlsTimer == null) {
       _startHideControlsTimer();
@@ -171,62 +180,82 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: ListenableBuilder(
-        listenable: _engine,
-        builder: (context, _) {
-          final state = _engine.state;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        // Stop playback immediately to kill audio and video
+        await _engine.stop();
+        // Restore Portrait Orientation & show system UI
+        await SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+        ]);
+        await SystemChrome.setEnabledSystemUIMode(
+          SystemUiMode.manual,
+          overlays: SystemUiOverlay.values,
+        );
+        if (mounted) {
+          navigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: ListenableBuilder(
+          listenable: _engine,
+          builder: (context, _) {
+            final state = _engine.state;
 
-          return Stack(
-            children: [
-              // ── Entrance Animated Video Surface ──
-              Positioned.fill(
-                child: AnimatedOpacity(
-                  opacity: _opacity,
-                  duration: const Duration(milliseconds: 700),
-                  curve: Curves.easeOut,
-                  child: AnimatedRotation(
-                    turns: _rotationTurns,
-                    duration: const Duration(milliseconds: 750),
-                    curve: Curves.easeOutCubic,
-                    child: AnimatedScale(
-                      scale: _scale,
+            return Stack(
+              children: [
+                // ── Entrance Animated Video Surface ──
+                Positioned.fill(
+                  child: AnimatedOpacity(
+                    opacity: _opacity,
+                    duration: const Duration(milliseconds: 700),
+                    curve: Curves.easeOut,
+                    child: AnimatedRotation(
+                      turns: _rotationTurns,
                       duration: const Duration(milliseconds: 750),
                       curve: Curves.easeOutCubic,
-                      child: Container(
-                        color: Colors.black,
-                        child: Video(
-                          controller: _engine.videoController,
-                          controls: null, // Null is custom controls handled by us
-                          fit: BoxFit.contain,
+                      child: AnimatedScale(
+                        scale: _scale,
+                        duration: const Duration(milliseconds: 750),
+                        curve: Curves.easeOutCubic,
+                        child: Container(
+                          color: Colors.black,
+                          child: Video(
+                            controller: _engine.videoController,
+                            controls: null, // Null is custom controls handled by us
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
-              // ── Custom Gesture-Based Controls Layer ──
-              if (state.status != MoviePlayerStatus.loading && !state.hasError)
-                MovieControlsOverlay(
-                  engine: _engine,
-                  movie: widget.movie,
-                  showControls: _showControls,
-                  onToggleControls: _onToggleControls,
-                  onUserInteraction: _onUserInteraction,
-                ),
+                // ── Custom Gesture-Based Controls Layer ──
+                if (state.status != MoviePlayerStatus.loading && !state.hasError)
+                  MovieControlsOverlay(
+                    engine: _engine,
+                    movie: widget.movie,
+                    showControls: _showControls,
+                    onToggleControls: _onToggleControls,
+                    onUserInteraction: _onUserInteraction,
+                  ),
 
-              // ── Loading Screen Shimmer/Overlay ──
-              if (state.status == MoviePlayerStatus.loading || state.status == MoviePlayerStatus.idle)
-                MovieLoadingOverlay(retryAttempt: state.retryAttempt),
+                // ── Loading Screen Shimmer/Overlay ──
+                if (state.status == MoviePlayerStatus.loading || state.status == MoviePlayerStatus.idle)
+                  MovieLoadingOverlay(retryAttempt: state.retryAttempt),
 
-              // ── Error Message Overlay ──
-              if (state.hasError)
-                _buildErrorOverlay(state.errorMessage ?? 'Error desconocido de reproducción'),
-            ],
-          );
-        },
+                // ── Error Message Overlay ──
+                if (state.hasError)
+                  _buildErrorOverlay(state.errorMessage ?? 'Error desconocido de reproducción'),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -277,11 +306,13 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                     icon: const Icon(Icons.arrow_back_rounded, size: 16),
                     label: const Text('Volver'),
                     onPressed: () async {
+                      final navigator = Navigator.of(context);
+                      await _engine.stop();
                       await SystemChrome.setPreferredOrientations([
                         DeviceOrientation.portraitUp,
                       ]);
                       if (mounted) {
-                        Navigator.pop(context);
+                        navigator.pop();
                       }
                     },
                   ),

@@ -391,6 +391,19 @@ class MovieVideoEngine extends ChangeNotifier {
     // For general usage, let's keep it simple or allow setting it via uri if supported.
   }
 
+  /// Immediately stops playback (used before exiting the player screen)
+  Future<void> stop() async {
+    if (_disposed) return;
+    try {
+      await _player.stop();
+    } catch (_) {}
+    _emit(_state.copyWith(
+      status: MoviePlayerStatus.idle,
+      isPlaying: false,
+      isBuffering: false,
+    ));
+  }
+
   Future<void> retry() async {
     if (_disposed || _currentUrl == null) return;
     _retryCount = 0;

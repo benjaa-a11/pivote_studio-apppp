@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
@@ -38,8 +39,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
 
   // Drag indicators (brightness & volume)
   bool _showBrightnessIndicator = false;
-  double _brightnessLevel =
-      1.0; // 0.0 to 1.0 (1.0 = fully bright/transparent, 0.0 = dark)
+  double _brightnessLevel = 1.0; // 0.0 to 1.0
   Timer? _brightnessTimer;
 
   bool _showVolumeIndicator = false;
@@ -50,6 +50,65 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
   Duration _scrubPosition = Duration.zero;
   Duration _scrubStartPos = Duration.zero;
   Timer? _scrubTimer;
+
+  // ── SVG Constants ──
+  static const String _svgPlay = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M8 5.14v13.72a2 2 0 0 0 3.05 1.71l10.29-6.86a2 2 0 0 0 0-3.42L11.05 3.43A2 2 0 0 0 8 5.14z" fill="currentColor"/>
+  </svg>''';
+
+  static const String _svgPause = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="5" y="4" width="4" height="16" rx="2" fill="currentColor"/>
+  <rect x="15" y="4" width="4" height="16" rx="2" fill="currentColor"/>
+  </svg>''';
+
+  static const String _svgVolumeHigh = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M15.5 8.5c1.5 1.5 1.5 3.5 0 5M18.5 5.5c3.5 3.5 3.5 7.5 0 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>''';
+
+  static const String _svgVolumeLow = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M15.5 8.5c1.5 1.5 1.5 3.5 0 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>''';
+
+  static const String _svgVolumeMute = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M11 5L6 9H2v6h4l5 4V5z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M22 9l-6 6M16 9l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>''';
+
+  static const String _svgSpeed = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+  <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>''';
+
+  static const String _svgLockLocked = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="11" width="18" height="11" rx="2.5" stroke="currentColor" stroke-width="2"/>
+  <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>''';
+
+  static const String _svgLockUnlocked = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="11" width="18" height="11" rx="2.5" stroke="currentColor" stroke-width="2"/>
+  <path d="M7 11V7a5 5 0 0 1 9.9-1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>''';
+
+  static const String _svgArrowBack = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>''';
+
+  static const String _svgReplay10 = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12.5 3a9 9 0 1 0 7.8 4.5M20 3v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="12" y="15" font-size="7" font-weight="900" font-family="system-ui" text-anchor="middle" fill="currentColor">10</text>
+  </svg>''';
+
+  static const String _svgForward10 = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M11.5 3a9 9 0 1 1-7.8 4.5M4 3v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="12" y="15" font-size="7" font-weight="900" font-family="system-ui" text-anchor="middle" fill="currentColor">10</text>
+  </svg>''';
+
+  static const String _svgBrightness = '''<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
+  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>''';
 
   @override
   void initState() {
@@ -62,6 +121,15 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     _volumeTimer?.cancel();
     _scrubTimer?.cancel();
     super.dispose();
+  }
+
+  Widget _getSvgIcon(String svgContent, {double size = 24, Color color = Colors.white}) {
+    return SvgPicture.string(
+      svgContent,
+      width: size,
+      height: size,
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    );
   }
 
   String _formatDuration(Duration duration) {
@@ -128,9 +196,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
       // BRIGHTNESS GESTURE (Left Side)
       setState(() {
         _showBrightnessIndicator = true;
-        // Sensitivity factor 1.5x height
-        _brightnessLevel =
-            (_brightnessLevel + (deltaY / height) * 1.5).clamp(0.1, 1.0);
+        _brightnessLevel = (_brightnessLevel + (deltaY / height) * 1.5).clamp(0.1, 1.0);
       });
 
       _brightnessTimer?.cancel();
@@ -175,8 +241,6 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
 
     if (totalDuration == Duration.zero) return;
 
-    // Map drag distance in pixels to seconds in video
-    // 1 pixel = 150 milliseconds of video duration (for smooth scrubbing)
     final int changeMs = (deltaX * 150).toInt();
 
     setState(() {
@@ -209,8 +273,6 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -231,7 +293,6 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
             ? duration.inSeconds.toDouble()
             : 1.0;
 
-        // Custom simulated brightness black overlay
         final double overlayOpacity = (1.0 - _brightnessLevel) * 0.85;
 
         return Stack(
@@ -253,13 +314,10 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                   HapticFeedback.lightImpact();
                   widget.onToggleControls();
                 },
-                onDoubleTapDown: (details) =>
-                    _handleDoubleTap(details, constraints),
-                onVerticalDragUpdate: (details) =>
-                    _handleVerticalDragUpdate(details, constraints),
+                onDoubleTapDown: (details) => _handleDoubleTap(details, constraints),
+                onVerticalDragUpdate: (details) => _handleVerticalDragUpdate(details, constraints),
                 onHorizontalDragStart: _handleHorizontalDragStart,
-                onHorizontalDragUpdate: (details) =>
-                    _handleHorizontalDragUpdate(details, constraints),
+                onHorizontalDragUpdate: (details) => _handleHorizontalDragUpdate(details, constraints),
                 onHorizontalDragEnd: _handleHorizontalDragEnd,
               ),
             ),
@@ -280,8 +338,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.fast_rewind_rounded,
-                            color: Colors.white, size: 36),
+                        _getSvgIcon(_svgReplay10, size: 36, color: Colors.white),
                         const SizedBox(height: 6),
                         Text(
                           '-10s',
@@ -312,8 +369,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.fast_forward_rounded,
-                            color: Colors.white, size: 36),
+                        _getSvgIcon(_svgForward10, size: 36, color: Colors.white),
                         const SizedBox(height: 6),
                         Text(
                           '+10s',
@@ -333,8 +389,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
             if (_showBrightnessIndicator)
               Center(
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(16),
@@ -343,16 +398,14 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.wb_sunny_rounded,
-                          color: AppTheme.darkAccent, size: 20),
+                      _getSvgIcon(_svgBrightness, size: 20, color: AppTheme.darkAccent),
                       const SizedBox(width: 12),
                       SizedBox(
                         width: 100,
                         child: LinearProgressIndicator(
                           value: _brightnessLevel,
                           backgroundColor: Colors.white24,
-                          valueColor:
-                              const AlwaysStoppedAnimation(AppTheme.darkAccent),
+                          valueColor: const AlwaysStoppedAnimation(AppTheme.darkAccent),
                           minHeight: 4,
                         ),
                       ),
@@ -374,8 +427,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
             if (_showVolumeIndicator)
               Center(
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.85),
                     borderRadius: BorderRadius.circular(16),
@@ -384,14 +436,12 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      _getSvgIcon(
                         state.isMuted
-                            ? Icons.volume_off_rounded
-                            : (state.volume < 0.4
-                                ? Icons.volume_down_rounded
-                                : Icons.volume_up_rounded),
-                        color: AppTheme.darkAccent,
+                            ? _svgVolumeMute
+                            : (state.volume < 0.4 ? _svgVolumeLow : _svgVolumeHigh),
                         size: 20,
+                        color: AppTheme.darkAccent,
                       ),
                       const SizedBox(width: 12),
                       SizedBox(
@@ -399,16 +449,13 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                         child: LinearProgressIndicator(
                           value: state.isMuted ? 0.0 : state.volume,
                           backgroundColor: Colors.white24,
-                          valueColor:
-                              const AlwaysStoppedAnimation(AppTheme.darkAccent),
+                          valueColor: const AlwaysStoppedAnimation(AppTheme.darkAccent),
                           minHeight: 4,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        state.isMuted
-                            ? 'Muted'
-                            : '${(state.volume * 100).toInt()}%',
+                        state.isMuted ? 'Muted' : '${(state.volume * 100).toInt()}%',
                         style: GoogleFonts.spaceGrotesk(
                           color: Colors.white,
                           fontSize: 13,
@@ -424,8 +471,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
             if (_isScrubbing)
               Center(
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   decoration: BoxDecoration(
                     color: Colors.black87,
                     borderRadius: BorderRadius.circular(20),
@@ -464,8 +510,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: (_scrubPosition >= _scrubStartPos)
                                   ? Colors.green.withValues(alpha: 0.2)
@@ -552,14 +597,11 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                   ],
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.lock_rounded),
-                  iconSize: 42,
-                  color: AppTheme.darkAccent,
+                  icon: _getSvgIcon(_svgLockLocked, size: 28, color: AppTheme.darkAccent),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.black54,
                     padding: const EdgeInsets.all(18),
-                    side: const BorderSide(
-                        color: AppTheme.darkAccent, width: 1.5),
+                    side: const BorderSide(color: AppTheme.darkAccent, width: 1.5),
                   ),
                   onPressed: () {
                     HapticFeedback.mediumImpact();
@@ -614,8 +656,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
               children: [
                 // Back Button
                 IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 16),
-                  color: Colors.white,
+                  icon: _getSvgIcon(_svgArrowBack, size: 16, color: Colors.white),
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.black45,
                     shape: RoundedRectangleBorder(
@@ -625,6 +666,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                   ),
                   onPressed: () async {
                     HapticFeedback.mediumImpact();
+                    await widget.engine.stop();
                     await SystemChrome.setPreferredOrientations([
                       DeviceOrientation.portraitUp,
                     ]);
@@ -667,8 +709,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                               width: 3,
                               height: 3,
                               decoration: const BoxDecoration(
-                                  color: Colors.white38,
-                                  shape: BoxShape.circle)),
+                                  color: Colors.white38, shape: BoxShape.circle)),
                           const SizedBox(width: 8),
                           Text(
                             widget.movie.duration,
@@ -680,15 +721,12 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                           ),
                           const SizedBox(width: 12),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 1.5),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                             decoration: BoxDecoration(
-                              color:
-                                  AppTheme.darkAccent.withValues(alpha: 0.12),
+                              color: AppTheme.darkAccent.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(
-                                  color: AppTheme.darkAccent
-                                      .withValues(alpha: 0.35),
+                                  color: AppTheme.darkAccent.withValues(alpha: 0.35),
                                   width: 0.8),
                             ),
                             child: Text(
@@ -707,16 +745,13 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                 ),
 
                 // Settings & Options Buttons
-
                 IconButton(
-                  icon: const Icon(Icons.speed_rounded, size: 20),
-                  color: Colors.white,
+                  icon: _getSvgIcon(_svgSpeed, size: 20, color: Colors.white),
                   tooltip: 'Velocidad',
                   onPressed: _showSpeedSheet,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.lock_open_rounded, size: 20),
-                  color: Colors.white70,
+                  icon: _getSvgIcon(_svgLockUnlocked, size: 20, color: Colors.white70),
                   tooltip: 'Bloquear Controles',
                   onPressed: () {
                     HapticFeedback.mediumImpact();
@@ -740,17 +775,14 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
               onPressed: () {
                 HapticFeedback.lightImpact();
                 widget.onUserInteraction();
-                final target =
-                    widget.engine.state.position - const Duration(seconds: 10);
-                widget.engine
-                    .seek(target < Duration.zero ? Duration.zero : target);
+                final target = widget.engine.state.position - const Duration(seconds: 10);
+                widget.engine.seek(target < Duration.zero ? Duration.zero : target);
               },
-              icon: const Icon(Icons.replay_10_rounded),
-              iconSize: 38,
-              color: Colors.white,
+              icon: _getSvgIcon(_svgReplay10, size: 30, color: Colors.white),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.black38,
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
               ),
             ),
             const SizedBox(width: 40),
@@ -784,11 +816,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                   ],
                 ),
                 child: Center(
-                  child: Icon(
-                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    size: 38,
-                    color: Colors.black,
-                  ),
+                  child: _getSvgIcon(isPlaying ? _svgPause : _svgPlay, size: 26, color: Colors.black),
                 ),
               ),
             ),
@@ -798,158 +826,151 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
               onPressed: () {
                 HapticFeedback.lightImpact();
                 widget.onUserInteraction();
-                final target =
-                    widget.engine.state.position + const Duration(seconds: 10);
+                final target = widget.engine.state.position + const Duration(seconds: 10);
                 final maxDur = widget.engine.state.duration;
                 widget.engine.seek(target > maxDur ? maxDur : target);
               },
-              icon: const Icon(Icons.forward_10_rounded),
-              iconSize: 38,
-              color: Colors.white,
+              icon: _getSvgIcon(_svgForward10, size: 30, color: Colors.white),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.black38,
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
               ),
             ),
           ],
         ),
 
-        // ── BOTTOM PROGRESS BAR & VOLUME ──
+        // ── BOTTOM PROGRESS BAR & VOLUME (INTEGRATED) ──
         SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Timeline progress bar
-                Row(
-                  children: [
-                    Text(
-                      _formatDuration(position),
-                      style: GoogleFonts.spaceGrotesk(
-                        color: Colors.white70,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Expanded(
-                      child: SliderTheme(
-                        data: SliderThemeData(
-                          trackHeight: 3.5,
-                          activeTrackColor: AppTheme.darkAccent,
-                          inactiveTrackColor: Colors.white24,
-                          thumbColor: AppTheme.darkAccent,
-                          overlayColor:
-                              AppTheme.darkAccent.withValues(alpha: 0.25),
-                          thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 6),
-                          overlayShape:
-                              const RoundSliderOverlayShape(overlayRadius: 12),
-                        ),
-                        child: Slider(
-                          value: sliderValue,
-                          max: sliderMax,
-                          onChanged: (value) {
-                            widget.onUserInteraction();
-                            setState(() {
-                              _isScrubbing = true;
-                              _scrubPosition = Duration(seconds: value.toInt());
-                            });
-                          },
-                          onChangeEnd: (value) {
-                            widget.engine
-                                .seek(Duration(seconds: value.toInt()));
-                            setState(() {
-                              _isScrubbing = false;
-                            });
-                            widget.onUserInteraction();
-                          },
-                        ),
-                      ),
-                    ),
-                    Text(
-                      remaining > Duration.zero
-                          ? '-${_formatDuration(remaining)}'
-                          : '00:00',
-                      style: GoogleFonts.spaceGrotesk(
-                        color: Colors.white70,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-
-                // Volume slider & Extra info
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Volume Control
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            widget.engine.state.isMuted
-                                ? Icons.volume_off_rounded
-                                : (widget.engine.state.volume < 0.4
-                                    ? Icons.volume_down_rounded
-                                    : Icons.volume_up_rounded),
-                            size: 18,
-                          ),
-                          color: Colors.white,
-                          onPressed: () {
-                            HapticFeedback.lightImpact();
-                            widget.engine
-                                .setMuted(!widget.engine.state.isMuted);
-                            widget.onUserInteraction();
-                          },
-                        ),
-                        SizedBox(
-                          width: 90,
-                          child: SliderTheme(
-                            data: SliderThemeData(
-                              trackHeight: 2,
-                              activeTrackColor: Colors.white,
-                              inactiveTrackColor: Colors.white24,
-                              thumbColor: Colors.white,
-                              thumbShape: const RoundSliderThumbShape(
-                                  enabledThumbRadius: 4),
-                              overlayShape: SliderComponentShape.noOverlay,
-                            ),
-                            child: Slider(
-                              value: widget.engine.state.isMuted
-                                  ? 0.0
-                                  : widget.engine.state.volume,
-                              onChanged: (val) {
-                                widget.engine.setVolume(val);
-                                if (widget.engine.state.isMuted) {
-                                  widget.engine.setMuted(false);
-                                }
-                                widget.onUserInteraction();
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Next episode / Future Series metadata placeholder or remaining warning
-                    if (remaining < const Duration(seconds: 30) &&
-                        duration > const Duration(minutes: 5))
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.65),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 1.2),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Timeline progress bar
+                  Row(
+                    children: [
                       Text(
-                        'La película terminará pronto',
+                        _formatDuration(position),
                         style: GoogleFonts.spaceGrotesk(
+                          color: Colors.white70,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.darkAccent,
                         ),
                       ),
-                  ],
-                ),
-              ],
+                      Expanded(
+                        child: SliderTheme(
+                          data: SliderThemeData(
+                            trackHeight: 3.5,
+                            activeTrackColor: AppTheme.darkAccent,
+                            inactiveTrackColor: Colors.white24,
+                            thumbColor: AppTheme.darkAccent,
+                            overlayColor: AppTheme.darkAccent.withValues(alpha: 0.25),
+                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                          ),
+                          child: Slider(
+                            value: sliderValue,
+                            max: sliderMax,
+                            onChanged: (value) {
+                              widget.onUserInteraction();
+                              setState(() {
+                                _isScrubbing = true;
+                                _scrubPosition = Duration(seconds: value.toInt());
+                              });
+                            },
+                            onChangeEnd: (value) {
+                              widget.engine.seek(Duration(seconds: value.toInt()));
+                              setState(() {
+                                _isScrubbing = false;
+                              });
+                              widget.onUserInteraction();
+                            },
+                          ),
+                        ),
+                      ),
+                      Text(
+                        remaining > Duration.zero ? '-${_formatDuration(remaining)}' : '00:00',
+                        style: GoogleFonts.spaceGrotesk(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+
+                  // Integrated controls and volume slider row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Volume Control (Integrated!)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: _getSvgIcon(
+                              widget.engine.state.isMuted
+                                  ? _svgVolumeMute
+                                  : (widget.engine.state.volume < 0.4 ? _svgVolumeLow : _svgVolumeHigh),
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              widget.engine.setMuted(!widget.engine.state.isMuted);
+                              widget.onUserInteraction();
+                            },
+                          ),
+                          SizedBox(
+                            width: 90,
+                            child: SliderTheme(
+                              data: SliderThemeData(
+                                trackHeight: 2,
+                                activeTrackColor: Colors.white,
+                                inactiveTrackColor: Colors.white24,
+                                thumbColor: Colors.white,
+                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 4),
+                                overlayShape: SliderComponentShape.noOverlay,
+                              ),
+                              child: Slider(
+                                value: widget.engine.state.isMuted ? 0.0 : widget.engine.state.volume,
+                                onChanged: (val) {
+                                  widget.engine.setVolume(val);
+                                  if (widget.engine.state.isMuted) {
+                                    widget.engine.setMuted(false);
+                                  }
+                                  widget.onUserInteraction();
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Warning details or info
+                      if (remaining < const Duration(seconds: 45) && duration > const Duration(minutes: 5))
+                        Text(
+                          'La película terminará pronto',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.darkAccent,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
