@@ -209,39 +209,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     );
   }
 
-  void _showSubtitleSheet() {
-    widget.onUserInteraction();
-    final tracks = widget.engine.state.tracks;
-    final selectedTrack = widget.engine.player.state.track.subtitle;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => SubtitleSelectorSheet(
-        tracks: tracks,
-        selectedTrack: selectedTrack,
-        onTrackSelected: (track) {
-          widget.engine.setSubtitleTrack(track);
-        },
-      ),
-    );
-  }
 
-  void _showAudioSheet() {
-    widget.onUserInteraction();
-    final tracks = widget.engine.state.tracks;
-    final selectedTrack = widget.engine.player.state.track.audio;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AudioTrackSelectorSheet(
-        tracks: tracks,
-        selectedTrack: selectedTrack,
-        onTrackSelected: (track) {
-          widget.engine.setAudioTrack(track);
-        },
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -655,9 +623,14 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                       side: const BorderSide(color: Colors.white12),
                     ),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
                     HapticFeedback.mediumImpact();
-                    Navigator.pop(context);
+                    await SystemChrome.setPreferredOrientations([
+                      DeviceOrientation.portraitUp,
+                    ]);
+                    if (mounted) {
+                      Navigator.pop(context);
+                    }
                   },
                 ),
                 const SizedBox(width: 14),
@@ -734,18 +707,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                 ),
 
                 // Settings & Options Buttons
-                IconButton(
-                  icon: const Icon(Icons.subtitles_rounded, size: 20),
-                  color: Colors.white,
-                  tooltip: 'Subtítulos',
-                  onPressed: _showSubtitleSheet,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.audiotrack_rounded, size: 20),
-                  color: Colors.white,
-                  tooltip: 'Idioma',
-                  onPressed: _showAudioSheet,
-                ),
+
                 IconButton(
                   icon: const Icon(Icons.speed_rounded, size: 20),
                   color: Colors.white,
@@ -985,17 +947,6 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                           color: AppTheme.darkAccent,
                         ),
                       ),
-
-                    // Media details label
-                    Text(
-                      '1080P FHD',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white54,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
                   ],
                 ),
               ],

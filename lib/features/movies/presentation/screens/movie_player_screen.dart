@@ -276,7 +276,14 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                     ),
                     icon: const Icon(Icons.arrow_back_rounded, size: 16),
                     label: const Text('Volver'),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () async {
+                      await SystemChrome.setPreferredOrientations([
+                        DeviceOrientation.portraitUp,
+                      ]);
+                      if (mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
                   ),
                   const SizedBox(width: 16),
                   ElevatedButton.icon(

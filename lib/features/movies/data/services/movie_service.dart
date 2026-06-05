@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:pivote/core/services/firebase_service.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
 
 class MovieService {
@@ -164,9 +166,39 @@ class MovieService {
     ),
   ];
 
-  /// Simulates a highly-optimized database or API fetch with a realistic network latency
+  /// Fetches movies from Firestore first, then merges/deduplicates with mock movies
   static Future<List<Movie>> getMovies() async {
-    await Future.delayed(const Duration(milliseconds: 750));
-    return _mockMovies;
+    List<Movie> firestoreMovies = [];
+
+    try {
+      if (FirebaseService.isInitialized) {
+        final snapshot = await FirebaseService.moviesCollection.get();
+        for (var doc in snapshot.docs) {
+          final data = doc.data() as Map<String, dynamic>;
+          if (!data.containsKey('id')) {
+            data['id'] = doc.id;
+          }
+          try {
+            firestoreMovies.add(Movie.fromJson(data));
+          } catch (e) {
+            debugPrint('❌ Error parsing Firestore movie ${doc.id}: $e');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading movies from Firestore: $e');
+    }
+
+    // Merge with mock movies, giving priority to Firestore movies
+    final Map<String, Movie> movieMap = {};
+    for (var m in _mockMovies) {
+      movieMap[m.id] = m;
+    }
+    for (var m in firestoreMovies) {
+      movieMap[m.id] = m;
+    }
+
+    await Future.delayed(const Duration(milliseconds: 300));
+    return movieMap.values.toList();
   }
 }

@@ -44,7 +44,7 @@ class Movie {
       description: json['description'] ?? '',
       posterUrl: json['posterUrl'] ?? '',
       backdropUrl: json['backdropUrl'] ?? '',
-      rating: (json['rating'] ?? 0.0) as double,
+      rating: (json['rating'] ?? 0.0).toDouble(),
       year: json['year'] ?? DateTime.now().year,
       duration: json['duration'] ?? '',
       genres: List<String>.from(json['genres'] ?? []),

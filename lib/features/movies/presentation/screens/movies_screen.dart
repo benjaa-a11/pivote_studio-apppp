@@ -51,7 +51,10 @@ class _MoviesScreenState extends State<MoviesScreen> {
           color: theme.colorScheme.primary,
           backgroundColor: theme.cardColor,
           strokeWidth: 2.5,
-          onRefresh: () => moviesProvider.loadMovies(force: true),
+          onRefresh: () async {
+            await moviesProvider.loadMovies(force: true);
+            await moviesProvider.loadMovieFavorites();
+          },
           child: CustomScrollView(
             physics: const ClampingScrollPhysics(),
             slivers: [
@@ -72,6 +75,30 @@ class _MoviesScreenState extends State<MoviesScreen> {
               SliverToBoxAdapter(
                 child: _buildGenreFilterCarousel(theme, isDark, moviesProvider),
               ),
+
+              // 3. Continue Watching Row (only if selectedGenre == 'Todos')
+              if (moviesProvider.selectedGenre == 'Todos' &&
+                  !moviesProvider.isLoading &&
+                  moviesProvider.resumeMovies.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: _buildSectionTitle(theme, 'Seguir Viendo', isDark),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildResumeList(moviesProvider.resumeMovies, moviesProvider),
+                ),
+              ],
+
+              // 3.5. My List Row (only if selectedGenre == 'Todos')
+              if (moviesProvider.selectedGenre == 'Todos' &&
+                  !moviesProvider.isLoading &&
+                  moviesProvider.favoriteMovies.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: _buildSectionTitle(theme, 'Mi Lista', isDark),
+                ),
+                SliverToBoxAdapter(
+                  child: _buildFavoriteList(moviesProvider.favoriteMovies),
+                ),
+              ],
 
               // 4. Trending / Popular Row
               if (!moviesProvider.isLoading &&
@@ -500,6 +527,162 @@ class _MoviesScreenState extends State<MoviesScreen> {
         separatorBuilder: (context, index) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final movie = trending[index];
+          return SizedBox(
+            width: 110,
+            child: MovieCard(movie: movie),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildResumeList(List<Movie> resumeList, MoviesProvider provider) {
+    return SizedBox(
+      height: 130,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: resumeList.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final movie = resumeList[index];
+          final position = provider.getPlaybackPosition(movie.id);
+          final duration = provider.getMovieDuration(movie.id);
+          final progress = duration > Duration.zero 
+              ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
+              : 0.0;
+
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                AppAnimations.createRoute(MovieDetailScreen(movie: movie)),
+              );
+            },
+            child: Container(
+              width: 190,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppTheme.darkBorder.withValues(alpha: 0.25)
+                      : AppTheme.lightBorder,
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: Theme.of(context).brightness == Brightness.dark ? 0.25 : 0.05,
+                    ),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  children: [
+                    // Backdrop image
+                    Positioned.fill(
+                      child: CachedNetworkImage(
+                        imageUrl: movie.backdropUrl,
+                        fit: BoxFit.cover,
+                        errorWidget: (context, url, error) => Container(
+                          color: AppTheme.darkBg2,
+                          child: const Icon(Icons.movie_rounded, color: Colors.white24, size: 32),
+                        ),
+                      ),
+                    ),
+                    // Dark gradient overlay
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: const [0.0, 0.4, 1.0],
+                            colors: [
+                              Colors.black.withValues(alpha: 0.15),
+                              Colors.black.withValues(alpha: 0.35),
+                              Colors.black.withValues(alpha: 0.9),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Title and Progress info
+                    Positioned(
+                      left: 12,
+                      right: 12,
+                      bottom: 10,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            movie.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          // Tiny progress bar
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor: Colors.white24,
+                              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.darkAccent),
+                              minHeight: 3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Play icon in the center
+                    Positioned.fill(
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withValues(alpha: 0.5),
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFavoriteList(List<Movie> favorites) {
+    return SizedBox(
+      height: 180,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: favorites.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final movie = favorites[index];
           return SizedBox(
             width: 110,
             child: MovieCard(movie: movie),

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
 import 'package:pivote/features/movies/data/services/movie_service.dart';
 
 class MoviesProvider extends ChangeNotifier {
+  MoviesProvider() {
+    loadMovieFavorites();
+  }
   List<Movie> _allMovies = [];
   bool _isLoading = false;
   String _selectedGenre = 'Todos';
@@ -12,6 +17,11 @@ class MoviesProvider extends ChangeNotifier {
   // In-memory cache of movie playback positions and durations
   final Map<String, Duration> _playbackPositions = {};
   final Map<String, Duration> _movieDurations = {};
+
+  // Favorites / Wishlist state
+  Set<String> _favoriteMovieIds = {};
+  bool _isSyncingFavorites = false;
+  static const String _favoriteMoviesKey = 'favorite_movie_ids_v2';
 
   List<Movie> get allMovies => _allMovies.map((movie) {
         final cachedPos = _playbackPositions[movie.id] ?? Duration.zero;
@@ -177,5 +187,126 @@ class MoviesProvider extends ChangeNotifier {
     _selectedGenre = 'Todos';
     _searchQuery = '';
     notifyListeners();
+  }
+
+  // ── FAVORITES / MY LIST API ──
+
+  bool get isSyncingFavorites => _isSyncingFavorites;
+
+  List<Movie> get favoriteMovies {
+    return _allMovies.map((movie) {
+      final cachedPos = _playbackPositions[movie.id] ?? Duration.zero;
+      return movie.copyWith(lastPosition: cachedPos);
+    }).where((m) => _favoriteMovieIds.contains(m.id)).toList();
+  }
+
+  bool isMovieFavorite(String movieId) {
+    return _favoriteMovieIds.contains(movieId);
+  }
+
+  /// Toggle movie favorite state with immediate sync to Firestore and local SharedPreferences
+  Future<void> toggleMovieFavorite(Movie movie) async {
+    final movieId = movie.id;
+    if (_favoriteMovieIds.contains(movieId)) {
+      _favoriteMovieIds.remove(movieId);
+    } else {
+      _favoriteMovieIds.add(movieId);
+    }
+    notifyListeners();
+
+    await _saveMovieFavorites();
+    await _syncMovieFavoritesToFirestore();
+  }
+
+  /// Load movie favorites from SharedPreferences and Firestore
+  Future<void> loadMovieFavorites() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final ids = prefs.getStringList(_favoriteMoviesKey) ?? [];
+      _favoriteMovieIds = Set<String>.from(ids);
+      notifyListeners();
+
+      // Sync from Firestore in background
+      _syncMovieFavoritesFromFirestore();
+    } catch (e) {
+      debugPrint('❌ Error loading movie favorites: $e');
+    }
+  }
+
+  /// Save movie favorites to SharedPreferences
+  Future<void> _saveMovieFavorites() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_favoriteMoviesKey, _favoriteMovieIds.toList());
+    } catch (e) {
+      debugPrint('❌ Error saving movie favorites locally: $e');
+    }
+  }
+
+  /// Sync movie favorites to Firestore under the 'usuarios' collection (matching user channel favorites)
+  Future<void> _syncMovieFavoritesToFirestore() async {
+    final uid = AuthService.currentUserId;
+    if (uid == null) return;
+
+    try {
+      _isSyncingFavorites = true;
+      notifyListeners();
+
+      await FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(uid)
+          .set({
+        'favoriteMovies': _favoriteMovieIds.toList(),
+      }, SetOptions(merge: true));
+
+      debugPrint('✅ Movie favorites synced to Firestore: ${_favoriteMovieIds.length} items');
+    } catch (e) {
+      debugPrint('❌ Error syncing movie favorites to Firestore: $e');
+    } finally {
+      _isSyncingFavorites = false;
+      notifyListeners();
+    }
+  }
+
+  /// Sync movie favorites from Firestore
+  Future<void> _syncMovieFavoritesFromFirestore() async {
+    final uid = AuthService.currentUserId;
+    if (uid == null) return;
+
+    try {
+      _isSyncingFavorites = true;
+      notifyListeners();
+
+      final doc = await FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        if (data != null && data.containsKey('favoriteMovies')) {
+          final List<dynamic> remoteFavorites = data['favoriteMovies'] ?? [];
+          final List<String> remoteIds = remoteFavorites.cast<String>();
+
+          if (remoteIds.isNotEmpty) {
+            final remoteSet = Set<String>.from(remoteIds);
+            
+            // If they are different, update local state
+            if (remoteSet.difference(_favoriteMovieIds).isNotEmpty ||
+                _favoriteMovieIds.difference(remoteSet).isNotEmpty) {
+              _favoriteMovieIds = remoteSet;
+              await _saveMovieFavorites();
+              notifyListeners();
+              debugPrint('✅ Movie favorites synced from Firestore: ${_favoriteMovieIds.length} items');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error syncing movie favorites from Firestore: $e');
+    } finally {
+      _isSyncingFavorites = false;
+      notifyListeners();
+    }
   }
 }
