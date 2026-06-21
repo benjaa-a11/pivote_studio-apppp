@@ -16,8 +16,10 @@ class MovieLoadingOverlay extends StatefulWidget {
 }
 
 class _MovieLoadingOverlayState extends State<MovieLoadingOverlay>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _rotationController;
+    with TickerProviderStateMixin {
+  late AnimationController _rotationController1;
+  late AnimationController _rotationController2;
+  late AnimationController _pulseController;
   int _textIndex = 0;
   final List<String> _loadingTexts = [
     'Preparando película...',
@@ -25,15 +27,25 @@ class _MovieLoadingOverlayState extends State<MovieLoadingOverlay>
     'Ajustando calidad óptima...',
     'Casi listo para comenzar...',
   ];
+
   @override
   void initState() {
     super.initState();
-    _rotationController = AnimationController(
+    _rotationController1 = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 1800),
     )..repeat();
 
-    // Cycle through text to give a premium dynamic feel
+    _rotationController2 = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2500),
+    )..repeat(reverse: true);
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+
     _cycleTexts();
   }
 
@@ -50,7 +62,9 @@ class _MovieLoadingOverlayState extends State<MovieLoadingOverlay>
 
   @override
   void dispose() {
-    _rotationController.dispose();
+    _rotationController1.dispose();
+    _rotationController2.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -63,44 +77,105 @@ class _MovieLoadingOverlayState extends State<MovieLoadingOverlay>
     return Positioned.fill(
       child: ClipRRect(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
-            color: Colors.black.withValues(alpha: 0.7),
+            color: Colors.black.withValues(alpha: 0.75),
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Custom cinematic loader spinner with gradient accent
-                  RotationTransition(
-                    turns: _rotationController,
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: SweepGradient(
-                          colors: [
-                            Colors.transparent,
-                            AppTheme.darkAccent,
-                          ],
-                          stops: [0.2, 1.0],
-                        ),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4.0),
+                  // Dual concentric professional loader
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Outer glowing ring
+                      RotationTransition(
+                        turns: _rotationController1,
                         child: Container(
+                          width: 80,
+                          height: 80,
                           decoration: const BoxDecoration(
-                            color: Colors.black,
                             shape: BoxShape.circle,
+                            gradient: SweepGradient(
+                              colors: [
+                                Colors.transparent,
+                                AppTheme.darkAccent,
+                              ],
+                              stops: [0.1, 1.0],
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(2.5),
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF090B0F), // deep dark bg
+                                shape: BoxShape.circle,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                      // Inner reverse-rotating ring
+                      RotationTransition(
+                        turns: _rotationController2,
+                        child: Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: SweepGradient(
+                              colors: [
+                                Colors.transparent,
+                                AppTheme.darkAccent.withValues(alpha: 0.4),
+                              ],
+                              stops: const [0.2, 1.0],
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(2.0),
+                            child: Container(
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF090B0F),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Central pulsing movie icon
+                      ScaleTransition(
+                        scale: Tween<double>(begin: 0.9, end: 1.1).animate(
+                          CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+                        ),
+                        child: FadeTransition(
+                          opacity: Tween<double>(begin: 0.6, end: 1.0).animate(
+                            CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+                          ),
+                          child: const Icon(
+                            Icons.play_circle_filled_rounded,
+                            size: 32,
+                            color: AppTheme.darkAccent,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  // Animated text fading/changing
+                  const SizedBox(height: 32),
+                  // Animated text fading/changing with custom slide/fade
                   AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 500),
+                    duration: const Duration(milliseconds: 400),
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.1),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      );
+                    },
                     child: Text(
                       statusText,
                       key: ValueKey<String>(statusText),

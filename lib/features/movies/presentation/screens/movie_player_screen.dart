@@ -30,14 +30,13 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
     with SingleTickerProviderStateMixin {
   late MovieVideoEngine _engine;
   
-  // Animation/Rotation states
-  double _rotationTurns = -0.25; // start rotated 90 degrees
-  double _scale = 0.9;
-  double _opacity = 0.0;
+  // Animation states
+  bool _isReady = false;
 
   // Controls Visibility
   bool _showControls = false; // Start hidden while loading
   bool _hasShownInitialControls = false;
+  bool _isDragging = false;
   Timer? _hideControlsTimer;
   Timer? _progressSaveTimer;
 
@@ -58,13 +57,11 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
     // Initialize Video Engine
     _engine = MovieVideoEngine();
 
-    // Start UI entry animations
-    Future.delayed(const Duration(milliseconds: 150), () {
+    // Delay building the UI until orientation change completes (solid black screen)
+    Future.delayed(const Duration(milliseconds: 550), () {
       if (mounted) {
         setState(() {
-          _rotationTurns = 0.0;
-          _scale = 1.0;
-          _opacity = 1.0;
+          _isReady = true;
         });
       }
     });
@@ -98,13 +95,36 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
 
   void _startHideControlsTimer() {
     _hideControlsTimer?.cancel();
-    _hideControlsTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted && _showControls && _engine.state.status == MoviePlayerStatus.playing) {
+    if (_isDragging) {
+      _hideControlsTimer = null;
+      return;
+    }
+    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _showControls && _engine.state.status == MoviePlayerStatus.playing && !_isDragging) {
         setState(() {
           _showControls = false;
         });
       }
     });
+  }
+
+  void _onDragStart() {
+    if (mounted) {
+      setState(() {
+        _isDragging = true;
+      });
+      _hideControlsTimer?.cancel();
+      _hideControlsTimer = null;
+    }
+  }
+
+  void _onDragEnd() {
+    if (mounted) {
+      setState(() {
+        _isDragging = false;
+      });
+      _startHideControlsTimer();
+    }
   }
 
   void _onToggleControls() {
@@ -201,61 +221,55 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: ListenableBuilder(
-          listenable: _engine,
-          builder: (context, _) {
-            final state = _engine.state;
+        body: !_isReady
+            ? const SizedBox.shrink() // Solid black screen during transition
+            : ListenableBuilder(
+                listenable: _engine,
+                builder: (context, _) {
+                  final state = _engine.state;
 
-            return Stack(
-              children: [
-                // ── Entrance Animated Video Surface ──
-                Positioned.fill(
-                  child: AnimatedOpacity(
-                    opacity: _opacity,
-                    duration: const Duration(milliseconds: 700),
-                    curve: Curves.easeOut,
-                    child: AnimatedRotation(
-                      turns: _rotationTurns,
-                      duration: const Duration(milliseconds: 750),
-                      curve: Curves.easeOutCubic,
-                      child: AnimatedScale(
-                        scale: _scale,
-                        duration: const Duration(milliseconds: 750),
-                        curve: Curves.easeOutCubic,
-                        child: Container(
-                          color: Colors.black,
-                          child: Video(
-                            controller: _engine.videoController,
-                            controls: null, // Null is custom controls handled by us
-                            fit: BoxFit.contain,
+                  return AnimatedOpacity(
+                    opacity: _isReady ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeInOut,
+                    child: Stack(
+                      children: [
+                        // ── Video Surface ──
+                        Positioned.fill(
+                          child: Container(
+                            color: Colors.black,
+                            child: Video(
+                              controller: _engine.videoController,
+                              controls: null, // Null is custom controls handled by us
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
-                      ),
+
+                        // ── Custom Gesture-Based Controls Layer ──
+                        if (state.status != MoviePlayerStatus.loading && !state.hasError)
+                          MovieControlsOverlay(
+                            engine: _engine,
+                            movie: widget.movie,
+                            showControls: _showControls,
+                            onToggleControls: _onToggleControls,
+                            onUserInteraction: _onUserInteraction,
+                            onDragStart: _onDragStart,
+                            onDragEnd: _onDragEnd,
+                          ),
+
+                        // ── Loading Screen Shimmer/Overlay ──
+                        if (state.status == MoviePlayerStatus.loading || state.status == MoviePlayerStatus.idle)
+                          MovieLoadingOverlay(retryAttempt: state.retryAttempt),
+
+                        // ── Error Message Overlay ──
+                        if (state.hasError)
+                          _buildErrorOverlay(state.errorMessage ?? 'Error desconocido de reproducción'),
+                      ],
                     ),
-                  ),
-                ),
-
-                // ── Custom Gesture-Based Controls Layer ──
-                if (state.status != MoviePlayerStatus.loading && !state.hasError)
-                  MovieControlsOverlay(
-                    engine: _engine,
-                    movie: widget.movie,
-                    showControls: _showControls,
-                    onToggleControls: _onToggleControls,
-                    onUserInteraction: _onUserInteraction,
-                  ),
-
-                // ── Loading Screen Shimmer/Overlay ──
-                if (state.status == MoviePlayerStatus.loading || state.status == MoviePlayerStatus.idle)
-                  MovieLoadingOverlay(retryAttempt: state.retryAttempt),
-
-                // ── Error Message Overlay ──
-                if (state.hasError)
-                  _buildErrorOverlay(state.errorMessage ?? 'Error desconocido de reproducción'),
-              ],
-            );
-          },
-        ),
+                  );
+                },
+              ),
       ),
     );
   }
