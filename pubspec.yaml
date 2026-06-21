@@ -100,4 +100,5 @@ flutter:
     - assets/logo.png
     - assets/icons/
     - assets/icons/player/
+    - assets/icons/player-movies/
     - assets/FWC-26/

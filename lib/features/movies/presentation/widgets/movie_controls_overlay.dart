@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
@@ -49,9 +50,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
 
   // Horizontal drag / scrubbing
   bool _isScrubbing = false;
-  bool _showScrubbingHUD = false;
   Duration _scrubPosition = Duration.zero;
-  Duration _scrubStartPos = Duration.zero;
 
   @override
   void dispose() {
@@ -148,49 +147,6 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     }
   }
 
-  void _handleHorizontalDragStart(DragStartDetails details) {
-    if (_isLocked) return;
-    HapticFeedback.selectionClick();
-    widget.onDragStart();
-    widget.onUserInteraction();
-    setState(() {
-      _isScrubbing = true;
-      _showScrubbingHUD = true;
-      _scrubStartPos = widget.engine.state.position;
-      _scrubPosition = _scrubStartPos;
-    });
-  }
-
-  void _handleHorizontalDragUpdate(
-      DragUpdateDetails details, BoxConstraints constraints) {
-    if (_isLocked || !_isScrubbing) return;
-
-    widget.onUserInteraction();
-    final double deltaX = details.primaryDelta!;
-    final totalDuration = widget.engine.state.duration;
-
-    if (totalDuration == Duration.zero) return;
-
-    final int changeMs = (deltaX * 150).toInt();
-
-    setState(() {
-      final targetMs = _scrubPosition.inMilliseconds + changeMs;
-      _scrubPosition = Duration(
-          milliseconds: targetMs.clamp(0, totalDuration.inMilliseconds));
-    });
-  }
-
-  void _handleHorizontalDragEnd(DragEndDetails details) {
-    if (_isLocked || !_isScrubbing) return;
-    widget.engine.seek(_scrubPosition);
-    setState(() {
-      _isScrubbing = false;
-      _showScrubbingHUD = false;
-    });
-    widget.onDragEnd();
-    widget.onUserInteraction();
-  }
-
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -199,7 +155,6 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
         final isPlaying = state.isPlaying;
         final position = _isScrubbing ? _scrubPosition : state.position;
         final duration = state.duration;
-        final remaining = duration - position;
 
         final sliderValue = position.inSeconds.toDouble().clamp(
               0.0,
@@ -237,9 +192,6 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                 onVerticalDragStart: (_) => widget.onDragStart(),
                 onVerticalDragUpdate: (details) => _handleVerticalDragUpdate(details, constraints),
                 onVerticalDragEnd: (_) => widget.onDragEnd(),
-                onHorizontalDragStart: _handleHorizontalDragStart,
-                onHorizontalDragUpdate: (details) => _handleHorizontalDragUpdate(details, constraints),
-                onHorizontalDragEnd: _handleHorizontalDragEnd,
               ),
             ),
 
@@ -310,7 +262,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
               ),
             ),
 
-            // ── Volume HUD Indicator (Fade) ──
+            // ── Volume HUD Indicator (Fade with custom SVGs) ──
             Positioned.fill(
               child: Center(
                 child: AnimatedOpacity(
@@ -328,12 +280,13 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          SvgPicture.asset(
                             state.isMuted
-                                ? Icons.volume_off_rounded
-                                : (state.volume < 0.4 ? Icons.volume_down_rounded : Icons.volume_up_rounded),
-                            size: 20,
-                            color: Colors.white,
+                                ? 'assets/icons/player-movies/icon_volumemuted.svg'
+                                : 'assets/icons/player-movies/icon_volumeloud.svg',
+                            width: 20,
+                            height: 20,
+                            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                           ),
                           const SizedBox(width: 12),
                           SizedBox(
@@ -353,84 +306,6 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // ── Scrubbing Overlay (Fade) ──
-            Positioned.fill(
-              child: Center(
-                child: AnimatedOpacity(
-                  opacity: _showScrubbingHUD ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: IgnorePointer(
-                    ignoring: !_showScrubbingHUD,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: Colors.white24,
-                            width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.4),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _formatDuration(_scrubPosition),
-                            style: GoogleFonts.spaceGrotesk(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _formatDuration(duration),
-                                style: GoogleFonts.spaceGrotesk(
-                                  color: Colors.white38,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: (_scrubPosition >= _scrubStartPos)
-                                      ? Colors.green.withValues(alpha: 0.2)
-                                      : Colors.red.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  (_scrubPosition >= _scrubStartPos)
-                                      ? '+${_formatDuration(_scrubPosition - _scrubStartPos)}'
-                                      : '-${_formatDuration(_scrubStartPos - _scrubPosition)}',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    color: (_scrubPosition >= _scrubStartPos)
-                                        ? Colors.greenAccent
-                                        : Colors.redAccent,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                         ],
                       ),
@@ -612,11 +487,16 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  // Seek Back -10s
+                                  // Seek Back -10s with SVG
                                   SpringyIconButton(
                                     size: 54,
                                     padding: 12,
-                                    icon: const Icon(Icons.replay_10_rounded, size: 26, color: Colors.white),
+                                    icon: SvgPicture.asset(
+                                      'assets/icons/player-movies/icon_skiprewind10sec.svg',
+                                      width: 26,
+                                      height: 26,
+                                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                    ),
                                     onPressed: () {
                                       HapticFeedback.lightImpact();
                                       widget.onUserInteraction();
@@ -625,7 +505,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                                     },
                                   ),
                                   const SizedBox(width: 32),
-                                  // Play / Pause Circle (Solid Black with White Icon)
+                                  // Play / Pause Circle (Solid Black with White SVG Icon)
                                   AnimatedPlayPauseButton(
                                     isPlaying: isPlaying,
                                     onTap: () {
@@ -639,11 +519,16 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                                     },
                                   ),
                                   const SizedBox(width: 32),
-                                  // Seek Forward +10s
+                                  // Seek Forward +10s with SVG
                                   SpringyIconButton(
                                     size: 54,
                                     padding: 12,
-                                    icon: const Icon(Icons.forward_10_rounded, size: 26, color: Colors.white),
+                                    icon: SvgPicture.asset(
+                                      'assets/icons/player-movies/icon_skipfastforward10sec.svg',
+                                      width: 26,
+                                      height: 26,
+                                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                                    ),
                                     onPressed: () {
                                       HapticFeedback.lightImpact();
                                       widget.onUserInteraction();
@@ -658,11 +543,11 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                           ),
                         ),
 
-                        // BOTTOM PROGRESS BAR: Slides from bottom
+                        // BOTTOM PROGRESS BAR: Slides from bottom (Minimalist, without surrounding container)
                         AnimatedPositioned(
                           duration: const Duration(milliseconds: 350),
                           curve: Curves.easeOutCubic,
-                          bottom: widget.showControls ? 0.0 : -110.0,
+                          bottom: widget.showControls ? 0.0 : -80.0,
                           left: 0,
                           right: 0,
                           child: AnimatedOpacity(
@@ -672,24 +557,11 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                               top: false,
                               child: Padding(
                                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                                child: Container(
-                                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.75),
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.2),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.4),
-                                        blurRadius: 15,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // Timeline progress bar
-                                      SliderTheme(
+                                child: Row(
+                                  children: [
+                                    // Full-width Slider Track
+                                    Expanded(
+                                      child: SliderTheme(
                                         data: SliderThemeData(
                                           trackHeight: _isScrubbing ? 5.5 : 3.5,
                                           activeTrackColor: AppTheme.darkAccent,
@@ -709,7 +581,6 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                                             widget.onUserInteraction();
                                             setState(() {
                                               _isScrubbing = true;
-                                              _showScrubbingHUD = false; // Do not show center HUD
                                               _scrubPosition = Duration(seconds: value.toInt());
                                             });
                                           },
@@ -722,33 +593,18 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                                           },
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-
-                                      // Time indicators underneath
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            '${_formatDuration(position)} / ${_formatDuration(duration)}',
-                                            style: GoogleFonts.spaceGrotesk(
-                                              color: Colors.white70,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          if (remaining < const Duration(seconds: 45) && duration > const Duration(minutes: 5))
-                                            Text(
-                                              'La película terminará pronto',
-                                              style: GoogleFonts.spaceGrotesk(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppTheme.darkAccent,
-                                              ),
-                                            ),
-                                        ],
+                                    ),
+                                    const SizedBox(width: 14),
+                                    // Timestamps at the right: Position / Duration
+                                    Text(
+                                      '${_formatDuration(position)} / ${_formatDuration(duration)}',
+                                      style: GoogleFonts.spaceGrotesk(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -892,7 +748,7 @@ class _SpringyIconButtonState extends State<SpringyIconButton>
   }
 }
 
-// ── Interactive Springy Play/Pause Button Widget (Solid Black, White Icon) ───
+// ── Interactive Springy Play/Pause Button Widget (Solid Black, White SVG Icon, Non-Rotating) ───
 class AnimatedPlayPauseButton extends StatefulWidget {
   final bool isPlaying;
   final VoidCallback onTap;
@@ -961,29 +817,29 @@ class _AnimatedPlayPauseButtonState extends State<AnimatedPlayPauseButton>
               duration: const Duration(milliseconds: 200),
               transitionBuilder: (child, animation) {
                 return ScaleTransition(
-                  scale: child.key == const ValueKey('play')
-                      ? Tween<double>(begin: 0.6, end: 1.0).animate(animation)
-                      : Tween<double>(begin: 0.6, end: 1.0).animate(animation),
-                  child: RotationTransition(
-                    turns: child.key == const ValueKey('play')
-                        ? Tween<double>(begin: -0.2, end: 0.0).animate(animation)
-                        : Tween<double>(begin: 0.2, end: 0.0).animate(animation),
+                  scale: Tween<double>(begin: 0.85, end: 1.0).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                  ),
+                  child: FadeTransition(
+                    opacity: animation,
                     child: child,
                   ),
                 );
               },
               child: widget.isPlaying
-                  ? const Icon(
-                      Icons.pause_rounded,
-                      key: ValueKey('pause'),
-                      size: 36,
-                      color: Colors.white,
+                  ? SvgPicture.asset(
+                      'assets/icons/player-movies/icon_pause.svg',
+                      key: const ValueKey('pause'),
+                      width: 28,
+                      height: 28,
+                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                     )
-                  : const Icon(
-                      Icons.play_arrow_rounded,
-                      key: ValueKey('play'),
-                      size: 38,
-                      color: Colors.white,
+                  : SvgPicture.asset(
+                      'assets/icons/player-movies/icon_play.svg',
+                      key: const ValueKey('play'),
+                      width: 28,
+                      height: 28,
+                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                     ),
             ),
           ),
@@ -993,7 +849,7 @@ class _AnimatedPlayPauseButtonState extends State<AnimatedPlayPauseButton>
   }
 }
 
-// ── Interactive Double Tap Cue Ripple Animation (Solid Black background, White Icon) ──────────────
+// ── Interactive Double Tap Cue Ripple Animation (Solid Black background, White SVG Icon) ──────────────
 class DoubleTapCue extends StatefulWidget {
   final bool isRight;
   const DoubleTapCue({super.key, required this.isRight});
@@ -1047,10 +903,13 @@ class _DoubleTapCueState extends State<DoubleTapCue> with SingleTickerProviderSt
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                widget.isRight ? Icons.fast_forward_rounded : Icons.fast_rewind_rounded,
-                size: 34,
-                color: Colors.white,
+              SvgPicture.asset(
+                widget.isRight
+                    ? 'assets/icons/player-movies/icon_skipfastforward10sec.svg'
+                    : 'assets/icons/player-movies/icon_skiprewind10sec.svg',
+                width: 34,
+                height: 34,
+                colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
               ),
               const SizedBox(height: 6),
               Text(

@@ -32,6 +32,8 @@ class MovieEngineConfig {
     'tls-verify': 'no',
     'force-seekable': 'yes',
     'audio-pitch-correction': 'yes',
+    'hls-bitrate': 'max',
+    'ytdl-format': 'bestvideo+bestaudio/best',
   };
 
   static const String userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '

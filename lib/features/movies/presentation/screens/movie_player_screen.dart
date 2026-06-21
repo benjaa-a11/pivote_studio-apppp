@@ -249,7 +249,6 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                         // ── Custom Gesture-Based Controls Layer ──
                         if ((state.status == MoviePlayerStatus.playing ||
                              state.status == MoviePlayerStatus.paused ||
-                             state.status == MoviePlayerStatus.buffering ||
                              state.status == MoviePlayerStatus.completed) && !state.hasError)
                           MovieControlsOverlay(
                             engine: _engine,
@@ -262,7 +261,9 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                           ),
 
                         // ── Loading Screen Shimmer/Overlay ──
-                        if (state.status == MoviePlayerStatus.loading || state.status == MoviePlayerStatus.idle)
+                        if (state.status == MoviePlayerStatus.loading ||
+                            state.status == MoviePlayerStatus.idle ||
+                            state.status == MoviePlayerStatus.buffering)
                           MovieLoadingOverlay(retryAttempt: state.retryAttempt),
 
                         // ── Error Message Overlay ──
