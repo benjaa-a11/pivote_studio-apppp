@@ -216,8 +216,11 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                 ),
               ),
 
-            // ── Brightness HUD Indicator (Fade) ──
-            Positioned.fill(
+            // ── Brightness HUD Indicator (Fade, vertical Netflix-style on the left side) ──
+            Positioned(
+              left: 24,
+              top: 0,
+              bottom: 0,
               child: Center(
                 child: AnimatedOpacity(
                   opacity: _showBrightnessIndicator ? 1.0 : 0.0,
@@ -225,32 +228,42 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                   child: IgnorePointer(
                     ignoring: !_showBrightnessIndicator,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      width: 48,
+                      height: 180,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white12, width: 1),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white12, width: 1.2),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(Icons.light_mode_rounded, size: 20, color: Colors.white),
-                          const SizedBox(width: 12),
-                          SizedBox(
-                            width: 100,
-                            child: LinearProgressIndicator(
-                              value: _brightnessLevel,
-                              backgroundColor: Colors.white24,
-                              valueColor: const AlwaysStoppedAnimation(Colors.white),
-                              minHeight: 4,
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: RotatedBox(
+                                quarterTurns: 3,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: _brightnessLevel,
+                                    backgroundColor: Colors.white24,
+                                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                                    minHeight: 6,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(height: 12),
                           Text(
                             '${(_brightnessLevel * 100).toInt()}%',
                             style: GoogleFonts.spaceGrotesk(
                               color: Colors.white,
-                              fontSize: 13,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -262,8 +275,11 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
               ),
             ),
 
-            // ── Volume HUD Indicator (Fade with custom SVGs) ──
-            Positioned.fill(
+            // ── Volume HUD Indicator (Fade, vertical Netflix-style on the right side) ──
+            Positioned(
+              right: 24,
+              top: 0,
+              bottom: 0,
               child: Center(
                 child: AnimatedOpacity(
                   opacity: _showVolumeIndicator ? 1.0 : 0.0,
@@ -271,14 +287,16 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                   child: IgnorePointer(
                     ignoring: !_showVolumeIndicator,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      width: 48,
+                      height: 180,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white12, width: 1),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white12, width: 1.2),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           SvgPicture.asset(
                             state.isMuted
@@ -288,22 +306,30 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                             height: 20,
                             colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
                           ),
-                          const SizedBox(width: 12),
-                          SizedBox(
-                            width: 100,
-                            child: LinearProgressIndicator(
-                              value: state.isMuted ? 0.0 : state.volume,
-                              backgroundColor: Colors.white24,
-                              valueColor: const AlwaysStoppedAnimation(Colors.white),
-                              minHeight: 4,
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: RotatedBox(
+                                quarterTurns: 3,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: state.isMuted ? 0.0 : state.volume,
+                                    backgroundColor: Colors.white24,
+                                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                                    minHeight: 6,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(height: 12),
                           Text(
                             state.isMuted ? 'Muted' : '${(state.volume * 100).toInt()}%',
                             style: GoogleFonts.spaceGrotesk(
                               color: Colors.white,
-                              fontSize: 13,
+                              fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -559,7 +585,17 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                                 child: Row(
                                   children: [
-                                    // Full-width Slider Track
+                                    // Elapsed time on the left
+                                    Text(
+                                      _formatDuration(position),
+                                      style: GoogleFonts.spaceGrotesk(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    // Slider Track in the middle
                                     Expanded(
                                       child: SliderTheme(
                                         data: SliderThemeData(
@@ -595,9 +631,9 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                                       ),
                                     ),
                                     const SizedBox(width: 14),
-                                    // Timestamps at the right: Position / Duration
+                                    // Total duration on the right
                                     Text(
-                                      '${_formatDuration(position)} / ${_formatDuration(duration)}',
+                                      _formatDuration(duration),
                                       style: GoogleFonts.spaceGrotesk(
                                         color: Colors.white,
                                         fontSize: 13,
