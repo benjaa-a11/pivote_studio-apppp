@@ -248,7 +248,8 @@ class _ChannelCardState extends State<ChannelCard>
     }
 
     return CachedNetworkImage(
-      cacheManager: ImageCacheHelper.customCacheManager,
+      key: ValueKey<String>(logoUrl),
+      cacheManager: ImageCacheHelper.logoCacheManager,
       imageUrl: logoUrl,
       fit: BoxFit.contain,
       alignment: Alignment.center,
@@ -264,12 +265,12 @@ class _ChannelCardState extends State<ChannelCard>
       ),
       placeholder: (context, url) => _buildLoadingShimmer(context),
       errorWidget: (context, url, error) => _buildPlaceholder(context),
-      fadeInDuration: const Duration(milliseconds: 300),
+      fadeInDuration: const Duration(milliseconds: 250),
       fadeOutDuration: const Duration(milliseconds: 100),
-      memCacheWidth: 400,
-      memCacheHeight: 400,
-      maxWidthDiskCache: 400,
-      maxHeightDiskCache: 400,
+      memCacheWidth: 200,
+      memCacheHeight: 200,
+      maxWidthDiskCache: 200,
+      maxHeightDiskCache: 200,
     );
   }
 

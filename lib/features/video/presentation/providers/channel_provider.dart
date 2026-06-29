@@ -5,6 +5,7 @@ import 'package:pivote/core/services/firebase_service.dart';
 import 'package:pivote/features/favorites/data/services/viewing_history_service.dart';
 import 'package:pivote/features/home/data/services/search_service.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
+import 'package:pivote/core/services/image_cache_helper.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -158,12 +159,32 @@ class ChannelProvider extends ChangeNotifier {
       _applyFilters();
       _isInitialized = true;
       await _loadViewCounts();
+
+      // Pre-cargar logos de canales en background para evitar el "primer arranque lento"
+      // Los logos se descargan al caché de disco sin bloquear la UI
+      _warmUpChannelLogos();
     } catch (e) {
       debugPrint('Error loading channels from Firestore: $e');
       _isInitialized = true; // Still mark as initialized to not block app
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Pre-carga los logos de los primeros canales para arranque rápido
+  void _warmUpChannelLogos() {
+    try {
+      // Recolectar todas las URLs de logos válidas (modo dark + light)
+      final logoUrls = <String>{};
+      for (final channel in _channels) {
+        if (channel.logoUrl.isNotEmpty) {
+          logoUrls.addAll(channel.logoUrl.where((u) => u.isNotEmpty && u.startsWith('http')));
+        }
+      }
+      ImageCacheHelper.warmUpCache(logoUrls.toList(), isLogos: true);
+    } catch (e) {
+      debugPrint('Error in channel logo warm-up: $e');
     }
   }
 

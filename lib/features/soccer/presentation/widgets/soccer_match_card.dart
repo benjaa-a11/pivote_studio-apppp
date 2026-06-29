@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
@@ -237,11 +238,26 @@ class SoccerMatchCard extends StatelessWidget {
             ),
           ),
           child: CachedNetworkImage(
-            cacheManager: ImageCacheHelper.customCacheManager,
+            key: ValueKey<String>(team.logoUrl ?? ''),
+            cacheManager: ImageCacheHelper.logoCacheManager,
             imageUrl: team.logoUrl ?? '',
             fit: BoxFit.contain,
+            memCacheWidth: 100,
+            memCacheHeight: 100,
+            fadeInDuration: const Duration(milliseconds: 200),
+            fadeOutDuration: const Duration(milliseconds: 100),
+            placeholder: (context, url) => Shimmer.fromColors(
+              baseColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE0E0E0),
+              highlightColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE0E0E0),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
             errorWidget: (context, url, error) => Icon(Icons.shield_outlined,
-                size: 16, color: theme.hintColor.withValues(alpha: 0.4)),
+                size: 20, color: theme.hintColor.withValues(alpha: 0.4)),
           ),
         ),
         const SizedBox(width: 10),

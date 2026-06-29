@@ -27,6 +27,7 @@ import 'package:pivote/features/movies/presentation/providers/movies_provider.da
 
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/wakelock_service.dart';
+import 'package:pivote/core/services/image_cache_helper.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -38,6 +39,11 @@ void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // Configurar caché de imágenes en RAM antes de todo
+  // Aumenta los límites de Flutter (default: 100 MB / 1000 imgs)
+  // para evitar que logos y escudos sean expulsados de la RAM
+  ImageCacheHelper.configurePaintingCache();
 
   await FirebaseService.initialize();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

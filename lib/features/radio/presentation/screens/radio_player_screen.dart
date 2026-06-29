@@ -784,8 +784,13 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: CachedNetworkImage(
+                        key: ValueKey<String>(widget.radio.logoUrl),
+                        cacheManager: ImageCacheHelper.customCacheManager,
                         imageUrl: widget.radio.logoUrl,
                         fit: BoxFit.cover,
+                        memCacheWidth: 200,
+                        memCacheHeight: 200,
+                        fadeInDuration: const Duration(milliseconds: 200),
                         errorWidget: (_, __, ___) => Container(
                           color: theme.colorScheme.primary.withValues(alpha: 0.1),
                           child: Icon(Icons.radio, color: theme.colorScheme.primary),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
@@ -8,6 +9,7 @@ import 'package:pivote/features/radio/presentation/providers/audio_manager.dart'
 import 'package:pivote/features/radio/data/models/radio.dart' as radio_model;
 import 'package:pivote/features/radio/presentation/screens/radio_player_screen.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/services/image_cache_helper.dart';
 
 class RadiosScreen extends StatefulWidget {
   const RadiosScreen({super.key});
@@ -317,17 +319,39 @@ class _RadiosScreenState extends State<RadiosScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: CachedNetworkImage(
-                    imageUrl: radio.logoUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, _) =>
-                        Container(color: Colors.transparent),
-                    errorWidget: (context, _, __) => Icon(
-                      Icons.radio_rounded,
-                      size: 24,
-                      color: isDark ? Colors.white24 : Colors.black26,
-                    ),
-                  ),
+                  child: radio.logoUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          // 🔧 FIX CRÍTICO: Usar logoCacheManager con User-Agent correcto
+                          // Sin esto, los CDNs bloqueaban las requests con 403/404
+                          key: ValueKey<String>(radio.logoUrl),
+                          cacheManager: ImageCacheHelper.logoCacheManager,
+                          imageUrl: radio.logoUrl,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 150,
+                          memCacheHeight: 150,
+                          fadeInDuration: const Duration(milliseconds: 200),
+                          fadeOutDuration: const Duration(milliseconds: 100),
+                          placeholder: (context, _) => Shimmer.fromColors(
+                            baseColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE8E8E8),
+                            highlightColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE8E8E8),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (context, _, __) => Icon(
+                            Icons.radio_rounded,
+                            size: 24,
+                            color: isDark ? Colors.white24 : Colors.black26,
+                          ),
+                        )
+                      : Icon(
+                          Icons.radio_rounded,
+                          size: 24,
+                          color: isDark ? Colors.white24 : Colors.black26,
+                        ),
                 ),
               ),
             ),

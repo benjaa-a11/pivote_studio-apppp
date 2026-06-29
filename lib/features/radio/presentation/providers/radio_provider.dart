@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:pivote/features/radio/data/models/radio.dart' as radio_model;
 import 'package:pivote/core/services/firebase_service.dart';
+import 'package:pivote/core/services/image_cache_helper.dart';
 
 class RadioProvider extends ChangeNotifier {
   List<radio_model.Radio> _radios = [];
@@ -62,12 +63,32 @@ class RadioProvider extends ChangeNotifier {
 
       _applyFilters();
       _isInitialized = true;
+
+      // Pre-cargar logos de emisoras en background
+      _warmUpRadioLogos();
     } catch (e) {
       debugPrint('Error loading radios from Firestore: $e');
       _isInitialized = true; // Still mark as initialized to not block app
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  /// Pre-carga logos de emisoras de radio en background para arranque rápido
+  void _warmUpRadioLogos() {
+    try {
+      final logoUrls = _radios
+          .map((r) => r.logoUrl)
+          .where((url) => url.isNotEmpty && url.startsWith('http'))
+          .toList();
+
+      if (logoUrls.isNotEmpty) {
+        debugPrint('📻 Pre-cargando ${logoUrls.length} logos de radio...');
+        ImageCacheHelper.warmUpCache(logoUrls, isLogos: true);
+      }
+    } catch (e) {
+      debugPrint('Error in radio logo warm-up: $e');
     }
   }
 

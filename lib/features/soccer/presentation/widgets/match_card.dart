@@ -164,14 +164,15 @@ class MatchCard extends StatelessWidget {
                 ),
               ),
               child: CachedNetworkImage(
-                cacheManager: ImageCacheHelper.customCacheManager,
+                cacheManager: ImageCacheHelper.logoCacheManager,
+                key: ValueKey<String>(tournamentLogoUrl),
                 imageUrl: tournamentLogoUrl,
                 fit: BoxFit.contain,
                 memCacheWidth: 200,
                 memCacheHeight: 200,
                 maxWidthDiskCache: 200,
                 maxHeightDiskCache: 200,
-                fadeInDuration: const Duration(milliseconds: 100),
+                fadeInDuration: const Duration(milliseconds: 150),
                 fadeOutDuration: const Duration(milliseconds: 50),
                 placeholder: (context, url) => const SizedBox(
                   width: 40,
@@ -298,14 +299,15 @@ class MatchCard extends StatelessWidget {
           height: 68,
           child: logoUrl.isNotEmpty
               ? CachedNetworkImage(
-                  cacheManager: ImageCacheHelper.customCacheManager,
+                  cacheManager: ImageCacheHelper.logoCacheManager,
+                  key: ValueKey<String>(logoUrl),
                   imageUrl: logoUrl,
                   fit: BoxFit.contain,
                   memCacheWidth: 200,
                   memCacheHeight: 200,
                   maxWidthDiskCache: 200,
                   maxHeightDiskCache: 200,
-                  fadeInDuration: const Duration(milliseconds: 100),
+                  fadeInDuration: const Duration(milliseconds: 150),
                   fadeOutDuration: const Duration(milliseconds: 50),
                   placeholder: (context, url) => const Center(
                     child: SizedBox(
@@ -763,12 +765,13 @@ class MatchCard extends StatelessWidget {
                   padding: const EdgeInsets.all(6),
                   child: channel.logoUrl.isNotEmpty
                       ? CachedNetworkImage(
-                          cacheManager: ImageCacheHelper.customCacheManager,
+                          cacheManager: ImageCacheHelper.logoCacheManager,
+                          key: ValueKey<String>(channel.logoUrl.first),
                           imageUrl: channel.logoUrl.first,
                           fit: BoxFit.contain,
                           memCacheWidth: 150,
                           memCacheHeight: 150,
-                          fadeInDuration: const Duration(milliseconds: 100),
+                          fadeInDuration: const Duration(milliseconds: 150),
                           fadeOutDuration: const Duration(milliseconds: 50),
                           placeholder: (context, url) => const Center(
                             child: SizedBox(

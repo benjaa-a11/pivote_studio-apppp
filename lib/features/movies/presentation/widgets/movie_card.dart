@@ -5,6 +5,7 @@ import 'package:pivote/features/movies/data/models/movie.dart';
 import 'package:pivote/features/movies/presentation/screens/movie_detail_screen.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/services/image_cache_helper.dart';
 
 class MovieCard extends StatelessWidget {
   final Movie movie;
@@ -48,8 +49,16 @@ class MovieCard extends StatelessWidget {
                 // Cinema Poster Image
                 Positioned.fill(
                   child: CachedNetworkImage(
+                    key: ValueKey<String>(movie.posterUrl),
+                    cacheManager: ImageCacheHelper.customCacheManager,
                     imageUrl: movie.posterUrl,
                     fit: BoxFit.cover,
+                    memCacheWidth: 400,
+                    memCacheHeight: 600,
+                    maxWidthDiskCache: 400,
+                    maxHeightDiskCache: 600,
+                    fadeInDuration: const Duration(milliseconds: 300),
+                    fadeOutDuration: const Duration(milliseconds: 100),
                     placeholder: (context, url) => Container(
                       color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
                       child: Center(
