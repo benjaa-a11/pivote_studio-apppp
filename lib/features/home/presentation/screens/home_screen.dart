@@ -3,8 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
-import 'package:pivote/features/home/presentation/widgets/search_header.dart';
-import 'package:pivote/features/soccer/presentation/widgets/matches_hero.dart';
+import 'package:pivote/features/home/presentation/widgets/unified_home_header.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -20,23 +19,11 @@ class HomeScreen extends StatelessWidget {
         child: CustomScrollView(
           physics: const ClampingScrollPhysics(),
           slivers: [
-            // Floating Search Header
-            SliverAppBar(
-              floating: true,
-              snap: true,
-              elevation: 0,
-              backgroundColor: theme.scaffoldBackgroundColor,
-              automaticallyImplyLeading: false,
-              toolbarHeight: 65,
-              flexibleSpace: const FlexibleSpaceBar(
-                background: SearchHeader(),
-              ),
+            // Unified Premium Header (Greeting, Search Button, and Matches Carousel/Banner)
+            const SliverToBoxAdapter(
+              child: UnifiedHomeHeader(),
             ),
 
-            // Hero de partidos
-            const SliverToBoxAdapter(
-              child: MatchesHero(),
-            ),
 
             // Grid de canales
             SliverPadding(

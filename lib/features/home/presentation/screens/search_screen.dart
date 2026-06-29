@@ -221,7 +221,7 @@ class _SearchScreenState extends State<SearchScreen>
 
           // Glowing Search field (Overhauled & shift-proof)
           AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
+            duration: const Duration(milliseconds: 200),
             height: 54,
             decoration: BoxDecoration(
               color: isDark
@@ -232,17 +232,16 @@ class _SearchScreenState extends State<SearchScreen>
                 color: _searchFocusNode.hasFocus
                     ? theme.colorScheme.primary
                     : (isDark
-                        ? AppTheme.darkBorder.withValues(alpha: 0.25)
+                        ? AppTheme.darkBorder.withValues(alpha: 0.2)
                         : AppTheme.lightBorder),
-                width: 1.5, // Constant width prevents layout shift (jitter)
+                width: 1.5,
               ),
               boxShadow: _searchFocusNode.hasFocus
                   ? [
                       BoxShadow(
                         color: theme.colorScheme.primary
-                            .withValues(alpha: isDark ? 0.22 : 0.12),
-                        blurRadius: 20,
-                        spreadRadius: 1,
+                            .withValues(alpha: isDark ? 0.12 : 0.06),
+                        blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
                     ]
@@ -275,16 +274,12 @@ class _SearchScreenState extends State<SearchScreen>
                 ),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.only(left: 14, right: 10),
-                  child: AnimatedRotation(
-                    turns: _searchFocusNode.hasFocus ? 0.25 : 0.0,
-                    duration: const Duration(milliseconds: 250),
-                    child: Icon(
-                      Icons.search_rounded,
-                      color: _searchFocusNode.hasFocus
-                          ? theme.colorScheme.primary
-                          : theme.hintColor.withValues(alpha: 0.45),
-                      size: 22,
-                    ),
+                  child: Icon(
+                    Icons.search_rounded,
+                    color: _searchFocusNode.hasFocus
+                        ? theme.colorScheme.primary
+                        : theme.hintColor.withValues(alpha: 0.45),
+                    size: 22,
                   ),
                 ),
                 prefixIconConstraints:
@@ -307,11 +302,6 @@ class _SearchScreenState extends State<SearchScreen>
                       )
                     : null,
                 border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-                errorBorder: InputBorder.none,
-                focusedErrorBorder: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 15),
               ),
             ),
@@ -326,7 +316,7 @@ class _SearchScreenState extends State<SearchScreen>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: ListView(
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         children: [
           // Search History
@@ -469,71 +459,71 @@ class _SearchScreenState extends State<SearchScreen>
   Widget _buildPremiumCategoryCard(String category, ThemeData theme, bool isDark) {
     final gradient = _categoryGradients[category] ?? [Colors.grey, Colors.blueGrey];
     final icon = _categoryIcons[category] ?? Icons.category_rounded;
+    final accentColor = gradient.first;
 
     return AppAnimations.smoothFadeIn(
-      child: GestureDetector(
-        onTap: () {
-          _searchController.text = category;
-          _onSearch(category);
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: gradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            _searchController.text = category;
+            _onSearch(category);
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark 
+                    ? Colors.white.withValues(alpha: 0.06) 
+                    : Colors.black.withValues(alpha: 0.05),
+                width: 1.2,
+              ),
             ),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: gradient.first.withAlpha(40),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Circular background glow
-              Positioned(
-                right: -15,
-                bottom: -15,
-                child: Icon(
-                  icon,
-                  size: 64,
-                  color: Colors.white.withAlpha(35),
+            child: Stack(
+              children: [
+                // Soft background glow from icon
+                Positioned(
+                  right: -10,
+                  bottom: -10,
+                  child: Icon(
+                    icon,
+                    size: 60,
+                    color: accentColor.withValues(alpha: isDark ? 0.06 : 0.04),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(50),
-                        shape: BoxShape.circle,
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          icon,
+                          size: 18,
+                          color: accentColor,
+                        ),
                       ),
-                      child: Icon(
-                        icon,
-                        size: 16,
-                        color: Colors.white,
+                      Text(
+                        category,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: theme.colorScheme.onSurface,
+                        ),
                       ),
-                    ),
-                    Text(
-                      category,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -568,7 +558,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (channels.isEmpty) {
       return Center(
         child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -713,7 +703,7 @@ class _SearchScreenState extends State<SearchScreen>
         Expanded(
           child: GridView.builder(
             padding: const EdgeInsets.all(16),
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               childAspectRatio: 1.05,
