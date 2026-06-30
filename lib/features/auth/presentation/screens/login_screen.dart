@@ -46,9 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         // Navigate to MainScreen
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const MainScreen(),
-          ),
+          AppAnimations.createFadeRoute(const MainScreen()),
         );
       }
     } catch (e) {
@@ -287,8 +285,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                  builder: (context) => const SignUpScreen()),
+                              AppAnimations.createRoute(const SignUpScreen()),
                             );
                           },
                           child: Text(

@@ -25,6 +25,7 @@ import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/wakelock_service.dart';
 import 'package:pivote/features/profile/presentation/screens/activity_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -307,9 +308,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   onTap: () {
                                     Navigator.push(
                                         context,
-                                        MaterialPageRoute(
-                                            builder: (context) =>
-                                                const EditProfileScreen()));
+                                        AppAnimations.createRoute(
+                                            const EditProfileScreen()));
                                   },
                                   borderRadius: BorderRadius.circular(100),
                                   child: Container(
@@ -477,8 +477,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       subtitle: 'Gestiona tus preferencias de notificaciones',
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const NotificationsSettingsScreen(),
+        AppAnimations.createRoute(
+          const NotificationsSettingsScreen(),
         ),
       ),
     );
@@ -494,8 +494,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: _cacheSize,
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(
-                builder: (context) => const StorageManagerScreen()),
+            AppAnimations.createRoute(const StorageManagerScreen()),
           ),
         ),
       ],
@@ -511,7 +510,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: 'Ayuda y soporte',
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const SupportScreen()),
+            AppAnimations.createRoute(const SupportScreen()),
           ),
         ),
         _buildOptionTile(
@@ -520,8 +519,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: 'Privacidad y Seguridad',
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(
-                builder: (context) => const PrivacySecurityScreen()),
+            AppAnimations.createRoute(const PrivacySecurityScreen()),
           ),
         ),
       ],
@@ -658,7 +656,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Provider.of<UserProvider>(context, listen: false).clearUser();
         AppNotifications.showInfo(context, 'Has cerrado sesión correctamente');
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          AppAnimations.createFadeRoute(const LoginScreen()),
           (route) => false,
         );
       }
@@ -876,8 +874,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           subtitle: '$emoji Rango: $rank',
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => const ActivityScreen(),
+            AppAnimations.createRoute(
+              const ActivityScreen(),
             ),
           ),
         );
@@ -893,8 +891,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       subtitle: 'Medidor de velocidad y latencia de red',
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const DiagnosticsScreen(),
+        AppAnimations.createRoute(
+          const DiagnosticsScreen(),
         ),
       ),
     );

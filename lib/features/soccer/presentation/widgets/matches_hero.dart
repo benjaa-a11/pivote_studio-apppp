@@ -6,6 +6,7 @@ import 'package:pivote/features/soccer/presentation/providers/soccer_provider.da
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 import 'match_card.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
@@ -156,9 +157,7 @@ class _MatchesHeroState extends State<MatchesHero> {
         debugPrint('✅ Canal encontrado: ${channel.name} (${channel.id})');
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => PlayerScreen(channel: channel),
-          ),
+          AppAnimations.createFadeRoute(PlayerScreen(channel: channel)),
         );
         return;
       } else {

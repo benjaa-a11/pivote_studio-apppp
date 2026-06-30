@@ -10,6 +10,7 @@ import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 
 class MatchCard extends StatelessWidget {
   final SoccerMatch match;
@@ -826,9 +827,8 @@ class MatchCard extends StatelessWidget {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => PlayerScreen(channel: channel),
-                    ),
+                    AppAnimations.createFadeRoute(
+                        PlayerScreen(channel: channel)),
                   );
                 },
               );

@@ -8,6 +8,7 @@ import 'package:pivote/features/video/presentation/widgets/video_player_widget.d
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -188,8 +189,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   HapticFeedback.lightImpact();
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const DiagnosticsScreen(),
+                    AppAnimations.createRoute(
+                      const DiagnosticsScreen(),
                     ),
                   );
                 },
