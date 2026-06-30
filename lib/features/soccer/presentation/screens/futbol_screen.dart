@@ -7,6 +7,8 @@ import 'package:pivote/features/soccer/presentation/providers/soccer_provider.da
 import 'package:pivote/features/soccer/presentation/widgets/world_cup_countdown.dart';
 import 'package:pivote/features/soccer/presentation/widgets/soccer_match_card.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class FutbolScreen extends StatefulWidget {
@@ -16,35 +18,8 @@ class FutbolScreen extends StatefulWidget {
   State<FutbolScreen> createState() => _FutbolScreenState();
 }
 
-class _FutbolScreenState extends State<FutbolScreen>
-    with SingleTickerProviderStateMixin {
+class _FutbolScreenState extends State<FutbolScreen> {
   String _selectedLeagueId = 'all';
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
-
-  // FWC-26 accent colors
-  static const Color _fwcOrange = Color(0xFFE83600);
-  static const Color _fwcPurple = Color(0xFF6B00CC);
-
-  @override
-  void initState() {
-    super.initState();
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    );
-    _fadeController.forward();
-  }
- 
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,16 +71,19 @@ class _FutbolScreenState extends State<FutbolScreen>
       ),
       child: Row(
         children: [
-          // Colored accent bar
+          // Colored accent bar — app primary, matches Inicio/Películas
           Container(
             width: 4,
             height: 38,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(4),
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [_fwcOrange, _fwcPurple],
+                colors: [
+                  theme.colorScheme.primary,
+                  theme.colorScheme.primary.withValues(alpha: 0.4),
+                ],
               ),
             ),
           ),
@@ -117,29 +95,29 @@ class _FutbolScreenState extends State<FutbolScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  _fwcOrange.withValues(alpha: isDark ? 0.22 : 0.14),
-                  _fwcOrange.withValues(alpha: isDark ? 0.06 : 0.04),
+                  theme.colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.14),
+                  theme.colorScheme.primary.withValues(alpha: isDark ? 0.06 : 0.04),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: AppRadius.mAll,
               border: Border.all(
-                color: _fwcOrange.withValues(alpha: isDark ? 0.35 : 0.25),
+                color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.35 : 0.25),
                 width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _fwcOrange.withValues(alpha: isDark ? 0.08 : 0.04),
+                  color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.08 : 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.sports_soccer,
               size: 20,
-              color: _fwcOrange,
+              color: theme.colorScheme.primary,
             ),
           ),
           const SizedBox(width: 12),
@@ -291,8 +269,6 @@ class _FutbolScreenState extends State<FutbolScreen>
       onTap: () {
         if (_selectedLeagueId != id) {
           setState(() => _selectedLeagueId = id);
-          _fadeController.reset();
-          _fadeController.forward();
         }
       },
       child: Column(
@@ -416,10 +392,13 @@ class _FutbolScreenState extends State<FutbolScreen>
       delegate: SliverChildBuilderDelegate(
         (context, index) {
           if (index == 0) {
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: _buildMatchesSummary(theme, liveMatches.length,
-                  upcomingMatches.length, filteredMatches.length),
+            return KeyedSubtree(
+              key: ValueKey('summary_$_selectedLeagueId'),
+              child: AppAnimations.staggeredSlideIn(
+                index: 0,
+                child: _buildMatchesSummary(theme, liveMatches.length,
+                    upcomingMatches.length, filteredMatches.length),
+              ),
             );
           }
 
@@ -432,9 +411,12 @@ class _FutbolScreenState extends State<FutbolScreen>
                   country: ''));
           final matches = grouped[leagueId]!;
 
-          return FadeTransition(
-            opacity: _fadeAnimation,
-            child: _buildLeagueSection(league, matches, data, theme),
+          return KeyedSubtree(
+            key: ValueKey('league_${_selectedLeagueId}_$leagueId'),
+            child: AppAnimations.staggeredSlideIn(
+              index: index,
+              child: _buildLeagueSection(league, matches, data, theme),
+            ),
           );
         },
         childCount: leagueIds.length + 1,

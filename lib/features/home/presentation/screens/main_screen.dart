@@ -24,14 +24,14 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const FutbolScreen(),
-    const MoviesScreen(),
-    const FavoritesScreen(),
-    const RadiosScreen(),
-    const ProfileScreen(),
-  ];
+  List<Widget> get _screens => [
+        HomeScreen(onNavigateToTab: _onNavItemTapped),
+        const FutbolScreen(),
+        const MoviesScreen(),
+        const FavoritesScreen(),
+        const RadiosScreen(),
+        const ProfileScreen(),
+      ];
 
   @override
   void initState() {

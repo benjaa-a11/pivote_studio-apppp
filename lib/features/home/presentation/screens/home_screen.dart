@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 import 'package:pivote/features/home/presentation/widgets/unified_home_header.dart';
+import 'package:pivote/features/home/presentation/widgets/quick_access_row.dart';
+import 'package:pivote/features/home/presentation/widgets/category_chips_row.dart';
+import 'package:pivote/features/home/presentation/widgets/home_favorites_row.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  /// Lets Inicio jump to another bottom-nav tab (Fútbol/Películas/Radio)
+  /// from the discovery row. Optional so HomeScreen still works standalone
+  /// (e.g. in tests) if no navigation host is wired up.
+  final void Function(int tabIndex)? onNavigateToTab;
+
+  const HomeScreen({super.key, this.onNavigateToTab});
 
   @override
   Widget build(BuildContext context) {
@@ -24,10 +34,39 @@ class HomeScreen extends StatelessWidget {
               child: UnifiedHomeHeader(),
             ),
 
+            // Discovery row: Fútbol / Películas / Radio with live data
+            SliverToBoxAdapter(
+              child: QuickAccessRow(
+                onNavigateToTab: onNavigateToTab ?? (_) {},
+              ),
+            ),
+
+            // Category filter chips (only shows once channels are loaded)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.only(top: AppSpacing.sm),
+                child: CategoryChipsRow(),
+              ),
+            ),
+
+            // Favorites row (hides itself if there are none)
+            const SliverToBoxAdapter(
+              child: HomeFavoritesRow(),
+            ),
+
+            // Section title, reacts to the active category filter
+            SliverToBoxAdapter(
+              child: Consumer<ChannelProvider>(
+                builder: (context, provider, child) {
+                  return _buildSectionTitle(theme, provider.selectedCategory);
+                },
+              ),
+            ),
 
             // Grid de canales
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
               sliver: Consumer<ChannelProvider>(
                 builder: (context, channelProvider, child) {
                   final isLoading = channelProvider.isLoading;
@@ -74,6 +113,25 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(ThemeData theme, String selectedCategory) {
+    final title =
+        selectedCategory == 'Todos' ? 'Todos los canales' : selectedCategory;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+      child: Text(
+        title,
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: theme.colorScheme.onSurface,
+          letterSpacing: -0.3,
         ),
       ),
     );
