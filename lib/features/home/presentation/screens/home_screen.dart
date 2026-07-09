@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:skeletonizer/skeletonizer.dart';
@@ -9,7 +10,10 @@ import 'package:pivote/features/home/presentation/widgets/quick_access_row.dart'
 import 'package:pivote/features/home/presentation/widgets/category_chips_row.dart';
 import 'package:pivote/features/home/presentation/widgets/home_favorites_row.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
+import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
+import 'package:pivote/features/movies/presentation/providers/movies_provider.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 
 class HomeScreen extends StatelessWidget {
   /// Lets Inicio jump to another bottom-nav tab (Fútbol/Películas/Radio)
@@ -26,8 +30,24 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const ClampingScrollPhysics(),
+        child: RefreshIndicator(
+          color: theme.colorScheme.primary,
+          backgroundColor: theme.isDark ? AppTheme.darkBg2 : Colors.white,
+          onRefresh: () async {
+            HapticFeedback.lightImpact();
+            // Home surfaces three providers (canales, fútbol en vivo,
+            // películas en tendencia vía QuickAccessRow) — un solo gesto
+            // de refresh debe traer los tres, no solo la grilla visible.
+            await Future.wait([
+              context.read<ChannelProvider>().loadChannelsFromFirestore(),
+              context.read<SoccerProvider>().fetchData(silent: true),
+              context.read<MoviesProvider>().loadMovies(force: true),
+            ]);
+          },
+          child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: ClampingScrollPhysics(),
+          ),
           slivers: [
             // Unified Premium Header (Greeting, Search Button, and Matches Carousel/Banner)
             const SliverToBoxAdapter(
@@ -113,6 +133,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
+          ),
         ),
       ),
     );
