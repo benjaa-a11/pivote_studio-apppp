@@ -484,8 +484,8 @@ class ActivityScreen extends StatelessWidget {
                               onPressed: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const DiagnosticsScreen(),
+                                  AppAnimations.createRoute(
+                                    const DiagnosticsScreen(),
                                   ),
                                 );
                               },

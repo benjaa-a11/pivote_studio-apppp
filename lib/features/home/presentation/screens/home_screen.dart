@@ -1,13 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 import 'package:pivote/features/home/presentation/widgets/unified_home_header.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  /// Se mantiene por compatibilidad con MainScreen (bottom-nav host).
+  /// Ya no se usa internamente: el discovery row que lo consumía fue
+  /// removido de Inicio en el rediseño 5.0.0.
+  final void Function(int tabIndex)? onNavigateToTab;
+
+  const HomeScreen({super.key, this.onNavigateToTab});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _entranceController;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    // Animación de entrada única al montar la pantalla (no se repite en
+    // rebuilds posteriores, ya que el pull-to-refresh fue removido y el
+    // controller no vuelve a dispararse).
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: AppAnimations.slow,
+    );
+    _fade = CurvedAnimation(
+      parent: _entranceController,
+      curve: Curves.easeOut,
+    );
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.035),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: Curves.easeOutCubic,
+    ));
+    _entranceController.forward();
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,64 +64,101 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const ClampingScrollPhysics(),
-          slivers: [
-            // Unified Premium Header (Greeting, Search Button, and Matches Carousel/Banner)
-            const SliverToBoxAdapter(
-              child: UnifiedHomeHeader(),
-            ),
+        child: FadeTransition(
+          opacity: _fade,
+          child: SlideTransition(
+            position: _slide,
+            child: CustomScrollView(
+              // Pull-to-refresh deshabilitado a propósito: interrumpía la
+              // fluidez del scroll. Los providers (canales, fútbol) ya se
+              // mantienen frescos por su propia lógica interna.
+              physics: const ClampingScrollPhysics(),
+              slivers: [
+                // Header premium unificado (saludo, buscador y hero de partidos)
+                const SliverToBoxAdapter(
+                  child: UnifiedHomeHeader(),
+                ),
 
+                // Título de sección, reacciona a la categoría activa
+                SliverToBoxAdapter(
+                  child: Consumer<ChannelProvider>(
+                    builder: (context, provider, child) {
+                      return _buildSectionTitle(theme, provider.selectedCategory);
+                    },
+                  ),
+                ),
 
-            // Grid de canales
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              sliver: Consumer<ChannelProvider>(
-                builder: (context, channelProvider, child) {
-                  final isLoading = channelProvider.isLoading;
-                  final channels = isLoading
-                      ? List.generate(
-                          8,
-                          (index) => Channel(
-                                id: 'dummy',
-                                name: 'Channel Name',
-                                logoUrl: [''],
-                                streamUrl: [StreamSource(url: '')],
-                                category: 'General',
-                                description: 'Description',
-                              ))
-                      : channelProvider.channels;
+                // Grid de canales
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
+                  sliver: Consumer<ChannelProvider>(
+                    builder: (context, channelProvider, child) {
+                      final isLoading = channelProvider.isLoading;
+                      final channels = isLoading
+                          ? List.generate(
+                              8,
+                              (index) => Channel(
+                                    id: 'dummy',
+                                    name: 'Channel Name',
+                                    logoUrl: [''],
+                                    streamUrl: [StreamSource(url: '')],
+                                    category: 'General',
+                                    description: 'Description',
+                                  ))
+                          : channelProvider.channels;
 
-                  if (!isLoading && channels.isEmpty) {
-                    return SliverToBoxAdapter(
-                      child: _buildEmptyState(context, channelProvider),
-                    );
-                  }
-
-                  return SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 1.05,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final card = ChannelCard(channel: channels[index]);
-                        return Skeletonizer(
-                          enabled: isLoading,
-                          child: card,
+                      if (!isLoading && channels.isEmpty) {
+                        return SliverToBoxAdapter(
+                          child: _buildEmptyState(context, channelProvider),
                         );
-                      },
-                      childCount: channels.length,
-                    ),
-                  );
-                },
-              ),
+                      }
+
+                      return SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 1.05,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final card = ChannelCard(channel: channels[index]);
+                            return Skeletonizer(
+                              enabled: isLoading,
+                              child: card,
+                            );
+                          },
+                          childCount: channels.length,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              ],
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(ThemeData theme, String selectedCategory) {
+    final title =
+        selectedCategory == 'Todos' ? 'Todos los canales' : selectedCategory;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+      child: Text(
+        title,
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: theme.colorScheme.onSurface,
+          letterSpacing: -0.3,
         ),
       ),
     );

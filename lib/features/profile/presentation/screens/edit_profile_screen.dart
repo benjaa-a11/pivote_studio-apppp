@@ -10,6 +10,7 @@ import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -213,7 +214,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           AppNotifications.showSuccess(
               context, 'Tu cuenta ha sido eliminada. Lamentamos verte partir.');
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            AppAnimations.createFadeRoute(const LoginScreen()),
             (route) => false,
           );
         }

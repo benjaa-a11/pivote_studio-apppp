@@ -54,9 +54,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
         // Navigate to MainScreen
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const MainScreen(),
-          ),
+          AppAnimations.createFadeRoute(const MainScreen()),
         );
       }
     } catch (e) {

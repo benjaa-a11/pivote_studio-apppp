@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ── VOD Engine Configuration ──────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ class MovieEngineState {
   final String? errorMessage;
   final int retryAttempt;
   final Tracks tracks;
+  final Track track;
 
   const MovieEngineState({
     this.status = MoviePlayerStatus.idle,
@@ -80,6 +82,7 @@ class MovieEngineState {
     this.errorMessage,
     this.retryAttempt = 0,
     this.tracks = const Tracks(),
+    this.track = const Track(),
   });
 
   MovieEngineState copyWith({
@@ -95,6 +98,7 @@ class MovieEngineState {
     String? errorMessage,
     int? retryAttempt,
     Tracks? tracks,
+    Track? track,
   }) {
     return MovieEngineState(
       status: status ?? this.status,
@@ -109,8 +113,18 @@ class MovieEngineState {
       errorMessage: errorMessage ?? this.errorMessage,
       retryAttempt: retryAttempt ?? this.retryAttempt,
       tracks: tracks ?? this.tracks,
+      track: track ?? this.track,
     );
   }
+
+  /// True once the player has decoded and displayed at least one frame.
+  /// Used by the UI to distinguish the initial cinematic loading screen
+  /// (before first frame) from mid-playback buffering (frame stays on
+  /// screen, only a small spinner is shown on top).
+  bool get hasStartedPlayback =>
+      status == MoviePlayerStatus.playing ||
+      status == MoviePlayerStatus.paused ||
+      status == MoviePlayerStatus.completed;
 
   bool get isLoading =>
       status == MoviePlayerStatus.loading ||
@@ -143,6 +157,7 @@ class MovieVideoEngine extends ChangeNotifier {
   StreamSubscription? _completedSub;
   StreamSubscription? _errorSub;
   StreamSubscription? _tracksSub;
+  StreamSubscription? _trackSub;
 
   MovieVideoEngine() {
     _player = Player(
@@ -163,6 +178,19 @@ class MovieVideoEngine extends ChangeNotifier {
 
     _applyMpvProperties();
     _attachStreams();
+    _restorePreferredSpeed();
+  }
+
+  static const String _speedPrefKey = 'movie_preferred_playback_speed';
+
+  Future<void> _restorePreferredSpeed() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getDouble(_speedPrefKey);
+      if (saved != null && saved != _state.playbackSpeed && !_disposed) {
+        await setPlaybackSpeed(saved, persist: false);
+      }
+    } catch (_) {}
   }
 
   Future<void> _applyMpvProperties() async {
@@ -191,6 +219,7 @@ class MovieVideoEngine extends ChangeNotifier {
     _completedSub = _player.stream.completed.listen(_onCompleted);
     _errorSub = _player.stream.error.listen(_onError);
     _tracksSub = _player.stream.tracks.listen(_onTracks);
+    _trackSub = _player.stream.track.listen(_onTrack);
   }
 
   void _onPlaying(bool playing) {
@@ -262,6 +291,11 @@ class MovieVideoEngine extends ChangeNotifier {
   void _onTracks(Tracks tracks) {
     if (_disposed) return;
     _emit(_state.copyWith(tracks: tracks));
+  }
+
+  void _onTrack(Track track) {
+    if (_disposed) return;
+    _emit(_state.copyWith(track: track));
   }
 
   // ── Error & Retry Handling ────────────────────────────────────────────────
@@ -371,10 +405,17 @@ class MovieVideoEngine extends ChangeNotifier {
     _emit(_state.copyWith(isMuted: muted));
   }
 
-  Future<void> setPlaybackSpeed(double speed) async {
+  Future<void> setPlaybackSpeed(double speed, {bool persist = true}) async {
     if (_disposed) return;
     await _player.setRate(speed);
     _emit(_state.copyWith(playbackSpeed: speed));
+
+    if (persist) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setDouble(_speedPrefKey, speed);
+      } catch (_) {}
+    }
   }
 
   Future<void> setSubtitleTrack(SubtitleTrack track) async {
@@ -429,6 +470,7 @@ class MovieVideoEngine extends ChangeNotifier {
     _completedSub?.cancel();
     _errorSub?.cancel();
     _tracksSub?.cancel();
+    _trackSub?.cancel();
     _player.dispose();
     super.dispose();
   }

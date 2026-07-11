@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,14 +25,25 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const FutbolScreen(),
-    const MoviesScreen(),
-    const FavoritesScreen(),
-    const RadiosScreen(),
-    const ProfileScreen(),
-  ];
+  // Home's CustomScrollView reads this via PrimaryScrollController so a
+  // second tap on the already-active "Inicio" tab can scroll it back to
+  // the top instead of doing nothing (Fase 0 spec, sección 1).
+  // Fútbol/Películas/Favoritos/Radio/Perfil get their own controller when
+  // each one goes through its redesign phase — not bundled in here so this
+  // change stays reviewable on its own.
+  final ScrollController _homeScrollController = ScrollController();
+
+  List<Widget> get _screens => [
+        PrimaryScrollController(
+          controller: _homeScrollController,
+          child: HomeScreen(onNavigateToTab: _onNavItemTapped),
+        ),
+        const FutbolScreen(),
+        const MoviesScreen(),
+        const FavoritesScreen(),
+        const RadiosScreen(),
+        const ProfileScreen(),
+      ];
 
   @override
   void initState() {
@@ -46,6 +58,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _homeScrollController.dispose();
     super.dispose();
   }
 
@@ -63,8 +76,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   void _onNavItemTapped(int index) {
-    if (_selectedIndex == index) return;
-    
+    if (_selectedIndex == index) {
+      // Second tap on the active tab: scroll back to top instead of a no-op.
+      if (index == 0 && _homeScrollController.hasClients) {
+        HapticFeedback.selectionClick();
+        _homeScrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      return;
+    }
+
     if (index == 1) {
       try {
         final soccerProvider = context.read<SoccerProvider>();

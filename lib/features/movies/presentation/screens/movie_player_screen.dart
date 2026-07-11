@@ -40,6 +40,10 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
   Timer? _hideControlsTimer;
   Timer? _progressSaveTimer;
 
+  // True once the first frame has ever been shown. After that, buffering
+  // never blacks out the screen again — only a small spinner appears.
+  bool _hasStartedPlayback = false;
+
   @override
   void initState() {
     super.initState();
@@ -77,7 +81,13 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
 
   void _onEngineStateChange() {
     if (!mounted) return;
-    
+
+    if (_engine.state.hasStartedPlayback && !_hasStartedPlayback) {
+      setState(() {
+        _hasStartedPlayback = true;
+      });
+    }
+
     // When playback starts, show controls briefly if we haven't shown them yet
     if (_engine.state.status == MoviePlayerStatus.playing && !_hasShownInitialControls) {
       _hasShownInitialControls = true;
@@ -247,8 +257,11 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                         ),
 
                         // ── Custom Gesture-Based Controls Layer ──
+                        // Stays available during buffering too, so the user
+                        // never "loses" the player mid re-buffer.
                         if ((state.status == MoviePlayerStatus.playing ||
                              state.status == MoviePlayerStatus.paused ||
+                             state.status == MoviePlayerStatus.buffering ||
                              state.status == MoviePlayerStatus.completed) && !state.hasError)
                           MovieControlsOverlay(
                             engine: _engine,
@@ -260,11 +273,22 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                             onDragEnd: _onDragEnd,
                           ),
 
-                        // ── Loading Screen Shimmer/Overlay ──
-                        if (state.status == MoviePlayerStatus.loading ||
-                            state.status == MoviePlayerStatus.idle ||
-                            state.status == MoviePlayerStatus.buffering)
-                          MovieLoadingOverlay(retryAttempt: state.retryAttempt),
+                        // ── Cinematic Loading Screen (only before first frame) ──
+                        if (!_hasStartedPlayback &&
+                            !state.hasError &&
+                            (state.status == MoviePlayerStatus.loading ||
+                             state.status == MoviePlayerStatus.idle ||
+                             state.status == MoviePlayerStatus.buffering))
+                          MovieLoadingOverlay(
+                            movie: widget.movie,
+                            retryAttempt: state.retryAttempt,
+                          ),
+
+                        // ── Lightweight Buffering Spinner (video stays visible) ──
+                        if (_hasStartedPlayback &&
+                            state.status == MoviePlayerStatus.buffering &&
+                            !state.hasError)
+                          const MovieBufferingSpinner(),
 
                         // ── Error Message Overlay ──
                         if (state.hasError)
