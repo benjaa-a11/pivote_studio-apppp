@@ -9,6 +9,7 @@ import 'package:pivote/features/video/presentation/providers/channel_provider.da
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 
@@ -62,21 +63,23 @@ class MatchCard extends StatelessWidget {
       margin: const EdgeInsets.only(right: 14),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppRadius.xlAll,
         border: Border.all(
-          color: isDark
-              ? AppTheme.darkBorder.withValues(alpha: 0.5)
-              : AppTheme.lightBorder,
+          color: isLive
+              ? theme.colorScheme.error.withValues(alpha: isDark ? 0.35 : 0.22)
+              : (isDark
+                  ? AppTheme.darkBorder.withValues(alpha: 0.5)
+                  : AppTheme.lightBorder),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
             color: isLive
                 ? theme.colorScheme.error
-                    .withValues(alpha: isDark ? 0.15 : 0.08)
-                : Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
-            blurRadius: isLive ? 16 : 12,
-            offset: const Offset(0, 4),
+                    .withValues(alpha: isDark ? 0.18 : 0.1)
+                : Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
+            blurRadius: isLive ? 20 : 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -135,7 +138,8 @@ class MatchCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
         gradient: LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
@@ -394,9 +398,9 @@ class MatchCard extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   border: Border.all(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.15)),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.18)),
                 ),
                 child: Text(
                   timeStatus.toUpperCase(),
@@ -459,10 +463,10 @@ class MatchCard extends StatelessWidget {
         if (isLive)
           Container(
             margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: theme.colorScheme.error.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: Text(
               match.timeStatus.isNotEmpty ? match.timeStatus : 'EN VIVO',
@@ -477,11 +481,11 @@ class MatchCard extends StatelessWidget {
         else if (isFinished)
           Container(
             margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
               color: (isDark ? Colors.white : Colors.black)
                   .withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: Text(
               'FINAL',
@@ -567,7 +571,7 @@ class MatchCard extends StatelessWidget {
               backgroundColor: theme.colorScheme.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: AppRadius.mAll,
               ),
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
@@ -601,7 +605,7 @@ class MatchCard extends StatelessWidget {
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: isDark ? AppTheme.darkBg : Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: AppRadius.mAll,
               ),
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
@@ -623,7 +627,7 @@ class MatchCard extends StatelessWidget {
       height: 44,
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkBg3 : AppTheme.lightBg2,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.mAll,
         border: Border.all(
           color: isDark
               ? AppTheme.darkBorder.withValues(alpha: 0.5)
@@ -649,7 +653,7 @@ class MatchCard extends StatelessWidget {
       height: 44,
       decoration: BoxDecoration(
         color: isDark ? AppTheme.darkBg3 : AppTheme.lightBg2,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.mAll,
         border: Border.all(
           color: isDark
               ? AppTheme.darkBorder.withValues(alpha: 0.3)
@@ -882,9 +886,9 @@ class _HeroLiveIndicatorState extends State<_HeroLiveIndicator>
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: widget.theme.colorScheme.error.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
             border: Border.all(
-              color: widget.theme.colorScheme.error.withValues(alpha: 0.2),
+              color: widget.theme.colorScheme.error.withValues(alpha: 0.25),
             ),
             boxShadow: [
               BoxShadow(

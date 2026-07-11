@@ -1,27 +1,61 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 import 'package:pivote/features/home/presentation/widgets/unified_home_header.dart';
-import 'package:pivote/features/home/presentation/widgets/quick_access_row.dart';
-import 'package:pivote/features/home/presentation/widgets/category_chips_row.dart';
-import 'package:pivote/features/home/presentation/widgets/home_favorites_row.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
-import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
-import 'package:pivote/features/movies/presentation/providers/movies_provider.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
-import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 
-class HomeScreen extends StatelessWidget {
-  /// Lets Inicio jump to another bottom-nav tab (Fútbol/Películas/Radio)
-  /// from the discovery row. Optional so HomeScreen still works standalone
-  /// (e.g. in tests) if no navigation host is wired up.
+class HomeScreen extends StatefulWidget {
+  /// Se mantiene por compatibilidad con MainScreen (bottom-nav host).
+  /// Ya no se usa internamente: el discovery row que lo consumía fue
+  /// removido de Inicio en el rediseño 5.0.0.
   final void Function(int tabIndex)? onNavigateToTab;
 
   const HomeScreen({super.key, this.onNavigateToTab});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _entranceController;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    // Animación de entrada única al montar la pantalla (no se repite en
+    // rebuilds posteriores, ya que el pull-to-refresh fue removido y el
+    // controller no vuelve a dispararse).
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: AppAnimations.slow,
+    );
+    _fade = CurvedAnimation(
+      parent: _entranceController,
+      curve: Curves.easeOut,
+    );
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.035),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: Curves.easeOutCubic,
+    ));
+    _entranceController.forward();
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,109 +64,81 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: RefreshIndicator(
-          color: theme.colorScheme.primary,
-          backgroundColor: theme.isDark ? AppTheme.darkBg2 : Colors.white,
-          onRefresh: () async {
-            HapticFeedback.lightImpact();
-            // Home surfaces three providers (canales, fútbol en vivo,
-            // películas en tendencia vía QuickAccessRow) — un solo gesto
-            // de refresh debe traer los tres, no solo la grilla visible.
-            await Future.wait([
-              context.read<ChannelProvider>().loadChannelsFromFirestore(),
-              context.read<SoccerProvider>().fetchData(silent: true),
-              context.read<MoviesProvider>().loadMovies(force: true),
-            ]);
-          },
-          child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: ClampingScrollPhysics(),
-          ),
-          slivers: [
-            // Unified Premium Header (Greeting, Search Button, and Matches Carousel/Banner)
-            const SliverToBoxAdapter(
-              child: UnifiedHomeHeader(),
-            ),
+        child: FadeTransition(
+          opacity: _fade,
+          child: SlideTransition(
+            position: _slide,
+            child: CustomScrollView(
+              // Pull-to-refresh deshabilitado a propósito: interrumpía la
+              // fluidez del scroll. Los providers (canales, fútbol) ya se
+              // mantienen frescos por su propia lógica interna.
+              physics: const ClampingScrollPhysics(),
+              slivers: [
+                // Header premium unificado (saludo, buscador y hero de partidos)
+                const SliverToBoxAdapter(
+                  child: UnifiedHomeHeader(),
+                ),
 
-            // Discovery row: Fútbol / Películas / Radio with live data
-            SliverToBoxAdapter(
-              child: QuickAccessRow(
-                onNavigateToTab: onNavigateToTab ?? (_) {},
-              ),
-            ),
+                // Título de sección, reacciona a la categoría activa
+                SliverToBoxAdapter(
+                  child: Consumer<ChannelProvider>(
+                    builder: (context, provider, child) {
+                      return _buildSectionTitle(theme, provider.selectedCategory);
+                    },
+                  ),
+                ),
 
-            // Category filter chips (only shows once channels are loaded)
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.only(top: AppSpacing.sm),
-                child: CategoryChipsRow(),
-              ),
-            ),
+                // Grid de canales
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
+                  sliver: Consumer<ChannelProvider>(
+                    builder: (context, channelProvider, child) {
+                      final isLoading = channelProvider.isLoading;
+                      final channels = isLoading
+                          ? List.generate(
+                              8,
+                              (index) => Channel(
+                                    id: 'dummy',
+                                    name: 'Channel Name',
+                                    logoUrl: [''],
+                                    streamUrl: [StreamSource(url: '')],
+                                    category: 'General',
+                                    description: 'Description',
+                                  ))
+                          : channelProvider.channels;
 
-            // Favorites row (hides itself if there are none)
-            const SliverToBoxAdapter(
-              child: HomeFavoritesRow(),
-            ),
-
-            // Section title, reacts to the active category filter
-            SliverToBoxAdapter(
-              child: Consumer<ChannelProvider>(
-                builder: (context, provider, child) {
-                  return _buildSectionTitle(theme, provider.selectedCategory);
-                },
-              ),
-            ),
-
-            // Grid de canales
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
-              sliver: Consumer<ChannelProvider>(
-                builder: (context, channelProvider, child) {
-                  final isLoading = channelProvider.isLoading;
-                  final channels = isLoading
-                      ? List.generate(
-                          8,
-                          (index) => Channel(
-                                id: 'dummy',
-                                name: 'Channel Name',
-                                logoUrl: [''],
-                                streamUrl: [StreamSource(url: '')],
-                                category: 'General',
-                                description: 'Description',
-                              ))
-                      : channelProvider.channels;
-
-                  if (!isLoading && channels.isEmpty) {
-                    return SliverToBoxAdapter(
-                      child: _buildEmptyState(context, channelProvider),
-                    );
-                  }
-
-                  return SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 1.05,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final card = ChannelCard(channel: channels[index]);
-                        return Skeletonizer(
-                          enabled: isLoading,
-                          child: card,
+                      if (!isLoading && channels.isEmpty) {
+                        return SliverToBoxAdapter(
+                          child: _buildEmptyState(context, channelProvider),
                         );
-                      },
-                      childCount: channels.length,
-                    ),
-                  );
-                },
-              ),
+                      }
+
+                      return SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 1.05,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final card = ChannelCard(channel: channels[index]);
+                            return Skeletonizer(
+                              enabled: isLoading,
+                              child: card,
+                            );
+                          },
+                          childCount: channels.length,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 32)),
+              ],
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-          ],
           ),
         ),
       ),
