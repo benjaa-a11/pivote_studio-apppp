@@ -4,10 +4,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
-import 'package:pivote/features/soccer/presentation/widgets/world_cup_countdown.dart';
 import 'package:pivote/features/soccer/presentation/widgets/soccer_match_card.dart';
 import 'package:pivote/core/theme/app_theme.dart';
-import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
@@ -32,16 +30,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
         child: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
-              // Header with title and live badge
+              // Sleek Modern Header with title and live status
               SliverToBoxAdapter(
                 child: _buildScreenHeader(theme, soccerProvider),
-              ),
-              // World Cup Countdown Hero
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: WorldCupCountdown(),
-                ),
               ),
             ];
           },
@@ -57,89 +48,101 @@ class _FutbolScreenState extends State<FutbolScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark
-                ? AppTheme.darkBorder.withValues(alpha: 0.15)
-                : AppTheme.lightBorder.withValues(alpha: 0.3),
-            width: 1.2,
-          ),
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: (isDark ? Colors.black : Colors.grey).withValues(alpha: 0.1),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          // Colored accent bar — app primary, matches Inicio/Películas
+          // Glowing Sports Soccer Icon Box
           Container(
-            width: 4,
-            height: 38,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
                 colors: [
                   theme.colorScheme.primary,
-                  theme.colorScheme.primary.withValues(alpha: 0.4),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Soccer icon container (Unified & polished)
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  theme.colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.14),
-                  theme.colorScheme.primary.withValues(alpha: isDark ? 0.06 : 0.04),
+                  theme.colorScheme.primary.withValues(alpha: 0.7),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: AppRadius.mAll,
-              border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.35 : 0.25),
-                width: 1.2,
-              ),
+              borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.08 : 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
-            child: Icon(
-              Icons.sports_soccer,
-              size: 20,
-              color: theme.colorScheme.primary,
+            child: const Icon(
+              Icons.sports_soccer_rounded,
+              size: 24,
+              color: Colors.white,
             ),
           ),
-          const SizedBox(width: 12),
-          // Title
+          const SizedBox(width: 14),
+          // Title & Subtitle
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Fútbol',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: theme.colorScheme.onSurface,
-                    letterSpacing: -0.6,
-                    height: 1.1,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'Fútbol',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -0.6,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        'LIGAS & RESULTADOS',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: theme.colorScheme.primary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
-                  'FIFA World Cup 26™ & más',
+                  'Agenda Deportiva & Marcadores en Vivo',
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -149,8 +152,27 @@ class _FutbolScreenState extends State<FutbolScreen> {
               ],
             ),
           ),
-          // Live count badge
-          if (liveCount > 0) _buildLiveCountBadge(theme, liveCount),
+          // Live count badge or Refresh button
+          if (liveCount > 0) ...[
+            const SizedBox(width: 8),
+            _buildLiveCountBadge(theme, liveCount),
+          ] else ...[
+            const SizedBox(width: 8),
+            IconButton(
+              onPressed: () {
+                provider.fetchData();
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+              color: theme.colorScheme.primary,
+              style: IconButton.styleFrom(
+                backgroundColor:
+                    theme.colorScheme.primary.withValues(alpha: 0.08),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

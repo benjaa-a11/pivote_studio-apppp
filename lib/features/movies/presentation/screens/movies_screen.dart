@@ -134,86 +134,98 @@ class _MoviesScreenState extends State<MoviesScreen> {
 
   Widget _buildHeader(ThemeData theme, bool isDark) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark
-                ? AppTheme.darkBorder.withValues(alpha: 0.15)
-                : AppTheme.lightBorder.withValues(alpha: 0.3),
-            width: 1.2,
-          ),
+        color: isDark ? AppTheme.darkCard : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
+          width: 1.2,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: (isDark ? Colors.black : Colors.grey).withValues(alpha: 0.1),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          // Dynamic visual colored bar
+          // Cinema Icon Box with Gold/Neon Accent
           Container(
-            width: 4,
-            height: 38,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
               gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [AppTheme.darkAccent, Color(0xFF00C6FF)],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Cinema container icon
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.darkAccent.withValues(alpha: isDark ? 0.22 : 0.14),
-                  AppTheme.darkAccent.withValues(alpha: isDark ? 0.06 : 0.04),
-                ],
+                colors: [AppTheme.darkAccent, Color(0xFFFF9F43)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: AppTheme.darkAccent.withValues(alpha: isDark ? 0.35 : 0.25),
-                width: 1.2,
-              ),
+              borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.darkAccent.withValues(alpha: isDark ? 0.08 : 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+                  color: AppTheme.darkAccent.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
             child: const Icon(
-              Icons.movie_creation_outlined,
-              size: 20,
-              color: AppTheme.darkAccent,
+              Icons.movie_creation_rounded,
+              size: 24,
+              color: Colors.black,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           // Titles
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Películas',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: theme.colorScheme.onSurface,
-                    letterSpacing: -0.6,
-                    height: 1.1,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'Películas',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -0.6,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppTheme.darkAccent.withValues(alpha: 0.3),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        'CATÁLOGO 4K',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? AppTheme.darkAccent : Colors.orange.shade900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
-                  'Cine Premium en tus manos',
+                  'Estrenos, Cine Premium & Colecciones',
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -223,8 +235,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 12),
-          // Search Icon Button
+          const SizedBox(width: 8),
+          // Glassmorphism Search Button
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -235,32 +247,24 @@ class _MoviesScreenState extends State<MoviesScreen> {
                 );
               },
               borderRadius: BorderRadius.circular(14),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.all(11),
+              child: Container(
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? theme.colorScheme.primary.withValues(alpha: 0.05)
-                      : theme.colorScheme.primary.withValues(alpha: 0.04),
+                      ? AppTheme.darkBg2
+                      : theme.colorScheme.primary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: theme.colorScheme.primary
-                        .withValues(alpha: isDark ? 0.22 : 0.18),
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : theme.colorScheme.primary.withValues(alpha: 0.2),
                     width: 1.2,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary
-                          .withValues(alpha: isDark ? 0.08 : 0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 child: Icon(
                   Icons.search_rounded,
                   size: 22,
-                  color: theme.colorScheme.primary,
+                  color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
                 ),
               ),
             ),

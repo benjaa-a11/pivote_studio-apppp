@@ -5,7 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
 import 'package:pivote/features/movies/presentation/widgets/movie_video_engine.dart';
-import 'package:pivote/features/movies/presentation/widgets/movie_bottom_sheets.dart';
+// Pivo Movie Player Controls
+
 
 class MovieControlsOverlay extends StatefulWidget {
   final MovieVideoEngine engine;
@@ -255,51 +256,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     widget.onUserInteraction();
   }
 
-  void _showSpeedSheet() {
-    widget.onUserInteraction();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => SpeedSelectorSheet(
-        currentSpeed: widget.engine.state.playbackSpeed,
-        onSpeedSelected: (speed) {
-          widget.engine.setPlaybackSpeed(speed);
-        },
-      ),
-    );
-  }
 
-  void _showSubtitlesSheet() {
-    widget.onUserInteraction();
-    final state = widget.engine.state;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => SubtitleSelectorSheet(
-        tracks: state.tracks,
-        selectedTrack: state.track.subtitle,
-        onTrackSelected: (track) {
-          widget.engine.setSubtitleTrack(track);
-        },
-      ),
-    );
-  }
-
-  void _showAudioTracksSheet() {
-    widget.onUserInteraction();
-    final state = widget.engine.state;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AudioTrackSelectorSheet(
-        tracks: state.tracks,
-        selectedTrack: state.track.audio,
-        onTrackSelected: (track) {
-          widget.engine.setAudioTrack(track);
-        },
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -590,33 +547,37 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
             Positioned.fill(
               child: AnimatedOpacity(
                 opacity: widget.showControls ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 250),
                 child: IgnorePointer(
                   ignoring: !widget.showControls,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.85),
-                          Colors.transparent,
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.9),
-                        ],
-                        stops: const [0.0, 0.25, 0.7, 1.0],
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTapUp: (details) => _handleTapUp(details, constraints),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.85),
+                            Colors.transparent,
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.9),
+                          ],
+                          stops: const [0.0, 0.25, 0.7, 1.0],
+                        ),
                       ),
+                      child: _isLocked
+                          ? _buildLockedControls()
+                          : _buildUnlockedControls(
+                              sliderValue,
+                              sliderMax,
+                              position,
+                              duration,
+                              remaining,
+                              isPlaying,
+                            ),
                     ),
-                    child: _isLocked
-                        ? _buildLockedControls()
-                        : _buildUnlockedControls(
-                            sliderValue,
-                            sliderMax,
-                            position,
-                            duration,
-                            remaining,
-                            isPlaying,
-                          ),
                   ),
                 ),
               ),
@@ -795,35 +756,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                   ),
                 ),
 
-                // Settings & Options Buttons
-
-                if (widget.engine.state.tracks.audio.length > 1)
-                  IconButton(
-                    icon: const Icon(Icons.multitrack_audio_rounded, size: 19),
-                    color: Colors.white,
-                    tooltip: 'Idioma / Audio',
-                    onPressed: _showAudioTracksSheet,
-                  ),
-                if (widget.engine.state.tracks.subtitle.isNotEmpty)
-                  IconButton(
-                    icon: Icon(
-                      widget.engine.state.track.subtitle.id != 'no'
-                          ? Icons.subtitles_rounded
-                          : Icons.subtitles_off_rounded,
-                      size: 20,
-                    ),
-                    color: widget.engine.state.track.subtitle.id != 'no'
-                        ? AppTheme.darkAccent
-                        : Colors.white,
-                    tooltip: 'Subtítulos',
-                    onPressed: _showSubtitlesSheet,
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.speed_rounded, size: 20),
-                  color: Colors.white,
-                  tooltip: 'Velocidad',
-                  onPressed: _showSpeedSheet,
-                ),
+                // Lock Screen Button
                 IconButton(
                   icon: const Icon(Icons.lock_open_rounded, size: 20),
                   color: Colors.white70,

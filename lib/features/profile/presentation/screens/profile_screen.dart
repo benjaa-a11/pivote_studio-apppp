@@ -25,7 +25,6 @@ import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/wakelock_service.dart';
 import 'package:pivote/features/profile/presentation/screens/activity_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
-import 'package:pivote/core/animations/app_animations.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -260,7 +259,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ],
                         ),
                         const SizedBox(height: 18),
-                        // User Details
                         AppAnimations.smoothFadeIn(
                           child: Column(
                             children: [

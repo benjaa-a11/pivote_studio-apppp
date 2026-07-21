@@ -284,9 +284,9 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                         ),
 
                         // ── Custom Gesture-Based Controls Layer ──
-                        // Stays available during buffering too, so the user
-                        // never "loses" the player mid re-buffer.
-                        if ((state.status == MoviePlayerStatus.playing ||
+                        // ONLY rendered once the first frame has decoded and playback has started
+                        if (_hasStartedPlayback &&
+                            (state.status == MoviePlayerStatus.playing ||
                              state.status == MoviePlayerStatus.paused ||
                              state.status == MoviePlayerStatus.buffering ||
                              state.status == MoviePlayerStatus.completed) && !state.hasError)
@@ -301,7 +301,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                             onExit: _exitPlayer,
                           ),
 
-                        // ── Cinematic Loading Screen (only before first frame) ──
+                        // ── Cinematic Loading Screen (ONLY before first frame decoded) ──
                         if (!_hasStartedPlayback &&
                             !state.hasError &&
                             (state.status == MoviePlayerStatus.loading ||

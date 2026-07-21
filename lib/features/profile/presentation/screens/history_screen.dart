@@ -10,7 +10,6 @@ import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
-import 'package:pivote/core/animations/app_animations.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
