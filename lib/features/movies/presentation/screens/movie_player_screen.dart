@@ -44,6 +44,10 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
   // never blacks out the screen again — only a small spinner appears.
   bool _hasStartedPlayback = false;
 
+  // Guards against double-invocation of the exit flow (e.g. rapid double tap
+  // on the back button, or system-back racing with an on-screen tap).
+  bool _isExiting = false;
+
   @override
   void initState() {
     super.initState();
@@ -158,6 +162,42 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
     _startHideControlsTimer();
   }
 
+  /// Real network pre-buffer progress (0-99) shown on the cinematic loading
+  /// screen, computed from how much media has actually been cached ahead of
+  /// the playhead versus the target pre-buffer configured on the engine.
+  /// Clamped below 100 so it never reads "100%" while still on this screen —
+  /// once we truly reach playback, this overlay unmounts entirely.
+  double? get _bufferPercent {
+    final targetMs = (MovieEngineConfig.cacheSecs * 1000).round();
+    if (targetMs <= 0) return null;
+    final bufferedMs = _engine.state.buffered.inMilliseconds;
+    if (bufferedMs <= 0) return 0;
+    return (bufferedMs / targetMs * 100).clamp(0, 99).toDouble();
+  }
+
+  /// Single source of truth for leaving the player. ALWAYS stops the engine
+  /// (killing video + audio) before popping the route, restores portrait
+  /// orientation, and restores system UI. Every exit path (system back,
+  /// on-screen back button, error screen) must funnel through this so audio
+  /// never keeps playing after the screen is gone.
+  Future<void> _exitPlayer() async {
+    if (_isExiting || !mounted) return;
+    _isExiting = true;
+
+    final navigator = Navigator.of(context);
+    await _engine.stop();
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
+    if (mounted) {
+      navigator.pop();
+    }
+  }
+
   void _startProgressSaving() {
     _progressSaveTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (_engine.state.status == MoviePlayerStatus.playing) {
@@ -214,20 +254,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        final navigator = Navigator.of(context);
-        // Stop playback immediately to kill audio and video
-        await _engine.stop();
-        // Restore Portrait Orientation & show system UI
-        await SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-        ]);
-        await SystemChrome.setEnabledSystemUIMode(
-          SystemUiMode.manual,
-          overlays: SystemUiOverlay.values,
-        );
-        if (mounted) {
-          navigator.pop();
-        }
+        await _exitPlayer();
       },
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -271,6 +298,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                             onUserInteraction: _onUserInteraction,
                             onDragStart: _onDragStart,
                             onDragEnd: _onDragEnd,
+                            onExit: _exitPlayer,
                           ),
 
                         // ── Cinematic Loading Screen (only before first frame) ──
@@ -282,6 +310,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                           MovieLoadingOverlay(
                             movie: widget.movie,
                             retryAttempt: state.retryAttempt,
+                            bufferPercent: _bufferPercent,
                           ),
 
                         // ── Lightweight Buffering Spinner (video stays visible) ──
@@ -347,16 +376,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                     ),
                     icon: const Icon(Icons.arrow_back_rounded, size: 16),
                     label: const Text('Volver'),
-                    onPressed: () async {
-                      final navigator = Navigator.of(context);
-                      await _engine.stop();
-                      await SystemChrome.setPreferredOrientations([
-                        DeviceOrientation.portraitUp,
-                      ]);
-                      if (mounted) {
-                        navigator.pop();
-                      }
-                    },
+                    onPressed: _exitPlayer,
                   ),
                   const SizedBox(width: 16),
                   ElevatedButton.icon(

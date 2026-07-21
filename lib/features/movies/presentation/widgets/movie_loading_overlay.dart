@@ -15,10 +15,17 @@ class MovieLoadingOverlay extends StatelessWidget {
   final Movie movie;
   final int retryAttempt;
 
+  /// Real pre-buffer progress (0-99), computed by the engine from how much
+  /// media has actually been cached ahead of the playhead vs. its target
+  /// pre-buffer. Null while there's no buffer data yet (connection still
+  /// negotiating), in which case only the spinner is shown.
+  final double? bufferPercent;
+
   const MovieLoadingOverlay({
     super.key,
     required this.movie,
     this.retryAttempt = 0,
+    this.bufferPercent,
   });
 
   @override
@@ -128,7 +135,26 @@ class MovieLoadingOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  const PivoteLoader(size: 34, strokeWidth: 3.2),
+                  SizedBox(
+                    width: 68,
+                    height: 68,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const PivoteLoader(size: 68, strokeWidth: 3.2),
+                        if (bufferPercent != null && retryAttempt == 0)
+                          Text(
+                            '${bufferPercent!.toInt()}%',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 16),
 
                   Text(

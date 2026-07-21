@@ -13,6 +13,9 @@ class MovieControlsOverlay extends StatefulWidget {
   final bool showControls;
   final VoidCallback onToggleControls;
   final VoidCallback onUserInteraction;
+  final VoidCallback onDragStart;
+  final VoidCallback onDragEnd;
+  final Future<void> Function() onExit;
 
   const MovieControlsOverlay({
     super.key,
@@ -21,8 +24,9 @@ class MovieControlsOverlay extends StatefulWidget {
     required this.showControls,
     required this.onToggleControls,
     required this.onUserInteraction,
-    required void Function() onDragStart,
-    required void Function() onDragEnd,
+    required this.onDragStart,
+    required this.onDragEnd,
+    required this.onExit,
   });
 
   @override
@@ -53,6 +57,19 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
   Duration _scrubStartPos = Duration.zero;
   Timer? _scrubTimer;
 
+  // Manual single-tap vs double-tap disambiguation. We deliberately avoid
+  // registering both `onTap` and `onDoubleTapDown` on the same
+  // GestureDetector: Flutter's gesture arena then forces every single tap to
+  // wait the full ~300ms double-tap timeout before firing, which is what
+  // made the controls feel laggy/unprofessional. Handling it manually with
+  // `onTapUp` lets us react immediately and only hold back the single-tap
+  // action for a short, tunable window.
+  Timer? _singleTapTimer;
+  DateTime? _lastTapTime;
+  Offset? _lastTapPos;
+  static const Duration _doubleTapWindow = Duration(milliseconds: 260);
+  static const double _doubleTapSlop = 60.0;
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +80,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     _brightnessTimer?.cancel();
     _volumeTimer?.cancel();
     _scrubTimer?.cancel();
+    _singleTapTimer?.cancel();
     super.dispose();
   }
 
@@ -78,14 +96,52 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     return '${twoDigits(minutes)}:${twoDigits(seconds)}';
   }
 
-  void _handleDoubleTap(TapDownDetails details, BoxConstraints constraints) {
+  void _handleTapUp(TapUpDetails details, BoxConstraints constraints) {
+    final now = DateTime.now();
+    final pos = details.localPosition;
+
+    final isSecondTap = _lastTapTime != null &&
+        _lastTapPos != null &&
+        now.difference(_lastTapTime!) < _doubleTapWindow &&
+        (pos - _lastTapPos!).distance < _doubleTapSlop;
+
+    if (isSecondTap) {
+      // Second tap arrived in time: cancel the pending single-tap action
+      // (toggle controls) and treat this as a double-tap seek instead.
+      _singleTapTimer?.cancel();
+      _singleTapTimer = null;
+      _lastTapTime = null;
+      _lastTapPos = null;
+      _handleDoubleTap(pos, constraints);
+      return;
+    }
+
+    // First tap: remember it and wait a short window for a possible second
+    // tap. If none arrives, fire the single-tap action (toggle controls).
+    _lastTapTime = now;
+    _lastTapPos = pos;
+    _singleTapTimer?.cancel();
+    _singleTapTimer = Timer(_doubleTapWindow, () {
+      _lastTapTime = null;
+      _lastTapPos = null;
+      if (!mounted) return;
+      if (_isLocked) {
+        widget.onUserInteraction();
+      } else {
+        HapticFeedback.lightImpact();
+        widget.onToggleControls();
+      }
+    });
+  }
+
+  void _handleDoubleTap(Offset localPosition, BoxConstraints constraints) {
     if (_isLocked) {
       widget.onUserInteraction();
       return;
     }
 
     final double width = constraints.maxWidth;
-    final double tapX = details.localPosition.dx;
+    final double tapX = localPosition.dx;
     final bool isRight = tapX > (width / 2);
 
     HapticFeedback.lightImpact();
@@ -159,6 +215,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
   void _handleHorizontalDragStart(DragStartDetails details) {
     if (_isLocked) return;
     HapticFeedback.selectionClick();
+    widget.onDragStart();
     widget.onUserInteraction();
     setState(() {
       _isScrubbing = true;
@@ -194,6 +251,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     setState(() {
       _isScrubbing = false;
     });
+    widget.onDragEnd();
     widget.onUserInteraction();
   }
 
@@ -281,14 +339,18 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  widget.onToggleControls();
+                onTapUp: (details) => _handleTapUp(details, constraints),
+                onVerticalDragStart: (_) {
+                  if (_isLocked) return;
+                  widget.onDragStart();
                 },
-                onDoubleTapDown: (details) =>
-                    _handleDoubleTap(details, constraints),
                 onVerticalDragUpdate: (details) =>
                     _handleVerticalDragUpdate(details, constraints),
+                onVerticalDragEnd: (_) {
+                  if (_isLocked) return;
+                  widget.onDragEnd();
+                  widget.onUserInteraction();
+                },
                 onHorizontalDragStart: _handleHorizontalDragStart,
                 onHorizontalDragUpdate: (details) =>
                     _handleHorizontalDragUpdate(details, constraints),
@@ -655,15 +717,9 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                       side: const BorderSide(color: Colors.white12),
                     ),
                   ),
-                  onPressed: () async {
+                  onPressed: () {
                     HapticFeedback.mediumImpact();
-                    await SystemChrome.setPreferredOrientations([
-                      DeviceOrientation.portraitUp,
-                    ]);
-                    if (context.mounted) {
-                      // ignore: use_build_context_synchronously
-                      Navigator.pop(context);
-                    }
+                    widget.onExit();
                   },
                 ),
                 const SizedBox(width: 14),
