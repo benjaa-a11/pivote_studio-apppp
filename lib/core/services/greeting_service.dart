@@ -1,18 +1,6 @@
 /// Service to provide professional and culturally relevant (Argentine soccer-themed)
 /// greetings throughout the application.
 class GreetingService {
-  static const List<String> _suffixes = [
-    'crack',
-    'genio',
-    'figura',
-    'maestro',
-    'ídolo',
-    'fenómeno',
-    'campeón',
-    'fiera',
-    'máquina',
-  ];
-
   static const List<String> _soccerPhrases = [
     'Hoy se alienta fuerte.',
     'La redonda no se mancha.',
@@ -35,25 +23,18 @@ class GreetingService {
     DateTime.sunday: 'Domingo de asado y pasión.',
   };
 
-  /// Returns a dynamic greeting based on the current time and Argentine flair.
-  /// Example: "¡Buenos días, crack!"
+  /// Returns a clean, professional time-based greeting.
   static String getGreeting() {
     final now = DateTime.now();
     final hour = now.hour;
-    String base;
 
     if (hour >= 6 && hour < 12) {
-      base = '¡Buenos días';
+      return '¡Buenos días!';
     } else if (hour >= 12 && hour < 20) {
-      base = '¡Buenas tardes';
+      return '¡Buenas tardes!';
     } else {
-      base = '¡Buenas noches';
+      return '¡Buenas noches!';
     }
-
-    // Deterministic suffix based on day of month and hour
-    final index = (now.day + now.hour) % _suffixes.length;
-    final suffix = _suffixes[index];
-    return '$base, $suffix!';
   }
 
   /// Returns a dynamic subtitle/motto based on the day or soccer culture.

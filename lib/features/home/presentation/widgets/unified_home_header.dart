@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:skeletonizer/skeletonizer.dart';
-import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/home/presentation/screens/search_screen.dart';
+import 'package:pivote/features/home/presentation/screens/notifications_screen.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/widgets/matches_hero.dart';
-import 'package:pivote/core/services/greeting_service.dart';
+import 'package:pivote/shared/widgets/common/user_avatar.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 
-/// Header premium unificado para HomeScreen.
-/// Une avatar, saludo, acceso a búsqueda y el carrusel de partidos en una
-/// sola superficie continua, con jerarquía tipográfica clara y curvas
-/// consistentes con el resto del sistema de diseño (squircle / iOS-like).
+/// Header premium 2026 unificado para HomeScreen.
+/// Presenta:
+/// - Izquierda: Avatar de usuario dinámico (foto de perfil si existe o iniciales ej: "BF" si no).
+/// - Centro: Marca/Logo elegante "PIVOTE STUDIO".
+/// - Derecha: Botón de búsqueda (Lupa) y Botón de notificaciones (Campana).
+/// - Todo contenido en una tarjeta flotante de esquinas suavizadas (28px).
 class UnifiedHomeHeader extends StatelessWidget {
   const UnifiedHomeHeader({super.key});
 
@@ -23,7 +24,6 @@ class UnifiedHomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.isDark;
-    final greeting = GreetingService.getGreeting();
 
     return Consumer<SoccerProvider>(
       builder: (context, soccerProvider, child) {
@@ -46,87 +46,115 @@ class UnifiedHomeHeader extends StatelessWidget {
 
         return Container(
           width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 14),
           decoration: BoxDecoration(
-            gradient: AppGradients.backdrop(isDark),
-            borderRadius: AppRadius.bottomXxl,
-            border: Border(
-              bottom: BorderSide(
-                color: isDark
-                    ? AppTheme.darkBorder.withValues(alpha: 0.25)
-                    : AppTheme.lightBorder.withValues(alpha: 0.5),
-                width: 1,
-              ),
+            color: isDark ? AppTheme.darkCard : Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.06),
+              width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
+                color: (isDark ? Colors.black : Colors.grey).withValues(alpha: 0.12),
                 blurRadius: 20,
-                offset: const Offset(0, 10),
+                offset: const Offset(0, 6),
               ),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Fila superior: avatar + saludo + acceso a búsqueda
+              // Fila superior: Avatar izquierda | Marca Centro | Lupa + Notificaciones derecha
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.lg),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                 child: Row(
                   children: [
-                    _buildAvatar(context, theme, isDark),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Consumer<UserProvider>(
-                        builder: (context, userProvider, child) {
-                          final isUserLoading = userProvider.isLoading ||
-                              userProvider.user == null;
-                          final name = userProvider.user?.name ?? 'Usuario Pro';
+                    // Izquierda: Foto de Perfil / Iniciales
+                    const UserAvatar(
+                      size: 44,
+                      showBorder: true,
+                    ),
 
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                greeting.toUpperCase(),
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: theme.colorScheme.onSurface
-                                      .withValues(alpha: 0.5),
-                                  letterSpacing: 1.1,
+                    // Centro: Branding Titulo "PIVOTE STUDIO"
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
                                 ),
-                              ),
-                              const SizedBox(height: 3),
-                              Skeletonizer(
-                                enabled: isUserLoading,
-                                child: Text(
-                                  name,
-                                  style: theme.textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    color: theme.colorScheme.onSurface,
-                                    fontSize: 21,
-                                    letterSpacing: -0.7,
-                                    height: 1.1,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'PIVOTE STUDIO',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: theme.colorScheme.onSurface,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    _buildSearchButton(context, theme, isDark),
+
+                    // Derecha: Lupa (Search) + Campana (Notificaciones)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Search Button
+                        _buildHeaderIconButton(
+                          context: context,
+                          theme: theme,
+                          isDark: isDark,
+                          icon: Icons.search_rounded,
+                          heroTag: 'search_icon',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              AppAnimations.createFadeRoute(const SearchScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        // Notifications Button
+                        _buildHeaderIconButton(
+                          context: context,
+                          theme: theme,
+                          isDark: isDark,
+                          icon: Icons.notifications_none_rounded,
+                          heroTag: 'notification_icon',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              AppAnimations.createFadeRoute(
+                                  const NotificationsScreen()),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
 
               // Carrusel de partidos o banner de bienvenida
               Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
                 child: hasMatches
                     ? const MatchesHero()
                     : _buildWelcomingBanner(context, theme, isDark),
@@ -138,66 +166,41 @@ class UnifiedHomeHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar(BuildContext context, ThemeData theme, bool isDark) {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.primary.withValues(alpha: isDark ? 0.28 : 0.16),
-            theme.colorScheme.secondary.withValues(alpha: isDark ? 0.12 : 0.06),
-          ],
-        ),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.3 : 0.18),
-          width: 1.2,
-        ),
-      ),
-      alignment: Alignment.center,
-      child: Icon(
-        Icons.person_rounded,
-        size: 22,
-        color: theme.colorScheme.primary,
-      ),
-    );
-  }
-
-  Widget _buildSearchButton(BuildContext context, ThemeData theme, bool isDark) {
+  Widget _buildHeaderIconButton({
+    required BuildContext context,
+    required ThemeData theme,
+    required bool isDark,
+    required IconData icon,
+    required String heroTag,
+    required VoidCallback onTap,
+  }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            AppAnimations.createFadeRoute(const SearchScreen()),
-          );
-        },
-        borderRadius: AppRadius.mAll,
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          width: 46,
-          height: 46,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             color: isDark
-                ? theme.colorScheme.primary.withValues(alpha: 0.09)
+                ? AppTheme.darkBg2
                 : theme.colorScheme.primary.withValues(alpha: 0.06),
-            borderRadius: AppRadius.mAll,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color:
-                  theme.colorScheme.primary.withValues(alpha: isDark ? 0.25 : 0.18),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : theme.colorScheme.primary.withValues(alpha: 0.18),
               width: 1.2,
             ),
           ),
           alignment: Alignment.center,
           child: Hero(
-            tag: 'search_icon',
+            tag: heroTag,
             child: Icon(
-              Icons.search_rounded,
-              size: 21,
-              color: theme.colorScheme.primary,
+              icon,
+              size: 20,
+              color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
             ),
           ),
         ),
@@ -208,11 +211,10 @@ class UnifiedHomeHeader extends StatelessWidget {
   Widget _buildWelcomingBanner(
       BuildContext context, ThemeData theme, bool isDark) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
         gradient: AppGradients.accentGlass(context, isDark: isDark),
-        borderRadius: AppRadius.lAll,
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isDark
               ? theme.colorScheme.primary.withValues(alpha: 0.15)
@@ -226,7 +228,7 @@ class UnifiedHomeHeader extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -242,7 +244,7 @@ class UnifiedHomeHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Pivote Studio',
+                  'Transmisión en Vivo 24/7',
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -252,7 +254,7 @@ class UnifiedHomeHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'El mejor contenido en vivo, deportes, películas y radios en un solo lugar.',
+                  'Disfruta los mejores canales en vivo, eventos deportivos y emisoras de radio.',
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,

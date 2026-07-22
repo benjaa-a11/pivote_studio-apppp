@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
-import 'package:pivote/features/movies/presentation/providers/movies_provider.dart';
 
 /// Discovery row for the Home screen. Surfaces the three other content
 /// pillars of the app (Fútbol, Películas, Radio) with real, live counts
@@ -52,20 +51,13 @@ class QuickAccessRow extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: Consumer<MoviesProvider>(
-              builder: (context, movies, child) {
-                final trending = movies.trendingMovies.length;
-                return _QuickAccessCard(
-                  isDark: isDark,
-                  icon: Icons.movie_filter_rounded,
-                  accent: theme.colorScheme.tertiary,
-                  label: 'Películas',
-                  caption: trending > 0
-                      ? '$trending en tendencia'
-                      : 'Explorar',
-                  onTap: () => onNavigateToTab(2),
-                );
-              },
+            child: _QuickAccessCard(
+              isDark: isDark,
+              icon: Icons.favorite_rounded,
+              accent: Colors.pinkAccent,
+              label: 'Favoritos',
+              caption: 'Tus guardados',
+              onTap: () => onNavigateToTab(2),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -76,7 +68,7 @@ class QuickAccessRow extends StatelessWidget {
               accent: theme.colorScheme.secondary,
               label: 'Radio',
               caption: 'En vivo 24h',
-              onTap: () => onNavigateToTab(4),
+              onTap: () => onNavigateToTab(3),
             ),
           ),
         ],

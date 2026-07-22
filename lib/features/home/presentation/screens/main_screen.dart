@@ -6,14 +6,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/notification_service.dart';
 import 'package:pivote/features/home/presentation/screens/home_screen.dart';
+import 'package:pivote/features/profile/presentation/screens/profile_screen.dart';
 import 'package:pivote/features/soccer/presentation/screens/futbol_screen.dart';
 import 'package:pivote/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:pivote/features/radio/presentation/screens/radios_screen.dart';
-import 'package:pivote/features/profile/presentation/screens/profile_screen.dart';
-import 'package:pivote/features/movies/presentation/screens/movies_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pivote/shared/widgets/common/user_avatar.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -25,12 +25,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
 
-  // Home's CustomScrollView reads this via PrimaryScrollController so a
-  // second tap on the already-active "Inicio" tab can scroll it back to
-  // the top instead of doing nothing (Fase 0 spec, sección 1).
-  // Fútbol/Películas/Favoritos/Radio/Perfil get their own controller when
-  // each one goes through its redesign phase — not bundled in here so this
-  // change stays reviewable on its own.
   final ScrollController _homeScrollController = ScrollController();
 
   List<Widget> get _screens => [
@@ -39,7 +33,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           child: HomeScreen(onNavigateToTab: _onNavItemTapped),
         ),
         const FutbolScreen(),
-        const MoviesScreen(),
         const FavoritesScreen(),
         const RadiosScreen(),
         const ProfileScreen(),
@@ -317,26 +310,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               icon: AppAnimations.pulseIcon(
                 isSelected: false,
                 child: Icon(
-                  Icons.movie_filter_outlined,
-                  size: 22,
-                  color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
-                      Colors.grey,
-                ),
-              ),
-              selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 2,
-                child: Icon(
-                  Icons.movie_filter_rounded,
-                  size: 22,
-                  color: selectedColor,
-                ),
-              ),
-              label: 'Películas',
-            ),
-            NavigationDestination(
-              icon: AppAnimations.pulseIcon(
-                isSelected: false,
-                child: Icon(
                   Icons.favorite_outline_rounded,
                   size: 22,
                   color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
@@ -344,7 +317,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 ),
               ),
               selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 3,
+                isSelected: _selectedIndex == 2,
                 child: Icon(
                   Icons.favorite_rounded,
                   size: 22,
@@ -364,7 +337,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 ),
               ),
               selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 4,
+                isSelected: _selectedIndex == 3,
                 child: FaIcon(
                   FontAwesomeIcons.radio,
                   size: 22,
@@ -376,27 +349,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             NavigationDestination(
               icon: AppAnimations.pulseIcon(
                 isSelected: false,
-                child: SvgPicture.asset(
-                  'assets/icons/user_16.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: ColorFilter.mode(
-                    theme.iconTheme.color?.withValues(alpha: 0.7) ??
-                        Colors.grey,
-                    BlendMode.srcIn,
-                  ),
+                child: const UserAvatar(
+                  size: 24,
+                  showBorder: false,
                 ),
               ),
               selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 5,
-                child: SvgPicture.asset(
-                  'assets/icons/user_active_16.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: ColorFilter.mode(
-                    selectedColor,
-                    BlendMode.srcIn,
-                  ),
+                isSelected: _selectedIndex == 4,
+                child: UserAvatar(
+                  size: 26,
+                  showBorder: true,
+                  borderColor: selectedColor,
                 ),
               ),
               label: 'Perfil',
