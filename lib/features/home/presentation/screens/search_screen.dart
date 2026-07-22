@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
-import 'package:pivote/features/home/data/services/search_service.dart';
-import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
-import 'package:pivote/core/theme/app_theme.dart';
+import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/features/home/data/services/search_service.dart';
+import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
+import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -19,50 +20,65 @@ class _SearchScreenState extends State<SearchScreen>
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   List<String> _searchHistory = [];
-  bool _isSearching = false;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
 
-  // Curated category palettes
-  static final Map<String, List<Color>> _categoryGradients = {
-    'Deportes': [const Color(0xFF00B4DB), const Color(0xFF0083B0)],      // Vibrant blue/cyan
-    'Noticias': [const Color(0xFFED213A), const Color(0xFF93291E)],      // Crimson/red
-    'Música': [const Color(0xFF8E2DE2), const Color(0xFF4A00E0)],        // Violet/indigo
-    'Películas': [const Color(0xFF11998E), const Color(0xFF38EF7D)],     // Teal/green
-    'Infantil': [const Color(0xFFF9D423), const Color(0xFFFF4E50)],      // Orange/amber
-    'Documentales': [const Color(0xFF00C6FF), const Color(0xFF0072FF)],  // Deep sky blue
-  };
+  late final AnimationController _animController;
+  late final Animation<double> _fadeAnim;
 
-  static final Map<String, IconData> _categoryIcons = {
-    'Deportes': Icons.sports_soccer_rounded,
-    'Noticias': Icons.newspaper_rounded,
-    'Música': Icons.music_note_rounded,
-    'Películas': Icons.movie_rounded,
-    'Infantil': Icons.child_care_rounded,
-    'Documentales': Icons.public_rounded,
-  };
+  // Modern category metadata
+  static final List<Map<String, dynamic>> _quickCategories = [
+    {
+      'name': 'Deportes',
+      'icon': Icons.sports_soccer_rounded,
+      'color': const Color(0xFF10B981), // Emerald
+    },
+    {
+      'name': 'Noticias',
+      'icon': Icons.newspaper_rounded,
+      'color': const Color(0xFF3B82F6), // Blue
+    },
+    {
+      'name': 'Música',
+      'icon': Icons.music_note_rounded,
+      'color': const Color(0xFFA855F7), // Purple
+    },
+    {
+      'name': 'Películas',
+      'icon': Icons.movie_rounded,
+      'color': const Color(0xFFF59E0B), // Amber
+    },
+    {
+      'name': 'Infantil',
+      'icon': Icons.child_care_rounded,
+      'color': const Color(0xFFEC4899), // Pink
+    },
+    {
+      'name': 'Radio',
+      'icon': Icons.radio_rounded,
+      'color': const Color(0xFF6366F1), // Indigo
+    },
+  ];
 
   @override
   void initState() {
     super.initState();
-    _loadSearchHistory();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    );
-    _animationController.forward();
+    _loadHistory();
 
-    // Listen to focus changes to refresh search bar glow
+    _animController = AnimationController(
+      vsync: this,
+      duration: AppAnimations.normal,
+    );
+    _fadeAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutCubic,
+    );
+    _animController.forward();
+
     _searchFocusNode.addListener(() {
       if (mounted) setState(() {});
     });
   }
 
-  Future<void> _loadSearchHistory() async {
+  Future<void> _loadHistory() async {
     final history = await SearchService.getSearchHistory();
     if (mounted) {
       setState(() {
@@ -75,377 +91,64 @@ class _SearchScreenState extends State<SearchScreen>
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
-    _animationController.dispose();
+    _animController.dispose();
     super.dispose();
   }
 
-  void _onSearch(String query) {
-    setState(() {
-      _isSearching = query.isNotEmpty;
-    });
-    Provider.of<ChannelProvider>(context, listen: false).searchChannels(query);
-    if (query.isNotEmpty) {
-      SearchService.saveSearchQuery(query).then((_) => _loadSearchHistory());
+  void _onQueryChanged(String query) {
+    setState(() {});
+    final provider = context.read<ChannelProvider>();
+    provider.searchChannels(query);
+  }
+
+  void _executeSearch(String query) {
+    _searchController.text = query;
+    _onQueryChanged(query);
+    if (query.trim().isNotEmpty) {
+      SearchService.saveSearchQuery(query.trim()).then((_) => _loadHistory());
     }
+    _searchFocusNode.unfocus();
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _onQueryChanged('');
+    context.read<ChannelProvider>().clearFilters();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final channelProvider = Provider.of<ChannelProvider>(context);
+    final isDark = theme.isDark;
+    final channelProvider = context.watch<ChannelProvider>();
+    final query = _searchController.text.trim();
+    final isSearching = query.isNotEmpty;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) {
-          Provider.of<ChannelProvider>(context, listen: false)
-              .searchChannels('');
+          context.read<ChannelProvider>().searchChannels('');
         }
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
-        body: Column(
-          children: [
-            // Premium Search Header
-            _buildSearchHeader(context, theme, isDark),
-
-            // Content
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                switchInCurve: Curves.easeOut,
-                switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: child,
-                  );
-                },
-                child: _isSearching
-                    ? _buildSearchResults(channelProvider, theme, isDark)
-                    : _buildInitialState(channelProvider, theme, isDark),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchHeader(
-      BuildContext context, ThemeData theme, bool isDark) {
-    final topPadding = MediaQuery.of(context).padding.top;
-
-    return Container(
-      padding: EdgeInsets.fromLTRB(16, topPadding + 12, 16, 16),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark
-                ? AppTheme.darkBorder.withValues(alpha: 0.15)
-                : AppTheme.lightBorder.withValues(alpha: 0.3),
-            width: 1.2,
-          ),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Top row: Back + Title
-          Row(
-            children: [
-              // Unified Back button
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    Provider.of<ChannelProvider>(context, listen: false)
-                        .searchChannels('');
-                    Navigator.pop(context);
-                  },
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppTheme.darkBg2.withValues(alpha: 0.5)
-                          : AppTheme.lightBg2.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isDark
-                            ? AppTheme.darkBorder.withValues(alpha: 0.3)
-                            : AppTheme.lightBorder,
-                        width: 1,
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        size: 14,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Buscador',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.6,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    if (_isSearching)
-                      Text(
-                        '${Provider.of<ChannelProvider>(context).channels.length} canales encontrados',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Glowing Search field (Overhauled & shift-proof)
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 54,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppTheme.darkBg2.withValues(alpha: 0.6)
-                  : AppTheme.lightBg2.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _searchFocusNode.hasFocus
-                    ? theme.colorScheme.primary
-                    : (isDark
-                        ? AppTheme.darkBorder.withValues(alpha: 0.2)
-                        : AppTheme.lightBorder),
-                width: 1.5,
-              ),
-              boxShadow: _searchFocusNode.hasFocus
-                  ? [
-                      BoxShadow(
-                        color: theme.colorScheme.primary
-                            .withValues(alpha: isDark ? 0.12 : 0.06),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : [],
-            ),
-            child: TextField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              onChanged: (q) {
-                _onSearch(q);
-                setState(() {});
-              },
-              onSubmitted: _onSearch,
-              textInputAction: TextInputAction.search,
-              autofocus: false,
-              cursorColor: theme.colorScheme.primary,
-              cursorWidth: 2.2,
-              cursorRadius: const Radius.circular(2),
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurface,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Buscá canales, películas, categorías...',
-                hintStyle: GoogleFonts.spaceGrotesk(
-                  fontSize: 14,
-                  color: theme.hintColor.withValues(alpha: 0.45),
-                  fontWeight: FontWeight.w500,
-                ),
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.only(left: 14, right: 10),
-                  child: Icon(
-                    Icons.search_rounded,
-                    color: _searchFocusNode.hasFocus
-                        ? theme.colorScheme.primary
-                        : theme.hintColor.withValues(alpha: 0.45),
-                    size: 22,
-                  ),
-                ),
-                prefixIconConstraints:
-                    const BoxConstraints(minWidth: 40, maxHeight: 40),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          _searchController.clear();
-                          _onSearch('');
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 10),
-                          padding: const EdgeInsets.all(6),
-                          child: Icon(
-                            Icons.close_rounded,
-                            size: 18,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      )
-                    : null,
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 15),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInitialState(
-      ChannelProvider provider, ThemeData theme, bool isDark) {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: ListView(
-        physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        children: [
-          // Search History
-          if (_searchHistory.isNotEmpty) ...[
-            _buildSectionHeader(
-              theme,
-              'Búsquedas Recientes',
-              icon: Icons.history_rounded,
-              onAction: () async {
-                await SearchService.clearSearchHistory();
-                _loadSearchHistory();
-              },
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _searchHistory
-                  .take(6)
-                  .map((query) => _buildHistoryChip(query, theme, isDark))
-                  .toList(),
-            ),
-            const SizedBox(height: 28),
-          ],
-
-          // Quick Categories
-          _buildSectionHeader(theme, 'Explorar Categorías',
-              icon: Icons.grid_view_rounded),
-          const SizedBox(height: 14),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            childAspectRatio: 2.3,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            children: _categoryGradients.keys.map((cat) {
-              return _buildPremiumCategoryCard(cat, theme, isDark);
-            }).toList(),
-          ),
-          const SizedBox(height: 28),
-
-          // Popular Channels
-          _buildSectionHeader(theme, 'Canales Populares',
-              icon: Icons.local_fire_department_rounded),
-          const SizedBox(height: 16),
-          _buildPopularChannels(provider),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(ThemeData theme, String title,
-      {IconData? icon, VoidCallback? onAction}) {
-    return Row(
-      children: [
-        if (icon != null) ...[
-          Icon(
-            icon,
-            size: 18,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
-        ],
-        Text(
-          title,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        const Spacer(),
-        if (onAction != null)
-          GestureDetector(
-            onTap: onAction,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.error.withAlpha(15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Limpiar',
-                style: GoogleFonts.spaceGrotesk(
-                  color: theme.colorScheme.error,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildHistoryChip(String query, ThemeData theme, bool isDark) {
-    return AppAnimations.smoothFadeIn(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            _searchController.text = query;
-            _onSearch(query);
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark
-                    ? AppTheme.darkBorder.withValues(alpha: 0.2)
-                    : AppTheme.lightBorder,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+        body: SafeArea(
+          child: FadeTransition(
+            opacity: _fadeAnim,
+            child: Column(
               children: [
-                Icon(Icons.history_rounded,
-                    size: 14, color: theme.colorScheme.primary.withAlpha(150)),
-                const SizedBox(width: 6),
-                Text(
-                  query,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    color: theme.colorScheme.onSurface,
+                // ─── Modern Sticky Header ───
+                _buildSearchHeader(context, theme, isDark, isSearching),
+
+                // ─── Body Content ───
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 250),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    child: isSearching
+                        ? _buildSearchResults(channelProvider, theme, isDark, query)
+                        : _buildDiscoveryView(channelProvider, theme, isDark),
                   ),
                 ),
               ],
@@ -456,198 +159,383 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildPremiumCategoryCard(String category, ThemeData theme, bool isDark) {
-    final gradient = _categoryGradients[category] ?? [Colors.grey, Colors.blueGrey];
-    final icon = _categoryIcons[category] ?? Icons.category_rounded;
-    final accentColor = gradient.first;
+  /// Modern Header with back button & glowing focused input bar
+  Widget _buildSearchHeader(
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+    bool isSearching,
+  ) {
+    final hasFocus = _searchFocusNode.hasFocus;
 
-    return AppAnimations.smoothFadeIn(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            _searchController.text = category;
-            _onSearch(category);
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.black.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark 
-                    ? Colors.white.withValues(alpha: 0.06) 
-                    : Colors.black.withValues(alpha: 0.05),
-                width: 1.2,
-              ),
-            ),
-            child: Stack(
-              children: [
-                // Soft background glow from icon
-                Positioned(
-                  right: -10,
-                  bottom: -10,
-                  child: Icon(
-                    icon,
-                    size: 60,
-                    color: accentColor.withValues(alpha: isDark ? 0.06 : 0.04),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.05),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Back button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                context.read<ChannelProvider>().searchChannels('');
+                Navigator.pop(context);
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppTheme.darkBg2
+                      : theme.colorScheme.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : theme.colorScheme.primary.withValues(alpha: 0.12),
+                    width: 1,
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: Icon(
+                    Icons.arrow_back_rounded,
+                    size: 20,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Search Field
+          Expanded(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 46,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppTheme.darkBg2
+                    : theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: hasFocus
+                      ? theme.colorScheme.primary
+                      : (isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.08)),
+                  width: hasFocus ? 1.5 : 1,
+                ),
+                boxShadow: hasFocus
+                    ? AppShadows.glow(theme.colorScheme.primary, alpha: 0.15)
+                    : [],
+              ),
+              child: TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                onChanged: _onQueryChanged,
+                onSubmitted: _executeSearch,
+                textInputAction: TextInputAction.search,
+                cursorColor: theme.colorScheme.primary,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Buscar canal, deporte o categoría...',
+                  hintStyle: GoogleFonts.spaceGrotesk(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 20,
+                    color: hasFocus
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          onPressed: _clearSearch,
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Discovery View when search query is empty
+  Widget _buildDiscoveryView(
+    ChannelProvider provider,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      children: [
+        // ─── History Section ───
+        if (_searchHistory.isNotEmpty) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Búsquedas recientes',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  await SearchService.clearSearchHistory();
+                  _loadHistory();
+                },
+                child: Text(
+                  'Borrar todo',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _searchHistory.map((h) {
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _executeSearch(h),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppTheme.darkBg2
+                          : theme.colorScheme.primary.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.history_rounded,
+                          size: 14,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          h,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+        ],
+
+        // ─── Quick Categories ───
+        Text(
+          'Categorías rápidas',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 1.15,
+          ),
+          itemCount: _quickCategories.length,
+          itemBuilder: (context, index) {
+            final cat = _quickCategories[index];
+            final Color color = cat['color'] as Color;
+            final IconData icon = cat['icon'] as IconData;
+            final String name = cat['name'] as String;
+
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _executeSearch(name),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppTheme.darkBg2
+                        : theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.06),
+                    ),
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: accentColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
+                          color: color.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          icon,
-                          size: 18,
-                          color: accentColor,
-                        ),
+                        child: Icon(icon, size: 20, color: color),
                       ),
+                      const SizedBox(height: 8),
                       Text(
-                        category,
+                        name,
                         style: GoogleFonts.spaceGrotesk(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                           color: theme.colorScheme.onSurface,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+
+        // ─── Featured / Popular Channels ───
+        Text(
+          'Canales recomendados',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: theme.colorScheme.onSurface,
           ),
         ),
-      ),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 1.05,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: provider.allChannels.take(6).length,
+          itemBuilder: (context, index) {
+            final channel = provider.allChannels.take(6).toList()[index];
+            return ChannelCard(channel: channel);
+          },
+        ),
+      ],
     );
   }
 
-  Widget _buildPopularChannels(ChannelProvider provider) {
-    final channels = provider.allChannels.take(6).toList();
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 1.05,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemCount: channels.length,
-      itemBuilder: (context, index) {
-        return AppAnimations.smoothFadeIn(
-          child: ChannelCard(channel: channels[index]),
-        );
-      },
-    );
-  }
-
+  /// Live Search Results View
   Widget _buildSearchResults(
-      ChannelProvider provider, ThemeData theme, bool isDark) {
+    ChannelProvider provider,
+    ThemeData theme,
+    bool isDark,
+    String query,
+  ) {
     final channels = provider.channels;
 
     if (channels.isEmpty) {
       return Center(
         child: SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Premium Circular gradient Search Off illustration
               Container(
-                width: 110,
-                height: 110,
+                width: 80,
+                height: 80,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? [
-                            theme.colorScheme.primary.withAlpha(40),
-                            Colors.transparent,
-                          ]
-                        : [
-                            theme.colorScheme.primary.withAlpha(15),
-                            Colors.transparent,
-                          ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: theme.colorScheme.primary.withAlpha(30),
-                    width: 1.5,
-                  ),
                 ),
-                child: Center(
-                  child: Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withAlpha(20),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.search_off_rounded,
-                      size: 32,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
+                child: Icon(
+                  Icons.search_off_rounded,
+                  size: 38,
+                  color: theme.colorScheme.primary,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Text(
-                'Sin Resultados',
+                'Sin resultados',
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
                   color: theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'No encontramos nada que coincida con "${_searchController.text}". ¡Intentá buscando otra cosa!',
+                'No encontramos nada para "$query".\nPrueba con otra palabra o categoría.',
+                textAlign: TextAlign.center,
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 13,
-                  height: 1.5,
-                  color: theme.colorScheme.onSurface.withAlpha(140),
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 36),
-
-              // Proactive Smart Suggestions Section
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '💡 Quizás te interese...',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  height: 1.4,
                 ),
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
-                children: [
-                  _buildSuggestionChip('Deportes', theme, isDark),
-                  _buildSuggestionChip('Noticias', theme, isDark),
-                  _buildSuggestionChip('Películas', theme, isDark),
-                  _buildSuggestionChip('Música', theme, isDark),
-                ],
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _clearSearch,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Limpiar búsqueda'),
+                style: ElevatedButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  elevation: 0,
+                ),
               ),
             ],
           ),
@@ -655,55 +543,27 @@ class _SearchScreenState extends State<SearchScreen>
       );
     }
 
-    // Results header + grid
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Results info bar
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Row(
-            children: [
-              Icon(Icons.filter_list_rounded,
-                  size: 16, color: theme.colorScheme.primary.withAlpha(180)),
-              const SizedBox(width: 8),
-              Text(
-                '${channels.length} ${channels.length == 1 ? 'canal encontrado' : 'canales encontrados'}',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface.withAlpha(160),
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withAlpha(20),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '"${_searchController.text}"',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-            ],
+        // Result count banner
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Text(
+            '${channels.length} ${channels.length == 1 ? 'resultado encontrado' : 'resultados encontrados'}',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.primary,
+            ),
           ),
         ),
-        Divider(
-          height: 1,
-          color: isDark
-              ? AppTheme.darkBorder.withValues(alpha: 0.1)
-              : AppTheme.lightBorder.withValues(alpha: 0.2),
-        ),
-        // Grid
+
+        // Grid of results
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            physics: const BouncingScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               childAspectRatio: 1.05,
@@ -712,40 +572,11 @@ class _SearchScreenState extends State<SearchScreen>
             ),
             itemCount: channels.length,
             itemBuilder: (context, index) {
-              return AppAnimations.smoothFadeIn(
-                child: ChannelCard(channel: channels[index]),
-              );
+              return ChannelCard(channel: channels[index]);
             },
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSuggestionChip(String query, ThemeData theme, bool isDark) {
-    return GestureDetector(
-      onTap: () {
-        _searchController.text = query;
-        _onSearch(query);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.primary.withAlpha(15),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: theme.colorScheme.primary.withAlpha(30),
-          ),
-        ),
-        child: Text(
-          query,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-          ),
-        ),
-      ),
     );
   }
 }
