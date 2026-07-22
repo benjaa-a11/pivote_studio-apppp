@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
@@ -10,9 +9,7 @@ import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 
 class HomeScreen extends StatefulWidget {
-  /// Se mantiene por compatibilidad con MainScreen (bottom-nav host).
-  /// Ya no se usa internamente: el discovery row que lo consumía fue
-  /// removido de Inicio en el rediseño 5.0.0.
+  /// Callback para navegar a un tab del bottom nav (ej: tab 4 = Perfil).
   final void Function(int tabIndex)? onNavigateToTab;
 
   const HomeScreen({super.key, this.onNavigateToTab});
@@ -74,24 +71,17 @@ class _HomeScreenState extends State<HomeScreen>
               // mantienen frescos por su propia lógica interna.
               physics: const ClampingScrollPhysics(),
               slivers: [
-                // Header premium unificado (saludo, buscador y hero de partidos)
-                const SliverToBoxAdapter(
-                  child: UnifiedHomeHeader(),
-                ),
-
-                // Título de sección, reacciona a la categoría activa
+                // Header plano (no flotante) + hero de partidos separado
                 SliverToBoxAdapter(
-                  child: Consumer<ChannelProvider>(
-                    builder: (context, provider, child) {
-                      return _buildSectionTitle(theme, provider.selectedCategory);
-                    },
+                  child: UnifiedHomeHeader(
+                    onNavigateToTab: widget.onNavigateToTab,
                   ),
                 ),
 
-                // Grid de canales
+                // Grid de canales (sin título de sección)
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
+                      AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.md),
                   sliver: Consumer<ChannelProvider>(
                     builder: (context, channelProvider, child) {
                       final isLoading = channelProvider.isLoading;
@@ -140,25 +130,6 @@ class _HomeScreenState extends State<HomeScreen>
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(ThemeData theme, String selectedCategory) {
-    final title =
-        selectedCategory == 'Todos' ? 'Todos los canales' : selectedCategory;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
-      child: Text(
-        title,
-        style: GoogleFonts.spaceGrotesk(
-          fontSize: 16,
-          fontWeight: FontWeight.w800,
-          color: theme.colorScheme.onSurface,
-          letterSpacing: -0.3,
         ),
       ),
     );
