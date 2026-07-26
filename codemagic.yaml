@@ -22,4 +22,3 @@ workflows:
       email:
         recipients:
           - benjaferrer83@gmail.com # Cambia esto por tu correo
-        not_if_build_fails: true
