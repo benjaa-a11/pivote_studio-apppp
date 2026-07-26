@@ -23,38 +23,39 @@ class _SearchScreenState extends State<SearchScreen>
 
   late final AnimationController _animController;
   late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
 
-  // Modern category metadata
+  // Modern category metadata — gradient pairs read better than flat fills.
   static final List<Map<String, dynamic>> _quickCategories = [
     {
       'name': 'Deportes',
       'icon': Icons.sports_soccer_rounded,
-      'color': const Color(0xFF10B981), // Emerald
+      'colors': const [Color(0xFF10B981), Color(0xFF059669)],
     },
     {
       'name': 'Noticias',
       'icon': Icons.newspaper_rounded,
-      'color': const Color(0xFF3B82F6), // Blue
+      'colors': const [Color(0xFF3B82F6), Color(0xFF2563EB)],
     },
     {
       'name': 'Música',
       'icon': Icons.music_note_rounded,
-      'color': const Color(0xFFA855F7), // Purple
+      'colors': const [Color(0xFFA855F7), Color(0xFF9333EA)],
     },
     {
       'name': 'Películas',
       'icon': Icons.movie_rounded,
-      'color': const Color(0xFFF59E0B), // Amber
+      'colors': const [Color(0xFFF59E0B), Color(0xFFD97706)],
     },
     {
       'name': 'Infantil',
       'icon': Icons.child_care_rounded,
-      'color': const Color(0xFFEC4899), // Pink
+      'colors': const [Color(0xFFEC4899), Color(0xFFDB2777)],
     },
     {
       'name': 'Radio',
       'icon': Icons.radio_rounded,
-      'color': const Color(0xFF6366F1), // Indigo
+      'colors': const [Color(0xFF6366F1), Color(0xFF4F46E5)],
     },
   ];
 
@@ -71,6 +72,13 @@ class _SearchScreenState extends State<SearchScreen>
       parent: _animController,
       curve: Curves.easeOutCubic,
     );
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.02),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutCubic,
+    ));
     _animController.forward();
 
     _searchFocusNode.addListener(() {
@@ -135,23 +143,31 @@ class _SearchScreenState extends State<SearchScreen>
         body: SafeArea(
           child: FadeTransition(
             opacity: _fadeAnim,
-            child: Column(
-              children: [
-                // ─── Modern Sticky Header ───
-                _buildSearchHeader(context, theme, isDark, isSearching),
+            child: SlideTransition(
+              position: _slideAnim,
+              child: Column(
+                children: [
+                  // ─── Modern Sticky Header ───
+                  _buildSearchHeader(context, theme, isDark, isSearching),
 
-                // ─── Body Content ───
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    child: isSearching
-                        ? _buildSearchResults(channelProvider, theme, isDark, query)
-                        : _buildDiscoveryView(channelProvider, theme, isDark),
+                  // ─── Body Content ───
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      ),
+                      child: isSearching
+                          ? _buildSearchResults(
+                              channelProvider, theme, isDark, query)
+                          : _buildDiscoveryView(channelProvider, theme, isDark),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -159,7 +175,8 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
-  /// Modern Header with back button & glowing focused input bar
+  /// Modern header with back button and a properly-clipped, glowing
+  /// focused search field (no more mismatched fill/border artifacts).
   Widget _buildSearchHeader(
     BuildContext context,
     ThemeData theme,
@@ -167,6 +184,7 @@ class _SearchScreenState extends State<SearchScreen>
     bool isSearching,
   ) {
     final hasFocus = _searchFocusNode.hasFocus;
+    final fieldRadius = BorderRadius.circular(AppRadius.md + 2); // 16px
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
@@ -182,6 +200,7 @@ class _SearchScreenState extends State<SearchScreen>
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Back button
           Material(
@@ -193,8 +212,8 @@ class _SearchScreenState extends State<SearchScreen>
               },
               borderRadius: BorderRadius.circular(14),
               child: Container(
-                width: 42,
-                height: 42,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   color: isDark
                       ? AppTheme.darkBg2
@@ -219,65 +238,100 @@ class _SearchScreenState extends State<SearchScreen>
           ),
           const SizedBox(width: 12),
 
-          // Search Field
+          // Search field — clipped to the same radius as its container so
+          // no internal fill/highlight can ever spill past the rounded
+          // corners, and `filled/fillColor` are explicitly disabled so the
+          // theme-wide InputDecorationTheme can't paint a mismatched
+          // rectangular background underneath.
           Expanded(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              height: 46,
+              curve: Curves.easeOut,
+              height: 52,
               decoration: BoxDecoration(
                 color: isDark
                     ? AppTheme.darkBg2
                     : theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: fieldRadius,
                 border: Border.all(
                   color: hasFocus
                       ? theme.colorScheme.primary
                       : (isDark
                           ? Colors.white.withValues(alpha: 0.08)
                           : Colors.black.withValues(alpha: 0.08)),
-                  width: hasFocus ? 1.5 : 1,
+                  width: hasFocus ? 1.6 : 1,
                 ),
                 boxShadow: hasFocus
-                    ? AppShadows.glow(theme.colorScheme.primary, alpha: 0.15)
+                    ? AppShadows.glow(theme.colorScheme.primary, alpha: 0.18)
                     : [],
               ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: _onQueryChanged,
-                onSubmitted: _executeSearch,
-                textInputAction: TextInputAction.search,
-                cursorColor: theme.colorScheme.primary,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Buscar canal, deporte o categoría...',
-                  hintStyle: GoogleFonts.spaceGrotesk(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w500,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+              child: ClipRRect(
+                borderRadius: fieldRadius,
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  onChanged: _onQueryChanged,
+                  onSubmitted: _executeSearch,
+                  textInputAction: TextInputAction.search,
+                  cursorColor: theme.colorScheme.primary,
+                  cursorWidth: 2.2,
+                  cursorRadius: const Radius.circular(2),
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
                   ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    size: 20,
-                    color: hasFocus
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: false,
+                    hintText: 'Buscar canal, deporte o categoría...',
+                    hintStyle: GoogleFonts.spaceGrotesk(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      size: 20,
+                      color: hasFocus
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                    prefixIconConstraints:
+                        const BoxConstraints(minWidth: 44, minHeight: 44),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Material(
+                              color: Colors.transparent,
+                              shape: const CircleBorder(),
+                              clipBehavior: Clip.antiAlias,
+                              child: InkWell(
+                                onTap: _clearSearch,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    size: 18,
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : null,
+                    suffixIconConstraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 40),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 18),
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                          onPressed: _clearSearch,
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             ),
@@ -287,15 +341,17 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
-  /// Discovery View when search query is empty
+  /// Discovery view when search query is empty.
   Widget _buildDiscoveryView(
     ChannelProvider provider,
     ThemeData theme,
     bool isDark,
   ) {
     return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      // Clamping instead of bouncing — matches the rest of the app, no
+      // rubber-band overscroll on this screen anymore.
+      physics: const ClampingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
         // ─── History Section ───
         if (_searchHistory.isNotEmpty) ...[
@@ -310,23 +366,33 @@ class _SearchScreenState extends State<SearchScreen>
                   color: theme.colorScheme.onSurface,
                 ),
               ),
-              TextButton(
-                onPressed: () async {
-                  await SearchService.clearSearchHistory();
-                  _loadHistory();
-                },
-                child: Text(
-                  'Borrar todo',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.error,
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () async {
+                    await SearchService.clearSearchHistory();
+                    _loadHistory();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
+                    child: Text(
+                      'Borrar todo',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -337,8 +403,8 @@ class _SearchScreenState extends State<SearchScreen>
                   onTap: () => _executeSearch(h),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       color: isDark
                           ? AppTheme.darkBg2
@@ -374,7 +440,7 @@ class _SearchScreenState extends State<SearchScreen>
               );
             }).toList(),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 26),
         ],
 
         // ─── Quick Categories ───
@@ -394,12 +460,12 @@ class _SearchScreenState extends State<SearchScreen>
             crossAxisCount: 3,
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
-            childAspectRatio: 1.15,
+            childAspectRatio: 1.1,
           ),
           itemCount: _quickCategories.length,
           itemBuilder: (context, index) {
             final cat = _quickCategories[index];
-            final Color color = cat['color'] as Color;
+            final List<Color> colors = cat['colors'] as List<Color>;
             final IconData icon = cat['icon'] as IconData;
             final String name = cat['name'] as String;
 
@@ -407,13 +473,13 @@ class _SearchScreenState extends State<SearchScreen>
               color: Colors.transparent,
               child: InkWell(
                 onTap: () => _executeSearch(name),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(18),
                 child: Container(
                   decoration: BoxDecoration(
                     color: isDark
                         ? AppTheme.darkBg2
                         : theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(
                       color: isDark
                           ? Colors.white.withValues(alpha: 0.08)
@@ -424,12 +490,20 @@ class _SearchScreenState extends State<SearchScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.12),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              colors[0].withValues(alpha: 0.22),
+                              colors[1].withValues(alpha: 0.10),
+                            ],
+                          ),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(icon, size: 20, color: color),
+                        child: Icon(icon, size: 19, color: colors[0]),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -447,7 +521,7 @@ class _SearchScreenState extends State<SearchScreen>
             );
           },
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 26),
 
         // ─── Featured / Popular Channels ───
         Text(
@@ -478,7 +552,7 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
-  /// Live Search Results View
+  /// Live search results view.
   Widget _buildSearchResults(
     ChannelProvider provider,
     ThemeData theme,
@@ -490,6 +564,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (channels.isEmpty) {
       return Center(
         child: SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -563,7 +638,7 @@ class _SearchScreenState extends State<SearchScreen>
         Expanded(
           child: GridView.builder(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               childAspectRatio: 1.05,
