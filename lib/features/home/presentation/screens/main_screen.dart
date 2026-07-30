@@ -3,17 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/notification_service.dart';
 import 'package:pivote/features/home/presentation/screens/home_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/profile_screen.dart';
-import 'package:pivote/features/soccer/presentation/screens/futbol_screen.dart';
-import 'package:pivote/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:pivote/features/radio/presentation/screens/radios_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/shared/widgets/common/user_avatar.dart';
+import 'package:pivote/shared/widgets/common/floating_bottom_bar.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -32,8 +30,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           controller: _homeScrollController,
           child: HomeScreen(onNavigateToTab: _onNavItemTapped),
         ),
-        const FutbolScreen(),
-        const FavoritesScreen(),
         const RadiosScreen(),
         const ProfileScreen(),
       ];
@@ -69,9 +65,22 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   void _onNavItemTapped(int index) {
-    if (_selectedIndex == index) {
+    int mappedIndex = index;
+    // Map indices from older references (5 tabs) to our new 3-tab system:
+    // 0 -> 0 (Inicio)
+    // 1 or 3 -> 1 (Radio)
+    // 2 or 4 -> 2 (Perfil)
+    if (index == 1 || index == 3) {
+      mappedIndex = 1;
+    } else if (index == 2 || index == 4) {
+      mappedIndex = 2;
+    } else {
+      mappedIndex = 0;
+    }
+
+    if (_selectedIndex == mappedIndex) {
       // Second tap on the active tab: scroll back to top instead of a no-op.
-      if (index == 0 && _homeScrollController.hasClients) {
+      if (mappedIndex == 0 && _homeScrollController.hasClients) {
         HapticFeedback.selectionClick();
         _homeScrollController.animateTo(
           0,
@@ -82,17 +91,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       return;
     }
 
-    if (index == 1) {
-      try {
-        final soccerProvider = context.read<SoccerProvider>();
-        soccerProvider.refreshIfStale();
-      } catch (e) {
-        debugPrint('⚠️ Error al refrescar datos de fútbol: $e');
-      }
-    }
-
     setState(() {
-      _selectedIndex = index;
+      _selectedIndex = mappedIndex;
     });
   }
 
@@ -232,140 +232,73 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     final selectedColor = theme.colorScheme.primary;
 
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(
-                  alpha: theme.brightness == Brightness.dark ? 0.4 : 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: NavigationBar(
-          backgroundColor: theme.scaffoldBackgroundColor,
-          surfaceTintColor: theme.scaffoldBackgroundColor,
-          animationDuration: const Duration(milliseconds: 350),
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: _onNavItemTapped,
-          elevation: 0,
-          height: 70,
-          indicatorColor: theme.navigationBarTheme.indicatorColor,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: [
-            NavigationDestination(
-              icon: AppAnimations.pulseIcon(
-                isSelected: false,
-                child: SvgPicture.asset(
-                  'assets/icons/home_16.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: ColorFilter.mode(
-                    theme.iconTheme.color?.withValues(alpha: 0.7) ??
+      extendBody: true,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _selectedIndex,
+            children: _screens,
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: FloatingBottomBar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: _onNavItemTapped,
+              destinations: [
+                FloatingBottomBarItem(
+                  icon: SvgPicture.asset(
+                    'assets/icons/home_16.svg',
+                    width: 22,
+                    height: 22,
+                    colorFilter: ColorFilter.mode(
+                      theme.iconTheme.color?.withValues(alpha: 0.7) ??
+                          Colors.grey,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  activeIcon: SvgPicture.asset(
+                    'assets/icons/home_active_16.svg',
+                    width: 22,
+                    height: 22,
+                    colorFilter: ColorFilter.mode(
+                      selectedColor,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  label: 'Inicio',
+                ),
+                FloatingBottomBarItem(
+                  icon: FaIcon(
+                    FontAwesomeIcons.radio,
+                    size: 22,
+                    color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
                         Colors.grey,
-                    BlendMode.srcIn,
                   ),
-                ),
-              ),
-              selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 0,
-                child: SvgPicture.asset(
-                  'assets/icons/home_active_16.svg',
-                  width: 22,
-                  height: 22,
-                  colorFilter: ColorFilter.mode(
-                    selectedColor,
-                    BlendMode.srcIn,
+                  activeIcon: FaIcon(
+                    FontAwesomeIcons.radio,
+                    size: 22,
+                    color: selectedColor,
                   ),
+                  label: 'Radio',
                 ),
-              ),
-              label: 'Inicio',
+                FloatingBottomBarItem(
+                  icon: const UserAvatar(
+                    size: 24,
+                    showBorder: false,
+                  ),
+                  activeIcon: UserAvatar(
+                    size: 24,
+                    showBorder: true,
+                    borderColor: selectedColor,
+                  ),
+                  label: 'Perfil',
+                ),
+              ],
             ),
-            NavigationDestination(
-              icon: AppAnimations.pulseIcon(
-                isSelected: false,
-                child: Icon(
-                  Icons.sports_soccer_outlined,
-                  size: 22,
-                  color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
-                      Colors.grey,
-                ),
-              ),
-              selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 1,
-                child: Icon(
-                  Icons.sports_soccer,
-                  size: 22,
-                  color: selectedColor,
-                ),
-              ),
-              label: 'Futbol',
-            ),
-            NavigationDestination(
-              icon: AppAnimations.pulseIcon(
-                isSelected: false,
-                child: Icon(
-                  Icons.favorite_outline_rounded,
-                  size: 22,
-                  color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
-                      Colors.grey,
-                ),
-              ),
-              selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 2,
-                child: Icon(
-                  Icons.favorite_rounded,
-                  size: 22,
-                  color: selectedColor,
-                ),
-              ),
-              label: 'Favoritos',
-            ),
-            NavigationDestination(
-              icon: AppAnimations.pulseIcon(
-                isSelected: false,
-                child: FaIcon(
-                  FontAwesomeIcons.radio,
-                  size: 22,
-                  color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
-                      Colors.grey,
-                ),
-              ),
-              selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 3,
-                child: FaIcon(
-                  FontAwesomeIcons.radio,
-                  size: 22,
-                  color: selectedColor,
-                ),
-              ),
-              label: 'Radio',
-            ),
-            NavigationDestination(
-              icon: AppAnimations.pulseIcon(
-                isSelected: false,
-                child: const UserAvatar(
-                  size: 24,
-                  showBorder: false,
-                ),
-              ),
-              selectedIcon: AppAnimations.pulseIcon(
-                isSelected: _selectedIndex == 4,
-                child: UserAvatar(
-                  size: 26,
-                  showBorder: true,
-                  borderColor: selectedColor,
-                ),
-              ),
-              label: 'Perfil',
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
