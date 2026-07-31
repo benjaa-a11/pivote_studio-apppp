@@ -26,31 +26,11 @@ class RadioPlayerScreen extends StatefulWidget {
 
 class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     with TickerProviderStateMixin {
-  // Drag gesture variables
-  double _dragStartY = 0.0;
-  double _dragCurrentY = 0.0;
-
-  late AnimationController _slideAnimationController;
-  late Animation<double> _slideAnimation;
   late AnimationController _rotateController;
 
   @override
   void initState() {
     super.initState();
-
-    // Slide animation for drag to dismiss
-    _slideAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-
-    _slideAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _slideAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
 
     // Subtle rotation for the logo/disc
     _rotateController = AnimationController(
@@ -112,55 +92,15 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     }
   }
 
-  void _handleDragStart(DragStartDetails details) {
-    setState(() {
-      _dragStartY = details.globalPosition.dy;
-      _dragCurrentY = details.globalPosition.dy;
-    });
-  }
-
-  void _handleDragUpdate(DragUpdateDetails details) {
-    setState(() {
-      _dragCurrentY = details.globalPosition.dy;
-    });
-
-    final dragDistance = _dragCurrentY - _dragStartY;
-    if (dragDistance > 0) {
-      final dragPercentage =
-          (dragDistance / MediaQuery.of(context).size.height).clamp(0.0, 1.0);
-      _slideAnimationController.value = dragPercentage;
-    }
-  }
-
-  void _handleDragEnd(DragEndDetails details) {
-    final dragDistance = _dragCurrentY - _dragStartY;
-    final velocity = details.velocity.pixelsPerSecond.dy;
-
-    if (dragDistance > 150 || velocity > 500) {
-      _dismissPlayer();
-    } else {
-      _slideAnimationController.animateTo(0.0);
-    }
-  }
-
-  void _dismissPlayer() {
-    _slideAnimationController.animateTo(1.0).then((_) {
-      context.read<AudioManager>().stop();
-      Navigator.pop(context);
-    });
-  }
-
   @override
   void dispose() {
     context.read<AudioManager>().removeListener(_onAudioManagerChanged);
-    _slideAnimationController.dispose();
     _rotateController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return PopScope(
@@ -172,45 +112,27 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: GestureDetector(
-          onVerticalDragStart: _handleDragStart,
-          onVerticalDragUpdate: _handleDragUpdate,
-          onVerticalDragEnd: _handleDragEnd,
-          child: AnimatedBuilder(
-            animation: _slideAnimation,
-            builder: (context, child) {
-              final slideValue = _slideAnimation.value;
-              return Transform.translate(
-                offset: Offset(0, slideValue * size.height),
-                child: Opacity(
-                  opacity: (1.0 - slideValue).clamp(0.0, 1.0),
-                  child: child,
-                ),
-              );
-            },
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Premium Background Gradient & Blur Glows
-                _buildDynamicBackground(context, isDark),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Premium Background Gradient & Blur Glows
+            _buildDynamicBackground(context, isDark),
 
-                SafeArea(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isLandscape = constraints.maxHeight < constraints.maxWidth;
-                      final isTablet = constraints.maxWidth > 600;
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isLandscape = constraints.maxHeight < constraints.maxWidth;
+                  final isTablet = constraints.maxWidth > 600;
 
-                      if (isLandscape) {
-                        return _buildLandscapeLayout(context, isDark, constraints);
-                      } else {
-                        return _buildPortraitLayout(context, isDark, constraints, isTablet);
-                      }
-                    },
-                  ),
-                ),
-              ],
+                  if (isLandscape) {
+                    return _buildLandscapeLayout(context, isDark, constraints);
+                  } else {
+                    return _buildPortraitLayout(context, isDark, constraints, isTablet);
+                  }
+                },
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -300,25 +222,15 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                 color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
               ),
               child: Icon(
-                Icons.chevron_left_rounded,
+                Icons.arrow_back_ios_new_rounded,
                 color: textColor.withValues(alpha: 0.8),
-                size: 24,
+                size: 16,
               ),
             ),
           ),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Pull down indicator cue
-              Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 6),
-                decoration: BoxDecoration(
-                  color: textColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
               Text(
                 'RADIO EN VIVO',
                 style: GoogleFonts.spaceGrotesk(
@@ -387,12 +299,10 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                   _buildPlayerArt(context, maxArtSize, isDark),
                   const SizedBox(height: 24),
                   _buildPlayerInfo(context, isDark),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   _buildVisualizerSection(context),
-                  const SizedBox(height: 20),
-                  _buildPlayerControls(context, isDark),
                   const SizedBox(height: 28),
-                  _buildVolumeController(context, isDark),
+                  _buildPlayerControls(context, isDark),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -440,10 +350,8 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         _buildPlayerInfo(context, isDark),
-                        const SizedBox(height: 16),
-                        _buildPlayerControls(context, isDark),
                         const SizedBox(height: 24),
-                        _buildVolumeController(context, isDark),
+                        _buildPlayerControls(context, isDark),
                       ],
                     ),
                   ),
@@ -640,82 +548,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     );
   }
 
-  Widget _buildVolumeController(BuildContext context, bool isDark) {
-    final theme = Theme.of(context);
-    final textColor = theme.colorScheme.onSurface;
 
-    return Consumer<AudioManager>(
-      builder: (context, audioManager, _) {
-        return StreamBuilder<double>(
-          stream: audioManager.volumeStream,
-          initialData: audioManager.volume,
-          builder: (context, snapshot) {
-            final vol = snapshot.data ?? 1.0;
-            final isMuted = vol == 0.0;
-
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
-                ),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      audioManager.setVolume(isMuted ? 1.0 : 0.0);
-                    },
-                    icon: Icon(
-                      isMuted
-                          ? Icons.volume_off_rounded
-                          : vol < 0.4
-                              ? Icons.volume_down_rounded
-                              : Icons.volume_up_rounded,
-                      color: textColor.withValues(alpha: 0.6),
-                      size: 20,
-                    ),
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 4,
-                        activeTrackColor: theme.colorScheme.primary,
-                        inactiveTrackColor: theme.colorScheme.primary.withValues(alpha: 0.15),
-                        thumbColor: theme.colorScheme.primary,
-                        overlayColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                      ),
-                      child: Slider(
-                        value: vol,
-                        min: 0.0,
-                        max: 1.0,
-                        onChanged: (val) {
-                          audioManager.setVolume(val);
-                        },
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${(vol * 100).toInt()}%',
-                    style: GoogleFonts.spaceGrotesk(
-                      color: textColor.withValues(alpha: 0.5),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 
   void _navigateRadio(BuildContext context, int offset) {
     final radioProvider = context.read<RadioProvider>();
