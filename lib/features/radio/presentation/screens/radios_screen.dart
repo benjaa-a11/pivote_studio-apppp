@@ -240,7 +240,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
         }
 
         return SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {

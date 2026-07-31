@@ -118,7 +118,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildLogoutButton(context),
                 const SizedBox(height: 32),
                 _buildArgentinaBadge(context),
-                const SizedBox(height: 48),
+                const SizedBox(height: 100),
               ],
             ),
           ),

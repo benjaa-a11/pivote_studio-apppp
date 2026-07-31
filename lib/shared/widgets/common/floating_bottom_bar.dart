@@ -31,25 +31,20 @@ class FloatingBottomBar extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // Colores basados en el HTML proporcionado y el tema de la aplicación
-    final backgroundColor = isDark
-        ? const Color(0xFF201F1F).withOpacity(0.8) // bg-surface-container/80
-        : Colors.white.withOpacity(0.8);
-    
-    final borderColor = isDark
-        ? Colors.white.withOpacity(0.05) // border border-white/5
-        : Colors.black.withOpacity(0.05);
+    // Colores basados en el tema de la aplicación para una integración perfecta
+    final backgroundColor = theme.cardColor.withValues(alpha: isDark ? 0.85 : 0.9);
+    final borderColor = theme.colorScheme.outline.withValues(alpha: isDark ? 0.12 : 0.08);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(9999),
         border: Border.all(color: borderColor, width: 1.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.4 : 0.12),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -59,72 +54,102 @@ class FloatingBottomBar extends StatelessWidget {
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             color: backgroundColor,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: List.generate(destinations.length, (index) {
-                final item = destinations[index];
-                final isSelected = index == selectedIndex;
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final usableWidth = constraints.maxWidth;
+                final itemWidth = usableWidth / destinations.length;
 
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      onDestinationSelected(index);
-                    },
-                    behavior: HitTestBehavior.opaque,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Indicador de selección deslizante suave, moderno y profesional
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 320),
                       curve: Curves.easeInOutCubic,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? (isDark
-                                ? const Color(0xFF353534) // bg-surface-variant
-                                : Colors.black.withOpacity(0.08))
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(9999),
-                        boxShadow: isSelected && isDark
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.4),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          AnimatedScale(
-                            scale: isSelected ? 1.05 : 1.0,
-                            duration: const Duration(milliseconds: 200),
-                            child: isSelected ? item.activeIcon : item.icon,
+                      left: selectedIndex * itemWidth + 4,
+                      width: itemWidth - 8,
+                      top: 2,
+                      bottom: 2,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.15 : 0.12),
+                          borderRadius: BorderRadius.circular(9999),
+                          border: Border.all(
+                            color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.25 : 0.2),
+                            width: 1,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.label,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              color: isSelected
-                                  ? (isDark
-                                      ? const Color(0xFFE5E2E1) // on-surface
-                                      : Colors.black)
-                                  : (isDark
-                                      ? const Color(0xFFC4C7C8) // on-surface-variant
-                                      : Colors.black54),
-                            ),
-                          ),
-                        ],
+                          boxShadow: isDark
+                              ? [
+                                  BoxShadow(
+                                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ]
+                              : null,
+                        ),
                       ),
                     ),
-                  ),
+                    // Fila de destinos / botones
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: List.generate(destinations.length, (index) {
+                        final item = destinations[index];
+                        final isSelected = index == selectedIndex;
+
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              onDestinationSelected(index);
+                            },
+                            behavior: HitTestBehavior.opaque,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              color: Colors.transparent,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  AnimatedScale(
+                                    scale: isSelected ? 1.05 : 1.0,
+                                    duration: const Duration(milliseconds: 250),
+                                    curve: Curves.easeOutBack,
+                                    child: AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 200),
+                                      child: isSelected
+                                          ? SizedBox(
+                                              key: ValueKey('active_$index'),
+                                              child: item.activeIcon,
+                                            )
+                                          : SizedBox(
+                                              key: ValueKey('inactive_$index'),
+                                              child: item.icon,
+                                            ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    item.label,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                      color: isSelected
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
                 );
-              }),
+              },
             ),
           ),
         ),
