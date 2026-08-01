@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:pivote/features/movies/data/services/embed_resolver.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ── VOD Engine Configuration ──────────────────────────────────────────────────
@@ -301,6 +302,17 @@ class MovieVideoEngine extends ChangeNotifier {
   // ── Error & Retry Handling ────────────────────────────────────────────────
 
   Future<void> _handlePlaybackError(String error) async {
+    // Before burning a retry on the same URL, try the next resolved stream
+    // candidate (embed hosts often list several mirrors/qualities).
+    if (_advanceCandidate()) {
+      _retryCount = 0;
+      _emit(_state.copyWith(status: MoviePlayerStatus.loading));
+      if (!_disposed && _currentUrl != null) {
+        await _loadInternal(_currentUrl!);
+      }
+      return;
+    }
+
     if (_retryCount >= MovieEngineConfig.maxRetryAttempts) {
       _emit(_state.copyWith(
         status: MoviePlayerStatus.error,
@@ -328,11 +340,18 @@ class MovieVideoEngine extends ChangeNotifier {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
+  /// Resolution produced by [EmbedResolver] for the current URL: stream
+  /// candidates (fallback list) plus the HTTP headers the CDN expects.
+  EmbedResolution? _resolution;
+  int _candidateIndex = 0;
+
   Future<void> load(String url, {Duration startPosition = Duration.zero}) async {
     if (_disposed) return;
 
     _currentUrl = url;
     _retryCount = 0;
+    _resolution = null;
+    _candidateIndex = 0;
 
     _emit(_state.copyWith(
       status: MoviePlayerStatus.loading,
@@ -345,7 +364,45 @@ class MovieVideoEngine extends ChangeNotifier {
       retryAttempt: 0,
     ));
 
+    // Resolve embed pages (StreamHG / StreamWish / Filemoon style) into a
+    // real playable stream. Direct media URLs pass straight through.
+    try {
+      _resolution = await EmbedResolver.instance.resolve(url);
+      debugPrint('🧩 MovieVideoEngine: $_resolution');
+    } catch (e) {
+      debugPrint('❌ MovieVideoEngine embed resolve failed: $e');
+      if (_disposed) return;
+      // If it looked like an embed and scraping failed, surface the error;
+      // otherwise fall back to trying the raw URL directly.
+      if (EmbedResolver.instance.looksLikeEmbed(url)) {
+        _emit(_state.copyWith(
+          status: MoviePlayerStatus.error,
+          errorMessage: 'No se pudo obtener el video de la fuente.',
+        ));
+        return;
+      }
+    }
+
+    if (_disposed) return;
     await _loadInternal(url, startPosition: startPosition);
+  }
+
+  /// The stream URL to actually feed the player for the current attempt.
+  String _effectiveUrl(String fallback) {
+    final res = _resolution;
+    if (res == null || res.candidates.isEmpty) return fallback;
+    return res.candidates[_candidateIndex.clamp(0, res.candidates.length - 1)];
+  }
+
+  /// Advances to the next resolved candidate. Returns true if there was one.
+  bool _advanceCandidate() {
+    final res = _resolution;
+    if (res == null) return false;
+    if (_candidateIndex + 1 >= res.candidates.length) return false;
+    _candidateIndex++;
+    debugPrint(
+        '🧩 MovieVideoEngine: falling back to candidate #$_candidateIndex -> ${res.candidates[_candidateIndex]}');
+    return true;
   }
 
   Future<void> _loadInternal(String url, {Duration startPosition = Duration.zero}) async {
@@ -357,17 +414,20 @@ class MovieVideoEngine extends ChangeNotifier {
 
     final headers = <String, String>{
       'User-Agent': MovieEngineConfig.userAgent,
+      ...?_resolution?.headers,
     };
 
+    final streamUrl = _effectiveUrl(url);
+
     try {
-      final media = Media(url, httpHeaders: headers);
+      final media = Media(streamUrl, httpHeaders: headers);
       await _player.open(Playlist([media]), play: true);
       
       if (startPosition > Duration.zero) {
         await _player.seek(startPosition);
       }
       
-      debugPrint('🎬 MovieVideoEngine: opened stream -> $url');
+      debugPrint('🎬 MovieVideoEngine: opened stream -> $streamUrl');
     } catch (e) {
       debugPrint('❌ MovieVideoEngine load error: $e');
       await _handlePlaybackError(e.toString());
@@ -450,6 +510,9 @@ class MovieVideoEngine extends ChangeNotifier {
   Future<void> retry() async {
     if (_disposed || _currentUrl == null) return;
     _retryCount = 0;
+    // Manual retry: drop the cached resolution so we re-scrape the embed and
+    // get fresh (possibly re-tokenized) stream URLs.
+    EmbedResolver.instance.clearCache();
     await load(_currentUrl!, startPosition: _state.position);
   }
 
