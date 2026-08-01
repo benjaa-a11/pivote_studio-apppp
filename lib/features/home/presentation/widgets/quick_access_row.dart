@@ -44,7 +44,7 @@ class QuickAccessRow extends StatelessWidget {
                       ? '$liveCount en vivo'
                       : 'Ver partidos',
                   isLive: liveCount > 0,
-                  onTap: () => onNavigateToTab(1),
+                  onTap: () => onNavigateToTab(0),
                 );
               },
             ),
@@ -57,7 +57,7 @@ class QuickAccessRow extends StatelessWidget {
               accent: Colors.pinkAccent,
               label: 'Favoritos',
               caption: 'Tus guardados',
-              onTap: () => onNavigateToTab(2),
+              onTap: () => onNavigateToTab(1),
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -68,7 +68,7 @@ class QuickAccessRow extends StatelessWidget {
               accent: theme.colorScheme.secondary,
               label: 'Radio',
               caption: 'En vivo 24h',
-              onTap: () => onNavigateToTab(3),
+              onTap: () => onNavigateToTab(2),
             ),
           ),
         ],

@@ -5,6 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/services/notification_service.dart';
 import 'package:pivote/features/home/presentation/screens/home_screen.dart';
+import 'package:pivote/features/movies/presentation/screens/movies_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/profile_screen.dart';
 import 'package:pivote/features/radio/presentation/screens/radios_screen.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +31,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           controller: _homeScrollController,
           child: HomeScreen(onNavigateToTab: _onNavItemTapped),
         ),
+        const MoviesScreen(),
         const RadiosScreen(),
         const ProfileScreen(),
       ];
@@ -65,22 +67,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   void _onNavItemTapped(int index) {
-    int mappedIndex = index;
-    // Map indices from older references (5 tabs) to our new 3-tab system:
-    // 0 -> 0 (Inicio)
-    // 1 or 3 -> 1 (Radio)
-    // 2 or 4 -> 2 (Perfil)
-    if (index == 1 || index == 3) {
-      mappedIndex = 1;
-    } else if (index == 2 || index == 4) {
-      mappedIndex = 2;
-    } else {
-      mappedIndex = 0;
-    }
-
-    if (_selectedIndex == mappedIndex) {
+    if (_selectedIndex == index) {
       // Second tap on the active tab: scroll back to top instead of a no-op.
-      if (mappedIndex == 0 && _homeScrollController.hasClients) {
+      if (index == 0 && _homeScrollController.hasClients) {
         HapticFeedback.selectionClick();
         _homeScrollController.animateTo(
           0,
@@ -92,7 +81,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
 
     setState(() {
-      _selectedIndex = mappedIndex;
+      _selectedIndex = index;
     });
   }
 
@@ -268,6 +257,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     ),
                   ),
                   label: 'Inicio',
+                ),
+                FloatingBottomBarItem(
+                  icon: Icon(
+                    Icons.movie_outlined,
+                    size: 22,
+                    color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
+                        Colors.grey,
+                  ),
+                  activeIcon: Icon(
+                    Icons.movie_rounded,
+                    size: 22,
+                    color: selectedColor,
+                  ),
+                  label: 'Películas',
                 ),
                 FloatingBottomBarItem(
                   icon: FaIcon(

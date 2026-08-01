@@ -58,7 +58,7 @@ class UnifiedHomeHeader extends StatelessWidget {
             showBorder: true,
             onTap: () {
               if (onNavigateToTab != null) {
-                onNavigateToTab!(2); // Índice del tab Perfil
+                onNavigateToTab!(3); // Índice del tab Perfil
               }
             },
           ),

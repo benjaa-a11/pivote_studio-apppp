@@ -267,7 +267,7 @@ class EmbedResolver {
   String _cleanUrl(String url) {
     var u = url.replaceAll(r'\/', '/').replaceAll(r'\\', '');
     // Trim trailing punctuation that regexes sometimes grab.
-    u = u.replaceAll(RegExp(r'[)"\';,]+$'), '');
+    u = u.replaceAll(RegExp(r'''[)"\';,]+$'''), '');
     return u;
   }
 
