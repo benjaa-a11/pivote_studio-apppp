@@ -48,6 +48,19 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
   // on the back button, or system-back racing with an on-screen tap).
   bool _isExiting = false;
 
+  // Video fit mode: contain (default) -> cover (zoom) -> fill (stretch)
+  BoxFit _videoFit = BoxFit.contain;
+
+  void _cycleVideoFit() {
+    setState(() {
+      _videoFit = switch (_videoFit) {
+        BoxFit.contain => BoxFit.cover,
+        BoxFit.cover => BoxFit.fill,
+        _ => BoxFit.contain,
+      };
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -278,7 +291,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                             child: Video(
                               controller: _engine.videoController,
                               controls: null, // Null is custom controls handled by us
-                              fit: BoxFit.contain,
+                              fit: _videoFit,
                             ),
                           ),
                         ),
@@ -299,6 +312,8 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                             onDragStart: _onDragStart,
                             onDragEnd: _onDragEnd,
                             onExit: _exitPlayer,
+                            videoFit: _videoFit,
+                            onCycleFit: _cycleVideoFit,
                           ),
 
                         // ── Cinematic Loading Screen (ONLY before first frame decoded) ──

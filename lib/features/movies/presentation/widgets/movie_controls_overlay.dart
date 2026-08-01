@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
 import 'package:pivote/features/movies/presentation/widgets/movie_video_engine.dart';
+import 'package:pivote/features/movies/presentation/widgets/movie_bottom_sheets.dart';
 // Pivo Movie Player Controls
 
 
@@ -17,6 +18,8 @@ class MovieControlsOverlay extends StatefulWidget {
   final VoidCallback onDragStart;
   final VoidCallback onDragEnd;
   final Future<void> Function() onExit;
+  final BoxFit videoFit;
+  final VoidCallback onCycleFit;
 
   const MovieControlsOverlay({
     super.key,
@@ -28,6 +31,8 @@ class MovieControlsOverlay extends StatefulWidget {
     required this.onDragStart,
     required this.onDragEnd,
     required this.onExit,
+    required this.videoFit,
+    required this.onCycleFit,
   });
 
   @override
@@ -82,6 +87,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     _volumeTimer?.cancel();
     _scrubTimer?.cancel();
     _singleTapTimer?.cancel();
+    _fitTimer?.cancel();
     super.dispose();
   }
 
@@ -254,6 +260,85 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     });
     widget.onDragEnd();
     widget.onUserInteraction();
+  }
+
+  // ── Settings Sheets (speed / subtitles / audio) ────────────────────────────
+
+  /// Opens a bottom sheet while keeping the controls visible (pauses the
+  /// auto-hide timer via onDragStart/onDragEnd, same as scrubbing).
+  Future<void> _openSheet(Widget sheet) async {
+    HapticFeedback.lightImpact();
+    widget.onDragStart();
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => sheet,
+    );
+    if (mounted) widget.onDragEnd();
+  }
+
+  void _showSpeedSheet() {
+    _openSheet(
+      SpeedSelectorSheet(
+        currentSpeed: widget.engine.state.playbackSpeed,
+        onSpeedSelected: (speed) {
+          widget.engine.setPlaybackSpeed(speed);
+        },
+      ),
+    );
+  }
+
+  void _showSubtitleSheet() {
+    _openSheet(
+      SubtitleSelectorSheet(
+        tracks: widget.engine.state.tracks,
+        selectedTrack: widget.engine.state.track.subtitle,
+        onTrackSelected: (track) {
+          widget.engine.setSubtitleTrack(track);
+        },
+      ),
+    );
+  }
+
+  void _showAudioSheet() {
+    _openSheet(
+      AudioTrackSelectorSheet(
+        tracks: widget.engine.state.tracks,
+        selectedTrack: widget.engine.state.track.audio,
+        onTrackSelected: (track) {
+          widget.engine.setAudioTrack(track);
+        },
+      ),
+    );
+  }
+
+  // ── Video Fit Toggle ──────────────────────────────────────────────────────
+
+  bool _showFitIndicator = false;
+  Timer? _fitTimer;
+
+  String get _fitLabel => switch (widget.videoFit) {
+        BoxFit.cover => 'Zoom',
+        BoxFit.fill => 'Estirado',
+        _ => 'Ajustado',
+      };
+
+  IconData get _fitIcon => switch (widget.videoFit) {
+        BoxFit.cover => Icons.zoom_out_map_rounded,
+        BoxFit.fill => Icons.aspect_ratio_rounded,
+        _ => Icons.fit_screen_rounded,
+      };
+
+  void _handleCycleFit() {
+    HapticFeedback.lightImpact();
+    widget.onCycleFit();
+    widget.onUserInteraction();
+    setState(() => _showFitIndicator = true);
+    _fitTimer?.cancel();
+    _fitTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) setState(() => _showFitIndicator = false);
+    });
   }
 
 
@@ -460,6 +545,35 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                         state.isMuted
                             ? 'Muted'
                             : '${(state.volume * 100).toInt()}%',
+                        style: GoogleFonts.spaceGrotesk(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // ── Video Fit HUD Indicator ──
+            if (_showFitIndicator)
+              Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white12, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_fitIcon, color: AppTheme.darkAccent, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        _fitLabel,
                         style: GoogleFonts.spaceGrotesk(
                           color: Colors.white,
                           fontSize: 13,
@@ -755,6 +869,57 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                     ],
                   ),
                 ),
+
+                // Video Fit Toggle Button
+                IconButton(
+                  icon: Icon(_fitIcon, size: 20),
+                  color: Colors.white70,
+                  tooltip: 'Ajuste de pantalla',
+                  onPressed: _handleCycleFit,
+                ),
+
+                // Playback Speed Button
+                IconButton(
+                  icon: widget.engine.state.playbackSpeed == 1.0
+                      ? const Icon(Icons.speed_rounded, size: 20)
+                      : Text(
+                          '${widget.engine.state.playbackSpeed}x',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.darkAccent,
+                          ),
+                        ),
+                  color: Colors.white70,
+                  tooltip: 'Velocidad de reproducción',
+                  onPressed: _showSpeedSheet,
+                ),
+
+                // Audio Track Button (only when there are multiple tracks)
+                if (widget.engine.state.tracks.audio.length > 1)
+                  IconButton(
+                    icon: const Icon(Icons.translate_rounded, size: 20),
+                    color: Colors.white70,
+                    tooltip: 'Idioma / Pista de audio',
+                    onPressed: _showAudioSheet,
+                  ),
+
+                // Subtitles Button (only when subtitle tracks exist)
+                if (widget.engine.state.tracks.subtitle
+                    .any((t) => t.id != 'auto' && t.id != 'no'))
+                  IconButton(
+                    icon: Icon(
+                      widget.engine.state.track.subtitle.id == 'no'
+                          ? Icons.closed_caption_off_rounded
+                          : Icons.closed_caption_rounded,
+                      size: 22,
+                    ),
+                    color: widget.engine.state.track.subtitle.id == 'no'
+                        ? Colors.white70
+                        : AppTheme.darkAccent,
+                    tooltip: 'Subtítulos',
+                    onPressed: _showSubtitleSheet,
+                  ),
 
                 // Lock Screen Button
                 IconButton(
