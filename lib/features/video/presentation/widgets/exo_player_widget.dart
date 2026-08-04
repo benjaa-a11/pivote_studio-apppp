@@ -121,11 +121,12 @@ class ExoPlayerController {
     }
   }
 
-  /// Initialize with MPD stream + optional ClearKey DRM
+  /// Initialize with MPD stream + optional ClearKey DRM (multi-key or legacy)
   Future<void> initialize({
     required String url,
     String? k1,
     String? k2,
+    Map<String, String>? clearkeys,
     Map<String, String>? headers,
   }) async {
     if (_disposed || _methodChannel == null) return;
@@ -134,6 +135,7 @@ class ExoPlayerController {
         'url': url,
         if (k1 != null && k1.isNotEmpty) 'k1': k1,
         if (k2 != null && k2.isNotEmpty) 'k2': k2,
+        if (clearkeys != null && clearkeys.isNotEmpty) 'clearkeys': clearkeys,
         if (headers != null) 'headers': headers,
       });
     } catch (e) {
@@ -199,6 +201,7 @@ class ExoPlayerWidget extends StatefulWidget {
   final String url;
   final String? k1;
   final String? k2;
+  final Map<String, String>? clearkeys; // Multi-key ClearKey DRM
   final Map<String, String>? headers;
   final ExoPlayerController controller;
   final VoidCallback? onReady;
@@ -209,6 +212,7 @@ class ExoPlayerWidget extends StatefulWidget {
     required this.url,
     this.k1,
     this.k2,
+    this.clearkeys,
     this.headers,
     required this.controller,
     this.onReady,
@@ -230,6 +234,8 @@ class _ExoPlayerWidgetState extends State<ExoPlayerWidget> {
         'url': widget.url,
         if (widget.k1 != null) 'k1': widget.k1,
         if (widget.k2 != null) 'k2': widget.k2,
+        if (widget.clearkeys != null && widget.clearkeys!.isNotEmpty)
+          'clearkeys': widget.clearkeys,
       },
       creationParamsCodec: const StandardMessageCodec(),
       onPlatformViewCreated: _onPlatformViewCreated,

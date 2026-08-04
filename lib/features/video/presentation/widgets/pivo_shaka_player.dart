@@ -34,6 +34,7 @@ class PivoShakaPlayer extends StatefulWidget {
   final String url;
   final String? k1;
   final String? k2;
+  final Map<String, String>? clearkeys; // Multi-key ClearKey DRM
   final String channelName;
   final int currentServer;
   final int totalServers;
@@ -45,6 +46,7 @@ class PivoShakaPlayer extends StatefulWidget {
     required this.url,
     this.k1,
     this.k2,
+    this.clearkeys,
     required this.channelName,
     required this.currentServer,
     required this.totalServers,
@@ -91,7 +93,11 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
     debugPrint('🎬 PivoShakaPlayer v7.0 (Native ExoPlayer)');
     debugPrint(
         '   MPD: ${widget.url.substring(0, widget.url.length.clamp(0, 80))}');
-    if (widget.k1 != null) debugPrint('   DRM: ClearKey enabled');
+    if (widget.clearkeys != null && widget.clearkeys!.isNotEmpty) {
+      debugPrint('   DRM: ClearKey enabled (${widget.clearkeys!.length} keys)');
+    } else if (widget.k1 != null) {
+      debugPrint('   DRM: ClearKey enabled (legacy single-key)');
+    }
 
     _exoController = ExoPlayerController();
     _unified = _ExoUnifiedAdapter(_exoController, this);
@@ -115,7 +121,9 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
   @override
   void didUpdateWidget(PivoShakaPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.url != widget.url || oldWidget.k1 != widget.k1) {
+    if (oldWidget.url != widget.url ||
+        oldWidget.k1 != widget.k1 ||
+        oldWidget.clearkeys != widget.clearkeys) {
       _resetAndReload();
     }
   }
@@ -308,10 +316,11 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
             child: AspectRatio(
               aspectRatio: _getAspectRatio(),
               child: ExoPlayerWidget(
-                key: ValueKey('${widget.url}_${widget.k1}'),
+                key: ValueKey('${widget.url}_${widget.k1}_${widget.clearkeys?.length ?? 0}'),
                 url: widget.url,
                 k1: widget.k1,
                 k2: widget.k2,
+                clearkeys: widget.clearkeys,
                 controller: _exoController,
               ),
             ),

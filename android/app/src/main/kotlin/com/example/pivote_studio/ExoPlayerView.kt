@@ -99,8 +99,10 @@ class ExoPlayerPlatformView(
             val url = creationParams["url"] as? String
             val k1 = creationParams["k1"] as? String
             val k2 = creationParams["k2"] as? String
+            @Suppress("UNCHECKED_CAST")
+            val clearkeys = creationParams["clearkeys"] as? Map<String, String>
             if (url != null) {
-                initializePlayer(url, k1, k2, null)
+                initializePlayer(url, k1, k2, clearkeys, null)
             }
         }
     }
@@ -113,8 +115,10 @@ class ExoPlayerPlatformView(
                 val url = call.argument<String>("url") ?: ""
                 val k1 = call.argument<String>("k1")
                 val k2 = call.argument<String>("k2")
+                @Suppress("UNCHECKED_CAST")
+                val clearkeys = call.argument<Map<String, String>>("clearkeys")
                 val headers = call.argument<Map<String, String>>("headers")
-                initializePlayer(url, k1, k2, headers)
+                initializePlayer(url, k1, k2, clearkeys, headers)
                 result.success(true)
             }
             "play" -> {
@@ -154,19 +158,19 @@ class ExoPlayerPlatformView(
         url: String,
         k1: String?,
         k2: String?,
+        clearkeys: Map<String, String>?,
         headers: Map<String, String>?
     ) {
         releasePlayer()
         if (isDisposed) return
 
         // ── Load Control: aggressive buffering for live sports ──
-        // ── Aggressive startup: play ASAP, then fill buffer in background ──
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs */  8_000,       // 8s min buffer (keeps stability)
-                /* maxBufferMs */ 50_000,       // 50s max (long runway for live)
-                /* bufferForPlayback */    500,  // Start after just 500ms!
-                /* bufferForPlaybackAfterRebuffer */ 2_000 // 2s after rebuffer
+                /* minBufferMs */  8_000,
+                /* maxBufferMs */ 50_000,
+                /* bufferForPlayback */    500,
+                /* bufferForPlaybackAfterRebuffer */ 2_000
             )
             .setPrioritizeTimeOverSizeThresholds(true)
             .setBackBuffer(30_000, true)
@@ -187,10 +191,17 @@ class ExoPlayerPlatformView(
         val builder = ExoPlayer.Builder(context)
             .setLoadControl(loadControl)
 
-        // ── ClearKey DRM ──
-        val hasDrm = !k1.isNullOrEmpty() && !k2.isNullOrEmpty()
+        // ── ClearKey DRM (multi-key or legacy single-key) ──
+        val hasMultiKey = clearkeys != null && clearkeys.isNotEmpty()
+        val hasLegacyKey = !k1.isNullOrEmpty() && !k2.isNullOrEmpty()
+        val hasDrm = hasMultiKey || hasLegacyKey
+
         if (hasDrm) {
-            val clearKeyJson = buildClearKeyJson(k1!!, k2!!)
+            val clearKeyJson = if (hasMultiKey) {
+                buildMultiClearKeyJson(clearkeys!!)
+            } else {
+                buildClearKeyJson(k1!!, k2!!)
+            }
             val drmCallback = LocalMediaDrmCallback(clearKeyJson.toByteArray(Charsets.UTF_8))
             val drmSessionManager = DefaultDrmSessionManager.Builder()
                 .setUuidAndExoMediaDrmProvider(C.CLEARKEY_UUID, androidx.media3.exoplayer.drm.FrameworkMediaDrm.DEFAULT_PROVIDER)
@@ -256,17 +267,38 @@ class ExoPlayerPlatformView(
     // ClearKey DRM JSON License
     // ════════════════════════════════════════════════════════════════════════
 
+    /**
+     * Build ClearKey JSON with a SINGLE key pair (legacy k1/k2 format).
+     */
     private fun buildClearKeyJson(kid: String, key: String): String {
-        // ExoPlayer ClearKey expects JSON with base64url-encoded kid and key
-        val kidBytes = hexToBytes(kid)
-        val keyBytes = hexToBytes(key)
-        val kidB64 = android.util.Base64.encodeToString(
-            kidBytes, android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP
-        )
-        val keyB64 = android.util.Base64.encodeToString(
-            keyBytes, android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP
-        )
+        val kidB64 = hexToBase64Url(kid)
+        val keyB64 = hexToBase64Url(key)
         return """{"keys":[{"kty":"oct","k":"$keyB64","kid":"$kidB64"}],"type":"temporary"}"""
+    }
+
+    /**
+     * Build ClearKey JSON with MULTIPLE key pairs.
+     * Input: Map<keyId(hex), key(hex)>  →  JSON {"keys":[...], "type":"temporary"}
+     * Each entry becomes a separate object in the keys array.
+     */
+    private fun buildMultiClearKeyJson(keys: Map<String, String>): String {
+        val keysArray = keys.entries.joinToString(",") { (kid, key) ->
+            val kidB64 = hexToBase64Url(kid)
+            val keyB64 = hexToBase64Url(key)
+            """{"kty":"oct","k":"$keyB64","kid":"$kidB64"}"""
+        }
+        return """{"keys":[$keysArray],"type":"temporary"}"""
+    }
+
+    /**
+     * Convert hex string to base64url (no padding, URL-safe).
+     */
+    private fun hexToBase64Url(hex: String): String {
+        val bytes = hexToBytes(hex)
+        return android.util.Base64.encodeToString(
+            bytes,
+            android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP
+        )
     }
 
     private fun hexToBytes(hex: String): ByteArray {

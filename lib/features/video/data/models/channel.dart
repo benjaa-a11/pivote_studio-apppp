@@ -216,23 +216,36 @@ class Channel {
 /// Represents a stream source with URL and optional DRM keys
 class StreamSource {
   final String url;
-  final String? k1; // Key ID for DRM
-  final String? k2; // Key for DRM
+  final String? k1; // Legacy: Key ID for single-key DRM
+  final String? k2; // Legacy: Key for single-key DRM
   final String? label; // Optional label like "Servidor 1", "HD", etc.
+  final Map<String, String>? clearkeys; // Multi-key ClearKey DRM: {keyId: key, ...}
 
   StreamSource({
     required this.url,
     this.k1,
     this.k2,
     this.label,
+    this.clearkeys,
   });
 
   factory StreamSource.fromJson(Map<String, dynamic> json) {
+    // Parse clearkeys map from Firestore
+    Map<String, String>? parsedClearkeys;
+    if (json['clearkeys'] != null && json['clearkeys'] is Map) {
+      parsedClearkeys = Map<String, String>.from(
+        (json['clearkeys'] as Map).map(
+          (key, value) => MapEntry(key.toString(), value.toString()),
+        ),
+      );
+    }
+
     return StreamSource(
       url: json['url'] ?? '',
       k1: json['k1'],
       k2: json['k2'],
       label: json['label'],
+      clearkeys: parsedClearkeys,
     );
   }
 
@@ -241,12 +254,29 @@ class StreamSource {
     if (k1 != null) map['k1'] = k1;
     if (k2 != null) map['k2'] = k2;
     if (label != null) map['label'] = label;
+    if (clearkeys != null && clearkeys!.isNotEmpty) {
+      map['clearkeys'] = clearkeys;
+    }
     return map;
   }
 
-  /// Returns true if this stream has DRM keys
+  /// Returns true if this stream has DRM keys (multi-key or legacy single-key)
   bool get hasDrm =>
-      k1 != null && k2 != null && k1!.isNotEmpty && k2!.isNotEmpty;
+      (clearkeys != null && clearkeys!.isNotEmpty) ||
+      (k1 != null && k2 != null && k1!.isNotEmpty && k2!.isNotEmpty);
+
+  /// Returns true if this stream uses multi-key ClearKey DRM
+  bool get hasMultiClearKeys =>
+      clearkeys != null && clearkeys!.isNotEmpty;
+
+  /// Returns the effective ClearKey map (multi-key or legacy single-key as map)
+  Map<String, String>? get effectiveClearkeys {
+    if (clearkeys != null && clearkeys!.isNotEmpty) return clearkeys;
+    if (k1 != null && k2 != null && k1!.isNotEmpty && k2!.isNotEmpty) {
+      return {k1!: k2!};
+    }
+    return null;
+  }
 
   /// Returns true if this is a DASH stream (detected by URL or DRM keys)
   bool get isDash => url.contains('.mpd') || hasDrm;
