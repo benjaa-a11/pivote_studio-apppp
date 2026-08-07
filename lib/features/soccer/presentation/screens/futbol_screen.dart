@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:pivote/features/soccer/presentation/widgets/soccer_match_card.dart';
+import 'package:pivote/features/soccer/presentation/widgets/world_cup_countdown.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
@@ -121,10 +122,12 @@ class _FutbolScreenState extends State<FutbolScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.25),
                           width: 0.8,
                         ),
                       ),
@@ -177,7 +180,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
       ),
     );
   }
-
 
   Widget _buildLiveCountBadge(ThemeData theme, int count) {
     return Container(
@@ -234,6 +236,13 @@ class _FutbolScreenState extends State<FutbolScreen> {
           SliverToBoxAdapter(
             child: _buildLeagueCarousel(soccerData, theme),
           ),
+          if (_selectedLeagueId == 'all')
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              sliver: SliverToBoxAdapter(
+                child: WorldCupCountdown(),
+              ),
+            ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: _buildMatchesList(soccerData, theme),
@@ -259,13 +268,13 @@ class _FutbolScreenState extends State<FutbolScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Container(
-      height: 100,
-      margin: const EdgeInsets.only(top: 12, bottom: 16),
+      height: 56,
+      margin: const EdgeInsets.only(top: 8, bottom: 12),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         itemCount: data.leagues.length + 1,
-        separatorBuilder: (context, index) => const SizedBox(width: 14),
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           if (index == 0) {
             return _buildLeagueItem('all', 'Todo', null, theme, isDark,
@@ -293,90 +302,112 @@ class _FutbolScreenState extends State<FutbolScreen> {
           setState(() => _selectedLeagueId = id);
         }
       },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isSelected
-                  ? theme.colorScheme.primary.withValues(alpha: 0.12)
-                  : (isDark ? AppTheme.darkBg2 : AppTheme.lightBg2),
-              border: Border.all(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : (isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
-                width: isSelected ? 2.5 : 1.5,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                        blurRadius: 12,
-                        spreadRadius: 1,
-                      )
-                    ]
-                  : null,
-            ),
-            child: Center(
-              child: isAll
-                  ? Icon(
-                      Icons.apps_rounded,
-                      size: 22,
-                      color: isSelected
-                          ? theme.colorScheme.primary
-                          : theme.hintColor,
-                    )
-                  : logoUrl != null
-                      ? ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: logoUrl,
-                            width: 36,
-                            height: 36,
-                            fit: BoxFit.contain,
-                            placeholder: (context, url) =>
-                                const SizedBox(width: 20, height: 20),
-                            errorWidget: (context, url, error) => Icon(
-                                Icons.sports_soccer_outlined,
-                                color: theme.hintColor,
-                                size: 22),
-                          ),
-                        )
-                      : Icon(Icons.sports_soccer_outlined,
-                          color: theme.hintColor, size: 22),
-            ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primary.withValues(alpha: 0.85),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : LinearGradient(
+                  colors: isDark
+                      ? [AppTheme.darkCard, AppTheme.darkBg]
+                      : [Colors.white, theme.colorScheme.surface],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          border: Border.all(
+            color: isSelected
+                ? theme.colorScheme.primary.withValues(alpha: 0.4)
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.05)),
+            width: 1.2,
           ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: 64,
-            child: Text(
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.1 : 0.02),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isAll)
+              Icon(
+                Icons.apps_rounded,
+                size: 16,
+                color: isSelected ? Colors.white : theme.colorScheme.primary,
+              )
+            else if (logoUrl != null)
+              ClipOval(
+                child: CachedNetworkImage(
+                  imageUrl: logoUrl,
+                  width: 20,
+                  height: 20,
+                  fit: BoxFit.contain,
+                  errorWidget: (_, __, ___) => Icon(
+                    Icons.sports_soccer_outlined,
+                    color: isSelected ? Colors.white70 : theme.hintColor,
+                    size: 16,
+                  ),
+                ),
+              )
+            else
+              Icon(
+                Icons.sports_soccer_outlined,
+                color: isSelected ? Colors.white70 : theme.hintColor,
+                size: 16,
+              ),
+            const SizedBox(width: 8),
+            Text(
               label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.spaceGrotesk(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                color: isSelected ? theme.colorScheme.primary : theme.hintColor,
+                color: isSelected ? Colors.white : theme.colorScheme.onSurface,
               ),
             ),
-          ),
-          // Match count indicator
-          if (isSelected && matchCount > 0)
-            Container(
-              margin: const EdgeInsets.only(top: 3),
-              width: 4,
-              height: 4,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: theme.colorScheme.primary,
+            if (matchCount > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withValues(alpha: 0.25)
+                      : theme.colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  matchCount.toString(),
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                    color:
+                        isSelected ? Colors.white : theme.colorScheme.primary,
+                  ),
+                ),
               ),
-            ),
-        ],
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -409,6 +440,90 @@ class _FutbolScreenState extends State<FutbolScreen> {
     final upcomingMatches = filteredMatches
         .where((m) => !m.isLive && !m.isFinished)
         .toList(growable: false);
+
+    final width = MediaQuery.sizeOf(context).width;
+    final isWide = width > 700;
+
+    if (isWide) {
+      // Split league sections into left and right columns for responsiveness
+      final leftColumnLeagues = <String>[];
+      final rightColumnLeagues = <String>[];
+      for (int i = 0; i < leagueIds.length; i++) {
+        if (i % 2 == 0) {
+          leftColumnLeagues.add(leagueIds[i]);
+        } else {
+          rightColumnLeagues.add(leagueIds[i]);
+        }
+      }
+
+      return SliverList(
+        delegate: SliverChildListDelegate([
+          KeyedSubtree(
+            key: ValueKey('summary_$_selectedLeagueId'),
+            child: AppAnimations.staggeredSlideIn(
+              index: 0,
+              child: _buildMatchesSummary(theme, liveMatches.length,
+                  upcomingMatches.length, filteredMatches.length),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(leftColumnLeagues.length, (index) {
+                    final leagueId = leftColumnLeagues[index];
+                    final league = data.leagues.firstWhere(
+                        (l) => l.id == leagueId,
+                        orElse: () => SoccerLeague(
+                            id: leagueId,
+                            name: leagueId.toUpperCase(),
+                            shortName: leagueId.toUpperCase(),
+                            country: ''));
+                    final matches = grouped[leagueId]!;
+                    return KeyedSubtree(
+                      key: ValueKey('league_${_selectedLeagueId}_$leagueId'),
+                      child: AppAnimations.staggeredSlideIn(
+                        index: index * 2 + 1,
+                        child:
+                            _buildLeagueSection(league, matches, data, theme),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: List.generate(rightColumnLeagues.length, (index) {
+                    final leagueId = rightColumnLeagues[index];
+                    final league = data.leagues.firstWhere(
+                        (l) => l.id == leagueId,
+                        orElse: () => SoccerLeague(
+                            id: leagueId,
+                            name: leagueId.toUpperCase(),
+                            shortName: leagueId.toUpperCase(),
+                            country: ''));
+                    final matches = grouped[leagueId]!;
+                    return KeyedSubtree(
+                      key: ValueKey('league_${_selectedLeagueId}_$leagueId'),
+                      child: AppAnimations.staggeredSlideIn(
+                        index: index * 2 + 2,
+                        child:
+                            _buildLeagueSection(league, matches, data, theme),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ]),
+      );
+    }
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
@@ -698,15 +813,15 @@ class _FutbolScreenState extends State<FutbolScreen> {
                 : AppTheme.lightBorder.withValues(alpha: 0.5),
           ),
 
-          ListView.builder(
-            shrinkWrap: true,
-            padding: EdgeInsets.zero,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: matches.length,
-            itemBuilder: (context, index) => SoccerMatchCard(
-              match: matches[index],
-              data: data,
-              isLast: index == matches.length - 1,
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(
+              matches.length,
+              (index) => SoccerMatchCard(
+                match: matches[index],
+                data: data,
+                isLast: index == matches.length - 1,
+              ),
             ),
           ),
         ],

@@ -5,7 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/services/notification_service.dart';
 import 'package:pivote/features/home/presentation/screens/home_screen.dart';
-import 'package:pivote/features/movies/presentation/screens/movies_screen.dart';
+import 'package:pivote/features/soccer/presentation/screens/futbol_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/profile_screen.dart';
 import 'package:pivote/features/radio/presentation/screens/radios_screen.dart';
 import 'package:provider/provider.dart';
@@ -31,7 +31,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           controller: _homeScrollController,
           child: HomeScreen(onNavigateToTab: _onNavItemTapped),
         ),
-        const MoviesScreen(),
+        const FutbolScreen(),
         const RadiosScreen(),
         const ProfileScreen(),
       ];
@@ -260,17 +260,17 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 ),
                 FloatingBottomBarItem(
                   icon: Icon(
-                    Icons.movie_outlined,
+                    Icons.sports_soccer_outlined,
                     size: 22,
                     color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
                         Colors.grey,
                   ),
                   activeIcon: Icon(
-                    Icons.movie_rounded,
+                    Icons.sports_soccer_rounded,
                     size: 22,
                     color: selectedColor,
                   ),
-                  label: 'Películas',
+                  label: 'Fútbol',
                 ),
                 FloatingBottomBarItem(
                   icon: FaIcon(
