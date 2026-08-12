@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -10,6 +8,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/iptv_engine.dart';
+import 'package:pivote/features/video/presentation/widgets/stream_url_resolver.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/pivo_pro_player.dart';
@@ -18,21 +17,23 @@ import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
-// Pivote VideoPlayerWidget v6.0 — media_kit (libmpv) Edition
+// Pivote VideoPlayerWidget v7.0 — Universal PHP→M3U8 Edition
 // ════════════════════════════════════════════════════════════════════════════
 //
 //  Native paths:
 //    M3U8 / MP4 / HTTP(S) streams  → IPTVEngine (libmpv)
 //    DASH / Iframe / HTML          → PivoProPlayer (WebView)
+//    PHP / JS-obfuscated pages     → StreamUrlResolver → IPTVEngine
 //
 //  Features:
+//    • Universal PHP→M3U8 resolver (6 strategies + LRU cache)
+//    • GB-array + atob() JS obfuscation decoder
+//    • Referer passthrough to libmpv for stream auth
 //    • Mutex-protected initialization (no race conditions)
-//    • HEAD-first URL resolution with CDN fast-path
 //    • Per-server retry with exponential backoff
 //    • Adaptive server timeout (base + 2 s per attempt)
 //    • IPTVEngine state polling + ChangeNotifier listener
-//    • Orientation monitor (500 ms) for seamless fullscreen
-//    • Loading failsafe (15 s) to prevent infinite spinner
+//    • Orientation monitor for seamless fullscreen
 //
 
 class VideoPlayerWidget extends StatefulWidget {
@@ -74,6 +75,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   bool _useShakaPlayer = false;
   int _retryCount = 0;
   int _serverAttempt = 0;
+
+  /// Referer URL when stream was resolved from a PHP/web page
+  String? _resolvedReferer;
 
   Completer<void>? _initLock;
 
@@ -183,6 +187,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     _currentStream = widget.channel.streamUrl[_serverIndex];
     String url = _currentStream!.url.trim();
+    _resolvedReferer = null;
 
     debugPrint(
         '── Server ${_serverIndex + 1}/${widget.channel.streamUrl.length}');
@@ -193,19 +198,33 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         (_currentStream!.isDash || _currentStream!.hasDrm);
     final isWeb = !isMpd && _isWebStream(url);
 
-    // URL resolution (only for HLS/M3U8 — MPD manifests don't need it)
+    // ── Universal URL resolution (PHP/web → M3U8) ─────────────────────
+    // Runs for any URL that isn't a direct CDN/M3U8 or WebView/MPD path.
     if (!isMpd && !isWeb) {
       _setPlayerState(PlayerState.resolvingUrl);
       try {
-        final resolved = await _resolveUrl(url);
-        if (resolved != null && resolved.isNotEmpty) url = resolved;
-      } catch (_) {}
+        final result = await StreamUrlResolver.resolve(url);
+        if (result.url.isNotEmpty) {
+          url = result.url;
+          _resolvedReferer = result.referer;
+          if (result.wasResolved) {
+            debugPrint(
+                '🔗 Resolver [${result.strategy}] → ${url.substring(0, min(80, url.length))}');
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Resolver failed: $e');
+      }
     }
 
     if (url.isEmpty) {
       await _nextServer();
       return;
     }
+
+    // Re-check if the resolved URL is now a WebView/MPD type
+    final resolvedIsWeb = !isMpd && _isWebStream(url);
+    final resolvedIsMpd = !isMpd && url.toLowerCase().contains('.mpd');
 
     // Server timeout
     final timeoutSec = PlayerConfig.baseServerTimeout.inSeconds +
@@ -228,7 +247,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       }
     });
 
-    if (isWeb) {
+    if (resolvedIsWeb || isWeb) {
       debugPrint('🌐 Mode: WebView');
       _safeSetState(() {
         _useWebPlayer = true;
@@ -237,7 +256,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _setPlayerState(PlayerState.playing);
       _serverTimeout?.cancel();
       _loadingFailsafe?.cancel();
-    } else if (isMpd) {
+    } else if (resolvedIsMpd || isMpd) {
       debugPrint('🌐 Mode: Shaka WebView (MPD/DRM)');
       _safeSetState(() {
         _useWebPlayer = false;
@@ -264,7 +283,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         u.contains('pivo-pro') ||
         u.contains('pivopro') ||
         u.contains('vercel.app') ||
-        u.contains('.html');
+        (u.contains('.html') && !u.endsWith('.php'));
   }
 
   // ── IPTVEngine Load ───────────────────────────────────────────────────────
@@ -294,6 +313,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       url,
       k1: _currentStream?.k1,
       k2: _currentStream?.k2,
+      // Pass the PHP page URL as Referer so CDN auth works correctly
+      referer: _resolvedReferer,
     );
   }
 
@@ -355,148 +376,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           .clamp(PlayerConfig.backoffBaseMs, PlayerConfig.backoffMaxMs);
 
   // ── URL Resolution ────────────────────────────────────────────────────────
-
-  /// Checks if this URL is a la14hd/la12hd page that needs playbackURL extraction
-  bool _isStreamPageUrl(String url) {
-    final u = url.toLowerCase();
-    return u.contains('la14hd.com') ||
-        u.contains('la12hd.com') ||
-        u.contains('la10hd.com') ||
-        u.contains('la16hd.com');
-  }
-
-  /// Extracts m3u8 playbackURL from la14hd/la12hd HTML page source
-  Future<String?> _resolveStreamPage(String url) async {
-    HttpClient? client;
-    try {
-      client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 6)
-        ..idleTimeout = const Duration(seconds: 6)
-        ..badCertificateCallback = (_, __, ___) => true;
-
-      final req = await client.getUrl(Uri.parse(url));
-      req.followRedirects = true;
-      req.maxRedirects = 5;
-      req.headers.set('User-Agent', PlayerConfig.userAgent);
-      req.headers.set('Accept', 'text/html,*/*');
-      req.headers.set('Referer', url);
-
-      final res = await req.close().timeout(const Duration(seconds: 6));
-
-      if (res.statusCode == 200) {
-        final body = await res.transform(const Utf8Decoder()).join();
-
-        // Extract var playbackURL = "...m3u8...";
-        final playbackMatch = RegExp(
-                r'var\s+playbackURL\s*=\s*["\x27](https?://[^"\x27]+)["\x27]')
-            .firstMatch(body);
-        if (playbackMatch != null) {
-          final m3u8 = playbackMatch.group(1)!;
-          debugPrint(
-              '🔗 StreamPage resolved: ${m3u8.substring(0, min(80, m3u8.length))}');
-          return m3u8;
-        }
-
-        // Fallback: try generic m3u8 URL extraction from source
-        final genericMatch =
-            RegExp(r'https?://[^\s<>"\x27]+\.m3u8[^\s<>"\x27]*')
-                .firstMatch(body);
-        if (genericMatch != null) {
-          final m3u8 = genericMatch.group(0)!;
-          debugPrint(
-              '🔗 StreamPage generic m3u8: ${m3u8.substring(0, min(80, m3u8.length))}');
-          return m3u8;
-        }
-
-        debugPrint('⚠️ StreamPage: no playbackURL found in HTML');
-      } else {
-        await res.drain();
-        debugPrint('⚠️ StreamPage HTTP ${res.statusCode}');
-      }
-      return null;
-    } catch (e) {
-      debugPrint('❌ StreamPage resolve error: $e');
-      return null;
-    } finally {
-      try {
-        client?.close(force: true);
-      } catch (_) {}
-    }
-  }
-
-  Future<String?> _resolveUrl(String url) async {
-    final u = url.toLowerCase();
-
-    // ── la14hd / la12hd stream page extraction ──────────────────────────
-    if (_isStreamPageUrl(url)) {
-      debugPrint('🌐 Detected stream page: $url');
-      final m3u8 = await _resolveStreamPage(url);
-      if (m3u8 != null && m3u8.isNotEmpty) return m3u8;
-      // If extraction failed, skip to next server
-      return null;
-    }
-
-    // Fast paths — skip resolution
-    if (u.endsWith('.m3u8') ||
-        u.contains('.m3u8?') ||
-        u.contains('akamaized.net') ||
-        u.contains('cloudfront.net') ||
-        u.contains('cdn.') ||
-        u.contains('live.') ||
-        u.contains('stream.') ||
-        u.contains('hls.') ||
-        u.contains('.ts') ||
-        _isWebStream(url)) {
-      return url;
-    }
-
-    HttpClient? client;
-    try {
-      client = HttpClient()
-        ..connectionTimeout = PlayerConfig.urlResolveTimeout
-        ..idleTimeout = PlayerConfig.urlResolveTimeout
-        ..badCertificateCallback = (_, __, ___) => true;
-
-      final req = await client.getUrl(Uri.parse(url));
-      req.followRedirects = true;
-      req.maxRedirects = 5;
-      req.headers.set('User-Agent', PlayerConfig.userAgent);
-      req.headers.set('Accept', '*/*');
-
-      final res = await req.close().timeout(PlayerConfig.urlResolveTimeout);
-
-      if (res.redirects.isNotEmpty) {
-        final final_ = res.redirects.last.location.toString();
-        if (final_.toLowerCase().contains('.m3u8')) {
-          await res.drain();
-          return final_;
-        }
-      }
-
-      final ct = res.headers.contentType?.mimeType.toLowerCase() ?? '';
-      if (ct.contains('mpegurl') || ct.contains('x-mpegurl')) {
-        await res.drain();
-        return url;
-      }
-
-      if (res.statusCode == 200) {
-        final body = await res.transform(const Utf8Decoder()).join();
-        if (body.trimLeft().startsWith('#EXTM3U')) return url;
-        final match = RegExp(r'https?://[^\s<>"\x27]+\.m3u8[^\s<>"\x27]*')
-            .firstMatch(body);
-        if (match != null) return match.group(0);
-      } else {
-        await res.drain();
-      }
-      return url;
-    } catch (_) {
-      return url;
-    } finally {
-      try {
-        client?.close(force: true);
-      } catch (_) {}
-    }
-  }
+  // Delegated entirely to StreamUrlResolver (see stream_url_resolver.dart).
+  // The resolver handles: direct M3U8, PHP pages, JS-obfuscated arrays,
+  // JWPlayer/Clappr configs, HTML5 video tags, and redirect chains.
+  // Results are cached for 5 minutes to avoid repeated HTTP requests.
 
   // ── UI Helpers ────────────────────────────────────────────────────────────
 

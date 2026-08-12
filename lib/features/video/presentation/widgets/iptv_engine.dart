@@ -156,6 +156,7 @@ class IPTVEngine extends ChangeNotifier {
   String? _currentUrl;
   String? _k1;
   String? _k2;
+  String? _referer; // PHP page URL to send as Referer header
   bool _disposed = false;
   int _reconnectCount = 0;
   int _stallTicks = 0;
@@ -342,12 +343,14 @@ class IPTVEngine extends ChangeNotifier {
   // ── Public API ────────────────────────────────────────────────────────────
 
   /// Load a new stream URL. Optionally pass [k1]/[k2] for ClearKey DRM.
-  Future<void> load(String url, {String? k1, String? k2}) async {
+  /// Pass [referer] when stream was resolved from a PHP page for CDN auth.
+  Future<void> load(String url, {String? k1, String? k2, String? referer}) async {
     if (_disposed) return;
 
     _currentUrl = url;
     _k1 = k1;
     _k2 = k2;
+    _referer = referer;
     _reconnectCount = 0;
     _stallTicks = 0;
     _lastPosition = 0;
@@ -375,6 +378,27 @@ class IPTVEngine extends ChangeNotifier {
     final headers = <String, String>{
       'User-Agent': IPTVConfig.userAgent,
     };
+
+    // Add Referer header if this stream was resolved from a PHP page
+    if (_referer != null && _referer!.isNotEmpty) {
+      headers['Referer'] = _referer!;
+      // Also extract Origin from referer
+      try {
+        final uri = Uri.parse(_referer!);
+        headers['Origin'] = '${uri.scheme}://${uri.host}';
+      } catch (_) {}
+
+      // Set MPV http-header-fields for segment requests
+      if (_player.platform is NativePlayer) {
+        try {
+          final refererHeader = 'Referer: ${_referer!}';
+          await (_player.platform as NativePlayer)
+              .setProperty('http-header-fields', refererHeader);
+        } catch (e) {
+          debugPrint('⚠️ MPV Referer header error: $e');
+        }
+      }
+    }
 
     // ClearKey DRM: pass as MPV clearkeys property before open
     if (k1 != null && k2 != null && k1.isNotEmpty && k2.isNotEmpty) {

@@ -54,8 +54,8 @@ class PlayerConfig {
   /// Timeout for VideoPlayer.initialize() (15 s, was 30 s)
   static const Duration initializeTimeout = Duration(seconds: 15);
 
-  /// Timeout for URL resolution HTTP requests (2 s, was 4 s)
-  static const Duration urlResolveTimeout = Duration(seconds: 2);
+  /// Timeout for URL resolution HTTP requests (12 s — allows PHP page scraping)
+  static const Duration urlResolveTimeout = Duration(seconds: 12);
 
   /// Max additional timeout per URL resolve retry
   static const int urlResolveTimeoutExtensionSeconds = 2;
