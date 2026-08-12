@@ -1,29 +1,22 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
-import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
-import 'package:pivote/core/theme/theme_provider.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/core/services/cache_manager_service.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
-import 'package:pivote/features/profile/presentation/widgets/section_header.dart';
 import 'package:pivote/features/profile/presentation/screens/storage_manager_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/support_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/privacy_security_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/notifications_settings_screen.dart';
+import 'package:pivote/features/profile/presentation/screens/appearance_settings_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:pivote/core/services/greeting_service.dart';
-import 'package:pivote/core/services/app_activity_service.dart';
-import 'package:pivote/core/services/wakelock_service.dart';
-import 'package:pivote/features/profile/presentation/screens/activity_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -65,53 +58,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 24),
-                _buildStats(context),
-                const SizedBox(height: 16),
 
-                // UI Sections
-                _buildSection(
+                // Grupo 1: Preferencias
+                _buildCardGroup(
                   context,
-                  title: 'Mi Actividad',
-                  icon: Icons.analytics_outlined,
+                  title: 'Preferencias',
                   children: [
-                    _buildActivityTile(context),
-                    _buildDiagnosticsTile(context),
+                    _buildMenuTile(
+                      context,
+                      icon: Icons.palette_outlined,
+                      title: 'Apariencia',
+                      subtitle: 'Tema visual y comportamiento de pantalla',
+                      onTap: () => Navigator.push(
+                        context,
+                        AppAnimations.createRoute(
+                          const AppearanceSettingsScreen(),
+                        ),
+                      ),
+                    ),
+                    _buildMenuTile(
+                      context,
+                      icon: Icons.notifications_outlined,
+                      title: 'Notificaciones',
+                      subtitle: 'Avisos de partidos y novedades',
+                      onTap: () => Navigator.push(
+                        context,
+                        AppAnimations.createRoute(
+                          const NotificationsSettingsScreen(),
+                        ),
+                      ),
+                    ),
+                    _buildMenuTile(
+                      context,
+                      icon: Icons.storage_outlined,
+                      title: 'Almacenamiento',
+                      subtitle: 'Caché ocupado: $_cacheSize',
+                      onTap: () => Navigator.push(
+                        context,
+                        AppAnimations.createRoute(
+                          const StorageManagerScreen(),
+                        ),
+                      ).then((_) => _loadCacheInfo()),
+                    ),
                   ],
                 ),
 
-                _buildSection(
+                // Grupo 2: Herramientas
+                _buildCardGroup(
                   context,
-                  title: 'Apariencia',
-                  icon: Icons.palette_outlined,
-                  children: [_buildAppearanceSection(context)],
+                  title: 'Herramientas',
+                  children: [
+                    _buildMenuTile(
+                      context,
+                      icon: Icons.speed_rounded,
+                      title: 'Diagnóstico de Streaming',
+                      subtitle: 'Velocidad y latencia de red',
+                      onTap: () => Navigator.push(
+                        context,
+                        AppAnimations.createRoute(
+                          const DiagnosticsScreen(),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
-                _buildSection(
+                // Grupo 3: Soporte y Legal
+                _buildCardGroup(
                   context,
-                  title: 'Notificaciones',
-                  icon: Icons.notifications_outlined,
-                  children: [_buildNotificationsSection(context)],
-                ),
-
-                _buildSection(
-                  context,
-                  title: 'Almacenamiento',
-                  icon: Icons.storage_outlined,
-                  children: [_buildStorageSection(context)],
-                ),
-
-                _buildSection(
-                  context,
-                  title: 'Soporte',
-                  icon: Icons.support_agent_outlined,
-                  children: [_buildSupportSection(context)],
-                ),
-
-                _buildSection(
-                  context,
-                  title: 'Información',
-                  icon: Icons.info_outline,
-                  children: [_buildAboutAppSection(context)],
+                  title: 'Soporte y Legal',
+                  children: [
+                    _buildMenuTile(
+                      context,
+                      icon: Icons.help_outline_rounded,
+                      title: 'Ayuda y Soporte',
+                      subtitle: 'Preguntas frecuentes y soporte técnico',
+                      onTap: () => Navigator.push(
+                        context,
+                        AppAnimations.createRoute(
+                          const SupportScreen(),
+                        ),
+                      ),
+                    ),
+                    _buildMenuTile(
+                      context,
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Privacidad y Seguridad',
+                      subtitle: 'Términos de servicio y políticas',
+                      onTap: () => Navigator.push(
+                        context,
+                        AppAnimations.createRoute(
+                          const PrivacySecurityScreen(),
+                        ),
+                      ),
+                    ),
+                    _buildMenuTile(
+                      context,
+                      icon: Icons.info_outline_rounded,
+                      title: 'Información de la App',
+                      subtitle: 'Versión de Pivote Studio',
+                      onTap: () => _showAboutDialog(context),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 24),
@@ -123,6 +171,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCardGroup(BuildContext context,
+      {required String title, required List<Widget> children}) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 8, bottom: 8),
+            child: Text(
+              title.toUpperCase(),
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.primary,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.05)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? 0.2 : 0.02),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                for (int i = 0; i < children.length; i++) ...[
+                  children[i],
+                  if (i < children.length - 1)
+                    Divider(
+                      height: 1,
+                      indent: 64,
+                      endIndent: 20,
+                      color: theme.dividerColor.withValues(alpha: 0.05),
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuTile(BuildContext context,
+      {required IconData icon,
+      required String title,
+      required String subtitle,
+      VoidCallback? onTap,
+      Widget? trailing}) {
+    final theme = Theme.of(context);
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: theme.colorScheme.primary, size: 20),
+      ),
+      title: Text(
+        title,
+        style: GoogleFonts.spaceGrotesk(
+          fontWeight: FontWeight.bold,
+          fontSize: 15,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 12,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+        ),
+      ),
+      trailing: trailing ?? Icon(
+        Icons.chevron_right_rounded,
+        size: 20,
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
       ),
     );
   }
@@ -361,179 +502,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSection(BuildContext context,
-      {required String title,
-      required IconData icon,
-      required List<Widget> children}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(icon: icon, title: title),
-        ...children,
-        const SizedBox(height: 12),
-      ],
-    );
-  }
-
-  Widget _buildStats(BuildContext context) {
-    return Consumer2<ChannelProvider, FavoritesProvider>(
-      builder: (context, channelProvider, favoritesProvider, child) {
-        final totalChannels = channelProvider.channels.length;
-        final favoriteChannels = favoritesProvider.favoriteIds.length;
-        final categories = channelProvider.categories.length - 1;
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Row(
-            children: [
-              _buildStatItem(context, totalChannels.toString(), 'Canales',
-                  Icons.tv_rounded),
-              _buildStatItem(context, favoriteChannels.toString(), 'Favoritos',
-                  Icons.favorite_rounded),
-              _buildStatItem(context, categories.toString(), 'Categorías',
-                  Icons.layers_rounded),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildStatItem(
-      BuildContext context, String value, String label, IconData icon) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withAlpha(51),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: theme.dividerColor.withAlpha(20)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon,
-                size: 20, color: theme.colorScheme.primary.withAlpha(179)),
-            const SizedBox(height: 12),
-            Text(value,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                )),
-            Text(label,
-                style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11,
-                    color: theme.colorScheme.onSurface.withAlpha(128))),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAppearanceSection(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final wakelockService = Provider.of<WakelockService>(context);
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        _buildOptionTile(
-          context,
-          icon: themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-          title: 'Modo ${themeProvider.isDarkMode ? 'Oscuro' : 'Claro'}',
-          subtitle: 'Configuración visual de la app',
-          trailing: Switch(
-            value: themeProvider.isDarkMode,
-            onChanged: (v) => themeProvider.toggleTheme(),
-            activeThumbColor: theme.colorScheme.primary,
-          ),
-        ),
-        _buildOptionTile(
-          context,
-          icon: wakelockService.keepScreenOn
-              ? Icons.brightness_high_rounded
-              : Icons.brightness_low_rounded,
-          title: 'Pantalla siempre encendida',
-          subtitle: wakelockService.keepScreenOn
-              ? 'La pantalla no se apagará'
-              : 'La pantalla se apagará normalmente',
-          trailing: Switch(
-            value: wakelockService.keepScreenOn,
-            onChanged: (v) => wakelockService.setKeepScreenOn(v),
-            activeThumbColor: theme.colorScheme.primary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNotificationsSection(BuildContext context) {
-    return _buildOptionTile(
-      context,
-      icon: Icons.notifications_outlined,
-      title: 'Configurar notificaciones',
-      subtitle: 'Gestiona tus preferencias de notificaciones',
-      onTap: () => Navigator.push(
-        context,
-        AppAnimations.createRoute(
-          const NotificationsSettingsScreen(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStorageSection(BuildContext context) {
-    return Column(
-      children: [
-        _buildOptionTile(
-          context,
-          icon: Icons.cached,
-          title: 'Caché',
-          subtitle: _cacheSize,
-          onTap: () => Navigator.push(
-            context,
-            AppAnimations.createRoute(const StorageManagerScreen()),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSupportSection(BuildContext context) {
-    return Column(
-      children: [
-        _buildOptionTile(
-          context,
-          icon: Icons.help_outline,
-          title: 'Ayuda y soporte',
-          onTap: () => Navigator.push(
-            context,
-            AppAnimations.createRoute(const SupportScreen()),
-          ),
-        ),
-        _buildOptionTile(
-          context,
-          icon: Icons.privacy_tip_outlined,
-          title: 'Privacidad y Seguridad',
-          onTap: () => Navigator.push(
-            context,
-            AppAnimations.createRoute(const PrivacySecurityScreen()),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAboutAppSection(BuildContext context) {
-    return _buildOptionTile(
-      context,
-      icon: Icons.info_outline,
-      title: 'Versión',
-      subtitle: 'v$_appVersion',
-      onTap: () => _showAboutDialog(context),
-    );
-  }
-
   Widget _buildLogoutButton(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -590,46 +558,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildOptionTile(BuildContext context,
-      {required IconData icon,
-      required String title,
-      String? subtitle,
-      Color? iconColor,
-      Color? iconBgColor,
-      Widget? trailing,
-      VoidCallback? onTap}) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        tileColor: theme.colorScheme.surfaceContainerHighest.withAlpha(76),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: theme.dividerColor.withAlpha(20))),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconBgColor ?? theme.colorScheme.primary.withAlpha(26),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor ?? theme.colorScheme.primary, size: 20),
-        ),
-        title: Text(title,
-            style: GoogleFonts.spaceGrotesk(
-                fontWeight: FontWeight.w600, fontSize: 15)),
-        subtitle: subtitle != null
-            ? Text(subtitle,
-                style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    color: theme.colorScheme.onSurface.withAlpha(153)))
-            : null,
-        trailing: trailing ?? const Icon(Icons.chevron_right, size: 20),
       ),
     );
   }
@@ -857,42 +785,5 @@ class _ProfileScreenState extends State<ProfileScreen> {
         type: AppDialogType.success,
       );
     }
-  }
-
-  Widget _buildActivityTile(BuildContext context) {
-    return Consumer<AppActivityService>(
-      builder: (context, activityService, child) {
-        final rank = activityService.getArgentineRank();
-        final emoji = activityService.getArgentineRankEmoji();
-
-        return _buildOptionTile(
-          context,
-          icon: Icons.bar_chart_rounded,
-          title: 'Estadísticas y Nivel',
-          subtitle: '$emoji Rango: $rank',
-          onTap: () => Navigator.push(
-            context,
-            AppAnimations.createRoute(
-              const ActivityScreen(),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildDiagnosticsTile(BuildContext context) {
-    return _buildOptionTile(
-      context,
-      icon: Icons.speed_rounded,
-      title: 'Diagnóstico de Streaming',
-      subtitle: 'Medidor de velocidad y latencia de red',
-      onTap: () => Navigator.push(
-        context,
-        AppAnimations.createRoute(
-          const DiagnosticsScreen(),
-        ),
-      ),
-    );
   }
 }
