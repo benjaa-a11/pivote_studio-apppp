@@ -12,30 +12,27 @@ class NotificationService {
   static const String _channelId = 'pivote_notifications';
   static const String _channelName = 'Pivote Notifications';
   static const String _channelDescription = 'Notificaciones de la aplicación Pivote';
-
-  /// Set by the app layer so FCM events can be mirrored in the in-app center.
   static ValueChanged<RemoteMessage>? onMessageReceived;
+  static final List<RemoteMessage> _pendingMessages = [];
+
+  static List<RemoteMessage> takePendingMessages() {
+    final messages = List<RemoteMessage>.from(_pendingMessages);
+    _pendingMessages.clear();
+    return messages;
+  }
 
   static Future<void> initializeWithoutPermission() async {
     try {
       final settings = await _messaging.getNotificationSettings();
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        await _setupNotificationHandlers();
-      }
-    } catch (e) {
-      debugPrint('❌ Error initializing Notification Service: $e');
-    }
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) await _setupNotificationHandlers();
+    } catch (e) { debugPrint('❌ Error initializing Notification Service: $e'); }
   }
 
   static Future<void> initialize() async {
     try {
       final settings = await _messaging.requestPermission(alert: true, badge: true, sound: true, provisional: false);
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        await _setupNotificationHandlers();
-      }
-    } catch (e) {
-      debugPrint('❌ Error initializing Notification Service: $e');
-    }
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) await _setupNotificationHandlers();
+    } catch (e) { debugPrint('❌ Error initializing Notification Service: $e'); }
   }
 
   static Future<void> _setupNotificationHandlers() async {
@@ -58,9 +55,7 @@ class NotificationService {
     await _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(androidChannel);
   }
 
-  static Future<String?> getToken() async {
-    try { return await _messaging.getToken(); } catch (e) { debugPrint('❌ Error getting FCM token: $e'); return null; }
-  }
+  static Future<String?> getToken() async { try { return await _messaging.getToken(); } catch (e) { debugPrint('❌ Error getting FCM token: $e'); return null; } }
 
   static Future<void> _saveTokenToFirestore(String token) async {
     try {
@@ -71,47 +66,32 @@ class NotificationService {
   }
 
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
+    _pendingMessages.add(message);
     onMessageReceived?.call(message);
     final notification = message.notification;
     final android = message.notification?.android;
     if (notification != null) {
-      await _localNotifications.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(_channelId, _channelName, channelDescription: _channelDescription, importance: Importance.high, priority: Priority.high, icon: android?.smallIcon ?? '@mipmap/ic_launcher'),
-          iOS: const DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true),
-        ),
-        payload: message.data.toString(),
-      );
+      await _localNotifications.show(notification.hashCode, notification.title, notification.body, NotificationDetails(android: AndroidNotificationDetails(_channelId, _channelName, channelDescription: _channelDescription, importance: Importance.high, priority: Priority.high, icon: android?.smallIcon ?? '@mipmap/ic_launcher'), iOS: const DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true)), payload: message.data.toString());
     }
   }
 
   static void _handleNotificationTap(RemoteMessage message) {
+    _pendingMessages.add(message);
     onMessageReceived?.call(message);
   }
 
-  static void _onNotificationTapped(NotificationResponse response) {
-    debugPrint('🔔 Local notification tapped: ${response.payload}');
-  }
+  static void _onNotificationTapped(NotificationResponse response) { debugPrint('🔔 Local notification tapped: ${response.payload}'); }
 
-  static Future<bool> areNotificationsEnabled() async {
-    final settings = await _messaging.getNotificationSettings();
-    return settings.authorizationStatus == AuthorizationStatus.authorized;
-  }
+  static Future<bool> areNotificationsEnabled() async { final settings = await _messaging.getNotificationSettings(); return settings.authorizationStatus == AuthorizationStatus.authorized; }
 
   static Future<bool> requestPermission() async {
     try {
-      if (await Permission.notification.isDenied) {
-        final status = await Permission.notification.request();
-        if (status.isDenied) return false;
-      }
+      if (await Permission.notification.isDenied) { final status = await Permission.notification.request(); if (status.isDenied) return false; }
       final settings = await _messaging.requestPermission(alert: true, badge: true, sound: true);
       final authorized = settings.authorizationStatus == AuthorizationStatus.authorized;
       if (authorized) await initialize();
       return authorized;
-    } catch (e) { return false; }
+    } catch (_) { return false; }
   }
 
   static Future<void> disableNotifications() async {
@@ -129,6 +109,4 @@ class NotificationService {
 }
 
 @pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('🔔 Background message received: ${message.messageId}');
-}
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async { debugPrint('🔔 Background message received: ${message.messageId}'); }
