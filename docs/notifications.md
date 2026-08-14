@@ -1,30 +1,26 @@
 # Notifications v2
 
-La sección de notificaciones usa datos de fútbol en vivo ya disponibles en Pivote y noticias de fútbol mediante GNews.
+La sección de notificaciones combina actividad futbolística de Pivote con noticias reales de fútbol y funciona completamente dentro de la app.
 
-## API key de GNews
+## NewsData.io
 
-La clave no se guarda en el repositorio ni se configura mediante `--dart-define`.
+La fuente de noticias es `https://newsdata.io/api/1/latest` usando la consulta gratuita proporcionada para fútbol y noticias de Argentina.
 
-Pivote la obtiene en tiempo de ejecución desde Firestore:
+La integración consume los campos estructurados de la API como `results`, `article_id`, `title`, `description`, `content`, `pubDate`, `image_url` y `source_name`. NewsData documenta estos campos en su objeto de respuesta. citeturn818952search0turn818952search4
 
-- Colección: `api`
-- Documento: `gnews`
-- Campo: `apikey`
-
-El valor del campo debe ser un `String` con la API key de GNews.
-
-Si el documento o campo no existe, o la lectura falla, Pivote no realiza consultas a GNews y mantiene disponibles las notificaciones deportivas que tenga cargadas.
-
-> Importante: al leer la clave desde Firestore directamente desde una app cliente, la clave sigue pudiendo ser recuperada por un cliente autorizado. Para ocultarla realmente, la consulta a GNews debería pasar por un backend/proxy seguro.
+Las noticias no abren páginas web externas. Al tocar una noticia, Pivote la marca como leída y muestra el contenido disponible en un panel interno.
 
 ## Funciones
 
 - Noticias reales ordenadas por fecha.
-- Noticias con imagen, fuente y enlace externo.
+- Imágenes de las noticias cuando la API las proporciona.
+- Detalle de la noticia dentro de Pivote.
 - Partidos en vivo provenientes del `SoccerProvider` existente.
 - Estado leído/no leído persistido localmente.
 - Marcar todo como leído.
-- Pull-to-refresh.
+- Pull-to-refresh manual.
 - Estados de carga, error y vacío.
 - Compatibilidad con tema claro/oscuro.
+- Sin `url_launcher` para noticias.
+
+> La clave pública incluida en la URL de NewsData queda accesible en el cliente Android. Para una protección real de secretos, la consulta debería realizarse desde un backend/proxy.
