@@ -11,10 +11,6 @@ class NewsService {
     final uri = Uri.parse(_baseUrl).replace(queryParameters: const {
       'apikey': _apiKey,
       'q': 'futbol noticias argentina',
-      'language': 'spanish',
-      'country': 'argentina',
-      'category': 'sports',
-      'size': '10',
     });
 
     final response = await http.get(uri).timeout(const Duration(seconds: 10));
@@ -41,11 +37,11 @@ class NewsService {
           DateTime.now();
       final description = (raw['description'] as String?)?.trim();
       final content = (raw['content'] as String?)?.trim();
-      final body = (description?.isNotEmpty == true)
+      final body = description?.isNotEmpty == true
           ? description!
-          : ((content?.isNotEmpty == true)
+          : content?.isNotEmpty == true
               ? content!
-              : 'Últimas noticias del fútbol argentino.');
+              : 'Últimas noticias del fútbol argentino.';
 
       notifications.add(
         AppNotification(
