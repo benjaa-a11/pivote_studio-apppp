@@ -40,22 +40,18 @@ void main() async {
   MediaKit.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   ImageCacheHelper.configurePaintingCache();
-
   await FirebaseService.initialize();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await NotificationService.initializeWithoutPermission();
   await AuthService.initSession();
-
   SoccerService.prefetchLiveSoccerData();
   final audioManager = AudioManager();
-
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-
   runApp(PivoteApp(audioManager: audioManager));
 }
 
@@ -127,15 +123,75 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
       setState(() { _isCheckingAuth = false; _isLoggedIn = false; });
       return;
     }
-    final user = AuthService.currentUser;
-    setState(() { _isCheckingAuth = false; _isLoggedIn = user != null; });
+    try {
+      final loggedIn = await AuthService.isLoggedIn();
+      if (loggedIn) {
+        final user = await AuthService.getUser();
+        if (user == null) {
+          await AuthService.logout();
+          if (mounted) setState(() { _isLoggedIn = false; _isCheckingAuth = false; });
+        } else if (mounted) {
+          final userProvider = Provider.of<UserProvider>(context, listen: false);
+          final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
+          if (userProvider.user == null) await userProvider.refreshUser();
+          favoritesProvider.refreshFromFirestore();
+          NotificationService.getToken().then((token) { if (token != null) AuthService.updateFcmToken(token); });
+          setState(() { _isLoggedIn = true; _isCheckingAuth = false; });
+        }
+      } else if (mounted) {
+        setState(() { _isLoggedIn = false; _isCheckingAuth = false; });
+      }
+    } catch (e) {
+      debugPrint('❌ _AuthenticationWrapper: Error checking auth: $e');
+      final loggedIn = await AuthService.isLoggedIn();
+      if (mounted) setState(() { _isLoggedIn = loggedIn; _isCheckingAuth = false; });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isCheckingAuth) return const Scaffold(body: Center(child: PivoteLoader()));
-    if (_isLoggedIn) return const MainScreen();
-    if (!FirebaseService.isInitialized) return const FirebaseRequiredScreen();
-    return const LoginScreen();
+    if (!FirebaseService.isInitialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) { FlutterNativeSplash.remove(); });
+      return const FirebaseRequiredScreen();
+    }
+    if (_isCheckingAuth) return const SizedBox.shrink();
+    if (!_isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) { FlutterNativeSplash.remove(); });
+      return const LoginScreen();
+    }
+    return Consumer3<UserProvider, ChannelProvider, SoccerProvider>(
+      builder: (context, userProvider, channelProvider, soccerProvider, child) {
+        if (userProvider.user?.isSuspended == true) {
+          WidgetsBinding.instance.addPostFrameCallback((_) { FlutterNativeSplash.remove(); });
+          return const SuspendedScreen();
+        }
+        final isDataReady = channelProvider.isInitialized;
+        if (isDataReady) {
+          WidgetsBinding.instance.addPostFrameCallback((_) { FlutterNativeSplash.remove(); });
+          return const MainScreen();
+        }
+        return Scaffold(
+          backgroundColor: AppTheme.darkBg,
+          body: Center(
+            child: AppAnimations.smoothFadeInScale(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(color: AppTheme.darkBg, shape: BoxShape.circle),
+                    child: Image.asset('assets/logo.png', errorBuilder: (context, _, __) => const Icon(Icons.play_circle_fill, size: 60, color: AppTheme.darkAccent)),
+                  ),
+                  const SizedBox(height: 32),
+                  const SizedBox(width: 40, height: 40, child: PivoteLoader(color: AppTheme.darkAccent, strokeWidth: 3, size: 40)),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
