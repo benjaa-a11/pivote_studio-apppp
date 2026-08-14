@@ -23,19 +23,45 @@ class AppNotification {
     this.isRead = false,
   });
 
-  AppNotification copyWith({
-    bool? isRead,
-  }) {
+  AppNotification copyWith({bool? isRead}) => AppNotification(
+        id: id,
+        title: title,
+        body: body,
+        imageUrl: imageUrl,
+        deepLink: deepLink,
+        source: source,
+        publishedAt: publishedAt,
+        type: type,
+        isRead: isRead ?? this.isRead,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'body': body,
+        'imageUrl': imageUrl,
+        'deepLink': deepLink,
+        'source': source,
+        'publishedAt': publishedAt.toIso8601String(),
+        'type': type.name,
+      };
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    final typeName = json['type'] as String? ?? 'system';
+    final type = AppNotificationType.values.firstWhere(
+      (value) => value.name == typeName,
+      orElse: () => AppNotificationType.system,
+    );
+
     return AppNotification(
-      id: id,
-      title: title,
-      body: body,
-      imageUrl: imageUrl,
-      deepLink: deepLink,
-      source: source,
-      publishedAt: publishedAt,
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? 'Pivote',
+      body: json['body'] as String? ?? '',
+      imageUrl: json['imageUrl'] as String?,
+      deepLink: json['deepLink'] as String?,
+      source: json['source'] as String? ?? 'Pivote',
+      publishedAt: DateTime.tryParse(json['publishedAt'] as String? ?? '') ?? DateTime.now(),
       type: type,
-      isRead: isRead ?? this.isRead,
     );
   }
 }
