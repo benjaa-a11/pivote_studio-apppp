@@ -11,33 +11,25 @@ import 'package:pivote/features/soccer/presentation/providers/soccer_provider.da
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
-
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  late final NotificationsProvider _provider;
-
   @override
   void initState() {
     super.initState();
-    _provider = NotificationsProvider();
     WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
   }
 
   Future<void> _refresh() async {
-    await _provider.refresh(soccerData: context.read<SoccerProvider>().soccerData);
-  }
-
-  @override
-  void dispose() {
-    _provider.dispose();
-    super.dispose();
+    await context.read<NotificationsProvider>().refresh(
+      soccerData: context.read<SoccerProvider>().soccerData,
+    );
   }
 
   Future<void> _open(AppNotification item) async {
-    await _provider.markAsRead(item.id);
+    await context.read<NotificationsProvider>().markAsRead(item.id);
     final url = item.deepLink;
     if (url != null) await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
@@ -46,45 +38,48 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    return ChangeNotifierProvider.value(
-      value: _provider,
-      child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        appBar: PivoteAppBar(
-          title: 'Notificaciones',
-          actions: [
-            Consumer<NotificationsProvider>(
-              builder: (_, p, __) => p.unreadCount == 0 ? const SizedBox.shrink() : IconButton(
-                tooltip: 'Marcar todo como leído',
-                onPressed: p.markAllAsRead,
-                icon: Icon(Icons.done_all_rounded, color: theme.colorScheme.primary),
-              ),
-            ),
-          ],
-        ),
-        body: Consumer<NotificationsProvider>(
-          builder: (context, p, _) {
-            if (p.isLoading && p.items.isEmpty) return const _LoadingView();
-            if (p.items.isEmpty) return _EmptyView(onRefresh: _refresh);
-            return RefreshIndicator.adaptive(
-              onRefresh: _refresh,
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(child: _Header(isDark: isDark, unread: p.unreadCount)),
-                  if (p.error != null) SliverToBoxAdapter(child: _ErrorBanner(message: p.error!, onRetry: _refresh)),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
-                    sliver: SliverList.builder(
-                      itemCount: p.items.length,
-                      itemBuilder: (_, i) => _NotificationCard(item: p.items[i], onTap: () => _open(p.items[i])),
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: PivoteAppBar(
+        title: 'Notificaciones',
+        actions: [
+          Consumer<NotificationsProvider>(
+            builder: (_, p, __) => p.unreadCount == 0
+                ? const SizedBox.shrink()
+                : IconButton(
+                    tooltip: 'Marcar todo como leído',
+                    onPressed: p.markAllAsRead,
+                    icon: Icon(Icons.done_all_rounded, color: theme.colorScheme.primary),
+                  ),
+          ),
+        ],
+      ),
+      body: Consumer<NotificationsProvider>(
+        builder: (context, p, _) {
+          if (p.isLoading && p.items.isEmpty) return const _LoadingView();
+          if (p.items.isEmpty) return _EmptyView(onRefresh: _refresh);
+          return RefreshIndicator.adaptive(
+            onRefresh: _refresh,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(child: _Header(isDark: isDark, unread: p.unreadCount)),
+                if (p.error != null)
+                  SliverToBoxAdapter(child: _ErrorBanner(message: p.error!, onRetry: _refresh)),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+                  sliver: SliverList.builder(
+                    itemCount: p.items.length,
+                    itemBuilder: (_, i) => _NotificationCard(
+                      item: p.items[i],
+                      onTap: () => _open(p.items[i]),
                     ),
                   ),
-                ],
-              ),
-            );
-          },
-        ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -99,14 +94,25 @@ class _Header extends StatelessWidget {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-      child: Row(children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Centro de novedades', style: GoogleFonts.spaceGrotesk(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.7)),
-          const SizedBox(height: 4),
-          Text(unread == 0 ? 'Estás al día.' : '$unread novedades sin leer', style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w500, color: isDark ? AppTheme.darkText3 : AppTheme.lightText3)),
-        ])),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7), decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: .10), borderRadius: BorderRadius.circular(20)), child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.bolt_rounded, size: 15, color: theme.colorScheme.primary), const SizedBox(width: 4), Text('EN VIVO', style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w800, color: theme.colorScheme.primary))])),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Centro de novedades', style: GoogleFonts.spaceGrotesk(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.7)),
+                const SizedBox(height: 4),
+                Text(unread == 0 ? 'Estás al día.' : '$unread novedades sin leer', style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w500, color: isDark ? AppTheme.darkText3 : AppTheme.lightText3)),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: .10), borderRadius: BorderRadius.circular(20)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.bolt_rounded, size: 15, color: theme.colorScheme.primary), const SizedBox(width: 4), Text('EN VIVO', style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w800, color: theme.colorScheme.primary))]),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -115,7 +121,12 @@ class _NotificationCard extends StatelessWidget {
   final AppNotification item;
   final VoidCallback onTap;
   const _NotificationCard({required this.item, required this.onTap});
-  IconData get icon => switch (item.type) { AppNotificationType.news => Icons.article_rounded, AppNotificationType.match => Icons.sports_soccer_rounded, AppNotificationType.goal => Icons.flash_on_rounded, AppNotificationType.system => Icons.notifications_active_rounded };
+  IconData get icon => switch (item.type) {
+        AppNotificationType.news => Icons.article_rounded,
+        AppNotificationType.match => Icons.sports_soccer_rounded,
+        AppNotificationType.goal => Icons.flash_on_rounded,
+        AppNotificationType.system => Icons.notifications_active_rounded,
+      };
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
