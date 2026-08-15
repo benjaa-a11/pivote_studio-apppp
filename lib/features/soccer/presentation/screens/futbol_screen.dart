@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:pivote/features/soccer/presentation/widgets/soccer_match_card.dart';
-import 'package:pivote/features/soccer/presentation/widgets/matches_hero.dart';
+import 'package:pivote/features/soccer/presentation/screens/ascenso_2026_screen.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
@@ -18,6 +18,12 @@ class FutbolScreen extends StatefulWidget {
 
 class _FutbolScreenState extends State<FutbolScreen> {
   String _selectedLeagueId = 'all';
+
+  bool _isHeroMatch(SoccerMatch match) {
+    if (match.shouldRemoveFromHero || match.isAutoFinished) return false;
+    if (!(match.isLive || match.isScheduled || (match.isFinished && !match.shouldRemoveFromHero))) return false;
+    return match.tvChannels.any((c) => c.id != null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +43,12 @@ class _FutbolScreenState extends State<FutbolScreen> {
     final data = provider.soccerData;
     if (data == null || data.matches.isEmpty) return _buildEmpty(theme);
 
-    final filtered = _selectedLeagueId == 'all' ? data.matches : data.matches.where((m) => m.leagueId == _selectedLeagueId).toList();
+    final sourceMatches = _selectedLeagueId == 'all'
+        ? data.matches
+        : data.matches.where((m) => m.leagueId == _selectedLeagueId).toList();
+    // The home screen already exposes these featured matches in MatchesHero.
+    // Keep the football tab focused on the complete competition calendar without duplicates.
+    final filtered = sourceMatches.where((m) => !_isHeroMatch(m)).toList();
     final live = filtered.where((m) => m.isLive).toList();
     final upcoming = filtered.where((m) => !m.isLive && !m.isFinished).toList();
 
@@ -50,8 +61,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(child: _buildHeader(data, live.length, upcoming.length, theme)),
-          if (_selectedLeagueId == 'all' && data.matches.any(_isHeroMatch))
-            const SliverToBoxAdapter(child: _HeroSection()),
           SliverToBoxAdapter(child: _buildSectionTitle(theme, 'Competiciones', 'Explorá por torneo')),
           SliverToBoxAdapter(child: _buildLeagueCarousel(data, theme)),
           SliverToBoxAdapter(child: _buildSectionTitle(theme, 'Partidos', 'Resultados, horarios y detalles')),
@@ -62,12 +71,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
         ],
       ),
     );
-  }
-
-  bool _isHeroMatch(SoccerMatch match) {
-    if (match.shouldRemoveFromHero || match.isAutoFinished) return false;
-    if (!(match.isLive || match.isScheduled || (match.isFinished && !match.shouldRemoveFromHero))) return false;
-    return match.tvChannels.any((c) => c.id != null);
   }
 
   Widget _buildHeader(SoccerData data, int liveCount, int upcomingCount, ThemeData theme) {
@@ -132,17 +135,64 @@ class _FutbolScreenState extends State<FutbolScreen> {
                 const SizedBox(width: 8),
                 _StatBadge(icon: Icons.schedule_rounded, label: '$upcomingCount próximos', active: false, theme: theme),
                 const Spacer(),
-                Text('${data.matches.length} partidos', style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w700, color: theme.hintColor)),
+                Text('${filteredMatchCount(data)} partidos', style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w700, color: theme.hintColor)),
               ],
             ),
             if (featured > 0) ...[
               const SizedBox(height: 11),
-              Row(children: [Icon(Icons.auto_awesome_rounded, size: 13, color: theme.colorScheme.primary), const SizedBox(width: 5), Text('$featured destacados con señal disponible', style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w600, color: theme.hintColor))]),
+              Row(children: [Icon(Icons.auto_awesome_rounded, size: 13, color: theme.colorScheme.primary), const SizedBox(width: 5), Text('$featured destacados ya aparecen en Inicio', style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w600, color: theme.hintColor))]),
             ],
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const Ascenso2026Screen()));
+                },
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: theme.colorScheme.onSurface,
+                  foregroundColor: theme.scaffoldBackgroundColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 30,
+                      height: 30,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: theme.scaffoldBackgroundColor.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Image.network(
+                        'https://firebasestorage.googleapis.com/v0/b/copafacil-web.appspot.com/o/evts%2F-ncnoo5vqvuwobcpml2n%2F1693084870250.png?alt=media',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Icon(Icons.emoji_events_rounded, size: 17, color: theme.scaffoldBackgroundColor),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('ASCENSO 2026', style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.7)),
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_rounded, size: 18, color: theme.scaffoldBackgroundColor.withValues(alpha: 0.75)),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
+  }
+
+  int filteredMatchCount(SoccerData data) {
+    final source = _selectedLeagueId == 'all' ? data.matches : data.matches.where((m) => m.leagueId == _selectedLeagueId);
+    return source.where((m) => !_isHeroMatch(m)).length;
   }
 
   Widget _buildSectionTitle(ThemeData theme, String title, String subtitle) {
@@ -167,9 +217,12 @@ class _FutbolScreenState extends State<FutbolScreen> {
         itemCount: data.leagues.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (_, index) {
-          if (index == 0) return _LeagueChip(label: 'Todo', count: data.matches.length, selected: _selectedLeagueId == 'all', isAll: true, theme: theme, isDark: isDark, onTap: () => setState(() => _selectedLeagueId = 'all'));
+          if (index == 0) {
+            final count = data.matches.where((m) => !_isHeroMatch(m)).length;
+            return _LeagueChip(label: 'Todo', count: count, selected: _selectedLeagueId == 'all', isAll: true, theme: theme, isDark: isDark, onTap: () => setState(() => _selectedLeagueId = 'all'));
+          }
           final league = data.leagues[index - 1];
-          final count = data.matches.where((m) => m.leagueId == league.id).length;
+          final count = data.matches.where((m) => m.leagueId == league.id && !_isHeroMatch(m)).length;
           return _LeagueChip(label: league.shortName, count: count, selected: _selectedLeagueId == league.id, logoUrl: league.logoUrl, theme: theme, isDark: isDark, onTap: () => setState(() => _selectedLeagueId = league.id));
         },
       ),
@@ -181,6 +234,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
     final grouped = <String, List<SoccerMatch>>{};
     for (final match in matches) grouped.putIfAbsent(match.leagueId, () => []).add(match);
     final entries = grouped.entries.toList();
+    if (entries.isEmpty) return SliverFillRemaining(hasScrollBody: false, child: _buildEmpty(theme, message: 'No hay partidos para esta competición'));
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
@@ -241,27 +295,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
           Text('Actualizá para volver a consultar la agenda.', textAlign: TextAlign.center, style: GoogleFonts.spaceGrotesk(fontSize: 12.5, color: theme.hintColor)),
         ]),
       ),
-    );
-  }
-}
-
-class _HeroSection extends StatelessWidget {
-  const _HeroSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-          child: Row(children: [
-            Expanded(child: Text('Ahora y lo que viene', style: GoogleFonts.spaceGrotesk(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.4))),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), decoration: BoxDecoration(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(999)), child: Text('DESTACADOS', style: GoogleFonts.spaceGrotesk(fontSize: 8.5, fontWeight: FontWeight.w900, letterSpacing: 0.6, color: Theme.of(context).colorScheme.error))),
-          ]),
-        ),
-        const MatchesHero(),
-      ]),
     );
   }
 }
