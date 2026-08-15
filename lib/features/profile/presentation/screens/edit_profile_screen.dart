@@ -14,35 +14,36 @@ import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
+
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _name;
-  late final TextEditingController _lastName;
-  late final TextEditingController _currentPassword;
-  late final TextEditingController _newPassword;
-  bool _loading = false;
+  late final TextEditingController _nameController;
+  late final TextEditingController _lastNameController;
+  late final TextEditingController _currentPasswordController;
+  late final TextEditingController _newPasswordController;
+  bool _saving = false;
   bool _passwordOpen = false;
 
   @override
   void initState() {
     super.initState();
     final user = context.read<UserProvider>().user;
-    _name = TextEditingController(text: user?.name ?? '');
-    _lastName = TextEditingController(text: user?.lastName ?? '');
-    _currentPassword = TextEditingController();
-    _newPassword = TextEditingController();
+    _nameController = TextEditingController(text: user?.name ?? '');
+    _lastNameController = TextEditingController(text: user?.lastName ?? '');
+    _currentPasswordController = TextEditingController();
+    _newPasswordController = TextEditingController();
   }
 
   @override
   void dispose() {
-    _name.dispose();
-    _lastName.dispose();
-    _currentPassword.dispose();
-    _newPassword.dispose();
+    _nameController.dispose();
+    _lastNameController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
     super.dispose();
   }
 
@@ -51,154 +52,245 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final provider = context.read<UserProvider>();
     final user = provider.user;
     if (user == null) return;
-    setState(() => _loading = true);
+
+    setState(() => _saving = true);
     try {
-      if (user.name != _name.text.trim() || user.lastName != _lastName.text.trim()) {
-        await AuthService.updateUser(user.copyWith(name: _name.text.trim(), lastName: _lastName.text.trim()));
+      final updated = user.copyWith(
+        name: _nameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+      );
+      if (updated.name != user.name || updated.lastName != user.lastName) {
+        await AuthService.updateUser(updated);
         await provider.refreshUser();
       }
-      if (_passwordOpen && _newPassword.text.isNotEmpty) {
-        try {
-          await provider.updatePassword(_currentPassword.text, _newPassword.text);
-          if (mounted) AppNotifications.showSuccess(context, 'Contraseña actualizada');
-          _newPassword.clear();
-          _passwordOpen = false;
-        } catch (e) {
-          if (e.toString().contains('requires-recent-login')) {
-            if (mounted) AppNotifications.showError(context, 'Por seguridad, iniciá sesión nuevamente para cambiar tu contraseña');
-          } else {
-            rethrow;
-          }
-        }
+
+      if (_passwordOpen && _newPasswordController.text.trim().isNotEmpty) {
+        await provider.updatePassword(
+          _currentPasswordController.text,
+          _newPasswordController.text,
+        );
       }
+
       if (!mounted) return;
       AppNotifications.showSuccess(context, 'Perfil actualizado correctamente');
       Navigator.pop(context);
     } catch (e) {
-      if (mounted) AppNotifications.showError(context, 'No pudimos guardar los cambios');
+      if (!mounted) return;
+      AppNotifications.showError(context, 'No se pudo guardar el perfil: $e');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
-  Future<void> _delete() async {
-    final ok = await AppDialogs.showConfirm(
+  Future<void> _deleteAccount() async {
+    final confirmed = await AppDialogs.showConfirm(
       context: context,
       title: '¿Eliminar tu cuenta?',
-      message: 'Esta acción es permanente e irreversible. Se eliminarán tus datos, favoritos e historial.',
+      message: 'Esta acción es permanente e irreversible.',
       confirmLabel: 'Eliminar',
       cancelLabel: 'Cancelar',
       isDestructive: true,
       type: AppDialogType.error,
     );
-    if (ok != true) return;
-    setState(() => _loading = true);
+    if (confirmed != true) return;
+
+    setState(() => _saving = true);
     try {
       await context.read<UserProvider>().deleteAccount();
       if (!mounted) return;
-      AppNotifications.showSuccess(context, 'Tu cuenta fue eliminada');
-      Navigator.of(context).pushAndRemoveUntil(AppAnimations.createFadeRoute(const LoginScreen()), (route) => false);
+      Navigator.of(context).pushAndRemoveUntil(
+        AppAnimations.createFadeRoute(const LoginScreen()),
+        (route) => false,
+      );
     } catch (e) {
-      if (mounted) AppNotifications.showError(context, e.toString().contains('requires-recent-login') ? 'Por seguridad, necesitás haber iniciado sesión recientemente' : 'No pudimos eliminar tu cuenta');
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      AppNotifications.showError(context, 'No se pudo eliminar la cuenta: $e');
+      setState(() => _saving = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final userProvider = context.watch<UserProvider>();
-    final user = userProvider.user;
-    final imagePath = userProvider.profileImagePath;
-    final dark = theme.brightness == Brightness.dark;
-    final accent = theme.colorScheme.primary;
+    final provider = context.watch<UserProvider>();
+    final user = provider.user;
+    final imagePath = provider.profileImagePath;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const PivoteAppBar(title: 'Editar perfil', subtitle: 'Actualizá tu información personal'),
+      appBar: const PivoteAppBar(
+        title: 'Editar perfil',
+        subtitle: 'Actualizá tus datos personales',
+      ),
       body: Stack(
         children: [
           ListView(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 34),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 36),
             children: [
-              Container(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: dark ? [accent.withValues(alpha: .12), theme.colorScheme.surface] : [accent.withValues(alpha: .08), Colors.white]),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: accent.withValues(alpha: .11)),
-                ),
-                child: Column(children: [
-                  Stack(children: [
-                    Container(padding: const EdgeInsets.all(3), decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: accent.withValues(alpha: .55), width: 2)), child: CircleAvatar(radius: 52, backgroundColor: accent.withValues(alpha: .08), backgroundImage: imagePath != null ? FileImage(File(imagePath)) : (user?.photoUrl != null ? NetworkImage(user!.photoUrl!) : null) as ImageProvider?, child: imagePath == null && user?.photoUrl == null ? Icon(Icons.person_rounded, size: 50, color: accent) : null)),
-                    Positioned(right: 1, bottom: 1, child: Material(color: accent, shape: const CircleBorder(), child: InkWell(onTap: userProvider.updateProfileImage, customBorder: const CircleBorder(), child: const Padding(padding: EdgeInsets.all(9), child: Icon(Icons.camera_alt_rounded, size: 15, color: Colors.black))))),
-                  ]),
-                  const SizedBox(height: 12),
-                  Text(user?.name ?? 'Tu perfil', style: GoogleFonts.spaceGrotesk(fontSize: 20, fontWeight: FontWeight.w900)),
-                  const SizedBox(height: 2),
-                  Text(user?.email ?? '', style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w600, color: theme.hintColor)),
-                ]),
-              ),
-              const SizedBox(height: 22),
+              _buildAvatar(theme, provider, imagePath, user?.photoUrl),
+              const SizedBox(height: 24),
+              Text('Información personal', style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 10),
               Form(
                 key: _formKey,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  _section(context, 'Información personal'),
-                  const SizedBox(height: 9),
-                  _field(context, _name, 'Nombre', Icons.person_outline_rounded),
-                  const SizedBox(height: 9),
-                  _field(context, _lastName, 'Apellido', Icons.badge_outlined),
-                  const SizedBox(height: 20),
-                  _section(context, 'Seguridad'),
-                  const SizedBox(height: 9),
-                  if (!_passwordOpen)
-                    _action(context, Icons.lock_reset_rounded, 'Cambiar contraseña', 'Actualizá tu contraseña de acceso', () => setState(() => _passwordOpen = true), accent)
-                  else ...[
-                    _field(context, _currentPassword, 'Contraseña actual', Icons.lock_outline_rounded, password: true, validatePassword: true),
-                    const SizedBox(height: 9),
-                    _field(context, _newPassword, 'Nueva contraseña', Icons.lock_reset_rounded, password: true, validatePassword: true),
-                    const SizedBox(height: 7),
-                    Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () { setState(() { _passwordOpen = false; _newPassword.clear(); }); }, child: Text('Cancelar', style: TextStyle(color: theme.colorScheme.error)))),
+                child: Column(
+                  children: [
+                    _field(_nameController, 'Nombre', Icons.person_outline_rounded, theme),
+                    const SizedBox(height: 10),
+                    _field(_lastNameController, 'Apellido', Icons.badge_outlined, theme),
+                    const SizedBox(height: 22),
+                    _buildPasswordCard(theme),
+                    const SizedBox(height: 22),
+                    _buildSecurityCard(theme),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: _saving ? null : _save,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: Text('Guardar cambios', style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w900)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton.icon(
+                      onPressed: _saving ? null : _deleteAccount,
+                      icon: const Icon(Icons.delete_forever_rounded),
+                      label: const Text('Eliminar mi cuenta'),
+                      style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                    ),
                   ],
-                  const SizedBox(height: 13),
-                  Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: accent.withValues(alpha: .06), borderRadius: BorderRadius.circular(17), border: Border.all(color: accent.withValues(alpha: .1))), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(Icons.verified_user_rounded, color: accent, size: 18), const SizedBox(width: 9), Expanded(child: Text('Tus datos de perfil se sincronizan con tu cuenta. Pivote no necesita que compartas tu contraseña con nadie.', style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w600, color: theme.hintColor, height: 1.4)))])),
-                  const SizedBox(height: 20),
-                  SizedBox(width: double.infinity, height: 52, child: ElevatedButton.icon(onPressed: _loading ? null : _save, icon: const Icon(Icons.check_rounded, size: 18), label: Text('Guardar cambios', style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w900)), style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), elevation: 0))),
-                  const SizedBox(height: 12),
-                  TextButton.icon(onPressed: _loading ? null : _delete, icon: const Icon(Icons.delete_forever_rounded, size: 18), label: Text('Eliminar mi cuenta', style: GoogleFonts.spaceGrotesk(fontSize: 11, fontWeight: FontWeight.w900)), style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error)),
-                ]),
+                ),
               ),
             ],
           ),
-          if (_loading) Container(color: Colors.black.withValues(alpha: .22), child: const Center(child: PivoteLoader(size: 40))),
+          if (_saving) const Positioned.fill(child: ColoredBox(color: Color(0x66000000), child: Center(child: PivoteLoader(size: 40)))),
         ],
       ),
     );
   }
 
-  Widget _section(BuildContext context, String title) => Text(title, style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w900));
+  Widget _buildAvatar(ThemeData theme, UserProvider provider, String? imagePath, String? photoUrl) {
+    ImageProvider<Object>? image;
+    if (imagePath != null) {
+      image = FileImage(File(imagePath));
+    } else if (photoUrl != null && photoUrl.isNotEmpty) {
+      image = NetworkImage(photoUrl);
+    }
 
-  Widget _field(BuildContext context, TextEditingController controller, String label, IconData icon, {bool password = false, bool validatePassword = false}) {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: theme.dividerColor.withValues(alpha: .08))),
-      child: TextFormField(
-        controller: controller,
-        obscureText: password,
-        style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w600),
-        validator: (value) {
-          if (!password && (value == null || value.trim().isEmpty)) return 'Este campo es requerido';
-          if (password && validatePassword && _passwordOpen && value != null && value.isNotEmpty && value.length < 6) return 'Mínimo 6 caracteres';
-          return null;
-        },
-        decoration: InputDecoration(isDense: true, hintText: label, prefixIcon: Icon(icon, size: 19, color: theme.colorScheme.primary), border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 12)),
+    return Center(
+      child: Stack(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: theme.colorScheme.primary, width: 2)),
+            child: CircleAvatar(
+              radius: 58,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              backgroundImage: image,
+              child: image == null ? Icon(Icons.person_rounded, size: 56, color: theme.colorScheme.primary) : null,
+            ),
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Material(
+              color: theme.colorScheme.primary,
+              shape: const CircleBorder(),
+              child: InkWell(
+                onTap: provider.updateProfileImage,
+                customBorder: const CircleBorder(),
+                child: const Padding(padding: EdgeInsets.all(9), child: Icon(Icons.camera_alt_rounded, size: 17, color: Colors.black)),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _action(BuildContext context, IconData icon, String title, String subtitle, VoidCallback onTap, Color accent) {
+  Widget _field(TextEditingController controller, String label, IconData icon, ThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: theme.dividerColor.withValues(alpha: .08))),
+      child: TextFormField(
+        controller: controller,
+        validator: (value) => value == null || value.trim().isEmpty ? 'Este campo es requerido' : null,
+        style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w600),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: label,
+          prefixIcon: Icon(icon, size: 19, color: theme.colorScheme.primary),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordCard(ThemeData theme) {
+    return Material(
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(17),
+      child: InkWell(
+        onTap: _passwordOpen ? null : () => setState(() => _passwordOpen = true),
+        borderRadius: BorderRadius.circular(17),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: _passwordOpen
+              ? Column(
+                  children: [
+                    _passwordField(_currentPasswordController, 'Contraseña actual', Icons.lock_outline_rounded),
+                    const SizedBox(height: 10),
+                    _passwordField(_newPasswordController, 'Nueva contraseña', Icons.lock_reset_rounded),
+                    const SizedBox(height: 8),
+                    TextButton(onPressed: () => setState(() { _passwordOpen = false; _currentPasswordController.clear(); _newPasswordController.clear(); }), child: const Text('Cancelar cambio')),
+                  ],
+                )
+              : Row(
+                  children: [
+                    Icon(Icons.lock_reset_rounded, color: theme.colorScheme.primary),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text('Cambiar contraseña', style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w800))),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 13),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _passwordField(TextEditingController controller, String hint, IconData icon) {
     final theme = Theme.of(context);
-    return Material(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(17), child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(17), child: Container(padding: const EdgeInsets.all(13), decoration: BoxDecoration(borderRadius: BorderRadius.circular(17), border: Border.all(color: accent.withValues(alpha: .1))), child: Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: accent.withValues(alpha: .1), borderRadius: BorderRadius.circular(12)), child: Icon(icon, size: 19, color: accent)), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: GoogleFonts.spaceGrotesk(fontSize: 12.5, fontWeight: FontWeight.w800)), const SizedBox(height: 2), Text(subtitle, style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w600, color: theme.hintColor))])), Icon(Icons.arrow_forward_ios_rounded, size: 11, color: theme.hintColor)])));
+    return TextFormField(
+      controller: controller,
+      obscureText: true,
+      validator: (value) => value != null && value.isNotEmpty && value.length < 6 ? 'Mínimo 6 caracteres' : null,
+      decoration: InputDecoration(
+        hintText: hint,
+        prefixIcon: Icon(icon, size: 18),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: .1))),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: theme.dividerColor.withValues(alpha: .1))),
+      ),
+    );
+  }
+
+  Widget _buildSecurityCard(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: .06), borderRadius: BorderRadius.circular(17), border: Border.all(color: theme.colorScheme.primary.withValues(alpha: .12))),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.shield_outlined, color: theme.colorScheme.primary),
+          const SizedBox(width: 11),
+          Expanded(child: Text('Mantené tus datos actualizados y usá una contraseña segura para proteger tu cuenta.', style: GoogleFonts.spaceGrotesk(fontSize: 11.5, fontWeight: FontWeight.w600, color: theme.hintColor, height: 1.45))),
+        ],
+      ),
+    );
   }
 }
