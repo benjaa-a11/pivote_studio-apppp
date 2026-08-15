@@ -147,8 +147,7 @@ class Ascenso2026Service {
       _classifyCells(cells, matches, standings, rankings);
     }
 
-    final scripts = document.querySelectorAll('script');
-    for (final script in scripts) {
+    for (final script in document.querySelectorAll('script')) {
       final source = script.text.trim();
       if (source.length < 40) continue;
       final candidates = _extractJsonCandidates(source);
@@ -245,14 +244,15 @@ class Ascenso2026Service {
     Set<String> sections,
   ) {
     if (node is List) {
-      for (final item in node) _walkJson(item, matches, standings, rankings, sections);
+      for (final item in node) {
+        _walkJson(item, matches, standings, rankings, sections);
+      }
       return;
     }
     if (node is! Map) return;
 
     final map = Map<String, dynamic>.from(node);
     final keyText = map.keys.join(' ').toLowerCase();
-    final valuesText = map.values.whereType<String>().join(' ').toLowerCase();
 
     final match = _matchFromMap(map);
     if (match != null) matches.add(match);
@@ -298,7 +298,7 @@ class Ascenso2026Service {
     if (team == null || team.length < 2) return null;
 
     final hasTableSignal = map.keys.any((key) {
-      final k = key.toLowerCase();
+      final k = key.toString().toLowerCase();
       return k.contains('points') || k.contains('pontos') || k.contains('pts') || k.contains('wins') || k.contains('played');
     });
     if (!hasTableSignal) return null;
@@ -322,7 +322,7 @@ class Ascenso2026Service {
     final value = _findString(map, ['goals', 'score', 'value', 'total', 'points', 'pontos']);
     if (name == null || value == null || team.isEmpty) return null;
     final looksLikeRanking = map.keys.any((key) {
-      final k = key.toLowerCase();
+      final k = key.toString().toLowerCase();
       return k.contains('goal') || k.contains('scorer') || k.contains('ranking') || k.contains('points');
     });
     if (!looksLikeRanking) return null;
@@ -373,9 +373,9 @@ class Ascenso2026Service {
 
   static List<String> _extractJsonCandidates(String source) {
     final candidates = <String>[];
-    final patterns = [
-      RegExp(r'<script[^>]+type=["\']application/json["\'][^>]*>(.*?)</script>', dotAll: true, caseSensitive: false),
-      RegExp(r'__NEXT_DATA__[^>]*>(.*?)</script>', dotAll: true, caseSensitive: false),
+    final patterns = <RegExp>[
+      RegExp(r'''<script[^>]+type=["']application/json["'][^>]*>(.*?)</script>''', dotAll: true, caseSensitive: false),
+      RegExp(r'''__NEXT_DATA__[^>]*>(.*?)</script>''', dotAll: true, caseSensitive: false),
     ];
 
     for (final pattern in patterns) {
@@ -438,8 +438,17 @@ class Ascenso2026Service {
   static String? _detectStatus(String text) {
     final lower = text.toLowerCase();
     for (final value in const [
-      'en vivo', 'ao vivo', 'live', 'finalizado', 'final', 'fim de jogo',
-      'programado', 'próximo', 'proximo', 'suspendido', 'aplazado',
+      'en vivo',
+      'ao vivo',
+      'live',
+      'finalizado',
+      'final',
+      'fim de jogo',
+      'programado',
+      'próximo',
+      'proximo',
+      'suspendido',
+      'aplazado',
     ]) {
       if (lower.contains(value)) return value.toUpperCase();
     }
