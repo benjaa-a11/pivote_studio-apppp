@@ -44,7 +44,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (_) {}
   }
 
-  void _open(Widget screen) => Navigator.push(context, AppAnimations.createRoute(screen));
+  Future<void> _open(Widget screen) {
+    return Navigator.push(context, AppAnimations.createRoute(screen));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +212,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showAboutDialog(BuildContext context) {
     final theme = Theme.of(context);
-    AppDialogs.showModal(context: context, child: Padding(padding: const EdgeInsets.fromLTRB(24, 22, 24, 28), child: Column(children: [Container(width: 74, height: 74, decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: .1), borderRadius: BorderRadius.circular(22)), child: Padding(padding: const EdgeInsets.all(15), child: Image.asset('assets/logo.png', errorBuilder: (_, __, ___) => Icon(Icons.play_circle_fill_rounded, color: theme.colorScheme.primary, size: 38)))), const SizedBox(height: 14), Text('Pivote Studio', style: GoogleFonts.spaceGrotesk(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -.7)), const SizedBox(height: 3), Text('Versión $_appVersion', style: GoogleFonts.spaceGrotesk(fontSize: 11.5, fontWeight: FontWeight.w600, color: theme.hintColor)), const SizedBox(height: 15), Container(width: double.infinity, padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: .06), borderRadius: BorderRadius.circular(16), border: Border.all(color: theme.colorScheme.primary.withValues(alpha: .1))), child: Row(children: [Icon(Icons.auto_awesome_rounded, color: theme.colorScheme.primary, size: 19), const SizedBox(width: 9), Expanded(child: Text('Una experiencia de streaming pensada para vos.', style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.w700)))])), const SizedBox(height: 14), InkWell(onTap: () => _checkUpdates(context), borderRadius: BorderRadius.circular(15), child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13), decoration: BoxDecoration(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(15), border: Border.all(color: theme.dividerColor.withValues(alpha: .08))), child: Row(children: [Icon(Icons.system_update_rounded, color: theme.colorScheme.primary, size: 19), const SizedBox(width: 10), Expanded(child: Text('Buscar actualizaciones', style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w800))), Icon(Icons.arrow_forward_ios_rounded, size: 12, color: theme.hintColor)])))]));
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: theme.colorScheme.surface,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 6, 22, 24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 60, height: 60, decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: .1), shape: BoxShape.circle), child: Icon(Icons.play_circle_fill_rounded, color: theme.colorScheme.primary, size: 34)),
+            const SizedBox(height: 12),
+            Text('Pivote Studio', style: GoogleFonts.spaceGrotesk(fontSize: 22, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 3),
+            Text('Versión $_appVersion', style: GoogleFonts.spaceGrotesk(fontSize: 11, fontWeight: FontWeight.w600, color: theme.hintColor)),
+            const SizedBox(height: 18),
+            Material(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(16), child: InkWell(onTap: () => _checkUpdates(context), borderRadius: BorderRadius.circular(16), child: Padding(padding: const EdgeInsets.all(14), child: Row(children: [Icon(Icons.system_update_rounded, color: theme.colorScheme.primary), const SizedBox(width: 12), Expanded(child: Text('Verificar actualizaciones', style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w800))), Icon(Icons.arrow_forward_ios_rounded, size: 13, color: theme.hintColor)]))))),
+          ]),
+        ),
+      ),
+    );
   }
 
   Future<void> _checkUpdates(BuildContext context) async {
@@ -219,6 +239,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await Future.delayed(const Duration(seconds: 2));
     if (!context.mounted) return;
     Navigator.pop(context);
-    AppDialogs.showAlert(context: context, title: 'Todo actualizado', message: 'Tenés la última versión disponible de Pivote Studio.', type: AppDialogType.success);
+    AppDialogs.showAlert(context: context, title: 'Todo actualizado', message: 'Tenés la última versión de Pivote Studio instalada.', type: AppDialogType.success);
   }
 }
