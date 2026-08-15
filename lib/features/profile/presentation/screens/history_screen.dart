@@ -29,7 +29,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final ids = await ViewingHistoryService.getTopChannels();
     if (!mounted) return;
     final provider = context.read<ChannelProvider>();
-    final resolved = ids.map((id) => provider.channels.where((c) => c.id == id).cast<Channel?>().firstOrNull).whereType<Channel>().toList();
+    final resolved = <Channel>[];
+    for (final id in ids) {
+      for (final channel in provider.channels) {
+        if (channel.id == id) {
+          resolved.add(channel);
+          break;
+        }
+      }
+    }
     setState(() { _items = resolved; _loading = false; });
   }
 
@@ -50,10 +58,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       appBar: PivoteAppBar(
         title: 'Historial',
         subtitle: _items.isEmpty ? 'Tus reproducciones recientes' : '${_items.length} canales vistos',
-        actions: [
-          if (_items.isNotEmpty)
-            IconButton(tooltip: 'Limpiar historial', onPressed: _clear, icon: Icon(Icons.delete_sweep_rounded, color: theme.colorScheme.error)),
-        ],
+        actions: [if (_items.isNotEmpty) IconButton(tooltip: 'Limpiar historial', onPressed: _clear, icon: Icon(Icons.delete_sweep_rounded, color: theme.colorScheme.error))],
       ),
       body: _loading
           ? const Center(child: PivoteLoader(size: 40))
