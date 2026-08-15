@@ -73,7 +73,6 @@ class _SearchScreenState extends State<SearchScreen>
 
   void _updateQuery(String value) {
     context.read<ChannelProvider>().setSearchQuery(value);
-    if (mounted) setState(() {});
   }
 
   Future<void> _submitQuery(String value) async {
@@ -88,14 +87,11 @@ class _SearchScreenState extends State<SearchScreen>
     await SearchService.saveSearchQuery(query);
     await _loadHistory();
     _searchFocusNode.unfocus();
-
-    if (mounted) setState(() {});
   }
 
   void _clearQuery() {
     _searchController.clear();
     context.read<ChannelProvider>().clearFilters();
-    if (mounted) setState(() {});
   }
 
   void _close() {
@@ -107,14 +103,10 @@ class _SearchScreenState extends State<SearchScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final provider = context.watch<ChannelProvider>();
-    final searching = _searchController.text.trim().isNotEmpty;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) {
-          context.read<ChannelProvider>().clearFilters();
-        }
+        if (didPop) context.read<ChannelProvider>().clearFilters();
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
@@ -125,40 +117,52 @@ class _SearchScreenState extends State<SearchScreen>
               position: _slide,
               child: Column(
                 children: [
-                  _SearchTopBar(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    searching: searching,
-                    theme: theme,
-                    isDark: isDark,
-                    onChanged: _updateQuery,
-                    onSubmitted: _submitQuery,
-                    onClear: _clearQuery,
-                    onClose: _close,
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _searchController,
+                    builder: (context, value, _) {
+                      return _SearchTopBar(
+                        controller: _searchController,
+                        focusNode: _searchFocusNode,
+                        searching: value.text.trim().isNotEmpty,
+                        theme: theme,
+                        isDark: isDark,
+                        onChanged: _updateQuery,
+                        onSubmitted: _submitQuery,
+                        onClear: _clearQuery,
+                        onClose: _close,
+                      );
+                    },
                   ),
                   Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      child: searching
-                          ? _ResultsView(
-                              key: const ValueKey('results'),
-                              provider: provider,
-                              theme: theme,
-                              query: _searchController.text.trim(),
-                            )
-                          : _DiscoveryView(
-                              key: const ValueKey('discovery'),
-                              history: _history,
-                              theme: theme,
-                              isDark: isDark,
-                              onSearch: _submitQuery,
-                              onClearHistory: () async {
-                                await SearchService.clearSearchHistory();
-                                await _loadHistory();
-                              },
-                            ),
+                    child: ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _searchController,
+                      builder: (context, value, _) {
+                        final query = value.text.trim();
+                        final searching = query.isNotEmpty;
+
+                        return AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          child: searching
+                              ? _ResultsView(
+                                  key: const ValueKey('results'),
+                                  theme: theme,
+                                  query: query,
+                                )
+                              : _DiscoveryView(
+                                  key: const ValueKey('discovery'),
+                                  history: _history,
+                                  theme: theme,
+                                  isDark: isDark,
+                                  onSearch: _submitQuery,
+                                  onClearHistory: () async {
+                                    await SearchService.clearSearchHistory();
+                                    await _loadHistory();
+                                  },
+                                ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -221,74 +225,71 @@ class _SearchTopBar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Material(
-              color: surface,
-              elevation: 0,
-              borderRadius: BorderRadius.circular(21),
-              shadowColor: Colors.black.withValues(alpha: .08),
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 48),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(21),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: .07)
-                        : theme.colorScheme.onSurface.withValues(alpha: .055),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? .16 : .035),
-                      blurRadius: 22,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: BorderRadius.circular(21),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: .07)
+                      : theme.colorScheme.onSurface.withValues(alpha: .055),
                 ),
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  onChanged: onChanged,
-                  onSubmitted: onSubmitted,
-                  textInputAction: TextInputAction.search,
-                  cursorColor: theme.colorScheme.primary,
-                  cursorWidth: 2,
-                  textCapitalization: TextCapitalization.none,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: isDark ? .16 : .035,
+                    ),
+                    blurRadius: 22,
+                    offset: const Offset(0, 8),
                   ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: 'Buscar en Pivote',
-                    hintStyle: GoogleFonts.spaceGrotesk(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: iconColor,
-                    ),
-                    prefixIcon: Padding(
-                      padding: const EdgeInsets.only(left: 5),
-                      child: Icon(Icons.search_rounded, size: 20, color: iconColor),
-                    ),
-                    suffixIcon: searching
-                        ? IconButton(
-                            onPressed: onClear,
-                            splashRadius: 19,
-                            icon: Icon(
-                              Icons.close_rounded,
-                              size: 18,
-                              color: iconColor,
-                            ),
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    errorBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 14,
-                      horizontal: 4,
-                    ),
+                ],
+              ),
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                onChanged: onChanged,
+                onSubmitted: onSubmitted,
+                textInputAction: TextInputAction.search,
+                cursorColor: theme.colorScheme.primary,
+                cursorWidth: 2,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface,
+                ),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: 'Buscar en Pivote',
+                  hintStyle: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: iconColor,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 20,
+                    color: iconColor,
+                  ),
+                  suffixIcon: searching
+                      ? IconButton(
+                          onPressed: onClear,
+                          splashRadius: 19,
+                          icon: Icon(
+                            Icons.close_rounded,
+                            size: 18,
+                            color: iconColor,
+                          ),
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 4,
                   ),
                 ),
               ),
@@ -347,7 +348,9 @@ class _DiscoveryView extends StatelessWidget {
                       vertical: 9,
                     ),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF111820) : theme.colorScheme.surface,
+                      color: isDark
+                          ? const Color(0xFF111820)
+                          : theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
                         color: theme.colorScheme.onSurface.withValues(alpha: .055),
@@ -406,7 +409,6 @@ class _DiscoveryView extends StatelessWidget {
                   theme: theme,
                   isDark: isDark,
                   onTap: () => onSearch(item.label),
-                  index: index,
                 );
               },
             );
@@ -437,7 +439,9 @@ class _DiscoveryHero extends StatelessWidget {
               : [const Color(0xFFE8FFB8), const Color(0xFFF7FAF0)],
         ),
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: accent.withValues(alpha: isDark ? .14 : .18)),
+        border: Border.all(
+          color: accent.withValues(alpha: isDark ? .14 : .18),
+        ),
         boxShadow: [
           BoxShadow(
             color: accent.withValues(alpha: isDark ? .08 : .11),
@@ -470,7 +474,11 @@ class _DiscoveryHero extends StatelessWidget {
                   color: accent.withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(Icons.travel_explore_rounded, color: accent, size: 22),
+                child: Icon(
+                  Icons.travel_explore_rounded,
+                  color: accent,
+                  size: 22,
+                ),
               ),
               const SizedBox(height: 14),
               Text(
@@ -559,14 +567,12 @@ class _CategoryCard extends StatelessWidget {
   final ThemeData theme;
   final bool isDark;
   final VoidCallback onTap;
-  final int index;
 
   const _CategoryCard({
     required this.item,
     required this.theme,
     required this.isDark,
     required this.onTap,
-    required this.index,
   });
 
   @override
@@ -578,14 +584,11 @@ class _CategoryCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(21),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+        child: Container(
           padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(21),
-            border: Border.all(
-              color: accent.withValues(alpha: .075),
-            ),
+            border: Border.all(color: accent.withValues(alpha: .075)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: isDark ? .10 : .025),
@@ -638,19 +641,19 @@ class _CategoryCard extends StatelessWidget {
 }
 
 class _ResultsView extends StatelessWidget {
-  final ChannelProvider provider;
   final ThemeData theme;
   final String query;
 
   const _ResultsView({
     super.key,
-    required this.provider,
     required this.theme,
     required this.query,
   });
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<ChannelProvider>();
+
     if (provider.isLoading && !provider.isInitialized) {
       return const _SearchLoadingView();
     }
@@ -690,12 +693,6 @@ class _ResultsView extends StatelessWidget {
                     color: theme.colorScheme.primary,
                   ),
                 ),
-              ),
-              const Spacer(),
-              Icon(
-                Icons.swipe_rounded,
-                size: 14,
-                color: theme.hintColor.withValues(alpha: .45),
               ),
             ],
           ),
