@@ -11,233 +11,98 @@ class SupportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final accent = theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const PivoteAppBar(
-        title: 'Ayuda y Soporte',
-        subtitle: 'Resolvé tus dudas y contactanos',
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildContactCard(context),
-            const SizedBox(height: 40),
-            Text(
-              'Preguntas Frecuentes',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildFAQItem(
-              context,
-              '¿Cómo agrego canales a favoritos?',
-              'Puedes presionar el icono de corazón en la esquina superior derecha de cualquier canal mientras lo ves para añadirlo a tu sección de favoritos.',
-            ),
-            _buildFAQItem(
-              context,
-              '¿La aplicación consume muchos datos?',
-              'El streaming de TV en vivo consume datos significativos. Recomendamos usar una conexión Wi-Fi para una mejor experiencia y evitar cargos extras.',
-            ),
-            _buildFAQItem(
-              context,
-              '¿Por qué algunos canales no cargan?',
-              'Esto puede deberse a tu conexión a internet o a que la señal del canal está experimentando problemas técnicos momentáneos. Intenta recargar o probar otro canal.',
-            ),
-            _buildFAQItem(
-              context,
-              '¿Cómo cambio el tema de la app?',
-              'En la sección de Perfil, bajo el apartado de Apariencia, tienes un interruptor para alternar entre el Modo Claro y el Modo Oscuro.',
-            ),
-            const SizedBox(height: 48),
-            _buildSocialLinks(context),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContactCard(BuildContext context) {
-    return AppAnimations.smoothFadeIn(
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF5BB389), Color(0xFF4AA078)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      appBar: const PivoteAppBar(title: 'Ayuda y soporte', subtitle: 'Resolvé dudas y encontrá ayuda rápida'),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 36),
+        children: [
+          AppAnimations.smoothFadeIn(child: _hero(context)),
+          const SizedBox(height: 24),
+          Text('Preguntas frecuentes', style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          _faq(context, '¿Cómo agrego un canal a favoritos?', 'Abrí el canal y usá el botón de favorito en la pantalla del reproductor. Va a quedar disponible en tu sección de favoritos.'),
+          _faq(context, '¿La app consume muchos datos?', 'El streaming en vivo puede consumir bastante tráfico. Para una experiencia más estable, recomendamos Wi‑Fi o una conexión móvil con buen ancho de banda.'),
+          _faq(context, '¿Por qué algunos canales no cargan?', 'Puede tratarse de la conexión o de una señal temporalmente inestable. Probá actualizar el canal, revisar tu red o ejecutar el diagnóstico de streaming.'),
+          _faq(context, '¿Cómo cambio el tema?', 'Desde Perfil > Apariencia podés alternar entre modo claro y oscuro. El cambio se aplica inmediatamente.'),
+          const SizedBox(height: 22),
+          Text('Comunidad', style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _social(context, FontAwesomeIcons.instagram, 'Instagram', const Color(0xFFE4405F), null)),
+              const SizedBox(width: 9),
+              Expanded(child: _social(context, FontAwesomeIcons.xTwitter, 'X', theme.colorScheme.onSurface, null)),
+              const SizedBox(width: 9),
+              Expanded(child: _social(context, FontAwesomeIcons.facebookF, 'Facebook', const Color(0xFF1877F2), null)),
+            ],
           ),
-          borderRadius: BorderRadius.circular(32),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF5BB389).withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            const Icon(Icons.support_agent, color: Colors.white, size: 48),
-            const SizedBox(height: 16),
-            Text(
-              '¿Necesitas ayuda?',
-              style: GoogleFonts.spaceGrotesk(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Nuestro equipo está disponible para ayudarte con cualquier problema o duda.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildContactButton(
-                    context,
-                    label: 'Email',
-                    icon: Icons.email_outlined,
-                    onTap: () => _launchURL('mailto:soporte@pivote.com'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildContactButton(
-                    context,
-                    label: 'Telegram',
-                    icon: FontAwesomeIcons.telegram,
-                    onTap: () => _launchURL('https://t.me/pivote_support'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          const SizedBox(height: 18),
+          Row(children: [Icon(Icons.info_outline_rounded, color: accent, size: 16), const SizedBox(width: 7), Expanded(child: Text('Para soporte técnico, incluí el modelo de tu dispositivo y una descripción breve del problema.', style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w600, color: theme.hintColor, height: 1.4)))]),
+        ],
       ),
     );
   }
 
-  Widget _buildContactButton(
-    BuildContext context, {
-    required String label,
-    required dynamic icon,
-    required VoidCallback onTap,
-  }) {
+  Widget _hero(BuildContext context) {
     final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withAlpha(51),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.dividerColor.withAlpha(26)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            icon is IconData
-                ? Icon(icon, color: Colors.white, size: 18)
-                : FaIcon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.spaceGrotesk(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
+    final accent = theme.colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [accent.withValues(alpha: .95), accent.withValues(alpha: .7)]),
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [BoxShadow(color: accent.withValues(alpha: .2), blurRadius: 24, offset: const Offset(0, 10))],
       ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.black.withValues(alpha: .09), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 25)), const Spacer(), Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6), decoration: BoxDecoration(color: Colors.white.withValues(alpha: .14), borderRadius: BorderRadius.circular(999)), child: Text('PIVOTE CARE', style: GoogleFonts.spaceGrotesk(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)))]),
+        const SizedBox(height: 20),
+        Text('Estamos para ayudarte', style: GoogleFonts.spaceGrotesk(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900, letterSpacing: -.5)),
+        const SizedBox(height: 5),
+        Text('Encontrá respuestas o contactanos directamente desde acá.', style: GoogleFonts.spaceGrotesk(color: Colors.white.withValues(alpha: .84), fontSize: 11.5, fontWeight: FontWeight.w600, height: 1.4)),
+        const SizedBox(height: 18),
+        Row(children: [Expanded(child: _contact(context, Icons.email_outlined, 'Email', 'mailto:soporte@pivote.com')), const SizedBox(width: 9), Expanded(child: _contact(context, FontAwesomeIcons.telegram, 'Telegram', 'https://t.me/pivote_support'))]),
+      ]),
     );
   }
 
-  Widget _buildFAQItem(BuildContext context, String question, String answer) {
+  Widget _contact(BuildContext context, dynamic icon, String label, String url) {
+    return Material(color: Colors.white.withValues(alpha: .13), borderRadius: BorderRadius.circular(15), child: InkWell(onTap: () => _open(url), borderRadius: BorderRadius.circular(15), child: Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [icon is IconData ? Icon(icon, color: Colors.white, size: 17) : FaIcon(icon, color: Colors.white, size: 17), const SizedBox(width: 7), Text(label, style: GoogleFonts.spaceGrotesk(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w800))])));
+  }
+
+  Widget _faq(BuildContext context, String question, String answer) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest.withAlpha(51),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.05)),
-        ),
-        child: ExpansionTile(
-          title: Text(
-            question,
-            style: GoogleFonts.spaceGrotesk(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-            ),
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(17),
+        child: Theme(
+          data: theme.copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 1),
+            childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17), side: BorderSide.none),
+            collapsedShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17), side: BorderSide(color: theme.dividerColor.withValues(alpha: .07))),
+            iconColor: theme.colorScheme.primary,
+            collapsedIconColor: theme.hintColor,
+            title: Text(question, style: GoogleFonts.spaceGrotesk(fontSize: 12.5, fontWeight: FontWeight.w800)),
+            children: [Text(answer, style: GoogleFonts.spaceGrotesk(fontSize: 11.5, fontWeight: FontWeight.w600, color: theme.hintColor, height: 1.45))],
           ),
-          shape: const RoundedRectangleBorder(side: BorderSide.none),
-          childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          expandedAlignment: Alignment.topLeft,
-          children: [
-            Text(
-              answer,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 14,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                height: 1.5,
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  Widget _buildSocialLinks(BuildContext context) {
-    return Column(
-      children: [
-        Center(
-          child: Text(
-            'Síguenos',
-            style: GoogleFonts.spaceGrotesk(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _socialIcon(FontAwesomeIcons.instagram),
-            const SizedBox(width: 24),
-            _socialIcon(FontAwesomeIcons.xTwitter),
-            const SizedBox(width: 24),
-            _socialIcon(FontAwesomeIcons.facebook),
-          ],
-        ),
-      ],
-    );
+  Widget _social(BuildContext context, IconData icon, String label, Color color, String? url) {
+    final theme = Theme.of(context);
+    return Material(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(16), child: InkWell(onTap: url == null ? null : () => _open(url), borderRadius: BorderRadius.circular(16), child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha: .12))), child: Column(children: [Icon(icon, size: 17, color: color), const SizedBox(height: 6), Text(label, style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w800))])));
   }
 
-  Widget _socialIcon(dynamic icon) {
-    return icon is IconData
-        ? Icon(icon, color: Colors.grey.withValues(alpha: 0.6), size: 28)
-        : FaIcon(icon, color: Colors.grey.withValues(alpha: 0.6), size: 28);
-  }
-
-  void _launchURL(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
+  Future<void> _open(String value) async {
+    final uri = Uri.parse(value);
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
   }
 }
