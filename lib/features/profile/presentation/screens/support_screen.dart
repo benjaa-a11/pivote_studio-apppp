@@ -96,9 +96,9 @@ class SupportScreen extends StatelessWidget {
     );
   }
 
-  Widget _social(BuildContext context, IconData icon, String label, Color color, String? url) {
+  Widget _social(BuildContext context, dynamic icon, String label, Color color, String? url) {
     final theme = Theme.of(context);
-    return Material(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(16), child: InkWell(onTap: url == null ? null : () => _open(url), borderRadius: BorderRadius.circular(16), child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha: .12))), child: Column(children: [Icon(icon, size: 17, color: color), const SizedBox(height: 6), Text(label, style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w800))])));
+    return Material(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(16), child: InkWell(onTap: url == null ? null : () => _open(url), borderRadius: BorderRadius.circular(16), child: Container(padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: color.withValues(alpha: .12))), child: Column(children: [icon is IconData ? Icon(icon, size: 17, color: color) : FaIcon(icon, size: 17, color: color), const SizedBox(height: 6), Text(label, style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w800))])));
   }
 
   Future<void> _open(String value) async {
