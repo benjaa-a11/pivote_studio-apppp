@@ -19,7 +19,7 @@ class AppDialogs {
   }) async {
     return showDialog<bool>(
       context: context,
-      barrierColor: Colors.black.withAlpha(153), // 0.6
+      barrierColor: Colors.black.withAlpha(153),
       builder: (_) => _ModernDialog(
         title: title,
         message: message,
@@ -74,7 +74,7 @@ class AppDialogs {
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withAlpha(140), // 0.55
+      barrierColor: Colors.black.withAlpha(140),
       builder: (_) => _ModernLoadingDialog(message: message),
     );
   }
@@ -103,7 +103,6 @@ class _ModernDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
     final iconColor = DialogStyles.getIconColor(type, isDark);
     final iconBgColor = DialogStyles.getIconBgColor(type, isDark);
     final iconData = DialogStyles.getIcon(type);
@@ -117,10 +116,7 @@ class _ModernDialog extends StatelessWidget {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DialogStyles.borderRadius),
-          side: BorderSide(
-            color: theme.dividerColor.withAlpha(20),
-            width: 1,
-          ),
+          side: BorderSide(color: theme.dividerColor.withAlpha(20)),
         ),
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
         child: Padding(
@@ -128,16 +124,12 @@ class _ModernDialog extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Icon Badge
               Container(
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      iconBgColor,
-                      iconBgColor.withValues(alpha: 0.5),
-                    ],
+                    colors: [iconBgColor, iconBgColor.withValues(alpha: 0.5)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -150,16 +142,9 @@ class _ModernDialog extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Center(
-                  child: Icon(
-                    iconData,
-                    color: iconColor,
-                    size: 34,
-                  ),
-                ),
+                child: Center(child: Icon(iconData, color: iconColor, size: 34)),
               ),
               const SizedBox(height: 24),
-              // Title
               Text(
                 title,
                 textAlign: TextAlign.center,
@@ -170,18 +155,16 @@ class _ModernDialog extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              // Message
               Text(
                 message,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 15,
                   height: 1.5,
-                  color: theme.colorScheme.onSurface.withAlpha(170), // ~0.65
+                  color: theme.colorScheme.onSurface.withAlpha(170),
                 ),
               ),
               const SizedBox(height: 32),
-              // Actions
               if (isConfirm)
                 Row(
                   children: [
@@ -240,23 +223,18 @@ class _DialogButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    Color getBgColor() {
-      if (!isPrimary) return theme.colorScheme.onSurface.withAlpha(15);
-      if (isDestructive) return theme.colorScheme.error;
-      return accentColor ?? theme.colorScheme.primary;
-    }
-
-    Color getTextColor() {
-      if (!isPrimary) return theme.colorScheme.onSurface;
-      if (isDestructive) return Colors.white;
-      // In primary button with accent tint
-      return theme.brightness == Brightness.dark &&
-              (accentColor == theme.colorScheme.primary ||
-                  accentColor == const Color(0xFFC8FF47))
-          ? const Color(0xFF090B0F)
-          : Colors.white;
-    }
+    final bg = !isPrimary
+        ? theme.colorScheme.onSurface.withAlpha(15)
+        : isDestructive
+            ? theme.colorScheme.error
+            : accentColor ?? theme.colorScheme.primary;
+    final fg = !isPrimary
+        ? theme.colorScheme.onSurface
+        : isDestructive
+            ? Colors.white
+            : theme.brightness == Brightness.dark
+                ? const Color(0xFF090B0F)
+                : Colors.white;
 
     return InkWell(
       onTap: () {
@@ -268,26 +246,15 @@ class _DialogButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: getBgColor(),
+          color: bg,
           borderRadius: BorderRadius.circular(16),
           boxShadow: isPrimary
-              ? [
-                  BoxShadow(
-                    color: getBgColor().withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
+              ? [BoxShadow(color: bg.withValues(alpha: .3), blurRadius: 12, offset: const Offset(0, 4))]
               : null,
         ),
         child: Text(
           label,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: getTextColor(),
-            letterSpacing: 0.3,
-          ),
+          style: GoogleFonts.spaceGrotesk(fontSize: 15, fontWeight: FontWeight.bold, color: fg, letterSpacing: .3),
         ),
       ),
     );
@@ -297,54 +264,32 @@ class _DialogButton extends StatelessWidget {
 class _ModernBottomSheet extends StatelessWidget {
   final Widget child;
   final bool scrollable;
-
-  const _ModernBottomSheet({
-    required this.child,
-    required this.scrollable,
-  });
+  const _ModernBottomSheet({required this.child, required this.scrollable});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final mq = MediaQuery.of(context);
-
-    final isDark = theme.brightness == Brightness.dark;
-
+    final dark = theme.brightness == Brightness.dark;
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
-          constraints: BoxConstraints(
-            maxHeight: mq.size.height * 0.92,
-          ),
+          constraints: BoxConstraints(maxHeight: mq.size.height * .92),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surface
-                .withValues(alpha: isDark ? 0.85 : 0.9),
+            color: theme.colorScheme.surface.withValues(alpha: dark ? .85 : .9),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            border: Border.all(
-              color: theme.dividerColor.withValues(alpha: 0.1),
-              width: 1,
-            ),
+            border: Border.all(color: theme.dividerColor.withValues(alpha: .1)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Drag handle
               Padding(
                 padding: const EdgeInsets.only(top: 12, bottom: 8),
-                child: Container(
-                  width: 48,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: theme.dividerColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
+                child: Container(width: 48, height: 4, decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(4))),
               ),
-              scrollable
-                  ? Flexible(child: SingleChildScrollView(child: child))
-                  : Flexible(child: child),
+              scrollable ? Flexible(child: SingleChildScrollView(child: child)) : Flexible(child: child),
             ],
           ),
         ),
@@ -353,46 +298,85 @@ class _ModernBottomSheet extends StatelessWidget {
   }
 }
 
-class _ModernLoadingDialog extends StatelessWidget {
+class _ModernLoadingDialog extends StatefulWidget {
   final String message;
-
   const _ModernLoadingDialog({required this.message});
+
+  @override
+  State<_ModernLoadingDialog> createState() => _ModernLoadingDialogState();
+}
+
+class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
+  Timer? _failsafe;
+  double _progress = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _failsafe = Timer(const Duration(seconds: 7), () {
+      if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
+    });
+    _animateProgress();
+  }
+
+  Future<void> _animateProgress() async {
+    const steps = 28;
+    for (var i = 1; i <= steps; i++) {
+      await Future.delayed(const Duration(milliseconds: 120));
+      if (!mounted) return;
+      setState(() => _progress = i / steps);
+    }
+  }
+
+  @override
+  void dispose() {
+    _failsafe?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final accent = theme.colorScheme.primary;
 
     return PopScope(
       canPop: false,
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
         child: Center(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+            width: 292,
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: theme.dividerColor.withAlpha(20),
-              ),
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(color: theme.dividerColor.withValues(alpha: .08)),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: dark ? .25 : .10), blurRadius: 34, offset: const Offset(0, 16))],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                PivoteLoader(
-                  color: theme.colorScheme.primary,
-                  strokeWidth: 3,
-                  size: 40,
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(color: accent.withValues(alpha: .10), borderRadius: BorderRadius.circular(18)),
+                  child: PivoteLoader(color: accent, strokeWidth: 3, size: 30),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  message,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    color: theme.colorScheme.onSurface,
+                const SizedBox(height: 18),
+                Text(widget.message, textAlign: TextAlign.center, style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w800, fontSize: 14.5)),
+                const SizedBox(height: 13),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: _progress,
+                    minHeight: 5,
+                    backgroundColor: accent.withValues(alpha: .08),
+                    valueColor: AlwaysStoppedAnimation<Color>(accent),
                   ),
                 ),
+                const SizedBox(height: 9),
+                Text('Podés esperar unos segundos mientras terminamos la comprobación.', textAlign: TextAlign.center, style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w500, color: theme.hintColor, height: 1.35)),
               ],
             ),
           ),
