@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -17,109 +15,182 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
   static const String _pageUrl =
       'https://copafacil.com/-ndrde5sdllc0nexjb9u@9szj';
   static const String _allowedHost = 'copafacil.com';
+  static const Duration _autoRefreshInterval = Duration(minutes: 5);
 
   late final WebViewController _controller;
   Timer? _refreshTimer;
+  Timer? _progressTimer;
 
   bool _isLoading = true;
   bool _hasLoadedOnce = false;
   bool _hasError = false;
+  bool _refreshInProgress = false;
   int _progress = 0;
+  int _lastRenderedProgress = -1;
   String? _currentUrl;
 
   @override
   void initState() {
     super.initState();
     _controller = _createController();
-    _preload();
+    _loadInitialPage();
 
-    // Mantiene los resultados recientes sin recargar de forma agresiva.
-    _refreshTimer = Timer.periodic(const Duration(minutes: 2), (_) {
-      if (mounted && _hasLoadedOnce && !_isLoading) {
-        _controller.reload();
+    // La página ya contiene datos dinámicos. Evitamos recargas frecuentes que
+    // disparan de nuevo HTML, JS, imágenes y scripts completos.
+    _refreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
+      if (!mounted || !_hasLoadedOnce || _isLoading || _refreshInProgress) {
+        return;
       }
+      _silentRefresh();
     });
   }
 
   WebViewController _createController() {
-    return WebViewController()
+    final controller = WebViewController();
+
+    controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
       ..enableZoom(false)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onProgress: (progress) {
-            if (!mounted) return;
-            setState(() => _progress = progress);
-          },
-          onPageStarted: (url) {
-            if (!mounted) return;
-            setState(() {
-              _isLoading = true;
-              _hasError = false;
-              _progress = 0;
-              _currentUrl = url;
-            });
-          },
-          onPageFinished: (url) async {
-            await _applyAppPresentation();
-            if (!mounted) return;
-            setState(() {
-              _isLoading = false;
-              _hasLoadedOnce = true;
-              _hasError = false;
-              _progress = 100;
-              _currentUrl = url;
-            });
-          },
-          onWebResourceError: (error) {
-            if (!mounted) return;
-            if (error.isForMainFrame ?? true) {
-              setState(() {
-                _isLoading = false;
-                _hasError = true;
-              });
-            }
-          },
-          onNavigationRequest: (request) {
-            final uri = Uri.tryParse(request.url);
-            if (uri == null) return NavigationDecision.prevent;
-
-            final host = uri.host.toLowerCase();
-            final isAllowed =
-                host == _allowedHost || host.endsWith('.$_allowedHost');
-
-            // Todo queda dentro de la experiencia de Pivote.
-            if (!isAllowed) return NavigationDecision.prevent;
-            return NavigationDecision.navigate;
-          },
+          onProgress: _onProgress,
+          onPageStarted: _onPageStarted,
+          onPageFinished: _onPageFinished,
+          onWebResourceError: _onWebResourceError,
+          onNavigationRequest: _onNavigationRequest,
         ),
       );
+
+    return controller;
   }
 
-  Future<void> _preload() async {
-    await Future<void>.delayed(const Duration(milliseconds: 40));
+  void _onProgress(int progress) {
+    _progress = progress.clamp(0, 100);
+
+    // Android WebView puede emitir muchos callbacks de progreso. No hagamos
+    // rebuild del árbol Flutter por cada uno: actualizamos como máximo ~10 FPS.
+    if (_progressTimer != null || !mounted) return;
+
+    _progressTimer = Timer(const Duration(milliseconds: 100), () {
+      _progressTimer = null;
+      if (!mounted || _progress == _lastRenderedProgress) return;
+      _lastRenderedProgress = _progress;
+      setState(() {});
+    });
+  }
+
+  void _onPageStarted(String url) {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _progress = 0;
+      _lastRenderedProgress = 0;
+      _currentUrl = url;
+    });
+  }
+
+  Future<void> _onPageFinished(String url) async {
+    await _applyAppPresentation();
+
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _refreshInProgress = false;
+      _hasLoadedOnce = true;
+      _hasError = false;
+      _progress = 100;
+      _lastRenderedProgress = 100;
+      _currentUrl = url;
+    });
+  }
+
+  void _onWebResourceError(WebResourceError error) {
+    if (!mounted) return;
+    if (error.isForMainFrame ?? true) {
+      setState(() {
+        _isLoading = false;
+        _refreshInProgress = false;
+        _hasError = true;
+      });
+    }
+  }
+
+  NavigationDecision _onNavigationRequest(NavigationRequest request) {
+    final uri = Uri.tryParse(request.url);
+    if (uri == null) return NavigationDecision.prevent;
+
+    final host = uri.host.toLowerCase();
+    final isAllowed =
+        host == _allowedHost || host.endsWith('.$_allowedHost');
+
+    // Nunca dejamos que un enlace externo saque al usuario de Pivote.
+    return isAllowed
+        ? NavigationDecision.navigate
+        : NavigationDecision.prevent;
+  }
+
+  Future<void> _loadInitialPage() async {
+    // Da tiempo a que el primer frame nativo de Pivote aparezca antes de
+    // iniciar el trabajo pesado del WebView.
+    await Future<void>.delayed(const Duration(milliseconds: 16));
     if (!mounted) return;
     await _controller.loadRequest(Uri.parse(_pageUrl));
   }
 
+  Future<void> _silentRefresh() async {
+    _refreshInProgress = true;
+    try {
+      await _controller.reload();
+    } catch (_) {
+      _refreshInProgress = false;
+    }
+  }
+
+  Future<void> _refresh() async {
+    if (_isLoading || _refreshInProgress) return;
+
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _refreshInProgress = true;
+      _progress = 0;
+      _lastRenderedProgress = 0;
+    });
+
+    try {
+      await _controller.reload();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _refreshInProgress = false;
+        _hasError = true;
+      });
+    }
+  }
+
   Future<void> _applyAppPresentation() async {
+    // Idempotente: no vuelve a registrar listeners cada vez que Copa Fácil
+    // navega entre vistas internas.
     const script = r'''
       (() => {
         try {
+          if (window.__PIVOTE_ASCENSO_OPTIMIZED__) return;
+          window.__PIVOTE_ASCENSO_OPTIMIZED__ = true;
+
           const head = document.head || document.getElementsByTagName('head')[0];
           if (!head) return;
 
           let viewport = document.querySelector('meta[name="viewport"]');
           if (!viewport) {
             viewport = document.createElement('meta');
-            viewport.setAttribute('name', 'viewport');
+            viewport.name = 'viewport';
             head.appendChild(viewport);
           }
-          viewport.setAttribute(
-            'content',
-            'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
-          );
+          viewport.content =
+            'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
 
           let style = document.getElementById('pivote-webview-style');
           if (!style) {
@@ -132,15 +203,17 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
             html, body {
               width: 100% !important;
               max-width: 100% !important;
+              min-width: 0 !important;
               overflow-x: hidden !important;
               -webkit-text-size-adjust: 100% !important;
               overscroll-behavior-x: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
             }
             body {
-              margin: 0 !important;
-              padding-bottom: 24px !important;
+              padding-bottom: 12px !important;
             }
-            img, video, iframe, table {
+            img, video, iframe, canvas, table {
               max-width: 100% !important;
             }
             * {
@@ -148,14 +221,13 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
             }
           `;
 
-          // Bloquea cualquier intento de salir de Copa Fácil.
           document.addEventListener('click', (event) => {
-            const target = event.target && event.target.closest
+            const anchor = event.target && event.target.closest
               ? event.target.closest('a')
               : null;
-            if (!target) return;
+            if (!anchor) return;
 
-            const href = target.href || '';
+            const href = anchor.href || '';
             try {
               const url = new URL(href, location.href);
               const sameHost =
@@ -167,17 +239,13 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
             }
           }, true);
 
-          // Evita comportamientos típicos de navegador móvil que degradan la UI.
-          document.addEventListener(
-            'gesturestart',
+          document.addEventListener('gesturestart',
             (event) => event.preventDefault(),
-            {passive: false}
-          );
-          document.addEventListener(
-            'dblclick',
+            {passive: false});
+
+          document.addEventListener('dblclick',
             (event) => event.preventDefault(),
-            {passive: false}
-          );
+            {passive: false});
         } catch (_) {}
       })();
     ''';
@@ -185,20 +253,8 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
     try {
       await _controller.runJavaScript(script);
     } catch (_) {
-      // La página sigue siendo usable aunque falle una mejora visual.
+      // El contenido sigue funcionando aunque la capa de presentación falle.
     }
-  }
-
-  Future<void> _refresh() async {
-    if (_isLoading) return;
-
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-      _progress = 0;
-    });
-
-    await _controller.reload();
   }
 
   Future<bool> _handleBack() async {
@@ -212,87 +268,36 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _progressTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final bottom = MediaQuery.paddingOf(context).bottom;
-
     return WillPopScope(
       onWillPop: _handleBack,
       child: Scaffold(
-        extendBody: true,
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: PivoteAppBar(
           title: 'Ascenso 2026',
           actions: [
             IconButton(
               tooltip: 'Actualizar resultados',
               onPressed: _refresh,
-              icon: Icon(
-                Icons.refresh_rounded,
-                color: theme.colorScheme.primary,
-              ),
+              icon: const Icon(Icons.refresh_rounded),
             ),
           ],
         ),
-        body: Column(
+        // Sin tarjetas, sombras, padding ni overlays persistentes: el WebView
+        // ocupa toda el área disponible debajo del header nativo.
+        body: Stack(
+          fit: StackFit.expand,
           children: [
-            _TopStatusBar(
-              theme: theme,
-              progress: _progress,
-              isLoading: _isLoading,
-              currentUrl: _currentUrl,
-            ),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(10, 6, 10, 10 + bottom),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: theme.dividerColor.withValues(alpha: 0.08),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: isDark ? 0.18 : 0.04,
-                        ),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: WebViewWidget(controller: _controller),
-                      ),
-                      if (_isLoading)
-                        Positioned.fill(
-                          child: _WebViewLoadingOverlay(
-                            theme: theme,
-                            progress: _progress,
-                            isFirstLoad: !_hasLoadedOnce,
-                          ),
-                        ),
-                      if (_hasError)
-                        Positioned.fill(
-                          child: _WebViewErrorOverlay(
-                            theme: theme,
-                            onRetry: _refresh,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            WebViewWidget(controller: _controller),
+            if (_isLoading && !_hasLoadedOnce)
+              _InitialLoadingOverlay(progress: _progress),
+            if (_hasError)
+              _WebViewErrorOverlay(onRetry: _refresh),
           ],
         ),
       ),
@@ -300,148 +305,53 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
   }
 }
 
-class _TopStatusBar extends StatelessWidget {
-  final ThemeData theme;
+class _InitialLoadingOverlay extends StatelessWidget {
   final int progress;
-  final bool isLoading;
-  final String? currentUrl;
 
-  const _TopStatusBar({
-    required this.theme,
-    required this.progress,
-    required this.isLoading,
-    required this.currentUrl,
-  });
+  const _InitialLoadingOverlay({required this.progress});
 
   @override
   Widget build(BuildContext context) {
-    final loaded = !isLoading && currentUrl != null;
+    final theme = Theme.of(context);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 3, 16, 2),
-      child: Row(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: .28),
-                  blurRadius: 7,
+    return IgnorePointer(
+      child: ColoredBox(
+        color: theme.scaffoldBackgroundColor,
+        child: Center(
+          child: SizedBox(
+            width: 210,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    value: progress <= 0 || progress >= 100
+                        ? null
+                        : progress / 100,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Cargando Ascenso 2026',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  progress > 0 && progress < 100
+                      ? '$progress%'
+                      : 'Preparando datos…',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: theme.hintColor,
+                      ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 7),
-          Text(
-            isLoading
-                ? 'Cargando datos en tiempo real · $progress%'
-                : loaded
-                    ? 'Copa Fácil · datos actualizados'
-                    : 'Copa Fácil',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 9.5,
-              fontWeight: FontWeight.w700,
-              color: theme.hintColor,
-            ),
-          ),
-          const Spacer(),
-          if (isLoading)
-            SizedBox(
-              width: 34,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: LinearProgressIndicator(
-                  value: progress == 0 ? null : progress / 100,
-                  minHeight: 3,
-                  backgroundColor: theme.dividerColor.withValues(alpha: .08),
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WebViewLoadingOverlay extends StatelessWidget {
-  final ThemeData theme;
-  final int progress;
-  final bool isFirstLoad;
-
-  const _WebViewLoadingOverlay({
-    required this.theme,
-    required this.progress,
-    required this.isFirstLoad,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: AnimatedOpacity(
-        opacity: isFirstLoad ? 1 : .82,
-        duration: const Duration(milliseconds: 180),
-        child: Container(
-          color: theme.scaffoldBackgroundColor,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: .08),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Icon(
-                      Icons.emoji_events_rounded,
-                      size: 34,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Preparando Ascenso 2026',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    'Cargando resultados, tablas y estadísticas…',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12,
-                      color: theme.hintColor,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: 180,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: LinearProgressIndicator(
-                        value: progress == 0 ? null : progress / 100,
-                        minHeight: 4,
-                        backgroundColor:
-                            theme.dividerColor.withValues(alpha: .08),
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -451,52 +361,51 @@ class _WebViewLoadingOverlay extends StatelessWidget {
 }
 
 class _WebViewErrorOverlay extends StatelessWidget {
-  final ThemeData theme;
   final VoidCallback onRetry;
 
-  const _WebViewErrorOverlay({required this.theme, required this.onRetry});
+  const _WebViewErrorOverlay({required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final theme = Theme.of(context);
+
+    return ColoredBox(
       color: theme.scaffoldBackgroundColor,
-      alignment: Alignment.center,
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              size: 52,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No se pudo cargar Copa Fácil',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.cloud_off_rounded,
+                size: 48,
+                color: theme.colorScheme.primary,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Revisá tu conexión e intentá nuevamente.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 12.5,
-                color: theme.hintColor,
-                height: 1.4,
+              const SizedBox(height: 14),
+              Text(
+                'No se pudo cargar Copa Fácil',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-            const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Reintentar'),
-            ),
-          ],
+              const SizedBox(height: 7),
+              Text(
+                'Revisá tu conexión e intentá nuevamente.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.hintColor,
+                ),
+              ),
+              const SizedBox(height: 18),
+              ElevatedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Reintentar'),
+              ),
+            ],
+          ),
         ),
       ),
     );
