@@ -1,337 +1,105 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/favorites/data/services/viewing_history_service.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
-import 'package:pivote/core/animations/app_animations.dart';
-import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
+import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
-
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  List<Channel> _historyChannels = [];
-  bool _isLoading = true;
+  List<Channel> _items = [];
+  bool _loading = true;
 
   @override
-  void initState() {
-    super.initState();
-    _loadHistory();
-  }
+  void initState() { super.initState(); _load(); }
 
-  Future<void> _loadHistory() async {
-    setState(() => _isLoading = true);
-    final historyIds = await ViewingHistoryService.getTopChannels();
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final ids = await ViewingHistoryService.getTopChannels();
     if (!mounted) return;
-    final channelProvider =
-        Provider.of<ChannelProvider>(context, listen: false);
-
-    final channels = historyIds
-        .map((id) => channelProvider.channels.firstWhere((c) => c.id == id,
-            orElse: () => Channel(
-                id: '',
-                name: 'Canal Eliminado',
-                category: '',
-                logoUrl: [],
-                streamUrl: [],
-                description: '')))
-        .where((c) => c.id.isNotEmpty)
-        .toList();
-
-    if (mounted) {
-      setState(() {
-        _historyChannels = channels;
-        _isLoading = false;
-      });
-    }
+    final provider = context.read<ChannelProvider>();
+    final resolved = ids.map((id) => provider.channels.where((c) => c.id == id).cast<Channel?>().firstOrNull).whereType<Channel>().toList();
+    setState(() { _items = resolved; _loading = false; });
   }
 
-  void _showClearHistoryDialog(BuildContext context) async {
-    final confirmed = await AppDialogs.showConfirm(
-      context: context,
-      title: '¿Borrar historial?',
-      message: 'Se eliminarán los canales que viste recientemente.',
-      confirmLabel: 'Borrar todo',
-      cancelLabel: 'No, esperar',
-      isDestructive: true,
-      type: AppDialogType.error,
-    );
-
-    if (confirmed == true) {
-      await ViewingHistoryService.clearHistory();
-      _loadHistory();
-      if (context.mounted) {
-        AppNotifications.showInfo(context, 'Historial limpiado correctamente');
-      }
-    }
+  Future<void> _clear() async {
+    final ok = await AppDialogs.showConfirm(context: context, title: '¿Limpiar historial?', message: 'Se eliminarán los canales vistos recientemente de este dispositivo.', confirmLabel: 'Limpiar', cancelLabel: 'Cancelar', isDestructive: true, type: AppDialogType.error);
+    if (ok != true) return;
+    await ViewingHistoryService.clearHistory();
+    if (!mounted) return;
+    await _load();
+    AppNotifications.showInfo(context, 'Historial limpiado');
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      extendBodyBehindAppBar: true,
       appBar: PivoteAppBar(
         title: 'Historial',
-        subtitle: 'Canales vistos recientemente',
+        subtitle: _items.isEmpty ? 'Tus reproducciones recientes' : '${_items.length} canales vistos',
         actions: [
-          if (_historyChannels.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _showClearHistoryDialog(context),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.error.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: theme.colorScheme.error.withValues(alpha: 0.15),
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 20,
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          if (_items.isNotEmpty)
+            IconButton(tooltip: 'Limpiar historial', onPressed: _clear, icon: Icon(Icons.delete_sweep_rounded, color: theme.colorScheme.error)),
         ],
       ),
-      body: _isLoading
+      body: _loading
           ? const Center(child: PivoteLoader(size: 40))
-          : _historyChannels.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: EdgeInsets.only(
-                    top: MediaQuery.of(context).padding.top + 80,
-                    left: 24,
-                    right: 24,
-                    bottom: 40,
+          : _items.isEmpty
+              ? _empty(context)
+              : RefreshIndicator.adaptive(
+                  onRefresh: _load,
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 32),
+                    itemCount: _items.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 9),
+                    itemBuilder: (_, index) => AppAnimations.staggeredSlideIn(index: index, child: _card(context, _items[index])),
                   ),
-                  itemCount: _historyChannels.length,
-                  itemBuilder: (context, index) {
-                    final channel = _historyChannels[index];
-                    return AppAnimations.staggeredSlideIn(
-                      index: index,
-                      child: _buildHistoryCard(channel),
-                    );
-                  },
                 ),
     );
   }
 
-  Widget _buildHistoryCard(Channel channel) {
+  Widget _card(BuildContext context, Channel channel) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final logoUrl = channel.getLogoUrl(isDark);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.05)),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.push(
-              context,
-              AppAnimations.createFadeRoute(PlayerScreen(channel: channel)),
-            );
-          },
-          borderRadius: BorderRadius.circular(24),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Hero(
-                  tag: 'history_logo_${channel.id}',
-                  child: Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer
-                          .withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(18),
-                      gradient: LinearGradient(
-                        colors: [
-                          theme.colorScheme.primary.withValues(alpha: 0.1),
-                          theme.colorScheme.primary.withValues(alpha: 0.05),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(10),
-                    child: logoUrl.isNotEmpty
-                        ? Image.network(
-                            logoUrl,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => Icon(
-                                Icons.tv,
-                                color: theme.colorScheme.primary),
-                          )
-                        : Icon(Icons.tv, color: theme.colorScheme.primary),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        channel.name,
-                        style: GoogleFonts.spaceGrotesk(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        channel.category.toUpperCase(),
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              theme.colorScheme.primary.withValues(alpha: 0.8),
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.play_arrow_rounded,
-                    size: 20,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-              ],
-            ),
-          ),
+    final dark = theme.brightness == Brightness.dark;
+    final logo = channel.getLogoUrl(dark);
+    return Material(
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(19),
+      child: InkWell(
+        onTap: () => Navigator.push(context, AppAnimations.createFadeRoute(PlayerScreen(channel: channel))),
+        borderRadius: BorderRadius.circular(19),
+        child: Container(
+          padding: const EdgeInsets.all(11),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(19), border: Border.all(color: theme.dividerColor.withValues(alpha: .07))),
+          child: Row(children: [
+            Container(width: 62, height: 62, padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: .07), borderRadius: BorderRadius.circular(16)), child: logo.isNotEmpty ? Image.network(logo, fit: BoxFit.contain, errorBuilder: (_, __, ___) => Icon(Icons.tv_rounded, color: theme.colorScheme.primary)) : Icon(Icons.tv_rounded, color: theme.colorScheme.primary)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(channel.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.spaceGrotesk(fontSize: 14.5, fontWeight: FontWeight.w900)), const SizedBox(height: 4), Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4), decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: .08), borderRadius: BorderRadius.circular(7)), child: Text(channel.category.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.spaceGrotesk(fontSize: 8.5, fontWeight: FontWeight.w900, color: theme.colorScheme.primary, letterSpacing: .8)))])),
+            const SizedBox(width: 8),
+            Container(width: 34, height: 34, decoration: BoxDecoration(color: theme.colorScheme.onSurface.withValues(alpha: .05), shape: BoxShape.circle), child: Icon(Icons.play_arrow_rounded, size: 19, color: theme.colorScheme.onSurface.withValues(alpha: .75))),
+          ]),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _empty(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AppAnimations.smoothFadeIn(
-            child: Container(
-              padding: const EdgeInsets.all(40),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.05),
-                shape: BoxShape.circle,
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(Icons.history_rounded,
-                      size: 80,
-                      color: theme.colorScheme.primary.withValues(alpha: 0.2)),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 10,
-                          )
-                        ],
-                      ),
-                      child: Icon(Icons.close_rounded,
-                          size: 20, color: theme.colorScheme.primary),
-                    ),
-                  )
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            'Sin historial',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48),
-            child: Text(
-              'Aún no has visto ningún canal. ¡Explora nuestra lista y comienza a disfrutar!',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 15,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                height: 1.5,
-              ),
-            ),
-          ),
-          const SizedBox(height: 40),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(100),
-              ),
-              elevation: 0,
-            ),
-            child: const Text('Volver al Perfil',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
+    final accent = theme.colorScheme.primary;
+    return Center(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 38), child: Column(mainAxisSize: MainAxisSize.min, children: [Container(width: 78, height: 78, decoration: BoxDecoration(color: accent.withValues(alpha: .08), borderRadius: BorderRadius.circular(24)), child: Icon(Icons.history_rounded, size: 38, color: accent)), const SizedBox(height: 18), Text('Todavía no hay historial', textAlign: TextAlign.center, style: GoogleFonts.spaceGrotesk(fontSize: 21, fontWeight: FontWeight.w900, letterSpacing: -.4)), const SizedBox(height: 7), Text('Los canales que reproduzcas aparecerán acá para volver a encontrarlos rápidamente.', textAlign: TextAlign.center, style: GoogleFonts.spaceGrotesk(fontSize: 11.5, fontWeight: FontWeight.w600, color: theme.hintColor, height: 1.45)), const SizedBox(height: 18), ElevatedButton.icon(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.explore_rounded, size: 17), label: const Text('Explorar Pivote'))])));
   }
 }
