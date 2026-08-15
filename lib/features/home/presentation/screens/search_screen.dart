@@ -71,10 +71,10 @@ class _SearchScreenState extends State<SearchScreen>
 
   void _updateQuery(String value) {
     setState(() {});
-    context.read<ChannelProvider>().searchChannels(value);
+    context.read<ChannelProvider>().setSearchQuery(value);
   }
 
-  void _submitQuery(String value) {
+  Future<void> _submitQuery(String value) async {
     final query = value.trim();
     if (query.isEmpty) return;
 
@@ -82,9 +82,11 @@ class _SearchScreenState extends State<SearchScreen>
       text: query,
       selection: TextSelection.collapsed(offset: query.length),
     );
-    _updateQuery(query);
+    context.read<ChannelProvider>().setSearchQuery(query);
+    await SearchService.saveSearchQuery(query);
+    await _loadHistory();
     _searchFocusNode.unfocus();
-    _loadHistory();
+    if (mounted) setState(() {});
   }
 
   void _clearQuery() {
@@ -172,7 +174,7 @@ class _SearchTopBar extends StatelessWidget {
   final ThemeData theme;
   final bool isDark;
   final ValueChanged<String> onChanged;
-  final ValueChanged<String> onSubmitted;
+  final Future<void> Function(String) onSubmitted;
   final VoidCallback onClear;
   final VoidCallback onClose;
 
@@ -233,7 +235,7 @@ class _SearchTopBar extends StatelessWidget {
                 controller: controller,
                 focusNode: focusNode,
                 onChanged: onChanged,
-                onSubmitted: onSubmitted,
+                onSubmitted: (value) => onSubmitted(value),
                 textInputAction: TextInputAction.search,
                 cursorColor: theme.colorScheme.primary,
                 cursorWidth: 2,
@@ -471,7 +473,7 @@ class _ResultsView extends StatelessWidget {
               ),
               const SizedBox(height: 7),
               Text(
-                'Probá con otro término o explorá una categoría.',
+                'No hay coincidencias para “$query”. Probá con otro término.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 12.5,
@@ -527,9 +529,7 @@ class _ResultsView extends StatelessWidget {
               childAspectRatio: .92,
             ),
             itemCount: results.length,
-            itemBuilder: (context, index) => ChannelCard(
-              channel: results[index],
-            ),
+            itemBuilder: (context, index) => ChannelCard(channel: results[index]),
           ),
         ),
       ],
