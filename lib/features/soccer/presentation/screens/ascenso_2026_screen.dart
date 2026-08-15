@@ -83,7 +83,7 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
         ],
       ),
       body: RefreshIndicator.adaptive(
-        onRefresh: _load,
+        onRefresh: () => _load(),
         color: theme.colorScheme.primary,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -130,9 +130,7 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
                 ? [AppTheme.darkCard, AppTheme.darkBg2]
                 : [theme.colorScheme.surface, theme.colorScheme.primary.withValues(alpha: 0.06)],
           ),
-          border: Border.all(
-            color: theme.colorScheme.primary.withValues(alpha: 0.12),
-          ),
+          border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.12)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.04),
@@ -150,9 +148,7 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
-                ),
+                border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.10)),
               ),
               child: CachedNetworkImage(
                 imageUrl: _logoUrl,
@@ -180,9 +176,7 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    _snapshot?.title.isNotEmpty == true
-                        ? _snapshot!.title
-                        : 'Todos los resultados',
+                    _snapshot?.title.isNotEmpty == true ? _snapshot!.title : 'Todos los resultados',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.spaceGrotesk(
@@ -195,10 +189,7 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
                   const SizedBox(height: 6),
                   Text(
                     'Resultados y novedades de Copa Fácil',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 11.5,
-                      color: theme.hintColor,
-                    ),
+                    style: GoogleFonts.spaceGrotesk(fontSize: 11.5, color: theme.hintColor),
                   ),
                 ],
               ),
@@ -210,39 +201,16 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
   }
 
   Widget _buildStatus(ThemeData theme) {
-    final time = _lastUpdated == null
-        ? 'Actualizando…'
-        : 'Actualizado ${_formatTime(_lastUpdated!)}';
+    final time = _lastUpdated == null ? 'Actualizando…' : 'Actualizado ${_formatTime(_lastUpdated!)}';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
       child: Row(
         children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary,
-              shape: BoxShape.circle,
-            ),
-          ),
+          Container(width: 7, height: 7, decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle)),
           const SizedBox(width: 7),
-          Text(
-            time,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: theme.hintColor,
-            ),
-          ),
+          Text(time, style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w600, color: theme.hintColor)),
           const Spacer(),
-          Text(
-            '${_snapshot!.matches.length} registros',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.primary,
-            ),
-          ),
+          Text('${_snapshot!.matches.length} registros', style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w700, color: theme.colorScheme.primary)),
         ],
       ),
     );
@@ -261,18 +229,13 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(13),
-            border: Border.all(
-              color: theme.dividerColor.withValues(alpha: 0.08),
-            ),
+            border: Border.all(color: theme.dividerColor.withValues(alpha: 0.08)),
           ),
           child: Text(
             sections[index],
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-            ),
+            style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w700),
           ),
         ),
       ),
@@ -288,23 +251,11 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
           children: [
             Icon(Icons.cloud_off_rounded, size: 50, color: theme.colorScheme.primary),
             const SizedBox(height: 16),
-            Text(
-              'No pudimos cargar Ascenso 2026',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(fontSize: 20, fontWeight: FontWeight.w800),
-            ),
+            Text('No pudimos cargar Ascenso 2026', textAlign: TextAlign.center, style: GoogleFonts.spaceGrotesk(fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
-            Text(
-              _error ?? 'Intentá nuevamente en unos segundos.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(fontSize: 12.5, color: theme.hintColor, height: 1.45),
-            ),
+            Text(_error ?? 'Intentá nuevamente en unos segundos.', textAlign: TextAlign.center, style: GoogleFonts.spaceGrotesk(fontSize: 12.5, color: theme.hintColor, height: 1.45)),
             const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Reintentar'),
-            ),
+            ElevatedButton.icon(onPressed: () => _load(), icon: const Icon(Icons.refresh_rounded), label: const Text('Reintentar')),
           ],
         ),
       ),
@@ -342,27 +293,18 @@ class _LoadingState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
-      child: PivoteLoader(
-        color: theme.colorScheme.primary,
-        strokeWidth: 3,
-        size: 40,
-      ),
-    );
+    return Center(child: PivoteLoader(color: theme.colorScheme.primary, strokeWidth: 3, size: 40));
   }
 }
 
 class _MatchRow extends StatelessWidget {
   final AscensoFixtureItem item;
-
   const _MatchRow({required this.item});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isLive = item.status?.toLowerCase().contains('vivo') == true ||
-        item.status?.toLowerCase().contains('live') == true ||
-        item.status?.toLowerCase().contains('ao vivo') == true;
+    final isLive = item.status?.toLowerCase().contains('vivo') == true || item.status?.toLowerCase().contains('live') == true || item.status?.toLowerCase().contains('ao vivo') == true;
 
     return Material(
       color: theme.colorScheme.surface,
@@ -372,57 +314,25 @@ class _MatchRow extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: theme.dividerColor.withValues(alpha: 0.08)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? 0.10 : 0.025),
-              blurRadius: 12,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? 0.10 : 0.025), blurRadius: 12, offset: const Offset(0, 5))],
         ),
         child: Row(
           children: [
             Container(
               width: 42,
               height: 42,
-              decoration: BoxDecoration(
-                color: isLive
-                    ? theme.colorScheme.error.withValues(alpha: 0.10)
-                    : theme.colorScheme.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(13),
-              ),
-              child: Icon(
-                isLive ? Icons.bolt_rounded : Icons.sports_soccer_rounded,
-                size: 20,
-                color: isLive ? theme.colorScheme.error : theme.colorScheme.primary,
-              ),
+              decoration: BoxDecoration(color: isLive ? theme.colorScheme.error.withValues(alpha: 0.10) : theme.colorScheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(13)),
+              child: Icon(isLive ? Icons.bolt_rounded : Icons.sports_soccer_rounded, size: 20, color: isLive ? theme.colorScheme.error : theme.colorScheme.primary),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      height: 1.2,
-                    ),
-                  ),
+                  Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w800, height: 1.2)),
                   if (item.subtitle.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(
-                      item.subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 10.5,
-                        color: theme.hintColor,
-                      ),
-                    ),
+                    Text(item.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.spaceGrotesk(fontSize: 10.5, color: theme.hintColor)),
                   ],
                 ],
               ),
@@ -431,32 +341,13 @@ class _MatchRow extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (item.score != null)
-                  Text(
-                    item.score!,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                if (item.score != null) Text(item.score!, style: GoogleFonts.spaceGrotesk(fontSize: 17, fontWeight: FontWeight.w900)),
                 if (item.status != null)
                   Container(
                     margin: const EdgeInsets.only(top: 4),
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isLive
-                          ? theme.colorScheme.error.withValues(alpha: 0.10)
-                          : theme.colorScheme.primary.withValues(alpha: 0.07),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      item.status!,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w900,
-                        color: isLive ? theme.colorScheme.error : theme.colorScheme.primary,
-                      ),
-                    ),
+                    decoration: BoxDecoration(color: isLive ? theme.colorScheme.error.withValues(alpha: 0.10) : theme.colorScheme.primary.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(8)),
+                    child: Text(item.status!, style: GoogleFonts.spaceGrotesk(fontSize: 8.5, fontWeight: FontWeight.w900, color: isLive ? theme.colorScheme.error : theme.colorScheme.primary)),
                   ),
               ],
             ),
