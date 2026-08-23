@@ -143,6 +143,18 @@ class SearchService {
     return [];
   }
 
+  /// Remove a specific query from history
+  static Future<void> removeSearchQuery(String query) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final history = await getSearchHistory();
+      history.remove(query);
+      await prefs.setString(_searchHistoryKey, json.encode(history));
+    } catch (e) {
+      debugPrint('Error removing search query: $e');
+    }
+  }
+
   /// Clear search history
   static Future<void> clearSearchHistory() async {
     try {
@@ -180,3 +192,4 @@ class SearchService {
     return suggestions.take(maxSuggestions).toList();
   }
 }
+

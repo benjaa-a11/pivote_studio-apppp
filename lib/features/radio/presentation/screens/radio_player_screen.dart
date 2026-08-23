@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,8 +9,9 @@ import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/features/radio/data/models/radio.dart' as radio_model;
 import 'package:pivote/features/radio/presentation/providers/audio_manager.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 
 class RadioPlayerScreen extends StatefulWidget {
@@ -27,42 +29,44 @@ class RadioPlayerScreen extends StatefulWidget {
 class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     with TickerProviderStateMixin {
   late AnimationController _rotateController;
+  late AnimationController _pulseController;
+  Timer? _sleepTimer;
+  int _sleepMinutesRemaining = 0;
 
   @override
   void initState() {
     super.initState();
 
-    // Subtle rotation for the logo/disc
+    // Disc rotation controller
     _rotateController = AnimationController(
-      duration: const Duration(seconds: 15),
+      duration: const Duration(seconds: 18),
       vsync: this,
     );
 
-    // Ensure the manager plays this radio
+    // Pulse controller for live equalizer waves
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    // Play radio on open if not already playing this radio
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final audioManager = context.read<AudioManager>();
       if (audioManager.currentRadio?.id != widget.radio.id) {
         audioManager.playRadio(widget.radio);
       }
       try {
-        Provider.of<AppActivityService>(context, listen: false).trackRadioListen();
+        Provider.of<AppActivityService>(context, listen: false)
+            .trackRadioListen();
       } catch (e) {
         debugPrint('Error tracking radio listen: $e');
       }
 
-      // Control rotation based on playing state
       if (audioManager.isPlaying) {
         _rotateController.repeat();
       }
     });
 
-    // Set initial system UI for player
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
-
-    // Listen to changes in AudioManager
     _setupManagerListener();
   }
 
@@ -74,8 +78,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   void _onAudioManagerChanged() {
     if (!mounted) return;
     final audioManager = context.read<AudioManager>();
-    
-    // Manage rotation state dynamically
+
     if (audioManager.isPlaying) {
       if (!_rotateController.isAnimating) {
         _rotateController.repeat();
@@ -94,170 +97,222 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
 
   @override
   void dispose() {
+    _sleepTimer?.cancel();
     context.read<AudioManager>().removeListener(_onAudioManagerChanged);
     _rotateController.dispose();
+    _pulseController.dispose();
     super.dispose();
+  }
+
+  void _setSleepTimer(int minutes) {
+    _sleepTimer?.cancel();
+    if (minutes <= 0) {
+      setState(() => _sleepMinutesRemaining = 0);
+      AppNotifications.showSuccess(context, 'Temporizador cancelado');
+      return;
+    }
+
+    setState(() => _sleepMinutesRemaining = minutes);
+    AppNotifications.showSuccess(
+        context, 'Radio se apagará en $minutes minutos');
+
+    _sleepTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _sleepMinutesRemaining--;
+        if (_sleepMinutesRemaining <= 0) {
+          timer.cancel();
+          context.read<AudioManager>().stop();
+          AppNotifications.showSuccess(
+              context, 'Temporizador completado: Radio apagada');
+        }
+      });
+    });
+  }
+
+  void _showSleepTimerSheet(BuildContext context, ThemeData theme, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final options = [15, 30, 45, 60];
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.timer_outlined,
+                      size: 20,
+                      color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Temporizador de Apagado',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ...options.map((m) {
+                  final isCurrent = _sleepMinutesRemaining == m;
+                  return ListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    leading: Icon(
+                      Icons.alarm_rounded,
+                      color: isCurrent
+                          ? (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                    title: Text(
+                      '$m minutos',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 14.5,
+                        fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+                        color: isCurrent
+                            ? (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
+                            : theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    trailing: isCurrent
+                        ? Icon(
+                            Icons.check_circle_rounded,
+                            color: isDark
+                                ? AppTheme.darkAccent
+                                : theme.colorScheme.primary,
+                          )
+                        : null,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _setSleepTimer(m);
+                    },
+                  );
+                }),
+                if (_sleepMinutesRemaining > 0)
+                  ListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    leading: Icon(
+                      Icons.timer_off_rounded,
+                      color: theme.colorScheme.error,
+                    ),
+                    title: Text(
+                      'Desactivar temporizador',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _setSleepTimer(0);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _goToNextRadio(RadioProvider provider, AudioManager audioManager, bool next) {
+    final radios = provider.radios;
+    if (radios.isEmpty) return;
+
+    final currentIndex = radios.indexWhere((r) => r.id == (audioManager.currentRadio?.id ?? widget.radio.id));
+    if (currentIndex == -1) return;
+
+    int newIndex = next ? currentIndex + 1 : currentIndex - 1;
+    if (newIndex >= radios.length) newIndex = 0;
+    if (newIndex < 0) newIndex = radios.length - 1;
+
+    final targetRadio = radios[newIndex];
+    audioManager.playRadio(targetRadio);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return PopScope(
-      canPop: true,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) {
-          context.read<AudioManager>().stop();
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Premium Background Gradient & Blur Glows
-            _buildDynamicBackground(context, isDark),
-
-            SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isLandscape = constraints.maxHeight < constraints.maxWidth;
-                  final isTablet = constraints.maxWidth > 600;
-
-                  if (isLandscape) {
-                    return _buildLandscapeLayout(context, isDark, constraints);
-                  } else {
-                    return _buildPortraitLayout(context, isDark, constraints, isTablet);
-                  }
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDynamicBackground(BuildContext context, bool isDark) {
     final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
+    final isDark = theme.brightness == Brightness.dark;
+    final audioManager = context.watch<AudioManager>();
+    final radioProvider = context.watch<RadioProvider>();
 
-    return Stack(
-      children: [
-        // Solid theme-colored base
-        Container(
-          color: theme.scaffoldBackgroundColor,
-        ),
-        // Glowing radial blobs
-        Positioned(
-          top: -150,
-          left: -100,
-          child: Container(
-            width: 400,
-            height: 400,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: primaryColor.withValues(alpha: isDark ? 0.08 : 0.04),
-              gradient: RadialGradient(
-                colors: [
-                  primaryColor.withValues(alpha: isDark ? 0.2 : 0.1),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: -150,
-          right: -100,
-          child: Container(
-            width: 450,
-            height: 450,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: primaryColor.withValues(alpha: isDark ? 0.06 : 0.03),
-              gradient: RadialGradient(
-                colors: [
-                  primaryColor.withValues(alpha: isDark ? 0.15 : 0.08),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-        // Overlay gradient for depth
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                isDark ? Colors.black.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.3),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+    final activeRadio = audioManager.currentRadio ?? widget.radio;
+    final isPlaying = audioManager.isPlaying;
+    final isLoading = audioManager.isLoading;
+    final isFav = activeRadio.isFavorite;
 
-  Widget _buildHeader(BuildContext context, bool isDark) {
-    final textColor = Theme.of(context).colorScheme.onSurface;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          IconButton(
-            onPressed: () {
-              context.read<AudioManager>().stop();
-              Navigator.pop(context);
-            },
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: textColor.withValues(alpha: 0.8),
-                size: 16,
-              ),
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'RADIO EN VIVO',
-                style: GoogleFonts.spaceGrotesk(
-                  color: textColor.withValues(alpha: 0.4),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 2.0,
-                ),
-              ),
-            ],
-          ),
-          IconButton(
-            onPressed: () {
-              // Custom share/info bottom sheet
-              _showInfoBottomSheet(context, isDark);
-            },
-            icon: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-              ),
-              child: Icon(
-                Icons.info_outline_rounded,
-                color: textColor.withValues(alpha: 0.8),
-                size: 24,
-              ),
+          // Dynamic Glowing Radial Background
+          _buildGlowingBackground(theme, isDark),
+
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight - 24,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Top Bar
+                        _buildTopBar(context, theme, isDark, activeRadio, isFav, radioProvider),
+
+                        // Center Vinyl Disc & Visualizer
+                        _buildCenterDisc(theme, isDark, activeRadio, isPlaying),
+
+                        // Bottom Controls Section
+                        _buildControlsSection(
+                          context,
+                          theme,
+                          isDark,
+                          activeRadio,
+                          audioManager,
+                          radioProvider,
+                          isPlaying,
+                          isLoading,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -265,45 +320,42 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     );
   }
 
-  Widget _buildPortraitLayout(
-    BuildContext context,
-    bool isDark,
-    BoxConstraints constraints,
-    bool isTablet,
-  ) {
-    // Avoid large height overflows on small devices like J7 by using a SingleChildScrollView
-    // while keeping content nicely centered on tall screens.
-    final double maxArtSize = isTablet
-        ? 340
-        : (constraints.maxHeight * 0.32).clamp(180, 280);
+  // ─── Background Glow ───
+  Widget _buildGlowingBackground(ThemeData theme, bool isDark) {
+    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
-    return Column(
+    return Stack(
       children: [
-        _buildHeader(context, isDark),
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Container(
-              alignment: Alignment.center,
-              padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 64 : 24,
-                vertical: 16,
+        Container(color: theme.scaffoldBackgroundColor),
+        Positioned(
+          top: -100,
+          left: -80,
+          child: Container(
+            width: 360,
+            height: 360,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  primaryColor.withValues(alpha: isDark ? 0.16 : 0.08),
+                  Colors.transparent,
+                ],
               ),
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight - 80, // compensate for header
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildPlayerArt(context, maxArtSize, isDark),
-                  const SizedBox(height: 24),
-                  _buildPlayerInfo(context, isDark),
-                  const SizedBox(height: 24),
-                  _buildVisualizerSection(context),
-                  const SizedBox(height: 28),
-                  _buildPlayerControls(context, isDark),
-                  const SizedBox(height: 16),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: -100,
+          right: -80,
+          child: Container(
+            width: 380,
+            height: 380,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  primaryColor.withValues(alpha: isDark ? 0.14 : 0.06),
+                  Colors.transparent,
                 ],
               ),
             ),
@@ -313,46 +365,318 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     );
   }
 
-  Widget _buildLandscapeLayout(
+  // ─── Top Bar ───
+  Widget _buildTopBar(
     BuildContext context,
+    ThemeData theme,
     bool isDark,
-    BoxConstraints constraints,
+    radio_model.Radio radio,
+    bool isFav,
+    RadioProvider radioProvider,
   ) {
-    final double maxArtSize = (constraints.maxHeight * 0.55).clamp(140.0, 240.0);
-
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildHeader(context, isDark),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            child: Row(
-              children: [
-                // Left Column: Art & Visualizer
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildPlayerArt(context, maxArtSize, isDark),
-                      const SizedBox(height: 16),
-                      _buildVisualizerSection(context),
-                    ],
+        // Back Button (keeps background radio playing)
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppTheme.darkBg2
+                    : theme.colorScheme.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : theme.colorScheme.primary.withValues(alpha: 0.12),
+                ),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  size: 20,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Live Header Badge / Sleep Timer Badge
+        Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppTheme.darkAccent.withValues(alpha: 0.15)
+                    : theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark
+                      ? AppTheme.darkAccent.withValues(alpha: 0.4)
+                      : theme.colorScheme.primary.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppTheme.darkAccent
+                          : theme.colorScheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'EN VIVO',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                      color: isDark
+                          ? AppTheme.darkAccent
+                          : theme.colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_sleepMinutesRemaining > 0) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Apagado en $_sleepMinutesRemaining m',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ],
+        ),
+
+        // Actions: Sleep Timer & Favorite
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _showSleepTimerSheet(context, theme, isDark),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppTheme.darkBg2
+                        : theme.colorScheme.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _sleepMinutesRemaining > 0
+                          ? (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : theme.colorScheme.primary.withValues(alpha: 0.12)),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.timer_outlined,
+                    size: 20,
+                    color: _sleepMinutesRemaining > 0
+                        ? (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
-                const SizedBox(width: 32),
-                // Right Column: Controls, Info & Volume
-                Expanded(
-                  flex: 6,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        _buildPlayerInfo(context, isDark),
-                        const SizedBox(height: 24),
-                        _buildPlayerControls(context, isDark),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  radioProvider.toggleFavorite(radio);
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppTheme.darkBg2
+                        : theme.colorScheme.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : theme.colorScheme.primary.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  child: Icon(
+                    isFav
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    size: 20,
+                    color: isFav
+                        ? const Color(0xFFEF4444)
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ─── Vinyl Disc Center ───
+  Widget _buildCenterDisc(
+    ThemeData theme,
+    bool isDark,
+    radio_model.Radio radio,
+    bool isPlaying,
+  ) {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        AnimatedBuilder(
+          animation: _pulseController,
+          builder: (context, child) {
+            final pulseVal = isPlaying ? _pulseController.value * 12 : 0.0;
+            return Container(
+              width: 240,
+              height: 240,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
+                        .withValues(alpha: isPlaying ? 0.25 : 0.05),
+                    blurRadius: 30 + pulseVal,
+                    spreadRadius: 2 + pulseVal * 0.4,
+                  ),
+                ],
+              ),
+              child: child,
+            );
+          },
+          child: AnimatedBuilder(
+            animation: _rotateController,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: _rotateController.value * 2 * math.pi,
+                child: child,
+              );
+            },
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Vinyl Disc Rim
+                Container(
+                  width: 240,
+                  height: 240,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        isDark ? const Color(0xFF1E1E24) : const Color(0xFF333333),
+                        isDark ? const Color(0xFF0F0F12) : const Color(0xFF1A1A1A),
                       ],
+                    ),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.2),
+                      width: 2,
+                    ),
+                  ),
+                ),
+
+                // Vinyl Grooves
+                Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 170,
+                  height: 170,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+
+                // Center Station Logo
+                Hero(
+                  tag: 'radio_tile_logo_${radio.id}',
+                  child: Container(
+                    width: 130,
+                    height: 130,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark
+                            ? AppTheme.darkAccent
+                            : theme.colorScheme.primary,
+                        width: 2.5,
+                      ),
+                    ),
+                    child: ClipOval(
+                      child: radio.logoUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              key: ValueKey<String>(radio.logoUrl),
+                              cacheManager: ImageCacheHelper.logoCacheManager,
+                              imageUrl: radio.logoUrl,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 260,
+                            )
+                          : Container(
+                              color: isDark ? AppTheme.darkBg2 : Colors.white,
+                              child: Icon(
+                                Icons.radio_rounded,
+                                size: 48,
+                                color: isDark
+                                    ? AppTheme.darkAccent
+                                    : theme.colorScheme.primary,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+
+                // Center Pin Hole
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.darkBg : Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.grey.withValues(alpha: 0.5),
+                      width: 2,
                     ),
                   ),
                 ),
@@ -360,433 +684,282 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
             ),
           ),
         ),
-      ],
-    );
-  }
+        const SizedBox(height: 28),
 
-  Widget _buildPlayerArt(BuildContext context, double artSize, bool isDark) {
-    return Center(
-      child: Container(
-        width: artSize,
-        height: artSize,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
-              blurRadius: 30,
-              offset: const Offset(0, 12),
-              spreadRadius: -4,
-            ),
-          ],
-        ),
-        child: Hero(
-          tag: 'radio_tile_logo_${widget.radio.id}',
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: CachedNetworkImage(
-              cacheManager: ImageCacheHelper.customCacheManager,
-              imageUrl: widget.radio.logoUrl,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                child: const Center(
-                  child: PivoteLoader(
-                    size: 30,
-                    strokeWidth: 3,
-                  ),
-                ),
-              ),
-              errorWidget: (context, url, error) => Container(
-                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
-                child: Icon(
-                  Icons.radio_rounded,
-                  color: isDark ? Colors.white24 : Colors.black12,
-                  size: artSize * 0.4,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlayerInfo(BuildContext context, bool isDark) {
-    final textColor = Theme.of(context).colorScheme.onSurface;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
+        // Station Name & Frequency
         Text(
-          widget.radio.name,
+          radio.name,
           textAlign: TextAlign.center,
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.spaceGrotesk(
-            color: textColor,
-            fontSize: 26,
-            fontWeight: FontWeight.w700,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
             letterSpacing: -0.5,
+            color: theme.colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (radio.frequency.isNotEmpty) ...[
+              Text(
+                radio.frequency,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 4,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              radio.category ?? 'Radio Online',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // HD Quality Badge
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(100),
-            border: Border.all(
-              color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
-            ),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(
-            widget.radio.frequency,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.spaceGrotesk(
-              color: Theme.of(context).colorScheme.primary,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.high_quality_rounded,
+                size: 16,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                'STREAMING AAC / MP3 • HD AUDIO',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.5,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildVisualizerSection(BuildContext context) {
-    return Consumer<AudioManager>(
-      builder: (context, audioManager, _) {
-        return _VisualizerBars(isPlaying: audioManager.isPlaying);
-      },
-    );
-  }
+  // ─── Controls Section (Volume + Playback) ───
+  Widget _buildControlsSection(
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+    radio_model.Radio radio,
+    AudioManager audioManager,
+    RadioProvider radioProvider,
+    bool isPlaying,
+    bool isLoading,
+  ) {
+    return Column(
+      children: [
+        const SizedBox(height: 20),
 
-  Widget _buildPlayerControls(BuildContext context, bool isDark) {
-    final textColor = Theme.of(context).colorScheme.onSurface;
-
-    return Consumer<AudioManager>(
-      builder: (context, audioManager, _) {
-        final isPlaying = audioManager.isPlaying;
-        final isLoading = audioManager.isLoading;
-
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Skip Prev
-            IconButton(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                _navigateRadio(context, -1);
-              },
-              icon: Icon(
-                Icons.skip_previous_rounded,
-                color: textColor.withValues(alpha: 0.8),
-                size: 38,
-              ),
-            ),
-            const SizedBox(width: 24),
-            // Play / Pause Circle
-            GestureDetector(
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                if (isPlaying) {
-                  audioManager.pause();
-                } else {
-                  audioManager.resume();
-                }
-              },
-              child: Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Theme.of(context).colorScheme.primary,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: PivoteLoader(
-                            color: Colors.white,
-                            strokeWidth: 3.5,
-                            size: 28,
-                          ),
-                        )
-                      : Icon(
-                          isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 44,
-                        ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 24),
-            // Skip Next
-            IconButton(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                _navigateRadio(context, 1);
-              },
-              icon: Icon(
-                Icons.skip_next_rounded,
-                color: textColor.withValues(alpha: 0.8),
-                size: 38,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-
-
-  void _navigateRadio(BuildContext context, int offset) {
-    final radioProvider = context.read<RadioProvider>();
-    final radios = radioProvider.radios;
-    if (radios.isNotEmpty) {
-      final currentIndex = radios.indexWhere((r) => r.id == widget.radio.id);
-      if (currentIndex != -1) {
-        final nextIndex =
-            (currentIndex + offset + radios.length) % radios.length;
-        final nextRadio = radios[nextIndex];
-
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => RadioPlayerScreen(radio: nextRadio),
-            transitionDuration: const Duration(milliseconds: 400),
-            transitionsBuilder: (_, animation, __, child) {
-              return FadeTransition(
-                opacity: CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeInOut,
-                ),
-                child: child,
-              );
-            },
-          ),
-        );
-      }
-    }
-  }
-
-  void _showInfoBottomSheet(BuildContext context, bool isDark) {
-    final theme = Theme.of(context);
-    final textColor = theme.colorScheme.onSurface;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: textColor.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        // Interactive Volume Slider
+        StreamBuilder<double>(
+          stream: audioManager.volumeStream,
+          initialData: audioManager.volume,
+          builder: (context, snapshot) {
+            final volume = snapshot.data ?? 1.0;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
                 children: [
-                  Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
+                  IconButton(
+                    icon: Icon(
+                      volume == 0
+                          ? Icons.volume_off_rounded
+                          : Icons.volume_down_rounded,
+                      size: 20,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: CachedNetworkImage(
-                        key: ValueKey<String>(widget.radio.logoUrl),
-                        cacheManager: ImageCacheHelper.customCacheManager,
-                        imageUrl: widget.radio.logoUrl,
-                        fit: BoxFit.cover,
-                        memCacheWidth: 200,
-                        memCacheHeight: 200,
-                        fadeInDuration: const Duration(milliseconds: 200),
-                        errorWidget: (_, __, ___) => Container(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                          child: Icon(Icons.radio, color: theme.colorScheme.primary),
-                        ),
+                    onPressed: () {
+                      audioManager.setVolume(volume == 0 ? 0.8 : 0.0);
+                    },
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 4,
+                        thumbShape:
+                            const RoundSliderThumbShape(enabledThumbRadius: 7),
+                        overlayShape:
+                            const RoundSliderOverlayShape(overlayRadius: 14),
+                        activeTrackColor: isDark
+                            ? AppTheme.darkAccent
+                            : theme.colorScheme.primary,
+                        inactiveTrackColor: isDark
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.1),
+                        thumbColor: isDark
+                            ? AppTheme.darkAccent
+                            : theme.colorScheme.primary,
+                      ),
+                      child: Slider(
+                        value: volume.clamp(0.0, 1.0),
+                        onChanged: (val) => audioManager.setVolume(val),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.radio.name,
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: textColor,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.radio.frequency,
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 14,
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Streaming oficial en vivo',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 12,
-                            color: textColor.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
+                  IconButton(
+                    icon: Icon(
+                      Icons.volume_up_rounded,
+                      size: 20,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
+                    onPressed: () {
+                      audioManager.setVolume(1.0);
+                    },
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+
+        // Prev, Play/Pause, Next Controls Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Previous Station
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  _goToNextRadio(radioProvider, audioManager, false);
+                },
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : Colors.black.withValues(alpha: 0.04),
+                    shape: BoxShape.circle,
                   ),
-                  child: Text(
-                    'ENTENDIDO',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                      letterSpacing: 0.5,
-                    ),
+                  child: Icon(
+                    Icons.skip_previous_rounded,
+                    size: 26,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
+            ),
+            const SizedBox(width: 24),
 
-class _VisualizerBars extends StatefulWidget {
-  final bool isPlaying;
-
-  const _VisualizerBars({required this.isPlaying});
-
-  @override
-  State<_VisualizerBars> createState() => _VisualizerBarsState();
-}
-
-class _VisualizerBarsState extends State<_VisualizerBars>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  final List<double> _baseHeights = [0.2, 0.5, 0.8, 0.4, 0.7, 0.3, 0.6, 0.9, 0.5, 0.8, 0.3, 0.6, 0.4, 0.7, 0.2];
-  final int _barCount = 15;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-
-    if (widget.isPlaying) {
-      _controller.repeat(reverse: true);
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _VisualizerBars oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isPlaying) {
-      if (!_controller.isAnimating) {
-        _controller.repeat(reverse: true);
-      }
-    } else {
-      _controller.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-
-    return SizedBox(
-      height: 32,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: List.generate(_barCount, (index) {
-              double multiplier = 1.0;
-              if (widget.isPlaying) {
-                // Generate dynamic wavy values using sine wave offset by bar index
-                final phase = (_controller.value * 2 * 3.14159) + (index * 0.5);
-                multiplier = (0.2 + 0.8 * ((math.sin(phase) + 1.0) / 2.0));
-              } else {
-                multiplier = 0.15;
-              }
-
-              final height = 24.0 * _baseHeights[index] * multiplier;
-
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 80),
-                width: 3.5,
-                height: height.clamp(3.0, 24.0),
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                decoration: BoxDecoration(
-                  color: widget.isPlaying
-                      ? primaryColor.withValues(alpha: 0.85 - (index % 3) * 0.1)
-                      : theme.colorScheme.onSurface.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(4),
+            // Big Main Play/Pause Button with Glow
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  audioManager.playRadio(radio);
+                },
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                child: Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppTheme.darkAccent
+                        : theme.colorScheme.primary,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isDark
+                                ? AppTheme.darkAccent
+                                : theme.colorScheme.primary)
+                            .withValues(alpha: 0.35),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: isLoading
+                        ? SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: isDark ? Colors.black : Colors.white,
+                            ),
+                          )
+                        : Icon(
+                            isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            size: 38,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
+                  ),
                 ),
-              );
-            }),
-          );
-        },
-      ),
+              ),
+            ),
+            const SizedBox(width: 24),
+
+            // Next Station
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  _goToNextRadio(radioProvider, audioManager, true);
+                },
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.06)
+                        : Colors.black.withValues(alpha: 0.04),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.skip_next_rounded,
+                    size: 26,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 }
-
