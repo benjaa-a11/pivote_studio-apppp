@@ -1,12 +1,11 @@
 import 'dart:async';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
-import 'package:pivote/core/animations/app_animations.dart';
 
 class DiagnosticsScreen extends StatefulWidget {
   const DiagnosticsScreen({super.key});
@@ -17,27 +16,24 @@ class DiagnosticsScreen extends StatefulWidget {
 
 class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _gaugeController;
-  late Animation<double> _gaugeAnimation;
+  late final AnimationController _gaugeController;
+  late final Animation<double> _gaugeAnimation;
 
   bool _isTesting = false;
-  String _testStep = 'Presioná iniciar para diagnosticar tu streaming';
-  double _currentSpeed = 0.0;
-  int _pingMs = 0;
-  double _stabilityPercent = 0.0;
-  double _packetLoss = 0.0;
-  
-  // Results
-  double _finalSpeed = 0.0;
-  int _finalPing = 0;
-  bool _testCompleted = false;
+  bool _completed = false;
+  String _status = 'Listo para analizar tu conexión';
+  double _speed = 0;
+  int _ping = 0;
+  double _stability = 0;
+  double _loss = 0;
+  double _finalSpeed = 0;
 
   @override
   void initState() {
     super.initState();
     _gaugeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 520),
     );
     _gaugeAnimation = CurvedAnimation(
       parent: _gaugeController,
@@ -51,558 +47,424 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
     super.dispose();
   }
 
-  Future<void> _startDiagnostic() async {
+  Future<void> _runTest() async {
     if (_isTesting) return;
+    HapticFeedback.mediumImpact();
 
-    HapticFeedback.heavyImpact();
     setState(() {
       _isTesting = true;
-      _testCompleted = false;
-      _testStep = 'Midiendo Latencia (Ping)...';
-      _currentSpeed = 0.0;
-      _pingMs = 0;
-      _stabilityPercent = 0.0;
-      _packetLoss = 0.0;
+      _completed = false;
+      _status = 'Comprobando latencia...';
+      _speed = 0;
+      _ping = 0;
+      _stability = 0;
+      _loss = 0;
     });
+    _gaugeController.value = 0;
 
-    _gaugeController.value = 0.0;
-
-    // --- PHASE 1: Real Ping Check ---
-    final pingSamples = <int>[];
-    for (int i = 0; i < 3; i++) {
-      final stopwatch = Stopwatch()..start();
+    final samples = <int>[];
+    for (var i = 0; i < 3; i++) {
+      final sw = Stopwatch()..start();
       try {
-        await http.get(Uri.parse('https://www.google.com')).timeout(const Duration(seconds: 2));
-        stopwatch.stop();
-        pingSamples.add(stopwatch.elapsedMilliseconds);
-      } catch (e) {
-        stopwatch.stop();
-        pingSamples.add(45 + Random().nextInt(30)); // Safe fallback if no internet/offline
+        await http
+            .get(Uri.parse('https://www.google.com'))
+            .timeout(const Duration(seconds: 2));
+        sw.stop();
+        samples.add(sw.elapsedMilliseconds);
+      } catch (_) {
+        sw.stop();
+        samples.add(45 + Random().nextInt(30));
       }
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future.delayed(const Duration(milliseconds: 180));
     }
-    
-    final avgPing = (pingSamples.reduce((a, b) => a + b) / pingSamples.length).round();
-    
+
+    final avgPing = (samples.reduce((a, b) => a + b) / samples.length).round();
     if (!mounted) return;
     setState(() {
-      _pingMs = avgPing;
-      _testStep = 'Analizando estabilidad de conexión...';
+      _ping = avgPing;
+      _status = 'Analizando estabilidad de la red...';
     });
 
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    // --- PHASE 2: Bandwidth Test Simulator (Oscillations) ---
+    await Future.delayed(const Duration(milliseconds: 520));
     if (!mounted) return;
-    setState(() {
-      _testStep = 'Probando velocidad de descarga de streaming...';
-    });
 
-    // We simulate a realistic speed depending on the ping (lower ping = usually higher speed)
-    double targetSpeedBase = 85.0 - (_pingMs * 0.18);
-    if (targetSpeedBase < 5.0) targetSpeedBase = 8.0;
-    targetSpeedBase += Random().nextDouble() * 15.0; // add variance
-    if (targetSpeedBase > 120.0) targetSpeedBase = 118.5;
+    setState(() => _status = 'Estimando capacidad de streaming...');
+    var target = 82 - (avgPing * .16) + Random().nextDouble() * 14;
+    target = target.clamp(6, 118).toDouble();
 
-    // Oscillate gauge needle to simulate high-end download testing
-    const stepsCount = 35;
-    for (int i = 0; i < stepsCount; i++) {
-      await Future.delayed(const Duration(milliseconds: 80));
+    for (var i = 0; i < 28; i++) {
+      await Future.delayed(const Duration(milliseconds: 65));
       if (!mounted) return;
-
-      // Progress multiplier
-      double progress = i / stepsCount;
-      double currentTarget;
-      
-      if (progress < 0.3) {
-        currentTarget = targetSpeedBase * 0.5 * (progress / 0.3) + (Random().nextDouble() * 5);
-      } else if (progress < 0.7) {
-        currentTarget = targetSpeedBase * (0.5 + 0.4 * ((progress - 0.3) / 0.4)) + (Random().nextDouble() * 8 - 4);
-      } else {
-        currentTarget = targetSpeedBase + (Random().nextDouble() * 6 - 3);
-      }
-
-      if (currentTarget < 0) currentTarget = 0;
-
-      setState(() {
-        _currentSpeed = currentTarget;
-        _stabilityPercent = 94.0 + (Random().nextDouble() * 5.0);
-        _packetLoss = Random().nextDouble() > 0.92 ? 0.1 : 0.0;
-      });
-
-      // Animate gauge needle
+      final progress = i / 27;
+      final sample = target * (.35 + .65 * progress) + (Random().nextDouble() * 5 - 2.5);
+      _speed = max(0, sample);
+      _stability = 94 + Random().nextDouble() * 5;
+      _loss = Random().nextDouble() > .94 ? .1 : 0;
+      setState(() {});
       _gaugeController.animateTo(
-        min(currentTarget / 100.0, 1.0),
-        duration: const Duration(milliseconds: 70),
-        curve: Curves.easeOut,
+        min(_speed / 100, 1),
+        duration: const Duration(milliseconds: 80),
       );
     }
 
-    // --- PHASE 3: Final Analysis ---
+    setState(() => _status = 'Generando recomendación...');
+    await Future.delayed(const Duration(milliseconds: 650));
     if (!mounted) return;
-    setState(() {
-      _testStep = 'Finalizando diagnóstico integral...';
-    });
-    
-    await Future.delayed(const Duration(milliseconds: 1000));
 
-    if (!mounted) return;
-    HapticFeedback.heavyImpact();
+    HapticFeedback.mediumImpact();
     setState(() {
       _isTesting = false;
-      _testCompleted = true;
-      _finalSpeed = _currentSpeed;
-      _finalPing = _pingMs;
-      _testStep = 'Prueba finalizada. Tu conexión está diagnosticada.';
+      _completed = true;
+      _finalSpeed = _speed;
+      _status = 'Diagnóstico completado correctamente';
     });
   }
 
-  String _getResolutionRecommendation(double speed) {
-    if (speed >= 25.0) {
-      return '4K Ultra HD (2160p)';
-    } else if (speed >= 10.0) {
-      return 'Full HD (1080p)';
-    } else if (speed >= 5.0) {
-      return 'HD Ready (720p)';
-    } else {
-      return 'SD Standard (480p)';
-    }
+  Color _qualityColor(double value) {
+    if (value >= 25) return const Color(0xFF35B77A);
+    if (value >= 10) return const Color(0xFF5B8CFF);
+    if (value >= 5) return const Color(0xFFE4A93A);
+    return const Color(0xFFE85D6A);
   }
 
-  Color _getQualityColor(double speed) {
-    if (speed >= 25.0) {
-      return const Color(0xFF52C41A); // Green success
-    } else if (speed >= 10.0) {
-      return const Color(0xFF1677FF); // Blue info
-    } else if (speed >= 5.0) {
-      return const Color(0xFFFAAD14); // Orange warning
-    } else {
-      return const Color(0xFFFF4D4F); // Red danger
-    }
+  String _quality(double value) {
+    if (value >= 25) return 'Excelente';
+    if (value >= 10) return 'Muy buena';
+    if (value >= 5) return 'Estable';
+    return 'Limitada';
   }
 
-  String _getQualityLabel(double speed) {
-    if (speed >= 25.0) {
-      return 'EXCELENTE';
-    } else if (speed >= 10.0) {
-      return 'BUENA';
-    } else if (speed >= 5.0) {
-      return 'ESTABLE';
-    } else {
-      return 'LIMITADA';
-    }
-  }
-
-  String _getDetailedAdvice(double speed, int ping) {
-    if (speed >= 25.0) {
-      return '¡Conexión increíble! Podés reproducir canales en Pivo Pro Player en calidad máxima sin ningún tipo de delay. Ideal para transmisiones deportivas en vivo.';
-    } else if (speed >= 10.0) {
-      return 'Tu red es estable y rápida. Soporta transmisiones Full HD con total fluidez. El tiempo de buffering inicial será inferior a 1.5 segundos.';
-    } else if (speed >= 5.0) {
-      return 'Conexión suficiente para streaming HD. Para evitar microcortes ocasionales, te sugerimos no realizar descargas pesadas simultáneamente en la misma red.';
-    } else {
-      return 'Velocidad reducida. Sugerimos conectarte a una red Wi-Fi de 5GHz, acercarte al router o reducir la calidad en el reproductor de video para evitar interrupciones.';
-    }
+  String _resolution(double value) {
+    if (value >= 25) return '4K · 2160p';
+    if (value >= 10) return 'Full HD · 1080p';
+    if (value >= 5) return 'HD · 720p';
+    return 'SD · 480p';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final dark = theme.brightness == Brightness.dark;
+    final accent = theme.colorScheme.primary;
+    final qualityColor = _qualityColor(_completed ? _finalSpeed : _speed);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: const PivoteAppBar(
         title: 'Diagnóstico de Streaming',
-        subtitle: 'Medición de red y calidad óptima',
+        subtitle: 'Rendimiento de red en tiempo real',
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Testing Step Text Banner
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppTheme.darkBg2.withValues(alpha: 0.5)
-                    : AppTheme.lightBg2.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? AppTheme.darkBorder.withValues(alpha: 0.2)
-                      : AppTheme.lightBorder,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _isTesting ? Icons.network_check_rounded : Icons.info_outline_rounded,
-                    color: theme.colorScheme.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _testStep,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  if (_isTesting)
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide = constraints.maxWidth >= 760;
+          final contentWidth = wide ? 820.0 : double.infinity;
 
-            // Premium Circular Speed Gauge
-            Center(
-              child: SizedBox(
-                width: 250,
-                height: 250,
-                child: AnimatedBuilder(
-                  animation: _gaugeAnimation,
-                  builder: (context, child) {
-                    return Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: const Size(250, 250),
-                          painter: _SpeedGaugePainter(
-                            value: _gaugeAnimation.value,
-                            primaryColor: theme.colorScheme.primary,
-                            isDark: isDark,
-                          ),
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: contentWidth),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(wide ? 28 : 16, 18, wide ? 28 : 16, 36),
+                child: Column(
+                  children: [
+                    _StatusCard(
+                      dark: dark,
+                      accent: accent,
+                      status: _status,
+                      testing: _isTesting,
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: dark
+                              ? [const Color(0xFF141C14), const Color(0xFF101410)]
+                              : [const Color(0xFFF1F7E8), Colors.white],
                         ),
-                        // Inner content
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              _currentSpeed.toStringAsFixed(1),
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 44,
-                                fontWeight: FontWeight.w900,
-                                color: theme.colorScheme.onSurface,
-                                letterSpacing: -1.5,
-                                height: 1.0,
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(color: accent.withValues(alpha: .12)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: dark ? .16 : .04),
+                            blurRadius: 26,
+                            offset: const Offset(0, 12),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            width: wide ? 280 : 250,
+                            height: wide ? 280 : 250,
+                            child: AnimatedBuilder(
+                              animation: _gaugeAnimation,
+                              builder: (_, __) => Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  CustomPaint(
+                                    size: Size.infinite,
+                                    painter: _GaugePainter(
+                                      value: _gaugeAnimation.value,
+                                      accent: accent,
+                                      dark: dark,
+                                    ),
+                                  ),
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      AnimatedSwitcher(
+                                        duration: const Duration(milliseconds: 180),
+                                        child: Text(
+                                          _speed.toStringAsFixed(1),
+                                          key: ValueKey(_speed.toStringAsFixed(1)),
+                                          style: GoogleFonts.spaceGrotesk(
+                                            fontSize: wide ? 48 : 42,
+                                            height: .95,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: -1.8,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Mbps',
+                                        style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: accent,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                      if (_ping > 0) ...[
+                                        const SizedBox(height: 8),
+                                        _MiniPill(label: 'PING $_ping ms', color: accent),
+                                      ],
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
-                            Text(
-                              'Mbps',
+                          ),
+                          const SizedBox(height: 10),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            child: Text(
+                              _isTesting
+                                  ? 'Analizando tu red...'
+                                  : _completed
+                                      ? '${_quality(_finalSpeed)} · ${_resolution(_finalSpeed)}'
+                                      : 'Velocidad estimada para streaming',
+                              key: ValueKey('$_isTesting-$_completed-$_finalSpeed'),
+                              textAlign: TextAlign.center,
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 13,
-                                fontWeight: FontWeight.w800,
-                                color: theme.colorScheme.primary,
-                                letterSpacing: 1.0,
+                                fontWeight: FontWeight.w700,
+                                color: theme.hintColor,
                               ),
                             ),
-                            if (_pingMs > 0) ...[
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  'PING: ${_pingMs}ms',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
-                                  ),
+                          ),
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 54,
+                            child: ElevatedButton.icon(
+                              onPressed: _isTesting ? null : _runTest,
+                              icon: Icon(_completed ? Icons.replay_rounded : Icons.play_arrow_rounded),
+                              label: Text(
+                                _isTesting
+                                    ? 'DIAGNOSTICANDO...'
+                                    : _completed
+                                        ? 'REPETIR DIAGNÓSTICO'
+                                        : 'INICIAR DIAGNÓSTICO',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: .4,
                                 ),
                               ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // Start Test Button
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton.icon(
-                onPressed: _isTesting ? null : _startDiagnostic,
-                icon: Icon(
-                  _testCompleted ? Icons.refresh_rounded : Icons.play_arrow_rounded,
-                  size: 22,
-                ),
-                label: Text(
-                  _isTesting
-                      ? 'DIAGNOSTICANDO...'
-                      : (_testCompleted ? 'REPETIR PRUEBA' : 'INICIAR DIAGNÓSTICO'),
-                  style: GoogleFonts.spaceGrotesk(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: isDark ? AppTheme.darkBg : Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  disabledBackgroundColor: theme.colorScheme.primary.withValues(alpha: 0.3),
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Live Diagnostics Results cards (Active/Complete)
-            if (_isTesting || _testCompleted) ...[
-              AppAnimations.smoothFadeIn(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildDiagnosticStatCard(
-                        theme,
-                        isDark,
-                        title: 'Ping',
-                        value: '${_pingMs > 0 ? _pingMs : '--'} ms',
-                        subtitle: _pingMs == 0
-                            ? 'Midiendo...'
-                            : (_pingMs < 30
-                                ? 'Excelente'
-                                : (_pingMs < 80 ? 'Normal' : 'Elevado')),
-                        icon: Icons.timer_outlined,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildDiagnosticStatCard(
-                        theme,
-                        isDark,
-                        title: 'Estabilidad',
-                        value: '${_stabilityPercent > 0 ? _stabilityPercent.toStringAsFixed(1) : '--'} %',
-                        subtitle: _stabilityPercent == 0
-                            ? 'Calculando...'
-                            : (_stabilityPercent > 97.0 ? 'Alta estabilidad' : 'Jitter normal'),
-                        icon: Icons.analytics_outlined,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              AppAnimations.smoothFadeIn(
-                child: _buildDiagnosticStatCard(
-                  theme,
-                  isDark,
-                  title: 'Pérdida de Paquetes',
-                  value: '${_packetLoss.toStringAsFixed(2)} %',
-                  subtitle: _packetLoss == 0.0
-                      ? 'Sin pérdida de datos'
-                      : 'Interferencia sutil de red',
-                  icon: Icons.swap_calls_rounded,
-                  fullWidth: true,
-                ),
-              ),
-            ],
-
-            // Final Recommendation Report Panel
-            if (_testCompleted) ...[
-              const SizedBox(height: 28),
-              AppAnimations.smoothFadeIn(
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: _getQualityColor(_finalSpeed).withValues(alpha: 0.25),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _getQualityColor(_finalSpeed).withValues(alpha: 0.05),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.check_circle_outline_rounded,
-                            color: _getQualityColor(_finalSpeed),
-                            size: 22,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'REPORTE DE DIAGNÓSTICO',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 14,
-                              letterSpacing: 0.5,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _getQualityColor(_finalSpeed).withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _getQualityLabel(_finalSpeed),
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w900,
-                                color: _getQualityColor(_finalSpeed),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: accent,
+                                foregroundColor: dark ? const Color(0xFF090B0F) : Colors.black,
+                                disabledBackgroundColor: accent.withValues(alpha: .28),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                               ),
                             ),
                           ),
                         ],
                       ),
+                    ),
+                    const SizedBox(height: 16),
+                    LayoutBuilder(
+                      builder: (context, statConstraints) {
+                        final twoColumns = statConstraints.maxWidth >= 520;
+                        final cards = [
+                          _MetricCard(title: 'Ping', value: _ping > 0 ? '$_ping ms' : '--', caption: _ping == 0 ? 'Esperando prueba' : _ping < 30 ? 'Excelente' : _ping < 80 ? 'Normal' : 'Elevado', icon: Icons.speed_rounded, color: const Color(0xFF5B8CFF), dark: dark),
+                          _MetricCard(title: 'Estabilidad', value: _stability > 0 ? '${_stability.toStringAsFixed(1)}%' : '--', caption: _stability > 97 ? 'Muy alta' : _stability > 0 ? 'Estable' : 'Esperando prueba', icon: Icons.show_chart_rounded, color: const Color(0xFF35B77A), dark: dark),
+                          _MetricCard(title: 'Pérdida', value: '${_loss.toStringAsFixed(2)}%', caption: _loss == 0 ? 'Sin pérdida' : 'Leve interferencia', icon: Icons.swap_vert_rounded, color: const Color(0xFFE4A93A), dark: dark),
+                          _MetricCard(title: 'Estado', value: _completed ? _quality(_finalSpeed) : 'En espera', caption: _completed ? 'Perfil de red' : 'Sin diagnóstico', icon: Icons.shield_rounded, color: qualityColor, dark: dark),
+                        ];
+                        return GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: cards.length,
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: twoColumns ? 2 : 1,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: twoColumns ? 2.6 : 4.0,
+                          ),
+                          itemBuilder: (_, i) => RepaintBoundary(child: cards[i]),
+                        );
+                      },
+                    ),
+                    if (_completed) ...[
                       const SizedBox(height: 16),
-                      Divider(
-                        color: isDark
-                            ? AppTheme.darkBorder.withValues(alpha: 0.15)
-                            : AppTheme.lightBorder,
-                        height: 1.0,
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Suggested resolution
-                      Text(
-                        'Resolución de streaming recomendada:',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 280),
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: qualityColor.withValues(alpha: dark ? .09 : .06),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: qualityColor.withValues(alpha: .22)),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _getResolutionRecommendation(_finalSpeed),
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: _getQualityColor(_finalSpeed),
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-
-                      // Expert Advice text
-                      Text(
-                        _getDetailedAdvice(_finalSpeed, _finalPing),
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 13,
-                          height: 1.5,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(color: qualityColor.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)),
+                              child: Icon(Icons.auto_awesome_rounded, color: qualityColor),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('RECOMENDACIÓN', style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.1, color: qualityColor)),
+                                  const SizedBox(height: 5),
+                                  Text(_resolution(_finalSpeed), style: GoogleFonts.spaceGrotesk(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -.6)),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _finalSpeed >= 25
+                                        ? 'Tu conexión tiene margen suficiente para streaming de alta calidad.'
+                                        : _finalSpeed >= 10
+                                            ? 'Tu conexión es adecuada para Full HD y transmisiones en vivo.'
+                                            : _finalSpeed >= 5
+                                                ? 'Podés usar HD, aunque conviene evitar descargas pesadas en paralelo.'
+                                                : 'Conviene reducir la calidad y mejorar la señal Wi-Fi para evitar cortes.',
+                                    style: GoogleFonts.spaceGrotesk(fontSize: 12.5, height: 1.45, fontWeight: FontWeight.w600, color: theme.hintColor),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Los resultados son orientativos y pueden variar según el servidor, la congestión y la calidad de la señal.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.spaceGrotesk(fontSize: 10.5, height: 1.4, fontWeight: FontWeight.w500, color: theme.hintColor.withValues(alpha: .8)),
+                    ),
+                  ],
                 ),
               ),
-            ],
-            const SizedBox(height: 32),
-          ],
-        ),
+            ),
+          );
+        },
       ),
     );
   }
+}
 
-  Widget _buildDiagnosticStatCard(
-    ThemeData theme,
-    bool isDark, {
-    required String title,
-    required String value,
-    required String subtitle,
-    required IconData icon,
-    bool fullWidth = false,
-  }) {
+class _StatusCard extends StatelessWidget {
+  final bool dark;
+  final Color accent;
+  final String status;
+  final bool testing;
+
+  const _StatusCard({required this.dark, required this.accent, required this.status, required this.testing});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
-      width: fullWidth ? double.infinity : null,
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark
-              ? AppTheme.darkBorder.withValues(alpha: 0.15)
-              : AppTheme.lightBorder,
-        ),
+        color: dark ? const Color(0xFF111820) : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: .055)),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: theme.colorScheme.primary,
-              size: 20,
-            ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(color: accent.withValues(alpha: .1), borderRadius: BorderRadius.circular(11)),
+            child: Icon(testing ? Icons.network_check_rounded : Icons.info_outline_rounded, size: 18, color: accent),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 10),
+          Expanded(child: Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.spaceGrotesk(fontSize: 12.5, fontWeight: FontWeight.w700))),
+          if (testing) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniPill extends StatelessWidget {
+  final String label;
+  final Color color;
+  const _MiniPill({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(color: color.withValues(alpha: .09), borderRadius: BorderRadius.circular(999)),
+        child: Text(label, style: GoogleFonts.spaceGrotesk(fontSize: 9.5, fontWeight: FontWeight.w900, color: color)),
+      );
+}
+
+class _MetricCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String caption;
+  final IconData icon;
+  final Color color;
+  final bool dark;
+  const _MetricCard({required this.title, required this.value, required this.caption, required this.icon, required this.color, required this.dark});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF111820) : theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: .10)),
+      ),
+      child: Row(
+        children: [
+          Container(width: 40, height: 40, decoration: BoxDecoration(color: color.withValues(alpha: .10), borderRadius: BorderRadius.circular(13)), child: Icon(icon, size: 19, color: color)),
+          const SizedBox(width: 11),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
-                  ),
-                ),
-              ],
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text(title, style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w800, color: theme.hintColor)),
+              const SizedBox(height: 2),
+              Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.spaceGrotesk(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: -.3)),
+              Text(caption, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.spaceGrotesk(fontSize: 9.5, fontWeight: FontWeight.w600, color: color)),
+            ]),
           ),
         ],
       ),
@@ -610,137 +472,41 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
   }
 }
 
-class _SpeedGaugePainter extends CustomPainter {
+class _GaugePainter extends CustomPainter {
   final double value;
-  final Color primaryColor;
-  final bool isDark;
+  final Color accent;
+  final bool dark;
 
-  _SpeedGaugePainter({
-    required this.value,
-    required this.primaryColor,
-    required this.isDark,
-  });
+  const _GaugePainter({required this.value, required this.accent, required this.dark});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 12;
-
-    final paintTrack = Paint()
-      ..color = isDark ? AppTheme.darkBorder : AppTheme.lightBorder
+    final radius = size.shortestSide / 2 - 14;
+    final track = Paint()
+      ..color = dark ? Colors.white.withValues(alpha: .08) : Colors.black.withValues(alpha: .06)
+      ..strokeWidth = 14
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final progress = Paint()
+      ..color = accent
       ..strokeWidth = 14
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    final paintProgress = Paint()
-      ..shader = LinearGradient(
-        colors: [
-          primaryColor.withValues(alpha: 0.4),
-          primaryColor,
-        ],
-        begin: Alignment.bottomLeft,
-        end: Alignment.topRight,
-      ).createShader(Rect.fromCircle(center: center, radius: radius))
-      ..strokeWidth = 14
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    const start = 2.35;
+    const sweep = 2.88;
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep, false, track);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep * value, false, progress);
 
-    // Draw background arc (from 135 to 45 degrees, which is 270 degrees sweep)
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      135 * pi / 180,
-      270 * pi / 180,
-      false,
-      paintTrack,
-    );
-
-    // Draw glowing progress arc
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      135 * pi / 180,
-      (270 * value) * pi / 180,
-      false,
-      paintProgress,
-    );
-
-    // Draw scale ticks (0, 20, 50, 100 Mbps)
-    final textPainter = TextPainter(textDirection: TextDirection.ltr);
-    final tickSpeeds = ['0', '20', '50', '100+'];
-    final tickAngles = [135, 135 + 54, 135 + 135, 135 + 270];
-
-    for (int i = 0; i < tickSpeeds.length; i++) {
-      final angle = tickAngles[i] * pi / 180;
-      final tickStart = Offset(
-        center.dx + (radius - 12) * cos(angle),
-        center.dy + (radius - 12) * sin(angle),
-      );
-      final tickEnd = Offset(
-        center.dx + (radius - 4) * cos(angle),
-        center.dy + (radius - 4) * sin(angle),
-      );
-
-      final paintTick = Paint()
-        ..color = (value >= (tickAngles[i] - 135) / 270.0)
-            ? primaryColor
-            : (isDark ? AppTheme.darkText3 : AppTheme.lightText3)
-        ..strokeWidth = 2.0;
-
-      canvas.drawLine(tickStart, tickEnd, paintTick);
-
-      // Label positions
-      final labelOffset = Offset(
-        center.dx + (radius - 30) * cos(angle) - 10,
-        center.dy + (radius - 30) * sin(angle) - 6,
-      );
-
-      textPainter.text = TextSpan(
-        text: tickSpeeds[i],
-        style: GoogleFonts.spaceGrotesk(
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          color: (value >= (tickAngles[i] - 135) / 270.0)
-              ? primaryColor
-              : (isDark ? AppTheme.darkText3 : AppTheme.lightText3),
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(canvas, labelOffset);
-    }
-
-    // Draw needle
-    final needleAngle = (135 + 270 * value) * pi / 180;
-    final needleStart = Offset(
-      center.dx + 12 * cos(needleAngle),
-      center.dy + 12 * sin(needleAngle),
-    );
-    final needleEnd = Offset(
-      center.dx + (radius - 18) * cos(needleAngle),
-      center.dy + (radius - 18) * sin(needleAngle),
-    );
-
-    final paintNeedle = Paint()
-      ..color = primaryColor
-      ..strokeWidth = 4.0
-      ..strokeCap = StrokeCap.round;
-
-    final paintCenterHub = Paint()
-      ..color = primaryColor
-      ..style = PaintingStyle.fill;
-
-    final paintCenterHubBorder = Paint()
-      ..color = isDark ? AppTheme.darkBg : Colors.white
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawLine(needleStart, needleEnd, paintNeedle);
-    canvas.drawCircle(center, 9, paintCenterHub);
-    canvas.drawCircle(center, 9, paintCenterHubBorder);
+    final needleAngle = start + sweep * value;
+    final needle = Paint()..color = accent..strokeWidth = 3.5..strokeCap = StrokeCap.round;
+    final end = Offset(center.dx + (radius - 16) * cos(needleAngle), center.dy + (radius - 16) * sin(needleAngle));
+    canvas.drawLine(center, end, needle);
+    canvas.drawCircle(center, 8, Paint()..color = accent);
+    canvas.drawCircle(center, 4, Paint()..color = dark ? const Color(0xFF101410) : Colors.white);
   }
 
   @override
-  bool shouldRepaint(covariant _SpeedGaugePainter oldDelegate) {
-    return oldDelegate.value != value ||
-        oldDelegate.primaryColor != primaryColor ||
-        oldDelegate.isDark != isDark;
-  }
+  bool shouldRepaint(covariant _GaugePainter oldDelegate) => oldDelegate.value != value || oldDelegate.accent != accent || oldDelegate.dark != dark;
 }

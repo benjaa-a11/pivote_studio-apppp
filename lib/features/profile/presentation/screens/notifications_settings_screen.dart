@@ -1,84 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:pivote/core/services/notification_service.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class NotificationsSettingsScreen extends StatefulWidget {
   const NotificationsSettingsScreen({super.key});
 
   @override
-  State<NotificationsSettingsScreen> createState() =>
-      _NotificationsSettingsScreenState();
+  State<NotificationsSettingsScreen> createState() => _NotificationsSettingsScreenState();
 }
 
-class _NotificationsSettingsScreenState
-    extends State<NotificationsSettingsScreen> {
-  bool _notificationsEnabled = false;
-  bool _isLoading = true;
+class _NotificationsSettingsScreenState extends State<NotificationsSettingsScreen> {
+  bool _enabled = false;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _checkNotificationStatus();
+    _refreshStatus();
   }
 
-  Future<void> _checkNotificationStatus() async {
+  Future<void> _refreshStatus() async {
     final enabled = await NotificationService.areNotificationsEnabled();
-    if (mounted) {
-      setState(() {
-        _notificationsEnabled = enabled;
-        _isLoading = false;
-      });
-    }
+    if (!mounted) return;
+    setState(() { _enabled = enabled; _loading = false; });
   }
 
-  Future<void> _toggleNotifications(bool value) async {
-    setState(() => _isLoading = true);
-
+  Future<void> _toggle(bool value) async {
+    setState(() => _loading = true);
     try {
       if (value) {
-        // Enable notifications
         final granted = await NotificationService.requestPermission();
-        if (granted) {
-          if (mounted) {
-            AppNotifications.showSuccess(
-              context,
-              'Notificaciones activadas correctamente',
-            );
-          }
-          setState(() => _notificationsEnabled = true);
-        } else {
-          if (mounted) {
-            _showPermissionDialog();
-          }
-          setState(() => _notificationsEnabled = false);
+        if (!granted) {
+          if (mounted) _showPermissionDialog();
+          return;
         }
+        _enabled = true;
+        if (mounted) AppNotifications.showSuccess(context, 'Notificaciones activadas');
       } else {
-        // Disable notifications
         await NotificationService.disableNotifications();
-        if (mounted) {
-          AppNotifications.showInfo(
-            context,
-            'Notificaciones desactivadas',
-          );
-        }
-        setState(() => _notificationsEnabled = false);
+        _enabled = false;
+        if (mounted) AppNotifications.showInfo(context, 'Notificaciones desactivadas');
       }
-    } catch (e) {
-      if (mounted) {
-        AppNotifications.showError(
-          context,
-          'Error al cambiar configuración de notificaciones',
-        );
-      }
+    } catch (_) {
+      if (mounted) AppNotifications.showError(context, 'No pudimos actualizar la configuración');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -86,257 +57,96 @@ class _NotificationsSettingsScreenState
     AppDialogs.showConfirm(
       context: context,
       title: 'Permiso requerido',
-      message:
-          'Para recibir notificaciones, necesitas habilitar los permisos en la configuración de tu dispositivo.',
+      message: 'Habilitá las notificaciones en la configuración del dispositivo para recibir avisos.',
       confirmLabel: 'Configuración',
-      cancelLabel: 'Cancelar',
+      cancelLabel: 'Ahora no',
       type: AppDialogType.warning,
-    ).then((confirmed) {
-      if (confirmed == true) {
-        openAppSettings();
-      }
-    });
+    ).then((ok) { if (ok == true) openAppSettings(); });
   }
 
-  Future<void> _sendTestNotification() async {
-    if (!_notificationsEnabled) {
-      AppNotifications.showWarning(
-        context,
-        'Primero activa las notificaciones',
-      );
+  Future<void> _sendTest() async {
+    if (!_enabled) {
+      AppNotifications.showWarning(context, 'Activá las notificaciones primero');
       return;
     }
-
     try {
       await NotificationService.sendTestNotification();
-      if (mounted) {
-        AppNotifications.showSuccess(
-          context,
-          'Notificación de prueba enviada',
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        AppNotifications.showError(
-          context,
-          'Error al enviar notificación de prueba',
-        );
-      }
+      if (mounted) AppNotifications.showSuccess(context, 'Notificación de prueba enviada');
+    } catch (_) {
+      if (mounted) AppNotifications.showError(context, 'No pudimos enviar la prueba');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accent = theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const PivoteAppBar(
-        title: 'Notificaciones',
-        subtitle: 'Avisos de partidos y novedades',
-      ),
-      body: _isLoading
+      appBar: const PivoteAppBar(title: 'Notificaciones', subtitle: 'Controlá cómo querés recibir avisos'),
+      body: _loading && !_enabled
           ? const Center(child: PivoteLoader(size: 40))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header Icon
-                  Center(
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withAlpha(26),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _notificationsEnabled
-                            ? Icons.notifications_active
-                            : Icons.notifications_off,
-                        size: 50,
-                        color: theme.colorScheme.primary,
-                      ),
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 32),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: _enabled
+                          ? [accent.withValues(alpha: isDark ? .16 : .12), theme.colorScheme.surface]
+                          : [theme.colorScheme.surface, theme.colorScheme.surface],
                     ),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: accent.withValues(alpha: _enabled ? .16 : .08)),
                   ),
-                  const SizedBox(height: 32),
-
-                  // Main Toggle
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: theme.dividerColor.withAlpha(13),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.notifications_active_outlined,
-                          color: theme.colorScheme.primary,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Notificaciones Push',
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _notificationsEnabled
-                                    ? 'Recibirás notificaciones'
-                                    : 'No recibirás notificaciones',
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 13,
-                                  color: theme.colorScheme.onSurface
-                                      .withAlpha(128),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _notificationsEnabled,
-                          onChanged: _toggleNotifications,
-                          activeThumbColor: theme.colorScheme.primary,
-                        ),
-                      ],
-                    ),
+                  child: Row(
+                    children: [
+                      Container(width: 54, height: 54, decoration: BoxDecoration(color: accent.withValues(alpha: .1), borderRadius: BorderRadius.circular(17)), child: Icon(_enabled ? Icons.notifications_active_rounded : Icons.notifications_none_rounded, color: accent, size: 26)),
+                      const SizedBox(width: 14),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_enabled ? 'Todo listo' : 'Notificaciones pausadas', style: GoogleFonts.spaceGrotesk(fontSize: 18, fontWeight: FontWeight.w900)), const SizedBox(height: 3), Text(_enabled ? 'Pivote puede avisarte de novedades importantes.' : 'Podés volver a activarlas cuando quieras.', style: GoogleFonts.spaceGrotesk(fontSize: 11.5, fontWeight: FontWeight.w600, color: theme.hintColor, height: 1.35))])),
+                      Switch.adaptive(value: _enabled, onChanged: _loading ? null : _toggle),
+                    ],
                   ),
-                  const SizedBox(height: 32),
-
-                  // Information Section
-                  Text(
-                    '¿Qué notificaciones recibirás?',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildInfoCard(
-                    context,
-                    icon: Icons.live_tv,
-                    title: 'Nuevos canales',
-                    description:
-                        'Te avisaremos cuando se agreguen nuevos canales',
-                  ),
-                  const SizedBox(height: 12),
-
-                  _buildInfoCard(
-                    context,
-                    icon: Icons.sports_soccer,
-                    title: 'Partidos en vivo',
-                    description:
-                        'Notificaciones sobre partidos importantes y resultados',
-                  ),
-                  const SizedBox(height: 12),
-
-                  _buildInfoCard(
-                    context,
-                    icon: Icons.update,
-                    title: 'Actualizaciones',
-                    description: 'Información sobre nuevas funciones y mejoras',
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Test Notification Button
-                  if (_notificationsEnabled)
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _sendTestNotification,
-                        icon: const Icon(Icons.send),
-                        label: Text(
-                          'Enviar notificación de prueba',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          side: BorderSide(
-                            color: theme.colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
+                ),
+                const SizedBox(height: 24),
+                Text('Qué vas a recibir', style: GoogleFonts.spaceGrotesk(fontSize: 14, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 10),
+                _info(context, Icons.live_tv_rounded, 'Nuevos canales', 'Avisos cuando se agreguen canales o señales.', const Color(0xFF5B8CFF)),
+                _info(context, Icons.sports_soccer_rounded, 'Fútbol en vivo', 'Partidos importantes, resultados y novedades.', const Color(0xFF35B77A)),
+                _info(context, Icons.auto_awesome_rounded, 'Actualizaciones', 'Nuevas funciones, mejoras y cambios importantes.', const Color(0xFF8C6CFF)),
+                const SizedBox(height: 18),
+                if (_enabled)
+                  Material(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    child: InkWell(
+                      onTap: _sendTest,
+                      borderRadius: BorderRadius.circular(18),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: accent.withValues(alpha: .11))),
+                        child: Row(children: [Container(width: 36, height: 36, decoration: BoxDecoration(color: accent.withValues(alpha: .1), borderRadius: BorderRadius.circular(11)), child: Icon(Icons.send_rounded, size: 17, color: accent)), const SizedBox(width: 11), Expanded(child: Text('Enviar notificación de prueba', style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w800)),), Icon(Icons.arrow_forward_ios_rounded, size: 12, color: theme.hintColor)]),
                       ),
                     ),
-                ],
-              ),
+                  ),
+              ],
             ),
     );
   }
 
-  Widget _buildInfoCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String description,
-  }) {
+  Widget _info(BuildContext context, IconData icon, String title, String body, Color color) {
     final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.dividerColor.withAlpha(13),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withAlpha(26),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: theme.colorScheme.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    color: theme.colorScheme.onSurface.withAlpha(128),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Container(
+        padding: const EdgeInsets.all(13),
+        decoration: BoxDecoration(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(17), border: Border.all(color: color.withValues(alpha: .1))),
+        child: Row(children: [Container(width: 40, height: 40, decoration: BoxDecoration(color: color.withValues(alpha: .1), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: color, size: 19)), const SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: GoogleFonts.spaceGrotesk(fontSize: 13, fontWeight: FontWeight.w800)), const SizedBox(height: 2), Text(body, style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w600, color: theme.hintColor, height: 1.35))]))]),
       ),
     );
   }

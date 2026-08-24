@@ -31,9 +31,8 @@ class FloatingBottomBar extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // Colores basados en el tema de la aplicación para una integración perfecta
-    final backgroundColor = theme.cardColor.withValues(alpha: isDark ? 0.85 : 0.9);
-    final borderColor = theme.colorScheme.outline.withValues(alpha: isDark ? 0.12 : 0.08);
+    final backgroundColor = theme.cardColor.withValues(alpha: isDark ? 0.88 : 0.93);
+    final borderColor = theme.colorScheme.outline.withValues(alpha: isDark ? 0.15 : 0.10);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -42,9 +41,16 @@ class FloatingBottomBar extends StatelessWidget {
         border: Border.all(color: borderColor, width: 1.0),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: isDark ? 0.42 : 0.11),
+            blurRadius: 24,
+            spreadRadius: 1,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.05),
+            blurRadius: 8,
+            spreadRadius: -1,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -53,7 +59,18 @@ class FloatingBottomBar extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
-            color: backgroundColor,
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(9999),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  theme.colorScheme.surface.withValues(alpha: isDark ? 0.08 : 0.30),
+                  Colors.transparent,
+                ],
+              ),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -63,7 +80,6 @@ class FloatingBottomBar extends StatelessWidget {
                 return Stack(
                   alignment: Alignment.center,
                   children: [
-                    // Indicador de selección deslizante suave, moderno y profesional
                     AnimatedPositioned(
                       duration: const Duration(milliseconds: 320),
                       curve: Curves.easeInOutCubic,
@@ -73,10 +89,14 @@ class FloatingBottomBar extends StatelessWidget {
                       bottom: 2,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.15 : 0.12),
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: isDark ? 0.15 : 0.12,
+                          ),
                           borderRadius: BorderRadius.circular(9999),
                           border: Border.all(
-                            color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.25 : 0.2),
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: isDark ? 0.25 : 0.20,
+                            ),
                             width: 1,
                           ),
                           boxShadow: isDark
@@ -91,7 +111,6 @@ class FloatingBottomBar extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Fila de destinos / botones
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: List.generate(destinations.length, (index) {
