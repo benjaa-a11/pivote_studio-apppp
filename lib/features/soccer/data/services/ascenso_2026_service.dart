@@ -221,10 +221,14 @@ class Ascenso2026Service {
     }
 
     final standingMap = <String, AscensoStandingItem>{};
-    for (final item in standings) standingMap[item.team] = item;
+    for (final item in standings) {
+      standingMap[item.team] = item;
+    }
 
     final rankingMap = <String, AscensoRankingItem>{};
-    for (final item in rankings) rankingMap['${item.name}|${item.team}|${item.value}'] = item;
+    for (final item in rankings) {
+      rankingMap['${item.name}|${item.team}|${item.value}'] = item;
+    }
 
     return Ascenso2026Snapshot(
       title: title,
@@ -416,7 +420,9 @@ class Ascenso2026Service {
   static String? _findString(dynamic node, List<String> keys) {
     if (node is! Map) return null;
     final lookup = <String, dynamic>{};
-    for (final entry in node.entries) lookup[entry.key.toString().toLowerCase()] = entry.value;
+    for (final entry in node.entries) {
+      lookup[entry.key.toString().toLowerCase()] = entry.value;
+    }
     for (final key in keys) {
       final value = lookup[key.toLowerCase()];
       if (value is String && value.trim().isNotEmpty) return value.trim();

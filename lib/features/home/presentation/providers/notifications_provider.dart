@@ -45,7 +45,9 @@ class NotificationsProvider extends ChangeNotifier {
       final readIds = prefs.getStringList(_readKey)?.toSet() ?? {};
       final history = _loadHistory(prefs);
       final merged = <String, AppNotification>{};
-      for (final item in [...history, ...fresh]) merged[item.id] = item;
+      for (final item in [...history, ...fresh]) {
+        merged[item.id] = item;
+      }
       _items = merged.values.map((item) => item.copyWith(isRead: readIds.contains(item.id))).toList()
         ..sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
       await _saveHistory(prefs, _items);

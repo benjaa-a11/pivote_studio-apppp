@@ -47,6 +47,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     await ViewingHistoryService.clearHistory();
     if (!mounted) return;
     await _load();
+    if (!mounted) return;
     AppNotifications.showInfo(context, 'Historial limpiado');
   }
 

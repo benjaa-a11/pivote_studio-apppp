@@ -93,12 +93,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       type: AppDialogType.error,
     );
     if (confirmed != true) return;
+    if (!mounted) return;
 
+    final userProvider = context.read<UserProvider>();
+    final navigator = Navigator.of(context);
     setState(() => _saving = true);
     try {
-      await context.read<UserProvider>().deleteAccount();
+      await userProvider.deleteAccount();
       if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
+      navigator.pushAndRemoveUntil(
         AppAnimations.createFadeRoute(const LoginScreen()),
         (route) => false,
       );

@@ -27,7 +27,6 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
   bool _refreshInProgress = false;
   int _progress = 0;
   int _lastRenderedProgress = -1;
-  String? _currentUrl;
 
   @override
   void initState() {
@@ -87,7 +86,6 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
       _hasError = false;
       _progress = 0;
       _lastRenderedProgress = 0;
-      _currentUrl = url;
     });
   }
 
@@ -102,7 +100,6 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
       _hasError = false;
       _progress = 100;
       _lastRenderedProgress = 100;
-      _currentUrl = url;
     });
   }
 
@@ -274,8 +271,15 @@ class _Ascenso2026ScreenState extends State<Ascenso2026Screen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _handleBack,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldClose = await _handleBack();
+        if (shouldClose && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: PivoteAppBar(

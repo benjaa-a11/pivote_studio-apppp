@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 
 class NotificationsScreen extends StatelessWidget {
@@ -40,7 +39,8 @@ class NotificationsScreen extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.10 : 0.06),
+                        color: theme.colorScheme.primary
+                            .withValues(alpha: isDark ? 0.10 : 0.06),
                         blurRadius: 28,
                         offset: const Offset(0, 10),
                       ),
@@ -54,7 +54,8 @@ class NotificationsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 28),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(999),
@@ -111,7 +112,8 @@ class NotificationsScreen extends StatelessWidget {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                          color: theme.colorScheme.primary
+                              .withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -128,7 +130,8 @@ class NotificationsScreen extends StatelessWidget {
                             fontSize: 12.5,
                             height: 1.35,
                             fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.76),
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.76),
                           ),
                         ),
                       ),

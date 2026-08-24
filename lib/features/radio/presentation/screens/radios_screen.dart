@@ -4,10 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:skeletonizer/skeletonizer.dart';
+import 'package:pivote/features/home/presentation/widgets/search_radio_tile.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
 import 'package:pivote/features/radio/presentation/providers/audio_manager.dart';
-import 'package:pivote/features/radio/data/models/radio.dart' as radio_model;
 import 'package:pivote/features/radio/presentation/screens/radio_player_screen.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
@@ -21,27 +20,20 @@ class RadiosScreen extends StatefulWidget {
 }
 
 class _RadiosScreenState extends State<RadiosScreen> {
-  final ScrollController _scrollController = ScrollController();
+  String _selectedCategory = 'Todas';
   final TextEditingController _searchController = TextEditingController();
   bool _isSearchVisible = false;
-  String _selectedCategory = 'Todas';
-  bool _showOnlyFavorites = false;
 
   @override
   void dispose() {
-    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _onSearchChanged(String query) {
-    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = theme.isDark;
     final radioProvider = context.watch<RadioProvider>();
     final audioManager = context.watch<AudioManager>();
 
@@ -53,29 +45,33 @@ class _RadiosScreenState extends State<RadiosScreen> {
           children: [
             RefreshIndicator(
               color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-              backgroundColor: isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
+              backgroundColor:
+                  isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
+              strokeWidth: 2.5,
               onRefresh: () => radioProvider.loadRadiosFromFirestore(),
               child: CustomScrollView(
-                controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: ClampingScrollPhysics(),
                 ),
                 slivers: [
                   // ─── Header con buscador y stats ───
-                  _buildSliverHeader(context, theme, isDark, radioProvider),
+                  _buildSliverHeader(theme, isDark, radioProvider.radios.length),
 
-                  // ─── Categorías y Filtro de Favoritos ───
+                  // ─── Pestañas de Categorías & Favoritos ───
                   SliverToBoxAdapter(
-                    child: _buildCategoryChips(context, theme, isDark, radioProvider),
+                    child: _buildCategoryPills(radioProvider, theme, isDark),
                   ),
 
-                  // ─── Lista de Emisoras ───
-                  _buildSliverRadioList(context, theme, isDark, radioProvider, audioManager),
+                  // ─── Grid / Lista de Emisoras ───
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: _buildRadiosList(radioProvider, theme, isDark),
+                  ),
 
-                  // Espacio adicional si el mini reproductor está activo
+                  // Espacio inferior para el mini-player flotante
                   SliverToBoxAdapter(
                     child: SizedBox(
-                      height: audioManager.currentRadio != null ? 120 : 80,
+                      height: audioManager.currentRadio != null ? 100 : 40,
                     ),
                   ),
                 ],
@@ -88,7 +84,12 @@ class _RadiosScreenState extends State<RadiosScreen> {
                 left: 16,
                 right: 16,
                 bottom: 16,
-                child: _buildFloatingMiniPlayer(context, theme, isDark, audioManager),
+                child: _buildFloatingMiniPlayer(
+                  context,
+                  audioManager,
+                  theme,
+                  isDark,
+                ),
               ),
           ],
         ),
@@ -96,13 +97,8 @@ class _RadiosScreenState extends State<RadiosScreen> {
     );
   }
 
-  // ─── Sliver Header ───
-  Widget _buildSliverHeader(
-    BuildContext context,
-    ThemeData theme,
-    bool isDark,
-    RadioProvider radioProvider,
-  ) {
+  // ─── Header ───
+  Widget _buildSliverHeader(ThemeData theme, bool isDark, int totalCount) {
     final textColor = theme.colorScheme.onSurface;
 
     return SliverAppBar(
@@ -134,54 +130,50 @@ class _RadiosScreenState extends State<RadiosScreen> {
               children: [
                 Row(
                   children: [
-                    // Título e indicador
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppTheme.darkAccent.withValues(alpha: 0.12)
-                                : theme.colorScheme.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            Icons.radio_rounded,
-                            size: 20,
-                            color: isDark
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (isDark
                                 ? AppTheme.darkAccent
-                                : theme.colorScheme.primary,
+                                : theme.colorScheme.primary)
+                            .withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.radio_rounded,
+                        size: 20,
+                        color: isDark
+                            ? AppTheme.darkAccent
+                            : theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Radios En Vivo',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.5,
+                            color: textColor,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Radio en Vivo',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.5,
-                                color: textColor,
-                              ),
-                            ),
-                            Text(
-                              '${radioProvider.radios.length} emisoras disponibles',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: textColor.withValues(alpha: 0.5),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          '$totalCount emisoras disponibles',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: textColor.withValues(alpha: 0.5),
+                          ),
                         ),
                       ],
                     ),
                     const Spacer(),
 
-                    // Botón de búsqueda local
+                    // Search Button
                     Material(
                       color: Colors.transparent,
                       child: InkWell(
@@ -223,13 +215,14 @@ class _RadiosScreenState extends State<RadiosScreen> {
                   ],
                 ),
 
-                // Campo de búsqueda expandible
+                // Search Input Field
                 if (_isSearchVisible) ...[
                   const SizedBox(height: 10),
                   Container(
                     height: 42,
                     decoration: BoxDecoration(
-                      color: isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
+                      color:
+                          isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isDark
@@ -239,9 +232,10 @@ class _RadiosScreenState extends State<RadiosScreen> {
                     ),
                     child: TextField(
                       controller: _searchController,
-                      onChanged: _onSearchChanged,
-                      cursorColor:
-                          isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                      onChanged: (val) => setState(() {}),
+                      cursorColor: isDark
+                          ? AppTheme.darkAccent
+                          : theme.colorScheme.primary,
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w600,
@@ -249,7 +243,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
                       ),
                       decoration: InputDecoration(
                         isDense: true,
-                        hintText: 'Filtrar por nombre o frecuencia...',
+                        hintText: 'Buscar emisora por nombre o frecuencia...',
                         hintStyle: GoogleFonts.spaceGrotesk(
                           fontSize: 12.5,
                           color: textColor.withValues(alpha: 0.4),
@@ -278,105 +272,41 @@ class _RadiosScreenState extends State<RadiosScreen> {
     );
   }
 
-  // ─── Category Chips ───
-  Widget _buildCategoryChips(
-    BuildContext context,
+  // ─── Category Pills ───
+  Widget _buildCategoryPills(
+    RadioProvider provider,
     ThemeData theme,
     bool isDark,
-    RadioProvider radioProvider,
   ) {
-    final categories = ['Todas', ...radioProvider.categories.where((c) => c != 'Todas')];
+    final categories = ['Todas', 'Favoritas', ...provider.categories.where((c) => c != 'Todas')];
+    final favCount = provider.radios.where((r) => r.isFavorite).length;
 
     return Container(
       height: 44,
-      margin: const EdgeInsets.only(top: 8, bottom: 4),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
         physics: const ClampingScrollPhysics(),
-        itemCount: categories.length + 1, // +1 para el botón de favoritas
+        itemCount: categories.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          if (index == 0) {
-            // Chip de Favoritas
-            final isSelected = _showOnlyFavorites;
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() {
-                    _showOnlyFavorites = !_showOnlyFavorites;
-                  });
-                },
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFFEF4444)
-                        : (isDark
-                            ? AppTheme.darkBg2
-                            : theme.colorScheme.surface),
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                    border: Border.all(
-                      color: isSelected
-                          ? const Color(0xFFEF4444)
-                          : (isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.06)),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isSelected
-                            ? Icons.favorite_rounded
-                            : Icons.favorite_border_rounded,
-                        size: 14,
-                        color: isSelected ? Colors.white : const Color(0xFFEF4444),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Favoritas',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 12,
-                          fontWeight: isSelected
-                              ? FontWeight.w800
-                              : FontWeight.w600,
-                          color: isSelected
-                              ? Colors.white
-                              : theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }
-
-          final category = categories[index - 1];
-          final isSelected = !_showOnlyFavorites && _selectedCategory == category;
+          final cat = categories[index];
+          final isSelected = _selectedCategory == cat;
+          final isFavPill = cat == 'Favoritas';
 
           return Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: () {
                 HapticFeedback.selectionClick();
-                setState(() {
-                  _showOnlyFavorites = false;
-                  _selectedCategory = category;
-                });
+                setState(() => _selectedCategory = cat);
               },
               borderRadius: BorderRadius.circular(AppRadius.pill),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? (isDark
@@ -400,21 +330,58 @@ class _RadiosScreenState extends State<RadiosScreen> {
                           isDark
                               ? AppTheme.darkAccent
                               : theme.colorScheme.primary,
-                          alpha: 0.25)
+                          alpha: 0.25,
+                        )
                       : [],
                 ),
-                child: Center(
-                  child: Text(
-                    category,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12,
-                      fontWeight:
-                          isSelected ? FontWeight.w800 : FontWeight.w600,
-                      color: isSelected
-                          ? (isDark ? Colors.black : Colors.white)
-                          : theme.colorScheme.onSurface,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isFavPill) ...[
+                      Icon(
+                        Icons.favorite_rounded,
+                        size: 14,
+                        color: isSelected
+                            ? (isDark ? Colors.black : Colors.white)
+                            : const Color(0xFFEF4444),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      cat,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12.5,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color: isSelected
+                            ? (isDark ? Colors.black : Colors.white)
+                            : theme.colorScheme.onSurface,
+                      ),
                     ),
-                  ),
+                    if (isFavPill && favCount > 0) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.black.withValues(alpha: 0.2)
+                              : const Color(0xFFEF4444).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '$favCount',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: isSelected
+                                ? (isDark ? Colors.black : Colors.white)
+                                : const Color(0xFFEF4444),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
@@ -424,25 +391,34 @@ class _RadiosScreenState extends State<RadiosScreen> {
     );
   }
 
-  // ─── Radio List ───
-  Widget _buildSliverRadioList(
-    BuildContext context,
+  // ─── Radios List / Grid ───
+  Widget _buildRadiosList(
+    RadioProvider provider,
     ThemeData theme,
     bool isDark,
-    RadioProvider radioProvider,
-    AudioManager audioManager,
   ) {
-    final isLoading = radioProvider.isLoading;
-    var list = radioProvider.radios;
+    if (provider.isLoading && provider.radios.isEmpty) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(
+          child: CircularProgressIndicator(
+            color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+            strokeWidth: 2.5,
+          ),
+        ),
+      );
+    }
 
-    // Filter by favorites
-    if (_showOnlyFavorites) {
-      list = radioProvider.favoriteRadios;
+    var list = provider.radios;
+
+    // Filter by category / favorites
+    if (_selectedCategory == 'Favoritas') {
+      list = list.where((r) => r.isFavorite).toList();
     } else if (_selectedCategory != 'Todas') {
       list = list.where((r) => r.category == _selectedCategory).toList();
     }
 
-    // Filter by local search text
+    // Filter by search query
     final query = _searchController.text.trim().toLowerCase();
     if (query.isNotEmpty) {
       list = list.where((r) {
@@ -450,18 +426,6 @@ class _RadiosScreenState extends State<RadiosScreen> {
             r.frequency.toLowerCase().contains(query) ||
             (r.category ?? '').toLowerCase().contains(query);
       }).toList();
-    }
-
-    if (isLoading) {
-      return SliverPadding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => _buildSkeletonTile(theme, isDark),
-            childCount: 6,
-          ),
-        ),
-      );
     }
 
     if (list.isEmpty) {
@@ -473,42 +437,32 @@ class _RadiosScreenState extends State<RadiosScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppTheme.darkAccent.withValues(alpha: 0.1)
-                        : theme.colorScheme.primary.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.radio_rounded,
-                    size: 32,
-                    color: isDark
-                        ? AppTheme.darkAccent
-                        : theme.colorScheme.primary,
-                  ),
+                Icon(
+                  _selectedCategory == 'Favoritas'
+                      ? Icons.favorite_border_rounded
+                      : Icons.radio_rounded,
+                  size: 48,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _showOnlyFavorites
-                      ? 'Sin radios favoritas'
-                      : 'Sin emisoras encontradas',
+                  _selectedCategory == 'Favoritas'
+                      ? 'Sin emisoras favoritas'
+                      : 'No se encontraron radios',
                   style: GoogleFonts.spaceGrotesk(
-                    fontSize: 16,
+                    fontSize: 17,
                     fontWeight: FontWeight.w800,
                     color: theme.colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _showOnlyFavorites
-                      ? 'Guarda tus emisoras favoritas tocando el icono de corazón.'
-                      : 'Intenta con otra búsqueda o categoría.',
+                  _selectedCategory == 'Favoritas'
+                      ? 'Toca el corazón en cualquier emisora para guardarla aquí.'
+                      : 'Prueba con otra categoría o término de búsqueda.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12.5,
+                    fontSize: 13,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
@@ -519,376 +473,16 @@ class _RadiosScreenState extends State<RadiosScreen> {
       );
     }
 
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final radio = list[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _buildModernRadioCard(
-                context,
-                radio,
-                audioManager,
-                radioProvider,
-                theme,
-                isDark,
-              ),
-            );
-          },
-          childCount: list.length,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSkeletonTile(ThemeData theme, bool isDark) {
-    return Skeletonizer(
-      enabled: true,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade800,
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 140,
-                    height: 16,
-                    color: Colors.grey.shade800,
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: 80,
-                    height: 12,
-                    color: Colors.grey.shade800,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Modern Radio Card ───
-  Widget _buildModernRadioCard(
-    BuildContext context,
-    radio_model.Radio radio,
-    AudioManager audioManager,
-    RadioProvider radioProvider,
-    ThemeData theme,
-    bool isDark,
-  ) {
-    final isCurrent = audioManager.currentRadio?.id == radio.id;
-    final isPlaying = isCurrent && audioManager.isPlaying;
-    final isLoading = isCurrent && audioManager.isLoading;
-    final isFav = radio.isFavorite;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) =>
-                  RadioPlayerScreen(radio: radio),
-              transitionDuration: const Duration(milliseconds: 300),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                return SlideTransition(
-                  position: animation.drive(
-                    Tween(
-                      begin: const Offset(1.0, 0.0),
-                      end: Offset.zero,
-                    ).chain(CurveTween(curve: Curves.easeOutCubic)),
-                  ),
-                  child: child,
-                );
-              },
-            ),
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final radio = list[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: SearchRadioTile(radio: radio),
           );
         },
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark
-                ? (isCurrent
-                    ? (isPlaying
-                        ? AppTheme.darkAccent.withValues(alpha: 0.1)
-                        : AppTheme.darkBg2)
-                    : AppTheme.darkBg2.withValues(alpha: 0.75))
-                : (isCurrent
-                    ? theme.colorScheme.primary.withValues(alpha: 0.08)
-                    : theme.colorScheme.surface),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isCurrent
-                  ? (isDark
-                      ? AppTheme.darkAccent.withValues(alpha: 0.5)
-                      : theme.colorScheme.primary.withValues(alpha: 0.4))
-                  : (isDark
-                      ? Colors.white.withValues(alpha: 0.07)
-                      : Colors.black.withValues(alpha: 0.06)),
-              width: isCurrent ? 1.5 : 1,
-            ),
-            boxShadow: isCurrent && isPlaying
-                ? AppShadows.glow(
-                    isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-                    alpha: 0.2)
-                : [],
-          ),
-          child: Row(
-            children: [
-              // Radio Logo
-              Hero(
-                tag: 'radio_tile_logo_${radio.id}',
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 54,
-                      height: 54,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.black.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(
-                          color: isPlaying
-                              ? (isDark
-                                  ? AppTheme.darkAccent
-                                  : theme.colorScheme.primary)
-                              : Colors.transparent,
-                          width: 1.6,
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: radio.logoUrl.isNotEmpty
-                            ? CachedNetworkImage(
-                                key: ValueKey<String>(radio.logoUrl),
-                                cacheManager: ImageCacheHelper.logoCacheManager,
-                                imageUrl: radio.logoUrl,
-                                fit: BoxFit.cover,
-                                memCacheWidth: 140,
-                                placeholder: (context, url) => Center(
-                                  child: SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: isDark
-                                          ? AppTheme.darkAccent
-                                          : theme.colorScheme.primary,
-                                    ),
-                                  ),
-                                ),
-                                errorWidget: (context, url, error) => Icon(
-                                  Icons.radio_rounded,
-                                  size: 24,
-                                  color: theme.colorScheme.primary
-                                      .withValues(alpha: 0.5),
-                                ),
-                              )
-                            : Icon(
-                                Icons.radio_rounded,
-                                size: 24,
-                                color: theme.colorScheme.primary
-                                    .withValues(alpha: 0.5),
-                              ),
-                      ),
-                    ),
-                    if (isPlaying)
-                      Positioned(
-                        bottom: 3,
-                        right: 3,
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppTheme.darkAccent
-                                : theme.colorScheme.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.graphic_eq_rounded,
-                            size: 10,
-                            color: isDark ? Colors.black : Colors.white,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 14),
-
-              // Station Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      radio.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w700,
-                        color: isCurrent
-                            ? (isDark
-                                ? AppTheme.darkAccent
-                                : theme.colorScheme.primary)
-                            : theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        if (radio.frequency.isNotEmpty) ...[
-                          Text(
-                            radio.frequency,
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.5),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            width: 3,
-                            height: 3,
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.3),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        Flexible(
-                          child: Text(
-                            radio.category ?? 'En Vivo',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w500,
-                              color: isDark
-                                  ? AppTheme.darkAccent.withValues(alpha: 0.8)
-                                  : theme.colorScheme.primary
-                                      .withValues(alpha: 0.8),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Favorite Heart Button
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    radioProvider.toggleFavorite(radio);
-                  },
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      isFav
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      size: 20,
-                      color: isFav
-                          ? const Color(0xFFEF4444)
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.35),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-
-              // Play / Pause Quick Button
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    audioManager.playRadio(radio);
-                  },
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: isPlaying
-                          ? (isDark
-                              ? AppTheme.darkAccent
-                              : theme.colorScheme.primary)
-                          : (isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : theme.colorScheme.primary
-                                  .withValues(alpha: 0.08)),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: isLoading
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: isPlaying
-                                    ? (isDark ? Colors.black : Colors.white)
-                                    : (isDark
-                                        ? AppTheme.darkAccent
-                                        : theme.colorScheme.primary),
-                              ),
-                            )
-                          : Icon(
-                              isPlaying
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              size: 22,
-                              color: isPlaying
-                                  ? (isDark ? Colors.black : Colors.white)
-                                  : (isDark
-                                      ? AppTheme.darkAccent
-                                      : theme.colorScheme.primary),
-                            ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        childCount: list.length,
       ),
     );
   }
@@ -896,9 +490,9 @@ class _RadiosScreenState extends State<RadiosScreen> {
   // ─── Floating Mini-Player ───
   Widget _buildFloatingMiniPlayer(
     BuildContext context,
+    AudioManager audioManager,
     ThemeData theme,
     bool isDark,
-    AudioManager audioManager,
   ) {
     final radio = audioManager.currentRadio!;
     final isPlaying = audioManager.isPlaying;
@@ -910,77 +504,75 @@ class _RadiosScreenState extends State<RadiosScreen> {
         onTap: () {
           Navigator.push(
             context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) =>
-                  RadioPlayerScreen(radio: radio),
-              transitionDuration: const Duration(milliseconds: 300),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                return SlideTransition(
-                  position: animation.drive(
-                    Tween(
-                      begin: const Offset(0.0, 1.0),
-                      end: Offset.zero,
-                    ).chain(CurveTween(curve: Curves.easeOutCubic)),
-                  ),
-                  child: child,
-                );
-              },
+            MaterialPageRoute(
+              builder: (context) => RadioPlayerScreen(radio: radio),
             ),
           );
         },
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: isDark
-                    ? AppTheme.darkBg1.withValues(alpha: 0.92)
-                    : theme.colorScheme.surface.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(20),
+                    ? AppTheme.darkBg2.withValues(alpha: 0.92)
+                    : theme.colorScheme.surface.withValues(alpha: 0.94),
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
                   color: isDark
-                      ? AppTheme.darkAccent.withValues(alpha: 0.35)
+                      ? AppTheme.darkAccent.withValues(alpha: 0.3)
                       : theme.colorScheme.primary.withValues(alpha: 0.25),
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+                    color: (isDark
+                            ? AppTheme.darkAccent
+                            : theme.colorScheme.primary)
+                        .withValues(alpha: 0.18),
                     blurRadius: 20,
-                    offset: const Offset(0, 8),
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
               child: Row(
                 children: [
-                  // Station logo small
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: radio.logoUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              key: ValueKey<String>(radio.logoUrl),
-                              cacheManager: ImageCacheHelper.logoCacheManager,
-                              imageUrl: radio.logoUrl,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 100,
-                            )
-                          : Icon(
-                              Icons.radio_rounded,
-                              size: 22,
-                              color: isDark
-                                  ? AppTheme.darkAccent
-                                  : theme.colorScheme.primary,
-                            ),
+                  // Logo
+                  Hero(
+                    tag: 'mini_player_logo_${radio.id}',
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppTheme.darkBg : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.06),
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: radio.logoUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                                key: ValueKey<String>(radio.logoUrl),
+                                cacheManager: ImageCacheHelper.logoCacheManager,
+                                imageUrl: radio.logoUrl,
+                                fit: BoxFit.cover,
+                                memCacheWidth: 88,
+                              )
+                            : Icon(
+                                Icons.radio_rounded,
+                                size: 24,
+                                color: isDark
+                                    ? AppTheme.darkAccent
+                                    : theme.colorScheme.primary,
+                              ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -991,110 +583,84 @@ class _RadiosScreenState extends State<RadiosScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        Text(
+                          radio.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
                         Row(
                           children: [
-                            if (isPlaying) ...[
-                              Icon(
-                                Icons.graphic_eq_rounded,
-                                size: 13,
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEF4444),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              radio.frequency.isNotEmpty
+                                  ? radio.frequency
+                                  : (radio.category ?? 'En Vivo'),
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
                                 color: isDark
                                     ? AppTheme.darkAccent
                                     : theme.colorScheme.primary,
                               ),
-                              const SizedBox(width: 4),
-                            ],
-                            Expanded(
-                              child: Text(
-                                radio.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          radio.frequency.isNotEmpty
-                              ? radio.frequency
-                              : (radio.category ?? 'Radio en Vivo'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.5),
-                          ),
                         ),
                       ],
                     ),
                   ),
 
-                  // Play/Pause Action
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.mediumImpact();
-                        audioManager.playRadio(radio);
-                      },
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppTheme.darkAccent
-                              : theme.colorScheme.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: isLoading
-                              ? SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: isDark ? Colors.black : Colors.white,
-                                  ),
-                                )
-                              : Icon(
-                                  isPlaying
-                                      ? Icons.pause_rounded
-                                      : Icons.play_arrow_rounded,
-                                  size: 20,
-                                  color: isDark ? Colors.black : Colors.white,
-                                ),
-                        ),
-                      ),
-                    ),
+                  // Play / Pause
+                  IconButton(
+                    icon: isLoading
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: isDark
+                                  ? AppTheme.darkAccent
+                                  : theme.colorScheme.primary,
+                            ),
+                          )
+                        : Icon(
+                            isPlaying
+                                ? Icons.pause_circle_filled_rounded
+                                : Icons.play_circle_fill_rounded,
+                            size: 34,
+                            color: isDark
+                                ? AppTheme.darkAccent
+                                : theme.colorScheme.primary,
+                          ),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      audioManager.playRadio(radio);
+                    },
                   ),
-                  const SizedBox(width: 6),
 
-                  // Stop / Dismiss Action
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        audioManager.stop();
-                      },
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(
-                          Icons.close_rounded,
-                          size: 18,
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.5),
-                        ),
-                      ),
+                  // Close / Stop
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      size: 20,
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
+                    onPressed: () {
+                      audioManager.stop();
+                    },
                   ),
                 ],
               ),
