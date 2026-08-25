@@ -1,10 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'dart:async';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 // ════════════════════════════════════════
 // SERVER INFO MODEL
@@ -51,7 +51,7 @@ class ServerInfo {
 }
 
 // ════════════════════════════════════════
-// CUSTOM VIDEO CONTROLS v5.0
+// CUSTOM VIDEO CONTROLS v6.0 (Modern Edition)
 // ════════════════════════════════════════
 
 class CustomVideoControls extends StatefulWidget {
@@ -163,7 +163,20 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   // ═══════════════════════════════════════
 
   void _toggleControls() {
-    if (_controlsLocked) return;
+    if (_controlsLocked) {
+      // In locked mode, tapping shows/hides the unlock button
+      setState(() {
+        _showControls = !_showControls;
+        if (_showControls) {
+          _fadeController.forward();
+          _startHideTimer();
+        } else {
+          _fadeController.reverse();
+          _hideTimer?.cancel();
+        }
+      });
+      return;
+    }
     HapticFeedback.selectionClick();
     setState(() {
       _showControls = !_showControls;
@@ -181,12 +194,11 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     _hideTimer?.cancel();
     if (!widget.controller.isPlaying || widget.controller.isBuffering) return;
 
-    _hideTimer = Timer(const Duration(seconds: 3), () {
+    _hideTimer = Timer(const Duration(seconds: 4), () {
       if (mounted &&
           widget.controller.isPlaying &&
           !widget.controller.isBuffering &&
-          _showControls &&
-          !_controlsLocked) {
+          _showControls) {
         setState(() {
           _showControls = false;
           _fadeController.reverse();
@@ -204,10 +216,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       });
     }
     _startHideTimer();
-    _controlsLocked = true;
-    _controlsInteractionTimer = Timer(const Duration(milliseconds: 300), () {
-      _controlsLocked = false;
-    });
   }
 
   // ═══════════════════════════════════════
@@ -231,7 +239,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   : const SizedBox.shrink(),
             ),
 
-            // Controls
+            // Controls Overlay
             FadeTransition(
               opacity: _fadeAnimation,
               child: IgnorePointer(
@@ -250,7 +258,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       child: FadeTransition(
         opacity: _bufferingController.drive(CurveTween(curve: Curves.easeIn)),
         child: const VideoLoadingWidget(
-          message: 'Cargando...',
+          message: 'Sintonizando señal…',
           isBuffering: true,
         ),
       ),
@@ -258,24 +266,49 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   }
 
   Widget _buildControls() {
+    if (_controlsLocked) {
+      return Center(
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.75),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.lock_outline_rounded,
+                color: Colors.white, size: 28),
+            tooltip: 'Desbloquear pantalla',
+            onPressed: () {
+              HapticFeedback.mediumImpact();
+              setState(() {
+                _controlsLocked = false;
+              });
+              _onControlInteraction();
+            },
+          ),
+        ),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withValues(alpha: 0.75),
+            Colors.black.withValues(alpha: 0.8),
             Colors.transparent,
             Colors.transparent,
             Colors.black.withValues(alpha: 0.85),
           ],
-          stops: const [0.0, 0.2, 0.75, 1.0],
+          stops: const [0.0, 0.22, 0.72, 1.0],
         ),
       ),
       child: Column(
         children: [
           _buildHeader(),
           const Spacer(),
+          _buildCenterPlayPause(),
           const Spacer(),
           _buildBottomControls(),
         ],
@@ -314,86 +347,72 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   Text(
                     widget.channelName,
                     style: GoogleFonts.spaceGrotesk(
-                      fontSize: widget.isFullScreen ? 17 : 16,
-                      fontWeight: FontWeight.w700,
+                      fontSize: widget.isFullScreen ? 17 : 15.5,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
-                      letterSpacing: -0.02 * (widget.isFullScreen ? 17 : 16),
+                      letterSpacing: -0.4,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      // Live dot
+                      // Live indicator dot
                       Container(
                         width: 7,
                         height: 7,
                         decoration: BoxDecoration(
                           color: widget.controller.isPlaying
-                              ? Colors.red
-                              : Colors.grey,
+                              ? const Color(0xFF10B981)
+                              : Colors.red,
                           shape: BoxShape.circle,
-                          boxShadow: widget.controller.isPlaying
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.red.withAlpha(128),
-                                    blurRadius: 4,
-                                    spreadRadius: 1,
-                                  ),
-                                ]
-                              : null,
+                          boxShadow: [
+                            BoxShadow(
+                              color: (widget.controller.isPlaying
+                                      ? const Color(0xFF10B981)
+                                      : Colors.red)
+                                  .withValues(alpha: 0.6),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 7),
+                      const SizedBox(width: 6),
                       Text(
                         'EN VIVO',
                         style: GoogleFonts.spaceGrotesk(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          color: widget.controller.isPlaying
-                              ? Colors.white
-                              : Colors.white60,
-                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 10.5,
+                          color: Colors.white,
+                          letterSpacing: 1.0,
                         ),
                       ),
-                      // Server badge
                       if (widget.totalServers > 1) ...[
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
-                            vertical: 3,
+                            vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withAlpha(140),
+                            color: AppTheme.darkAccent.withValues(alpha: 0.35),
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: Colors.white.withAlpha(51),
-                              width: 0.5,
+                              color: AppTheme.darkAccent.withValues(alpha: 0.5),
+                              width: 0.8,
                             ),
                           ),
                           child: Text(
-                            '${widget.currentServer}/${widget.totalServers}',
+                            'Servidor ${widget.currentServer}/${widget.totalServers}',
                             style: GoogleFonts.spaceGrotesk(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 10,
                               color: Colors.white,
                               letterSpacing: 0.4,
                             ),
                           ),
-                        ),
-                      ],
-                      // Error indicator
-                      if (widget.controller.hasError) ...[
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.error_outline,
-                          color: Colors.red,
-                          size: 16,
                         ),
                       ],
                     ],
@@ -401,7 +420,65 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 ],
               ),
             ),
+
+            // Lock screen button in fullscreen
+            if (widget.isFullScreen)
+              IconButton(
+                icon: const Icon(Icons.lock_open_rounded,
+                    color: Colors.white70, size: 20),
+                tooltip: 'Bloquear controles',
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  setState(() {
+                    _controlsLocked = true;
+                  });
+                },
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCenterPlayPause() {
+    final isPlaying = widget.controller.isPlaying;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          _onControlInteraction();
+          HapticFeedback.mediumImpact();
+          if (isPlaying) {
+            widget.controller.pause();
+          } else {
+            widget.controller.play();
+          }
+        },
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.65),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.25),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.4),
+                blurRadius: 16,
+              ),
+            ],
+          ),
+          child: Center(
+            child: Icon(
+              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
         ),
       ),
     );
@@ -411,33 +488,209 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
         child: Row(
           children: [
-            _buildControlSvg(
-              assetPath: widget.isMuted
-                  ? 'assets/icons/volume_off_16.svg'
-                  : 'assets/icons/volume_16.svg',
-              onPressed: () {
-                _onControlInteraction();
-                HapticFeedback.mediumImpact();
-                widget.onMuteToggle?.call();
-              },
-              size: 20,
-            ),
-            if (widget.isFullScreen) const SizedBox(width: 12),
-            const Spacer(),
-            if (widget.onFullScreenToggle != null)
-              _buildControlSvg(
-                assetPath: widget.isFullScreen
-                    ? 'assets/icons/player/salir-pantalla-completa.svg'
-                    : 'assets/icons/player/pantalla-completa.svg',
-                onPressed: () {
+            // Mute / Volume Button
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
                   _onControlInteraction();
                   HapticFeedback.mediumImpact();
-                  widget.onFullScreenToggle!();
+                  widget.onMuteToggle?.call();
                 },
-                size: 20,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Icon(
+                    widget.isMuted
+                        ? Icons.volume_off_rounded
+                        : Icons.volume_up_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+
+            // Aspect Ratio Cycle Button
+            if (widget.onAspectRatioChange != null)
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    _onControlInteraction();
+                    HapticFeedback.selectionClick();
+                    widget.onAspectRatioChange?.call();
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.18),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.aspect_ratio_rounded,
+                            color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          widget.aspectRatioLabel,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+            const Spacer(),
+
+            // Server Selector
+            if (widget.serverList != null && widget.serverList!.isNotEmpty)
+              PopupMenuButton<int>(
+                initialValue: widget.currentServer - 1,
+                tooltip: 'Seleccionar Servidor',
+                color: const Color(0xFF1E1E24),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.12),
+                  ),
+                ),
+                onSelected: (idx) {
+                  _onControlInteraction();
+                  HapticFeedback.selectionClick();
+                  widget.onServerSelect?.call(idx);
+                },
+                itemBuilder: (context) {
+                  return widget.serverList!.map((srv) {
+                    final isCurrent = (widget.currentServer - 1) == srv.index;
+                    return PopupMenuItem<int>(
+                      value: srv.index,
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: srv.typeColor(context).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              srv.typeLabel,
+                              style: TextStyle(
+                                color: srv.typeColor(context),
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              srv.label,
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 12.5,
+                                fontWeight: isCurrent
+                                    ? FontWeight.w900
+                                    : FontWeight.w600,
+                                color: isCurrent
+                                    ? AppTheme.darkAccent
+                                    : Colors.white,
+                              ),
+                            ),
+                          ),
+                          if (isCurrent)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppTheme.darkAccent,
+                              size: 16,
+                            ),
+                        ],
+                      ),
+                    );
+                  }).toList();
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.dns_rounded,
+                          color: Colors.white, size: 16),
+                      const SizedBox(width: 5),
+                      Text(
+                        'S${widget.currentServer}',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            const SizedBox(width: 10),
+
+            // Fullscreen Toggle
+            if (widget.onFullScreenToggle != null)
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    _onControlInteraction();
+                    HapticFeedback.mediumImpact();
+                    widget.onFullScreenToggle!();
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.18),
+                      ),
+                    ),
+                    child: Icon(
+                      widget.isFullScreen
+                          ? Icons.fullscreen_exit_rounded
+                          : Icons.fullscreen_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
               ),
           ],
         ),
@@ -454,30 +707,18 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black.withAlpha(140),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withAlpha(64), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(77),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(10),
-          splashColor: Colors.white.withAlpha(51),
-          highlightColor: Colors.white.withAlpha(26),
+          borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: padding ??
-                const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -487,58 +728,13 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   Text(
                     label,
                     style: GoogleFonts.spaceGrotesk(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.5,
                       color: Colors.white,
-                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildControlSvg({
-    required String assetPath,
-    required VoidCallback onPressed,
-    double size = 20,
-    EdgeInsets? padding,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withAlpha(140),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withAlpha(64), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(77),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(10),
-          splashColor: Colors.white.withAlpha(51),
-          highlightColor: Colors.white.withAlpha(26),
-          child: Padding(
-            padding: padding ??
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: SvgPicture.asset(
-              assetPath,
-              width: size,
-              height: size,
-              colorFilter: const ColorFilter.mode(
-                Colors.white,
-                BlendMode.srcIn,
-              ),
             ),
           ),
         ),

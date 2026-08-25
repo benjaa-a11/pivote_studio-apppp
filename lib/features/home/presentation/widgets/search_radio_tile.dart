@@ -207,11 +207,32 @@ class SearchRadioTile extends StatelessWidget {
                 ),
               ),
 
-              // Direct Play/Pause Quick Action Button
+              // Direct Play Quick Action Button (Opens Player)
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => audioManager.playRadio(radio),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            RadioPlayerScreen(radio: radio),
+                        transitionDuration: const Duration(milliseconds: 300),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                          return SlideTransition(
+                            position: animation.drive(
+                              Tween(
+                                begin: const Offset(1.0, 0.0),
+                                end: Offset.zero,
+                              ).chain(CurveTween(curve: Curves.easeOutCubic)),
+                            ),
+                            child: child,
+                          );
+                        },
+                      ),
+                    );
+                  },
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -240,7 +261,7 @@ class SearchRadioTile extends StatelessWidget {
                             )
                           : Icon(
                               isPlaying
-                                  ? Icons.pause_rounded
+                                  ? Icons.graphic_eq_rounded
                                   : Icons.play_arrow_rounded,
                               size: 22,
                               color: isPlaying

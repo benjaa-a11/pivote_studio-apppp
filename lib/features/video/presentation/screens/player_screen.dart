@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/data/services/epg_service.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
+import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/video_player_widget.dart';
+import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
+import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -23,10 +29,9 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
-  // Key para preservar el estado del video player al re-inicializar
   Key _videoPlayerKey = GlobalKey();
   late Channel _currentChannel;
-  int _selectedCameraId = -1; // -1 represents the main stream
+  int _selectedCameraId = -1;
 
   // Programación (EPG)
   bool _isLoadingGuide = false;
@@ -37,7 +42,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void initState() {
     super.initState();
     _currentChannel = widget.channel;
-    // Bloquear a portrait inicialmente
+
     Future.delayed(Duration.zero, () {
       if (mounted) {
         SystemChrome.setPreferredOrientations([
@@ -49,16 +54,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
           overlays: SystemUiOverlay.values,
         );
 
-        // Track channel watch
         try {
-          Provider.of<AppActivityService>(context, listen: false).trackChannelWatch();
+          Provider.of<AppActivityService>(context, listen: false)
+              .trackChannelWatch();
         } catch (e) {
           debugPrint('Error tracking channel watch: $e');
         }
       }
     });
 
-    // Cargar programación si el canal tiene guid configurado
     if ((_currentChannel.guid ?? '').trim().isNotEmpty) {
       _loadGuide();
     }
@@ -66,7 +70,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   @override
   void dispose() {
-    // Restaurar todas las orientaciones al salir
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -81,17 +84,32 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.dispose();
   }
 
+  void _switchChannel(Channel channel) {
+    if (_currentChannel.id == channel.id) return;
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _currentChannel = channel;
+      _selectedCameraId = -1;
+      _videoPlayerKey = GlobalKey();
+      _guideSlots = const [];
+      _guideError = null;
+    });
+    if ((_currentChannel.guid ?? '').trim().isNotEmpty) {
+      _loadGuide();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return PopScope(
       canPop: !isLandscape,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop && isLandscape) {
-          // Si estamos en landscape, volver a portrait
           SystemChrome.setPreferredOrientations([
             DeviceOrientation.portraitUp,
           ]);
@@ -102,17 +120,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: isLandscape ? Colors.black : (isDark ? Colors.black : Colors.white),
+        backgroundColor: isLandscape
+            ? Colors.black
+            : theme.scaffoldBackgroundColor,
         body: isLandscape
             ? _buildLandscapeLayout()
             : SafeArea(
-                child: _buildPortraitLayout(context, isDark),
+                child: _buildPortraitLayout(context, theme, isDark),
               ),
       ),
     );
   }
 
-  // Layout en modo landscape (pantalla completa)
+  // Landscape Layout (Full Immersive)
   Widget _buildLandscapeLayout() {
     return VideoPlayerWidget(
       key: _videoPlayerKey,
@@ -120,42 +140,50 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  // Layout en modo portrait
-  Widget _buildPortraitLayout(BuildContext context, bool isDark) {
+  // Portrait Layout
+  Widget _buildPortraitLayout(BuildContext context, ThemeData theme, bool isDark) {
     return Column(
       children: [
-        // Header más fino y elegante
-        _buildHeader(context, isDark),
+        // Top Bar
+        _buildHeader(context, theme, isDark),
 
-        // Reproductor de video (usando la misma key para preservar estado)
+        // Video Player Viewport
         AspectRatio(
           aspectRatio: 16 / 9,
-          child: VideoPlayerWidget(
-            key: _videoPlayerKey,
-            channel: _currentChannel,
+          child: Container(
+            color: Colors.black,
+            child: VideoPlayerWidget(
+              key: _videoPlayerKey,
+              channel: _currentChannel,
+            ),
           ),
         ),
 
-        // Contenido scrolleable
+        // Scrollable Content
         Expanded(
-          child: Container(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildChannelHeader(context),
-                  Divider(
-                    height: 1,
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.black.withValues(alpha: 0.05),
-                  ),
-                  _buildChannelInfo(context),
-                  const SizedBox(height: 24),
-                ],
-              ),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildChannelHeader(context, theme, isDark),
+                Divider(
+                  height: 1,
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                ),
+                _buildChannelActions(context, theme, isDark),
+                Divider(
+                  height: 1,
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                ),
+                _buildChannelInfo(context, theme, isDark),
+                _buildRelatedChannelsCarousel(context, theme, isDark),
+              ],
             ),
           ),
         ),
@@ -163,61 +191,168 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isDark) {
+  Widget _buildHeader(BuildContext context, ThemeData theme, bool isDark) {
+    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: theme.scaffoldBackgroundColor,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.04),
+            width: 1,
+          ),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
-            iconSize: 20,
-            style: IconButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.onSurface,
+          // Back Button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => Navigator.pop(context),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppTheme.darkBg2
+                      : theme.colorScheme.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : theme.colorScheme.primary.withValues(alpha: 0.12),
+                  ),
+                ),
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 18,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
             ),
           ),
+
+          // Live Pill Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: primaryColor.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'TRANSMISIÓN EN VIVO',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Actions: Diagnostics + Favorite
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // High-end quality diagnostics shortcut
-              IconButton(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  Navigator.push(
-                    context,
-                    AppAnimations.createRoute(
-                      const DiagnosticsScreen(),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      AppAnimations.createRoute(
+                        const DiagnosticsScreen(),
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppTheme.darkBg2
+                          : theme.colorScheme.primary.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : theme.colorScheme.primary.withValues(alpha: 0.12),
+                      ),
                     ),
-                  );
-                },
-                icon: Icon(
-                  Icons.speed_rounded,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 24,
+                    child: Icon(
+                      Icons.speed_rounded,
+                      color: primaryColor,
+                      size: 20,
+                    ),
+                  ),
                 ),
-                tooltip: 'Diagnóstico de Streaming',
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 8),
               Consumer<FavoritesProvider>(
                 builder: (context, favoritesProvider, child) {
                   final isFavorite =
                       favoritesProvider.isFavorite(_currentChannel.id);
-                  return IconButton(
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      favoritesProvider.toggleFavorite(_currentChannel);
-                    },
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border_rounded,
-                      color: isFavorite ? Colors.red : null,
-                      size: 28,
-                    ),
-                    style: IconButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.onSurface,
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        favoritesProvider.toggleFavorite(_currentChannel);
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? AppTheme.darkBg2
+                              : theme.colorScheme.primary
+                                  .withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : theme.colorScheme.primary
+                                    .withValues(alpha: 0.12),
+                          ),
+                        ),
+                        child: Icon(
+                          isFavorite
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          color: isFavorite
+                              ? const Color(0xFFEF4444)
+                              : theme.colorScheme.onSurface
+                                  .withValues(alpha: 0.7),
+                          size: 20,
+                        ),
+                      ),
                     ),
                   );
                 },
@@ -229,58 +364,65 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _buildChannelHeader(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildChannelHeader(
+      BuildContext context, ThemeData theme, bool isDark) {
+    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final logoUrl = _currentChannel.getLogoUrl(isDark);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Channel Logo with elevation/shadow
           Container(
-            width: 72,
-            height: 72,
+            width: 68,
+            height: 68,
             decoration: BoxDecoration(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.black.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(16),
+                  ? AppTheme.darkBg2
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : primaryColor.withValues(alpha: 0.18),
+                width: 1.5,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 10,
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
+                  blurRadius: 14,
                   offset: const Offset(0, 4),
                 ),
               ],
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.black.withValues(alpha: 0.1),
-              ),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: _currentChannel.logoUrl.isNotEmpty
-                  ? Image.network(
-                      _currentChannel.getLogoUrl(isDark),
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: logoUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        key: ValueKey<String>(logoUrl),
+                        cacheManager: ImageCacheHelper.logoCacheManager,
+                        imageUrl: logoUrl,
+                        fit: BoxFit.contain,
+                        memCacheWidth: 150,
+                        errorWidget: (context, error, stackTrace) => Icon(
                           Icons.tv_rounded,
-                          size: 36,
-                          color: isDark ? Colors.grey[700] : Colors.grey[400],
-                        );
-                      },
-                    )
-                  : Icon(
-                      Icons.tv_rounded,
-                      size: 36,
-                      color: isDark ? Colors.grey[700] : Colors.grey[400],
-                    ),
+                          size: 32,
+                          color: primaryColor,
+                        ),
+                      )
+                    : Icon(
+                        Icons.tv_rounded,
+                        size: 32,
+                        color: primaryColor,
+                      ),
+              ),
             ),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,63 +430,81 @@ class _PlayerScreenState extends State<PlayerScreen> {
               children: [
                 Text(
                   _currentChannel.name,
-                  style: TextStyle(
-                    fontSize: 24,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: -0.8,
-                    height: 1.1,
+                    letterSpacing: -0.6,
+                    height: 1.2,
                     color: (_currentChannel.type == 'evento' ||
                             _currentChannel.evento != null)
-                        ? const Color(0xFFD4AF37) // Golden tone for event
-                        : null,
+                        ? const Color(0xFFF59E0B)
+                        : theme.colorScheme.onSurface,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: 8,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withValues(alpha: 0.15),
+                        color: primaryColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         _currentChannel.category.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: Theme.of(context).colorScheme.primary,
-                          letterSpacing: 1.0,
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
+                          color: primaryColor,
+                          letterSpacing: 0.6,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    if (_currentChannel.quality != null)
+                    if (_currentChannel.quality != null &&
+                        _currentChannel.quality!.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
-                          vertical: 4,
+                          vertical: 3,
                         ),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? Colors.white.withValues(alpha: 0.1)
+                              ? Colors.white.withValues(alpha: 0.08)
                               : Colors.black.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           _currentChannel.quality!,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white70 : Colors.black87,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            color: theme.hintColor,
+                          ),
+                        ),
+                      ),
+                    if (_currentChannel.streamUrl.length > 1)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5B8CFF).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${_currentChannel.streamUrl.length} Servidores',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF5B8CFF),
                           ),
                         ),
                       ),
@@ -358,30 +518,134 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _buildChannelInfo(BuildContext context) {
+  // Channel Action Buttons Bar
+  Widget _buildChannelActions(
+      BuildContext context, ThemeData theme, bool isDark) {
+    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: [
+          Consumer<FavoritesProvider>(
+            builder: (context, favs, _) {
+              final isFav = favs.isFavorite(_currentChannel.id);
+              return Expanded(
+                child: _actionButton(
+                  icon: isFav
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  label: isFav ? 'Favorito' : 'Guardar',
+                  accent: isFav ? const Color(0xFFEF4444) : primaryColor,
+                  isDark: isDark,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    favs.toggleFavorite(_currentChannel);
+                  },
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _actionButton(
+              icon: Icons.speed_rounded,
+              label: 'Diagnóstico',
+              accent: const Color(0xFF5B8CFF),
+              isDark: isDark,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.push(
+                  context,
+                  AppAnimations.createRoute(const DiagnosticsScreen()),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _actionButton(
+              icon: Icons.report_problem_outlined,
+              label: 'Reportar',
+              accent: const Color(0xFFE58B46),
+              isDark: isDark,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                AppNotifications.showSuccess(
+                    context, 'Reporte enviado. Verificaremos la señal.');
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _actionButton({
+    required IconData icon,
+    required String label,
+    required Color accent,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: isDark ? AppTheme.darkBg2 : Colors.black.withValues(alpha: 0.03),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.04),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: accent, size: 20),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChannelInfo(
+      BuildContext context, ThemeData theme, bool isDark) {
     if (_currentChannel.type == 'evento' || _currentChannel.evento != null) {
       return _buildEventCameras(context);
     }
 
-    // Diseño limpio sin cajas, solo texto bien tipografiado para canales normales
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            _currentChannel.description,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  height: 1.6,
-                  fontSize: 15,
-                  color: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.color
-                      ?.withValues(alpha: 0.8),
-                ),
-          ),
-          const SizedBox(height: 24),
+          if (_currentChannel.description.isNotEmpty) ...[
+            Text(
+              _currentChannel.description,
+              style: GoogleFonts.spaceGrotesk(
+                height: 1.5,
+                fontSize: 13.5,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
           if ((_currentChannel.guid ?? '').trim().isNotEmpty)
             _buildProgramGuideSection(context),
         ],
@@ -392,18 +656,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget _buildProgramGuideSection(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     if (_isLoadingGuide) {
       return Container(
         margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.02)
-              : Colors.black.withValues(alpha: 0.02),
-          borderRadius: BorderRadius.circular(16),
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: theme.dividerColor.withValues(alpha: 0.08),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.06),
           ),
         ),
         child: Row(
@@ -414,14 +679,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
               child: PivoteLoader(
                 size: 18,
                 strokeWidth: 2,
-                color: theme.colorScheme.primary,
+                color: primaryColor,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Cargando programación del canal...',
-                style: theme.textTheme.bodyMedium?.copyWith(
+                'Cargando guía de programación...',
+                style: GoogleFonts.spaceGrotesk(
                   fontSize: 13,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
@@ -435,50 +700,36 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (_guideError != null) {
       return Container(
         margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: theme.colorScheme.error.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(16),
+          color: theme.colorScheme.error.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: theme.colorScheme.error.withValues(alpha: 0.4),
+            color: theme.colorScheme.error.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
               Icons.error_outline_rounded,
-              size: 18,
+              size: 20,
               color: theme.colorScheme.error,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'No se pudo cargar la programación',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Toca para reintentar.',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 12,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
+              child: Text(
+                'No se pudo obtener la programación.',
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
             ),
             IconButton(
               onPressed: _loadGuide,
               icon: const Icon(Icons.refresh_rounded, size: 18),
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+              color: primaryColor,
             ),
           ],
         ),
@@ -486,20 +737,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
 
     if (_guideSlots.isEmpty) {
-      // No hay datos de guía para este canal
       return const SizedBox.shrink();
     }
 
     return Container(
       margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.02)
-            : Colors.black.withValues(alpha: 0.01),
-        borderRadius: BorderRadius.circular(16),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: theme.dividerColor.withValues(alpha: 0.08),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
         ),
       ),
       child: Column(
@@ -513,14 +763,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   Icon(
                     Icons.schedule_rounded,
                     size: 18,
-                    color: theme.colorScheme.primary,
+                    color: primaryColor,
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Próxima programación',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                    'Programación del Canal',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ],
@@ -528,37 +779,41 @@ class _PlayerScreenState extends State<PlayerScreen> {
               IconButton(
                 onPressed: _loadGuide,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                tooltip: 'Actualizar programación',
+                color: theme.hintColor,
+                tooltip: 'Actualizar',
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           ..._guideSlots.take(5).map(
                 (slot) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: 64,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                         child: Text(
                           slot.time,
-                          style: theme.textTheme.labelSmall?.copyWith(
+                          style: GoogleFonts.spaceGrotesk(
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.7),
+                            fontWeight: FontWeight.w800,
+                            color: primaryColor,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           slot.title,
-                          style: theme.textTheme.bodySmall?.copyWith(
+                          style: GoogleFonts.spaceGrotesk(
                             fontSize: 13,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.85),
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -603,19 +858,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _buildEventCameras(BuildContext context) {
-    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final camaras = widget.channel.camaras ?? [];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: const Color(0xFFD4AF37).withAlpha(30),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFFD4AF37), width: 1),
             ),
             child: const Row(
@@ -625,9 +880,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     color: Color(0xFFD4AF37), size: 16),
                 SizedBox(width: 8),
                 Text(
-                  'EXCLUSIVO MULTICÁMARA',
+                  'TRANSMISIÓN MULTICÁMARA',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFFD4AF37),
                     letterSpacing: 1.2,
@@ -646,12 +901,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),
-            itemCount: camaras.length + 1, // +1 for the main stream
+            itemCount: camaras.length + 1,
             itemBuilder: (context, index) {
               if (index == 0) {
                 return _buildCameraSelector(
                   id: -1,
-                  nombre: "Gala / Principal",
+                  nombre: "Transmisión Principal",
                   url: widget.channel.streamUrl.first.url,
                   tipo: "principal",
                   isDark: isDark,
@@ -667,15 +922,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
               );
             },
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           if (_currentChannel.description.isNotEmpty)
             Text(
               _currentChannel.description,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    height: 1.6,
-                    fontSize: 14,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                  ),
+              style: GoogleFonts.spaceGrotesk(
+                height: 1.5,
+                fontSize: 13.5,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
             ),
         ],
       ),
@@ -699,9 +954,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
         setState(() {
           _selectedCameraId = id;
-          // Forzar la creación de un nuevo widget de reproductor
           _videoPlayerKey = GlobalKey();
-          // Modificar la URL del canal actual temporalmente
           _currentChannel = widget.channel.copyWith(
             name: "${widget.channel.name} - $nombre",
             streamUrl: [StreamSource(url: url)],
@@ -714,10 +967,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? dominantColor.withAlpha(40)
-              : const Color(0xFF101010),
-          borderRadius: BorderRadius.circular(12),
+              : (isDark ? AppTheme.darkBg2 : Colors.white),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected ? dominantColor : Colors.white.withAlpha(30),
+            color: isSelected
+                ? dominantColor
+                : (isDark ? Colors.white.withAlpha(25) : Colors.black.withAlpha(20)),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
@@ -740,7 +995,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.red : Colors.grey[700],
+                    color: isSelected ? Colors.red : Colors.grey,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -748,11 +1003,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 Expanded(
                   child: Text(
                     nombre,
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12.5,
                       fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? Colors.white : Colors.white70,
+                          isSelected ? FontWeight.w800 : FontWeight.w600,
+                      color: isDark ? Colors.white : Colors.black87,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -766,10 +1021,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 padding: const EdgeInsets.only(left: 14),
                 child: Text(
                   tipo.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 9,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 8.5,
                     color: dominantColor,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -783,18 +1038,155 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Color _getAmbientColor(String tipo) {
     if (tipo.toLowerCase().contains("principal") ||
         tipo.toLowerCase().contains("gala")) {
-      return const Color(0xFFD4AF37); // Dorado
+      return const Color(0xFFD4AF37);
     } else if (tipo.toLowerCase().contains("exclusiva") ||
         tipo.toLowerCase().contains("dormitorio")) {
-      return const Color(0xFF8A2BE2); // Violeta Eléctrico
+      return const Color(0xFF8A2BE2);
     } else if (tipo.toLowerCase().contains("jardin") ||
         tipo.toLowerCase().contains("playa")) {
-      return const Color(0xFFF5DEB3); // Arena / Celeste
+      return const Color(0xFFF5DEB3);
     } else if (tipo.toLowerCase().contains("confesionario")) {
       return Colors.redAccent;
     }
-    return const Color(0xFF1E90FF); // Azul genérico
+    return const Color(0xFF1E90FF);
   }
 
-  // Related channels methods removed as requested
+  // Related Channels Carousel
+  Widget _buildRelatedChannelsCarousel(
+      BuildContext context, ThemeData theme, bool isDark) {
+    final channelProvider = context.watch<ChannelProvider>();
+    final allChannels = channelProvider.channels;
+
+    // Channels in the same category or others
+    final related = allChannels
+        .where((c) =>
+            c.id != _currentChannel.id &&
+            (c.category.toLowerCase() ==
+                _currentChannel.category.toLowerCase()))
+        .toList();
+
+    final displayList = related.isNotEmpty
+        ? related
+        : allChannels.where((c) => c.id != _currentChannel.id).take(10).toList();
+
+    if (displayList.isEmpty) return const SizedBox.shrink();
+
+    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Cambio Rápido de Canal',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  _currentChannel.category,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 96,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: displayList.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final ch = displayList[index];
+                final logo = ch.getLogoUrl(isDark);
+
+                return Material(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: () => _switchChannel(ch),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: 140,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.06),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: primaryColor.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: logo.isNotEmpty
+                                  ? CachedNetworkImage(
+                                      key: ValueKey<String>(logo),
+                                      cacheManager:
+                                          ImageCacheHelper.logoCacheManager,
+                                      imageUrl: logo,
+                                      fit: BoxFit.contain,
+                                      memCacheWidth: 80,
+                                      errorWidget: (_, __, ___) => Icon(
+                                        Icons.tv_rounded,
+                                        color: primaryColor,
+                                        size: 20,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.tv_rounded,
+                                      color: primaryColor,
+                                      size: 20,
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            ch.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,7 +9,6 @@ import 'package:pivote/features/radio/data/models/radio.dart' as radio_model;
 import 'package:pivote/features/radio/presentation/providers/audio_manager.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
 import 'package:pivote/core/theme/app_theme.dart';
-import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 
@@ -27,8 +25,7 @@ class RadioPlayerScreen extends StatefulWidget {
 }
 
 class _RadioPlayerScreenState extends State<RadioPlayerScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _rotateController;
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   Timer? _sleepTimer;
   int _sleepMinutesRemaining = 0;
@@ -37,15 +34,9 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   void initState() {
     super.initState();
 
-    // Disc rotation controller
-    _rotateController = AnimationController(
-      duration: const Duration(seconds: 18),
-      vsync: this,
-    );
-
-    // Pulse controller for live equalizer waves
+    // Pulse controller for live ambient waves
     _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1400),
       vsync: this,
     )..repeat(reverse: true);
 
@@ -61,10 +52,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
       } catch (e) {
         debugPrint('Error tracking radio listen: $e');
       }
-
-      if (audioManager.isPlaying) {
-        _rotateController.repeat();
-      }
     });
 
     _setupManagerListener();
@@ -79,16 +66,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     if (!mounted) return;
     final audioManager = context.read<AudioManager>();
 
-    if (audioManager.isPlaying) {
-      if (!_rotateController.isAnimating) {
-        _rotateController.repeat();
-      }
-    } else {
-      if (_rotateController.isAnimating) {
-        _rotateController.stop();
-      }
-    }
-
     if (audioManager.status == AudioManagerStatus.error &&
         audioManager.errorMessage != null) {
       AppNotifications.showError(context, audioManager.errorMessage!);
@@ -98,8 +75,10 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
   @override
   void dispose() {
     _sleepTimer?.cancel();
-    context.read<AudioManager>().removeListener(_onAudioManagerChanged);
-    _rotateController.dispose();
+    final audioManager = context.read<AudioManager>();
+    audioManager.removeListener(_onAudioManagerChanged);
+    // Apagar la radio automáticamente al salir de la pantalla
+    audioManager.stop();
     _pulseController.dispose();
     super.dispose();
   }
@@ -294,10 +273,10 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                         // Top Bar
                         _buildTopBar(context, theme, isDark, activeRadio, isFav, radioProvider),
 
-                        // Center Vinyl Disc & Visualizer
-                        _buildCenterDisc(theme, isDark, activeRadio, isPlaying),
+                        // Center Rounded Square Artwork & Station Info
+                        _buildCenterArtwork(theme, isDark, activeRadio, isPlaying),
 
-                        // Bottom Controls Section
+                        // Bottom Controls Section (Prev, Play/Pause, Next)
                         _buildControlsSection(
                           context,
                           theme,
@@ -377,7 +356,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Back Button (keeps background radio playing)
+        // Back Button
         Material(
           color: Colors.transparent,
           child: InkWell(
@@ -542,161 +521,110 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     );
   }
 
-  // ─── Vinyl Disc Center ───
-  Widget _buildCenterDisc(
+  // ─── Center Square Artwork (No Rotation, Rounded Corners) ───
+  Widget _buildCenterArtwork(
     ThemeData theme,
     bool isDark,
     radio_model.Radio radio,
     bool isPlaying,
   ) {
+    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         AnimatedBuilder(
           animation: _pulseController,
           builder: (context, child) {
-            final pulseVal = isPlaying ? _pulseController.value * 12 : 0.0;
+            final pulseVal = isPlaying ? _pulseController.value * 8 : 0.0;
             return Container(
-              width: 240,
-              height: 240,
+              width: 230,
+              height: 230,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(26),
                 boxShadow: [
                   BoxShadow(
-                    color: (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
-                        .withValues(alpha: isPlaying ? 0.25 : 0.05),
-                    blurRadius: 30 + pulseVal,
-                    spreadRadius: 2 + pulseVal * 0.4,
+                    color: primaryColor.withValues(alpha: isPlaying ? 0.28 : 0.06),
+                    blurRadius: 26 + pulseVal,
+                    spreadRadius: 1 + pulseVal * 0.3,
+                    offset: const Offset(0, 8),
                   ),
                 ],
               ),
               child: child,
             );
           },
-          child: AnimatedBuilder(
-            animation: _rotateController,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: _rotateController.value * 2 * math.pi,
-                child: child,
-              );
-            },
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Vinyl Disc Rim
-                Container(
-                  width: 240,
-                  height: 240,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        isDark ? const Color(0xFF1E1E24) : const Color(0xFF333333),
-                        isDark ? const Color(0xFF0F0F12) : const Color(0xFF1A1A1A),
-                      ],
-                    ),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.12)
-                          : Colors.black.withValues(alpha: 0.2),
-                      width: 2,
-                    ),
-                  ),
-                ),
-
-                // Vinyl Grooves
-                Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.06),
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-                Container(
-                  width: 170,
-                  height: 170,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.04),
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-
-                // Center Station Logo
-                Hero(
-                  tag: 'radio_tile_logo_${radio.id}',
-                  child: Container(
-                    width: 130,
-                    height: 130,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isDark
-                            ? AppTheme.darkAccent
-                            : theme.colorScheme.primary,
-                        width: 2.5,
-                      ),
-                    ),
-                    child: ClipOval(
-                      child: radio.logoUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              key: ValueKey<String>(radio.logoUrl),
-                              cacheManager: ImageCacheHelper.logoCacheManager,
-                              imageUrl: radio.logoUrl,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 260,
-                            )
-                          : Container(
-                              color: isDark ? AppTheme.darkBg2 : Colors.white,
-                              child: Icon(
-                                Icons.radio_rounded,
-                                size: 48,
-                                color: isDark
-                                    ? AppTheme.darkAccent
-                                    : theme.colorScheme.primary,
-                              ),
+          child: Container(
+            width: 230,
+            height: 230,
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkBg2 : Colors.white,
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : primaryColor.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Hero(
+                tag: 'radio_tile_logo_${radio.id}',
+                child: radio.logoUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        key: ValueKey<String>(radio.logoUrl),
+                        cacheManager: ImageCacheHelper.logoCacheManager,
+                        imageUrl: radio.logoUrl,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 460,
+                        placeholder: (context, url) => Container(
+                          color: isDark ? AppTheme.darkBg2 : Colors.grey.shade100,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: primaryColor,
                             ),
-                    ),
-                  ),
-                ),
-
-                // Center Pin Hole
-                Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkBg : Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.grey.withValues(alpha: 0.5),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ],
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => Container(
+                          color: isDark ? AppTheme.darkBg2 : Colors.grey.shade100,
+                          child: Icon(
+                            Icons.radio_rounded,
+                            size: 64,
+                            color: primaryColor,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        color: isDark ? AppTheme.darkBg2 : Colors.grey.shade100,
+                        child: Icon(
+                          Icons.radio_rounded,
+                          size: 64,
+                          color: primaryColor,
+                        ),
+                      ),
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
 
         // Station Name & Frequency
-        Text(
-          radio.name,
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.5,
-            color: theme.colorScheme.onSurface,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            radio.name,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
         ),
         const SizedBox(height: 6),
@@ -733,43 +661,11 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
             ),
           ],
         ),
-        const SizedBox(height: 12),
-
-        // HD Quality Badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : Colors.black.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.high_quality_rounded,
-                size: 16,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-              const SizedBox(width: 5),
-              Text(
-                'STREAMING AAC / MP3 • HD AUDIO',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.5,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-              ),
-            ],
-          ),
-        ),
       ],
     );
   }
 
-  // ─── Controls Section (Volume + Playback) ───
+  // ─── Controls Section (Cohesive Buttons: Prev, Play/Pause, Next) ───
   Widget _buildControlsSection(
     BuildContext context,
     ThemeData theme,
@@ -780,74 +676,12 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     bool isPlaying,
     bool isLoading,
   ) {
+    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: 20),
-
-        // Interactive Volume Slider
-        StreamBuilder<double>(
-          stream: audioManager.volumeStream,
-          initialData: audioManager.volume,
-          builder: (context, snapshot) {
-            final volume = snapshot.data ?? 1.0;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      volume == 0
-                          ? Icons.volume_off_rounded
-                          : Icons.volume_down_rounded,
-                      size: 20,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                    onPressed: () {
-                      audioManager.setVolume(volume == 0 ? 0.8 : 0.0);
-                    },
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 4,
-                        thumbShape:
-                            const RoundSliderThumbShape(enabledThumbRadius: 7),
-                        overlayShape:
-                            const RoundSliderOverlayShape(overlayRadius: 14),
-                        activeTrackColor: isDark
-                            ? AppTheme.darkAccent
-                            : theme.colorScheme.primary,
-                        inactiveTrackColor: isDark
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : Colors.black.withValues(alpha: 0.1),
-                        thumbColor: isDark
-                            ? AppTheme.darkAccent
-                            : theme.colorScheme.primary,
-                      ),
-                      child: Slider(
-                        value: volume.clamp(0.0, 1.0),
-                        onChanged: (val) => audioManager.setVolume(val),
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.volume_up_rounded,
-                      size: 20,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                    onPressed: () {
-                      audioManager.setVolume(1.0);
-                    },
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
         const SizedBox(height: 12),
-
-        // Prev, Play/Pause, Next Controls Row
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -859,27 +693,35 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                   HapticFeedback.selectionClick();
                   _goToNextRadio(radioProvider, audioManager, false);
                 },
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+                borderRadius: BorderRadius.circular(18),
                 child: Container(
-                  width: 50,
-                  height: 50,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.black.withValues(alpha: 0.04),
-                    shape: BoxShape.circle,
+                        ? AppTheme.darkBg2
+                        : theme.colorScheme.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : theme.colorScheme.primary.withValues(alpha: 0.12),
+                      width: 1.2,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.skip_previous_rounded,
-                    size: 26,
-                    color: theme.colorScheme.onSurface,
+                  child: Center(
+                    child: Icon(
+                      Icons.skip_previous_rounded,
+                      size: 28,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 24),
+            const SizedBox(width: 20),
 
-            // Big Main Play/Pause Button with Glow
+            // Main Play/Pause Button
             Material(
               color: Colors.transparent,
               child: InkWell(
@@ -887,21 +729,17 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                   HapticFeedback.mediumImpact();
                   audioManager.playRadio(radio);
                 },
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                child: Container(
-                  width: 76,
-                  height: 76,
+                borderRadius: BorderRadius.circular(22),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? AppTheme.darkAccent
-                        : theme.colorScheme.primary,
-                    shape: BoxShape.circle,
+                    color: primaryColor,
+                    borderRadius: BorderRadius.circular(22),
                     boxShadow: [
                       BoxShadow(
-                        color: (isDark
-                                ? AppTheme.darkAccent
-                                : theme.colorScheme.primary)
-                            .withValues(alpha: 0.35),
+                        color: primaryColor.withValues(alpha: 0.38),
                         blurRadius: 20,
                         offset: const Offset(0, 6),
                       ),
@@ -928,7 +766,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                 ),
               ),
             ),
-            const SizedBox(width: 24),
+            const SizedBox(width: 20),
 
             // Next Station
             Material(
@@ -938,20 +776,28 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                   HapticFeedback.selectionClick();
                   _goToNextRadio(radioProvider, audioManager, true);
                 },
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+                borderRadius: BorderRadius.circular(18),
                 child: Container(
-                  width: 50,
-                  height: 50,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.black.withValues(alpha: 0.04),
-                    shape: BoxShape.circle,
+                        ? AppTheme.darkBg2
+                        : theme.colorScheme.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : theme.colorScheme.primary.withValues(alpha: 0.12),
+                      width: 1.2,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.skip_next_rounded,
-                    size: 26,
-                    color: theme.colorScheme.onSurface,
+                  child: Center(
+                    child: Icon(
+                      Icons.skip_next_rounded,
+                      size: 28,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ),

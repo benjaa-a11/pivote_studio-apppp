@@ -3,9 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
-import 'package:pivote/core/theme/app_theme.dart';
 
 class ActivityScreen extends StatelessWidget {
   const ActivityScreen({super.key});
@@ -14,18 +14,19 @@ class ActivityScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: const PivoteAppBar(
         title: 'Mi Actividad',
-        subtitle: 'Estadísticas e insignias de reproducción',
+        subtitle: 'Estadísticas, nivel de usuario y tiempo en vivo',
       ),
       body: Consumer<AppActivityService>(
         builder: (context, activityService, child) {
           final totalMinutes = activityService.totalActiveSeconds / 60.0;
-          
-          // Rank calculation variables for progression
+
+          // Rank progression calculation
           double progress = 0.0;
           String nextRank = '';
           String nextRankEmoji = '';
@@ -65,38 +66,40 @@ class ActivityScreen extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 600),
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Top active usage time card with premium look
+                    // Top active usage time card
                     AppAnimations.smoothFadeInScale(
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 26, horizontal: 20),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(26),
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: isDark
                                 ? [
-                                    theme.colorScheme.primary.withValues(alpha: 0.12),
-                                    theme.colorScheme.primary.withValues(alpha: 0.04),
+                                    primaryColor.withValues(alpha: 0.16),
+                                    theme.colorScheme.surface,
                                   ]
                                 : [
-                                    theme.colorScheme.primary.withValues(alpha: 0.08),
-                                    theme.colorScheme.primary.withValues(alpha: 0.02),
+                                    primaryColor.withValues(alpha: 0.12),
+                                    Colors.white,
                                   ],
                           ),
                           border: Border.all(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                            color: primaryColor.withValues(alpha: 0.22),
                             width: 1.5,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.03 : 0.01),
-                              blurRadius: 15,
+                              color: primaryColor.withValues(alpha: isDark ? 0.08 : 0.04),
+                              blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
                           ],
@@ -108,16 +111,16 @@ class ActivityScreen extends StatelessWidget {
                               children: [
                                 Icon(
                                   Icons.bolt_rounded,
-                                  color: theme.colorScheme.primary,
-                                  size: 16,
+                                  color: primaryColor,
+                                  size: 18,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
                                   'TIEMPO DE USO TOTAL',
                                   style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    color: theme.colorScheme.primary,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: primaryColor,
                                     letterSpacing: 2.0,
                                   ),
                                 ),
@@ -127,7 +130,7 @@ class ActivityScreen extends StatelessWidget {
                             Text(
                               activityService.getFormattedActiveTime(),
                               style: GoogleFonts.spaceGrotesk(
-                                fontSize: 42,
+                                fontSize: 44,
                                 fontWeight: FontWeight.w900,
                                 color: theme.colorScheme.onSurface,
                                 letterSpacing: -1.0,
@@ -135,29 +138,35 @@ class ActivityScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 12),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 5),
                               decoration: BoxDecoration(
-                                color: Colors.green.withValues(alpha: 0.1),
+                                color: const Color(0xFF10B981)
+                                    .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(100),
+                                border: Border.all(
+                                  color: const Color(0xFF10B981)
+                                      .withValues(alpha: 0.3),
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Container(
-                                    width: 6,
-                                    height: 6,
+                                    width: 7,
+                                    height: 7,
                                     decoration: const BoxDecoration(
-                                      color: Colors.green,
+                                      color: Color(0xFF10B981),
                                       shape: BoxShape.circle,
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 7),
                                   Text(
-                                    'Actualizando en vivo',
+                                    'Sincronizando en vivo',
                                     style: GoogleFonts.spaceGrotesk(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green.shade600,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF10B981),
                                     ),
                                   ),
                                 ],
@@ -167,55 +176,71 @@ class ActivityScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 26),
 
-                    // Rango Argento Section Title
+                    // Rango Section Title
                     Text(
-                      'Mi Rango',
+                      'Mi Rango de Usuario',
                       style: GoogleFonts.spaceGrotesk(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
                         color: theme.colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
 
-                    // Rango Argento Card
+                    // Rango Card
                     AppAnimations.smoothFadeIn(
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+                          color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.black.withValues(alpha: 0.06),
                           ),
                         ),
                         child: Column(
                           children: [
                             Row(
                               children: [
-                                Text(
-                                  activityService.getArgentineRankEmoji(),
-                                  style: const TextStyle(fontSize: 44),
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: primaryColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      activityService.getArgentineRankEmoji(),
+                                      style: const TextStyle(fontSize: 32),
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 3),
                                         decoration: BoxDecoration(
-                                          color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: primaryColor
+                                              .withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                         child: Text(
-                                          'CATEGORÍA ARGENTINA',
+                                          'NIVEL DE EXPERIENCIA',
                                           style: GoogleFonts.spaceGrotesk(
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.w800,
-                                            color: theme.colorScheme.primary,
+                                            fontSize: 8.5,
+                                            fontWeight: FontWeight.w900,
+                                            color: primaryColor,
                                             letterSpacing: 1.0,
                                           ),
                                         ),
@@ -224,8 +249,8 @@ class ActivityScreen extends StatelessWidget {
                                       Text(
                                         activityService.getArgentineRank(),
                                         style: GoogleFonts.spaceGrotesk(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w800,
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w900,
                                           color: theme.colorScheme.onSurface,
                                         ),
                                       ),
@@ -239,60 +264,68 @@ class ActivityScreen extends StatelessWidget {
                               activityService.getArgentineRankDescription(),
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 12,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.65),
                                 height: 1.4,
                               ),
                             ),
 
-                            // Progress Bar to next Rank (Except for final rank)
+                            // Progress Bar to next Rank
                             if (totalMinutes < 480.0) ...[
-                              const SizedBox(height: 20),
-                              const Divider(height: 1),
                               const SizedBox(height: 16),
+                              Divider(
+                                height: 1,
+                                color: theme.dividerColor
+                                    .withValues(alpha: 0.08),
+                              ),
+                              const SizedBox(height: 14),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Siguiente nivel:',
                                     style: GoogleFonts.spaceGrotesk(
-                                      fontSize: 11,
+                                      fontSize: 11.5,
                                       fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                                      color: theme.hintColor,
                                     ),
                                   ),
                                   Text(
                                     '$nextRankEmoji $nextRank',
                                     style: GoogleFonts.spaceGrotesk(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: theme.colorScheme.primary,
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: primaryColor,
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              // Sleek progression bar with gradient track
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(100),
                                 child: SizedBox(
                                   height: 8,
                                   child: LinearProgressIndicator(
                                     value: progress,
-                                    backgroundColor: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
-                                    valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+                                    backgroundColor: isDark
+                                        ? Colors.white.withValues(alpha: 0.08)
+                                        : Colors.black.withValues(alpha: 0.06),
+                                    valueColor:
+                                        AlwaysStoppedAnimation<Color>(primaryColor),
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   Text(
-                                    'Faltan $remainingMinutes min',
+                                    'Faltan $remainingMinutes min para subir',
                                     style: GoogleFonts.spaceGrotesk(
-                                      fontSize: 10,
+                                      fontSize: 10.5,
                                       fontWeight: FontWeight.w700,
-                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                                      color: theme.hintColor,
                                     ),
                                   ),
                                 ],
@@ -306,33 +339,33 @@ class ActivityScreen extends StatelessWidget {
 
                     // Stats Title
                     Text(
-                      'Estadísticas de Uso',
+                      'Estadísticas de Consumo',
                       style: GoogleFonts.spaceGrotesk(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
                         color: theme.colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
 
-                    // Stats Grid - Responsive grid layout
+                    // Stats Grid
                     LayoutBuilder(
                       builder: (context, gridConstraints) {
-                        final isSmallWidth = gridConstraints.maxWidth < 360;
                         return GridView.count(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           crossAxisCount: 2,
-                          childAspectRatio: isSmallWidth ? 1.4 : 1.7,
+                          childAspectRatio: 1.5,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                           children: [
                             _buildStatGridCard(
                               context,
-                              title: 'Ingresos Totales',
+                              title: 'Sesiones Totales',
                               value: '${activityService.sessionCount}',
                               icon: Icons.login_rounded,
                               color: const Color(0xFF74ACDF),
+                              isDark: isDark,
                             ),
                             _buildStatGridCard(
                               context,
@@ -340,6 +373,7 @@ class ActivityScreen extends StatelessWidget {
                               value: '${activityService.channelsWatched}',
                               icon: Icons.tv_rounded,
                               color: const Color(0xFF52C41A),
+                              isDark: isDark,
                             ),
                             _buildStatGridCard(
                               context,
@@ -347,6 +381,7 @@ class ActivityScreen extends StatelessWidget {
                               value: '${activityService.radiosListened}',
                               icon: Icons.radio_outlined,
                               color: const Color(0xFFFAAD14),
+                              isDark: isDark,
                             ),
                             _buildStatGridCard(
                               context,
@@ -354,91 +389,23 @@ class ActivityScreen extends StatelessWidget {
                               value: '${activityService.matchesViewed}',
                               icon: Icons.sports_soccer_rounded,
                               color: const Color(0xFFF5222D),
+                              isDark: isDark,
                             ),
                           ],
                         );
                       },
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
-                    // Consejo del Día Card
-                    AppAnimations.smoothFadeIn(
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isDark
-                                ? [
-                                    const Color(0xFF74ACDF).withValues(alpha: 0.15),
-                                    Colors.transparent,
-                                  ]
-                                : [
-                                    const Color(0xFF74ACDF).withValues(alpha: 0.08),
-                                    Colors.transparent,
-                                  ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: const Color(0xFF74ACDF).withValues(alpha: 0.15),
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Text('💡', style: TextStyle(fontSize: 18)),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Tip de Campo',
-                                  style: GoogleFonts.spaceGrotesk(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFF74ACDF),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Preparate un buen mate amargo, sintonizá tu canal favorito y alentá con la pasión de siempre. ¡Pivote Studio te acompaña en cada transmisión!',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 12,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Diagnostics Banner (Interactive Connection Diagnostic entry point)
+                    // Diagnostics Banner
                     AppAnimations.smoothFadeIn(
                       child: Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: isDark
-                                ? [
-                                    theme.colorScheme.primary.withValues(alpha: 0.12),
-                                    Colors.transparent,
-                                  ]
-                                : [
-                                    theme.colorScheme.primary.withValues(alpha: 0.06),
-                                    Colors.transparent,
-                                  ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(24),
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(22),
                           border: Border.all(
-                            color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.15),
-                            width: 1.2,
+                            color: primaryColor.withValues(alpha: 0.18),
                           ),
                         ),
                         child: Row(
@@ -446,13 +413,13 @@ class ActivityScreen extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                color: primaryColor.withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
                                 Icons.speed_rounded,
-                                color: theme.colorScheme.primary,
-                                size: 24,
+                                color: primaryColor,
+                                size: 22,
                               ),
                             ),
                             const SizedBox(width: 14),
@@ -461,19 +428,19 @@ class ActivityScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '¿Se corta el streaming?',
+                                    'Comprobar Streaming',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 14,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight: FontWeight.w800,
                                       color: theme.colorScheme.onSurface,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    'Realizá un diagnóstico de velocidad y latencia de red.',
+                                    'Medí velocidad, ping y estabilidad de red.',
                                     style: GoogleFonts.spaceGrotesk(
                                       fontSize: 11,
-                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                      color: theme.hintColor,
                                     ),
                                   ),
                                 ],
@@ -490,9 +457,11 @@ class ActivityScreen extends StatelessWidget {
                                 );
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: theme.colorScheme.primary,
-                                foregroundColor: isDark ? AppTheme.darkBg : Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                backgroundColor: primaryColor,
+                                foregroundColor:
+                                    isDark ? Colors.black : Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -501,7 +470,7 @@ class ActivityScreen extends StatelessWidget {
                               child: Text(
                                 'Probar',
                                 style: GoogleFonts.spaceGrotesk(
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w800,
                                   fontSize: 12,
                                 ),
                               ),
@@ -518,7 +487,7 @@ class ActivityScreen extends StatelessWidget {
                         'Miembro de Pivote Studio desde el ${activityService.getFormattedStartDate()}',
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 11,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                          color: theme.hintColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -540,17 +509,19 @@ class ActivityScreen extends StatelessWidget {
     required String value,
     required IconData icon,
     required Color color,
+    required bool isDark,
   }) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
         ),
       ),
       child: Column(
@@ -572,9 +543,9 @@ class ActivityScreen extends StatelessWidget {
                 child: Text(
                   title,
                   style: GoogleFonts.spaceGrotesk(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: theme.hintColor,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -582,7 +553,7 @@ class ActivityScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             value,
             style: GoogleFonts.spaceGrotesk(

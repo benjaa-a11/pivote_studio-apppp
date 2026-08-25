@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/services/cache_manager_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
@@ -40,14 +42,14 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
     String message = 'Esta acción liberará espacio en tu dispositivo.';
 
     if (type == 'all') {
-      title = '¿Liberar todo?';
-      message = 'Borraremos todos los datos temporales para que tu app vuele.';
+      title = '¿Liberar todo el espacio?';
+      message = 'Se borrarán todos los datos temporales e imágenes descargadas.';
     } else if (type == 'images') {
-      title = '¿Borrar imágenes?';
-      message = 'Se eliminarán las miniaturas y portadas descargadas.';
+      title = '¿Borrar imágenes en caché?';
+      message = 'Se eliminarán las miniaturas y logos guardados temporalmente.';
     } else if (type == 'app') {
-      title = '¿Limpiar datos?';
-      message = 'Se restablecerán los datos temporales de la aplicación.';
+      title = '¿Limpiar datos de la app?';
+      message = 'Se restablecerán los buffers y temporales de reproducción.';
     }
 
     final confirmed = await AppDialogs.showConfirm(
@@ -62,10 +64,10 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
 
     if (confirmed != true) return;
 
+    HapticFeedback.mediumImpact();
     setState(() => _isCleaning = true);
 
-    // Simulate some work for better UX
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 700));
 
     if (type == 'all') {
       await CacheManagerService.clearAllCache();
@@ -81,13 +83,16 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Limpieza completada correctamente',
-            style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w600),
+            'Espacio liberado correctamente',
+            style: GoogleFonts.spaceGrotesk(
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: const Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       );
     }
@@ -96,42 +101,46 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: const PivoteAppBar(
         title: 'Almacenamiento',
-        subtitle: 'Administrá el espacio de la app',
+        subtitle: 'Administrá el espacio de memoria y caché',
       ),
       body: _isLoading
           ? const Center(child: PivoteLoader(size: 40))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildStorageOverview(context),
-                  const SizedBox(height: 32),
+                  _buildStorageOverview(context, isDark, primaryColor),
+                  const SizedBox(height: 28),
                   Text(
-                    'Detalle del espacio',
+                    'Detalle del almacenamiento',
                     style: GoogleFonts.spaceGrotesk(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _buildStorageItem(
                     context,
-                    title: 'Imágenes y Miniaturas',
+                    title: 'Imágenes y Logos',
+                    subtitle: 'Miniaturas de canales, radios y pósters',
                     size: _stats['formattedImageSize'] ?? '0 B',
                     icon: Icons.image_outlined,
-                    color: const Color(0xFFE7714D),
+                    color: const Color(0xFFE58B46),
                     onClear: () => _handleClearCache('images'),
                   ),
                   _buildStorageItem(
                     context,
-                    title: 'Datos de Aplicación',
+                    title: 'Búfer de Streaming y Datos',
+                    subtitle: 'Fragmentos temporales de video y audio',
                     size: _stats['formattedAppCacheSize'] ?? '0 B',
                     icon: Icons.data_usage_outlined,
                     color: const Color(0xFF5BB389),
@@ -139,80 +148,112 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                   ),
                   _buildStorageItem(
                     context,
-                    title: 'Preferencias y Configuración',
+                    title: 'Preferencias de Usuario',
+                    subtitle: 'Ajustes, favoritos y configuración local',
                     size: _stats['formattedPrefsSize'] ?? '0 B',
-                    icon: Icons.settings_suggest_outlined,
-                    color: const Color(0xFFD4B455),
+                    icon: Icons.tune_rounded,
+                    color: const Color(0xFF5B8CFF),
                     showClear: false,
                   ),
-                  const SizedBox(height: 40),
-                  _buildClearAllButton(context),
+                  const SizedBox(height: 28),
+                  _buildClearAllButton(context, isDark, primaryColor),
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildStorageOverview(BuildContext context) {
+  Widget _buildStorageOverview(
+      BuildContext context, bool isDark, Color primaryColor) {
     final totalSize = _stats['formattedTotalSize'] ?? '0 B';
 
     return AppAnimations.smoothFadeIn(
       child: Container(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(26),
         width: double.infinity,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFE7714D), Color(0xFFE57C5D)],
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    const Color(0xFF1E2822),
+                    const Color(0xFF0F1512),
+                  ]
+                : [
+                    primaryColor.withValues(alpha: 0.15),
+                    primaryColor.withValues(alpha: 0.05),
+                  ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(32),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(
+            color: primaryColor.withValues(alpha: isDark ? 0.25 : 0.2),
+          ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE7714D).withValues(alpha: 0.3),
+              color: primaryColor.withValues(alpha: isDark ? 0.1 : 0.05),
               blurRadius: 20,
-              offset: const Offset(0, 10),
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Column(
           children: [
-            const Icon(Icons.storage_rounded,
-                color: Colors.white, size: 40),
-            const SizedBox(height: 16),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(Icons.storage_rounded,
+                  color: primaryColor, size: 28),
+            ),
+            const SizedBox(height: 14),
             Text(
-              'Espacio Ocupado',
+              'Espacio Total en Caché',
               style: GoogleFonts.spaceGrotesk(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: ScaleTransition(scale: animation, child: child),
-                );
-              },
+              duration: const Duration(milliseconds: 400),
               child: Text(
                 totalSize,
                 key: ValueKey(totalSize),
                 style: GoogleFonts.spaceGrotesk(
-                  color: Colors.white,
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 42,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -1,
+                  color: primaryColor,
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Última limpieza: ${_formatDate(_stats['lastClearTime'])}',
-              style: GoogleFonts.spaceGrotesk(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 12,
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .surface
+                    .withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                ),
+              ),
+              child: Text(
+                'Última limpieza: ${_formatDate(_stats['lastClearTime'])}',
+                style: GoogleFonts.spaceGrotesk(
+                  color: Theme.of(context).hintColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -224,6 +265,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
   Widget _buildStorageItem(
     BuildContext context, {
     required String title,
+    required String subtitle,
     required String size,
     required IconData icon,
     required Color color,
@@ -231,27 +273,33 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
     bool showClear = true,
   }) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.05)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.06),
+          ),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withAlpha(51),
-                shape: BoxShape.circle,
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,20 +307,29 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                   Text(
                     title,
                     style: GoogleFonts.spaceGrotesk(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: Text(
-                      size,
-                      key: ValueKey(size),
-                      style: GoogleFonts.spaceGrotesk(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                        fontSize: 13,
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.spaceGrotesk(
+                      color: theme.hintColor,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    size,
+                    style: GoogleFonts.spaceGrotesk(
+                      color: color,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ],
@@ -281,9 +338,9 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
             if (showClear)
               IconButton(
                 onPressed: _isCleaning ? null : onClear,
-                icon: const Icon(Icons.delete_sweep_outlined,
-                    color: Colors.redAccent),
-                tooltip: 'Limpiar',
+                icon: Icon(Icons.delete_sweep_rounded,
+                    color: theme.colorScheme.error, size: 22),
+                tooltip: 'Liberar este espacio',
               ),
           ],
         ),
@@ -291,33 +348,46 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
     );
   }
 
-  Widget _buildClearAllButton(BuildContext context) {
-    final theme = Theme.of(context);
+  Widget _buildClearAllButton(
+      BuildContext context, bool isDark, Color primaryColor) {
     return SizedBox(
       width: double.infinity,
+      height: 54,
       child: ElevatedButton(
         onPressed: _isCleaning ? null : () => _handleClearCache('all'),
         style: ElevatedButton.styleFrom(
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
-          padding: const EdgeInsets.symmetric(vertical: 20),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-          elevation: 8,
+          backgroundColor: primaryColor,
+          foregroundColor: isDark ? Colors.black : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          elevation: 0,
         ),
         child: _isCleaning
-            ? const SizedBox(
-                height: 24,
-                width: 24,
-                child:
-                    PivoteLoader(color: Colors.white, strokeWidth: 2, size: 24),
-              )
-            : Text(
-                'Limpiar Todo por Completo',
-                style: GoogleFonts.spaceGrotesk(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+            ? SizedBox(
+                height: 22,
+                width: 22,
+                child: PivoteLoader(
+                  color: isDark ? Colors.black : Colors.white,
+                  strokeWidth: 2.5,
+                  size: 22,
                 ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.cleaning_services_rounded,
+                      size: 20,
+                      color: isDark ? Colors.black : Colors.white),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Limpiar todo el almacenamiento',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14.5,
+                    ),
+                  ),
+                ],
               ),
       ),
     );
@@ -328,6 +398,6 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
     if (date is DateTime) {
       return '${date.day}/${date.month}/${date.year}';
     }
-    return 'Hace poco';
+    return 'Recientemente';
   }
 }
