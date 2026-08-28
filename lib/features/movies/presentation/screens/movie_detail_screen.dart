@@ -509,7 +509,7 @@ class MovieDetailScreen extends StatelessWidget {
                     height: 90,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
+                      physics: const ClampingScrollPhysics(),
                       itemCount: movie.cast.length,
                       separatorBuilder: (context, index) => const SizedBox(width: 14),
                       itemBuilder: (context, index) {

@@ -99,7 +99,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
               : RefreshIndicator.adaptive(
                   onRefresh: _load,
                   child: ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(),
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: ClampingScrollPhysics(),
+                    ),
                     padding: const EdgeInsets.fromLTRB(20, 14, 20, 36),
                     itemCount: _items.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/features/auth/presentation/screens/signup_screen.dart';
 import 'package:pivote/features/home/presentation/screens/main_screen.dart';
@@ -41,6 +42,9 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
       if (mounted) {
+        // Merge Firestore stats for this user after sign-in
+        context.read<AppActivityService>().onUserLogin();
+
         // Show success message
         AppNotifications.showSuccess(context, '¡Bienvenido de nuevo!');
 

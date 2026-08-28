@@ -8,6 +8,7 @@ import 'package:pivote/features/video/data/services/epg_service.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/video_player_widget.dart';
+import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
@@ -182,7 +183,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       : Colors.black.withValues(alpha: 0.06),
                 ),
                 _buildChannelInfo(context, theme, isDark),
-                _buildRelatedChannelsCarousel(context, theme, isDark),
+                _buildRelatedChannelsGrid(context, theme, isDark),
               ],
             ),
           ),
@@ -192,8 +193,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _buildHeader(BuildContext context, ThemeData theme, bool isDark) {
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -239,56 +238,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
           ),
 
-          // Live Pill Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: primaryColor.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: primaryColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'TRANSMISIÓN EN VIVO',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.8,
-                    color: primaryColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Actions: Diagnostics + Favorite
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Material(
+          // Favorite Button (Single clean button on right)
+          Consumer<FavoritesProvider>(
+            builder: (context, favoritesProvider, child) {
+              final isFavorite =
+                  favoritesProvider.isFavorite(_currentChannel.id);
+              return Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: () {
                     HapticFeedback.lightImpact();
-                    Navigator.push(
-                      context,
-                      AppAnimations.createRoute(
-                        const DiagnosticsScreen(),
-                      ),
-                    );
+                    favoritesProvider.toggleFavorite(_currentChannel);
                   },
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
@@ -297,67 +257,30 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     decoration: BoxDecoration(
                       color: isDark
                           ? AppTheme.darkBg2
-                          : theme.colorScheme.primary.withValues(alpha: 0.06),
+                          : theme.colorScheme.primary
+                              .withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isDark
                             ? Colors.white.withValues(alpha: 0.08)
-                            : theme.colorScheme.primary.withValues(alpha: 0.12),
+                            : theme.colorScheme.primary
+                                .withValues(alpha: 0.12),
                       ),
                     ),
                     child: Icon(
-                      Icons.speed_rounded,
-                      color: primaryColor,
+                      isFavorite
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      color: isFavorite
+                          ? const Color(0xFFEF4444)
+                          : theme.colorScheme.onSurface
+                              .withValues(alpha: 0.7),
                       size: 20,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Consumer<FavoritesProvider>(
-                builder: (context, favoritesProvider, child) {
-                  final isFavorite =
-                      favoritesProvider.isFavorite(_currentChannel.id);
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        favoritesProvider.toggleFavorite(_currentChannel);
-                      },
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? AppTheme.darkBg2
-                              : theme.colorScheme.primary
-                                  .withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : theme.colorScheme.primary
-                                    .withValues(alpha: 0.12),
-                          ),
-                        ),
-                        child: Icon(
-                          isFavorite
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border_rounded,
-                          color: isFavorite
-                              ? const Color(0xFFEF4444)
-                              : theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.7),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
+              );
+            },
           ),
         ],
       ),
@@ -489,25 +412,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           ),
                         ),
                       ),
-                    if (_currentChannel.streamUrl.length > 1)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF5B8CFF).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${_currentChannel.streamUrl.length} Servidores',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF5B8CFF),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ],
@@ -518,35 +422,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  // Channel Action Buttons Bar
+  // Channel Action Buttons Bar (Clean 2-button layout: Diagnóstico & Reportar)
   Widget _buildChannelActions(
       BuildContext context, ThemeData theme, bool isDark) {
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          Consumer<FavoritesProvider>(
-            builder: (context, favs, _) {
-              final isFav = favs.isFavorite(_currentChannel.id);
-              return Expanded(
-                child: _actionButton(
-                  icon: isFav
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  label: isFav ? 'Favorito' : 'Guardar',
-                  accent: isFav ? const Color(0xFFEF4444) : primaryColor,
-                  isDark: isDark,
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    favs.toggleFavorite(_currentChannel);
-                  },
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 10),
           Expanded(
             child: _actionButton(
               icon: Icons.speed_rounded,
@@ -562,17 +444,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
               },
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: _actionButton(
               icon: Icons.report_problem_outlined,
-              label: 'Reportar',
+              label: 'Reportar Canal',
               accent: const Color(0xFFE58B46),
               isDark: isDark,
               onTap: () {
                 HapticFeedback.lightImpact();
-                AppNotifications.showSuccess(
-                    context, 'Reporte enviado. Verificaremos la señal.');
+                _showReportModal(context);
               },
             ),
           ),
@@ -595,7 +476,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
@@ -604,15 +485,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   : Colors.black.withValues(alpha: 0.04),
             ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: accent, size: 20),
-              const SizedBox(height: 4),
+              Icon(icon, color: accent, size: 19),
+              const SizedBox(width: 8),
               Text(
                 label,
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
@@ -620,6 +501,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ADVANCED & ANIMATED REPORT MODAL
+  // ══════════════════════════════════════════════════════════════════════════
+  void _showReportModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _ReportModalSheet(
+        channelName: _currentChannel.name,
+        onSubmit: (reason) {
+          AppNotifications.showSuccess(
+            context,
+            'Reporte de señal enviado. ¡Gracias por avisarnos!',
+          );
+        },
       ),
     );
   }
@@ -1051,30 +952,42 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return const Color(0xFF1E90FF);
   }
 
-  // Related Channels Carousel
-  Widget _buildRelatedChannelsCarousel(
+  // ══════════════════════════════════════════════════════════════════════════
+  // RELATED CHANNELS (2x2 Grid with Home Screen ChannelCard design)
+  // ══════════════════════════════════════════════════════════════════════════
+  Widget _buildRelatedChannelsGrid(
       BuildContext context, ThemeData theme, bool isDark) {
     final channelProvider = context.watch<ChannelProvider>();
     final allChannels = channelProvider.channels;
 
-    // Channels in the same category or others
+    // 1. Get up to 4 channels in the same category
     final related = allChannels
         .where((c) =>
             c.id != _currentChannel.id &&
-            (c.category.toLowerCase() ==
-                _currentChannel.category.toLowerCase()))
+            c.category.trim().toLowerCase() ==
+                _currentChannel.category.trim().toLowerCase())
         .toList();
 
-    final displayList = related.isNotEmpty
-        ? related
-        : allChannels.where((c) => c.id != _currentChannel.id).take(10).toList();
+    final List<Channel> fourChannels = [];
+    fourChannels.addAll(related.take(4));
 
-    if (displayList.isEmpty) return const SizedBox.shrink();
+    // 2. If fewer than 4, backfill with other available channels
+    if (fourChannels.length < 4) {
+      for (final ch in allChannels) {
+        if (ch.id != _currentChannel.id &&
+            !fourChannels.any((existing) => existing.id == ch.id)) {
+          fourChannels.add(ch);
+          if (fourChannels.length == 4) break;
+        }
+      }
+    }
+
+    if (fourChannels.isEmpty) return const SizedBox.shrink();
 
     final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Padding(
-      padding: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.only(top: 20, bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1086,103 +999,323 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 Text(
                   'Cambio Rápido de Canal',
                   style: GoogleFonts.spaceGrotesk(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w900,
                     color: theme.colorScheme.onSurface,
                   ),
                 ),
-                Text(
-                  _currentChannel.category,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: primaryColor,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _currentChannel.category,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: primaryColor,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 96,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: displayList.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final ch = displayList[index];
-                final logo = ch.getLogoUrl(isDark);
+          const SizedBox(height: 14),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 1.05,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: fourChannels.length,
+            itemBuilder: (context, index) {
+              final ch = fourChannels[index];
+              return ChannelCard(
+                channel: ch,
+                onTap: () => _switchChannel(ch),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-                return Material(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  child: InkWell(
-                    onTap: () => _switchChannel(ch),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      width: 140,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.06),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: primaryColor.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: logo.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      key: ValueKey<String>(logo),
-                                      cacheManager:
-                                          ImageCacheHelper.logoCacheManager,
-                                      imageUrl: logo,
-                                      fit: BoxFit.contain,
-                                      memCacheWidth: 80,
-                                      errorWidget: (_, __, ___) => Icon(
-                                        Icons.tv_rounded,
-                                        color: primaryColor,
-                                        size: 20,
-                                      ),
-                                    )
-                                  : Icon(
-                                      Icons.tv_rounded,
-                                      color: primaryColor,
-                                      size: 20,
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            ch.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
+// ════════════════════════════════════════════════════════════════════════════
+// MODERN REPORT MODAL SHEET
+// ════════════════════════════════════════════════════════════════════════════
+class _ReportModalSheet extends StatefulWidget {
+  final String channelName;
+  final ValueChanged<String> onSubmit;
+
+  const _ReportModalSheet({
+    required this.channelName,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_ReportModalSheet> createState() => _ReportModalSheetState();
+}
+
+class _ReportModalSheetState extends State<_ReportModalSheet> {
+  int _selectedReasonIndex = 0;
+  bool _isSubmitting = false;
+
+  final List<Map<String, dynamic>> _reasons = const [
+    {
+      'title': 'Canal caído / Sin señal',
+      'desc': 'Pantalla negra o error de reproducción continuo',
+      'icon': Icons.signal_cellular_connected_no_internet_0_bar_rounded,
+      'color': Color(0xFFEF4444),
+    },
+    {
+      'title': 'Audio desfasado o mudo',
+      'desc': 'Sin sonido o el audio no coincide con el video',
+      'icon': Icons.volume_off_rounded,
+      'color': Color(0xFFF59E0B),
+    },
+    {
+      'title': 'Cortes constantes / Buffering',
+      'desc': 'La transmisión se congela o carga muy lento',
+      'icon': Icons.motion_photos_paused_rounded,
+      'color': Color(0xFF3B82F6),
+    },
+    {
+      'title': 'Baja calidad / Imagen defectuosa',
+      'desc': 'Pixelado excesivo o resolución incorrecta',
+      'icon': Icons.hd_rounded,
+      'color': Color(0xFF8B5CF6),
+    },
+    {
+      'title': 'Canal equivocado',
+      'desc': 'El contenido no coincide con el canal',
+      'icon': Icons.alt_route_rounded,
+      'color': Color(0xFF10B981),
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF16161A) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.black.withValues(alpha: 0.08),
+        ),
+      ),
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 12,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Drag Handle
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE58B46).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.report_problem_rounded,
+                  color: Color(0xFFE58B46),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Reportar Problema',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
+                    Text(
+                      widget.channelName,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: theme.hintColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Reason Options
+          ...List.generate(_reasons.length, (index) {
+            final reason = _reasons[index];
+            final isSelected = _selectedReasonIndex == index;
+            final color = reason['color'] as Color;
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: isSelected
+                    ? color.withValues(alpha: isDark ? 0.16 : 0.08)
+                    : (isDark
+                        ? AppTheme.darkBg2
+                        : Colors.black.withValues(alpha: 0.03)),
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedReasonIndex = index);
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected
+                            ? color.withValues(alpha: 0.7)
+                            : (isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.black.withValues(alpha: 0.04)),
+                        width: isSelected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          reason['icon'] as IconData,
+                          color: isSelected ? color : theme.hintColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                reason['title'] as String,
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 13,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                              Text(
+                                reason['desc'] as String,
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 10.5,
+                                  color: theme.hintColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isSelected)
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: color,
+                            size: 18,
+                          ),
+                      ],
+                    ),
                   ),
-                );
-              },
+                ),
+              ),
+            );
+          }),
+
+          const SizedBox(height: 12),
+
+          // Submit Button
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _isSubmitting
+                  ? null
+                  : () async {
+                      HapticFeedback.mediumImpact();
+                      setState(() => _isSubmitting = true);
+                      final nav = Navigator.of(context);
+                      await Future.delayed(const Duration(milliseconds: 350));
+                      if (mounted) {
+                        nav.pop();
+                        widget.onSubmit(
+                          _reasons[_selectedReasonIndex]['title'] as String,
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE58B46),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 0,
+              ),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text(
+                      'Enviar Reporte',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -1190,3 +1323,4 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 }
+

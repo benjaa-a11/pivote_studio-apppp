@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pivote/features/auth/data/services/auth_service.dart';
 
 /// Service to track and persist app usage statistics and active session time.
+/// Stats are stored locally in SharedPreferences AND synced to Firestore
+/// so they persist across devices and app reinstalls.
 class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
   static const String _keyActiveSeconds = 'pivote_active_seconds';
   static const String _keySessionCount = 'pivote_session_count';
@@ -21,6 +25,9 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
   Timer? _timer;
   bool _isActive = true;
   int _currentSessionSeconds = 0;
+
+  /// Throttle: only write to Firestore at most once every 60 seconds.
+  DateTime? _lastFirestoreSync;
 
   int get totalActiveSeconds => _totalActiveSeconds + _currentSessionSeconds;
   int get sessionCount => _sessionCount;
@@ -55,6 +62,9 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
       _sessionCount++;
       await prefs.setInt(_keySessionCount, _sessionCount);
 
+      // Merge with any cloud data (keeps the highest values)
+      await _mergeFromFirestore(prefs);
+
       _startTimer();
       notifyListeners();
     } catch (e) {
@@ -62,18 +72,111 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
     }
   }
 
+  // ─── Firestore sync ──────────────────────────────────────────────
+
+  /// Pull stats from Firestore and merge by keeping the maximum value.
+  Future<void> _mergeFromFirestore(SharedPreferences prefs) async {
+    try {
+      final uid = AuthService.currentUserId;
+      if (uid == null) return;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(uid)
+          .get();
+
+      if (!doc.exists) return;
+      final data = doc.data()!;
+
+      final remoteSeconds = (data['totalActiveSeconds'] as num?)?.toInt() ?? 0;
+      final remoteSessions = (data['sessionCount'] as num?)?.toInt() ?? 0;
+      final remoteChannels = (data['channelsWatched'] as num?)?.toInt() ?? 0;
+      final remoteRadios = (data['radiosListened'] as num?)?.toInt() ?? 0;
+      final remoteMatches = (data['matchesViewed'] as num?)?.toInt() ?? 0;
+      final remoteFirstActive = data['firstActiveDate'] as String?;
+
+      if (remoteSeconds > _totalActiveSeconds) {
+        _totalActiveSeconds = remoteSeconds;
+        await prefs.setInt(_keyActiveSeconds, _totalActiveSeconds);
+      }
+      if (remoteSessions > _sessionCount) {
+        _sessionCount = remoteSessions;
+        await prefs.setInt(_keySessionCount, _sessionCount);
+      }
+      if (remoteChannels > _channelsWatched) {
+        _channelsWatched = remoteChannels;
+        await prefs.setInt(_keyChannelsWatched, _channelsWatched);
+      }
+      if (remoteRadios > _radiosListened) {
+        _radiosListened = remoteRadios;
+        await prefs.setInt(_keyRadiosListened, _radiosListened);
+      }
+      if (remoteMatches > _matchesViewed) {
+        _matchesViewed = remoteMatches;
+        await prefs.setInt(_keyMatchesViewed, _matchesViewed);
+      }
+      if (remoteFirstActive != null) {
+        final remoteDate = DateTime.tryParse(remoteFirstActive);
+        if (remoteDate != null &&
+            (_firstActiveDate == null || remoteDate.isBefore(_firstActiveDate!))) {
+          _firstActiveDate = remoteDate;
+          await prefs.setString(_keyFirstActive, remoteFirstActive);
+        }
+      }
+
+      debugPrint('✅ AppActivityService: Stats merged from Firestore');
+    } catch (e) {
+      debugPrint('⚠️ AppActivityService: Could not merge from Firestore: $e');
+    }
+  }
+
+  /// Write current stats to Firestore (throttled to max once per 60 s unless forced).
+  Future<void> _syncToFirestore({bool force = false}) async {
+    try {
+      final uid = AuthService.currentUserId;
+      if (uid == null) return;
+
+      final now = DateTime.now();
+      if (!force &&
+          _lastFirestoreSync != null &&
+          now.difference(_lastFirestoreSync!).inSeconds < 60) {
+        return;
+      }
+      _lastFirestoreSync = now;
+
+      await FirebaseFirestore.instance.collection('usuarios').doc(uid).update({
+        'totalActiveSeconds': totalActiveSeconds,
+        'sessionCount': _sessionCount,
+        'channelsWatched': _channelsWatched,
+        'radiosListened': _radiosListened,
+        'matchesViewed': _matchesViewed,
+        'firstActiveDate': _firstActiveDate?.toIso8601String(),
+        'statsUpdatedAt': DateTime.now().toIso8601String(),
+      });
+      debugPrint('✅ AppActivityService: Stats synced to Firestore');
+    } catch (e) {
+      debugPrint('⚠️ AppActivityService: Could not sync to Firestore: $e');
+    }
+  }
+
+  // ─── Timer ───────────────────────────────────────────────────────
+
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isActive) {
         _currentSessionSeconds++;
-        // Notify listeners every 5 seconds to keep the UI feeling "alive" and showing live time progression
+        // Notify listeners every 5 seconds to keep the UI feeling "alive"
         if (_currentSessionSeconds % 5 == 0) {
           notifyListeners();
         }
         // Persist to disk every 30 seconds
         if (_currentSessionSeconds % 30 == 0) {
           _persistActiveTime();
+        }
+        // Sync to Firestore every 60 seconds
+        if (_currentSessionSeconds % 60 == 0) {
+          _syncToFirestore();
         }
       }
     });
@@ -90,13 +193,15 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
     }
   }
 
-  // Increment tracking methods
+  // ─── Tracking methods ────────────────────────────────────────────
+
   Future<void> trackChannelWatch() async {
     _channelsWatched++;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_keyChannelsWatched, _channelsWatched);
+      await _syncToFirestore();
     } catch (e) {
       debugPrint('❌ Error tracking channel watch: $e');
     }
@@ -108,6 +213,7 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_keyRadiosListened, _radiosListened);
+      await _syncToFirestore();
     } catch (e) {
       debugPrint('❌ Error tracking radio listen: $e');
     }
@@ -119,20 +225,31 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_keyMatchesViewed, _matchesViewed);
+      await _syncToFirestore();
     } catch (e) {
       debugPrint('❌ Error tracking match view: $e');
     }
   }
 
+  /// Call this after a successful login so stats re-merge from Firestore.
+  /// Useful when the user signs in on a new device.
+  Future<void> onUserLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await _mergeFromFirestore(prefs);
+    notifyListeners();
+  }
+
+  // ─── Lifecycle ───────────────────────────────────────────────────
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _isActive = true;
-    } else if (state == AppLifecycleState.paused || 
-               state == AppLifecycleState.inactive || 
+    } else if (state == AppLifecycleState.paused ||
+               state == AppLifecycleState.inactive ||
                state == AppLifecycleState.detached) {
       _isActive = false;
-      _persistActiveTime();
+      _persistActiveTime().then((_) => _syncToFirestore(force: true));
     }
   }
 
@@ -140,11 +257,12 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
-    _persistActiveTime();
+    _persistActiveTime().then((_) => _syncToFirestore(force: true));
     super.dispose();
   }
 
-  // Formatting helpers
+  // ─── Formatting helpers ──────────────────────────────────────────
+
   String getFormattedActiveTime() {
     final total = totalActiveSeconds;
     final hours = total ~/ 3600;

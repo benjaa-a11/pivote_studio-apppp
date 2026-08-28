@@ -163,7 +163,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: contentWidth),
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 padding: EdgeInsets.fromLTRB(wide ? 28 : 16, 18, wide ? 28 : 16, 36),
                 child: Column(
                   children: [

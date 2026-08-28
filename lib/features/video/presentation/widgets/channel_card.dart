@@ -81,11 +81,15 @@ class _ChannelCardState extends State<ChannelCard>
               Provider.of<ChannelProvider>(context, listen: false)
                   .recordView(widget.channel);
 
-              Navigator.push(
-                context,
-                AppAnimations.createRoute(
-                    PlayerScreen(channel: widget.channel)),
-              );
+              if (widget.onTap != null) {
+                widget.onTap!();
+              } else {
+                Navigator.push(
+                  context,
+                  AppAnimations.createRoute(
+                      PlayerScreen(channel: widget.channel)),
+                );
+              }
             },
             child: AnimatedContainer(
               duration: AppAnimations.fast,

@@ -175,7 +175,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                   )
                 : ListView.builder(
                     shrinkWrap: true,
-                    physics: const BouncingScrollPhysics(),
+                    physics: const ClampingScrollPhysics(),
                     padding: const EdgeInsets.symmetric(
                         vertical: 16, horizontal: 24),
                     itemCount: goals.length,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
@@ -51,7 +52,7 @@ class ServerInfo {
 }
 
 // ════════════════════════════════════════
-// CUSTOM VIDEO CONTROLS v6.0 (Modern Edition)
+// CUSTOM VIDEO CONTROLS (Clean Edition)
 // ════════════════════════════════════════
 
 class CustomVideoControls extends StatefulWidget {
@@ -305,11 +306,9 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         ),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildHeader(),
-          const Spacer(),
-          _buildCenterPlayPause(),
-          const Spacer(),
           _buildBottomControls(),
         ],
       ),
@@ -339,7 +338,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
               const SizedBox(width: 12),
             ],
 
-            // Channel name + live indicator + server badge
+            // Channel name + live indicator
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,32 +388,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                           letterSpacing: 1.0,
                         ),
                       ),
-                      if (widget.totalServers > 1) ...[
-                        const SizedBox(width: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.darkAccent.withValues(alpha: 0.35),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: AppTheme.darkAccent.withValues(alpha: 0.5),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Text(
-                            'Servidor ${widget.currentServer}/${widget.totalServers}',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 10,
-                              color: Colors.white,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ],
@@ -440,50 +413,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     );
   }
 
-  Widget _buildCenterPlayPause() {
-    final isPlaying = widget.controller.isPlaying;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          _onControlInteraction();
-          HapticFeedback.mediumImpact();
-          if (isPlaying) {
-            widget.controller.pause();
-          } else {
-            widget.controller.play();
-          }
-        },
-        borderRadius: BorderRadius.circular(999),
-        child: Container(
-          width: 58,
-          height: 58,
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.65),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.25),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 16,
-              ),
-            ],
-          ),
-          child: Center(
-            child: Icon(
-              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: Colors.white,
-              size: 32,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildBottomControls() {
     return SafeArea(
       top: false,
@@ -491,7 +420,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
         child: Row(
           children: [
-            // Mute / Volume Button
+            // Mute / Volume Button (SVG)
             Material(
               color: Colors.transparent,
               child: InkWell(
@@ -502,7 +431,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
@@ -510,62 +439,24 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                       color: Colors.white.withValues(alpha: 0.18),
                     ),
                   ),
-                  child: Icon(
+                  child: SvgPicture.asset(
                     widget.isMuted
-                        ? Icons.volume_off_rounded
-                        : Icons.volume_up_rounded,
-                    color: Colors.white,
-                    size: 20,
+                        ? 'assets/icons/volume_off_16.svg'
+                        : 'assets/icons/volume_16.svg',
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white,
+                      BlendMode.srcIn,
+                    ),
+                    width: 18,
+                    height: 18,
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-
-            // Aspect Ratio Cycle Button
-            if (widget.onAspectRatioChange != null)
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    _onControlInteraction();
-                    HapticFeedback.selectionClick();
-                    widget.onAspectRatioChange?.call();
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.18),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.aspect_ratio_rounded,
-                            color: Colors.white, size: 16),
-                        const SizedBox(width: 6),
-                        Text(
-                          widget.aspectRatioLabel,
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
 
             const Spacer(),
 
-            // Server Selector
+            // Server Selector (if multi-server)
             if (widget.serverList != null && widget.serverList!.isNotEmpty)
               PopupMenuButton<int>(
                 initialValue: widget.currentServer - 1,
@@ -660,9 +551,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 ),
               ),
 
-            const SizedBox(width: 10),
+            if (widget.serverList != null && widget.serverList!.isNotEmpty)
+              const SizedBox(width: 10),
 
-            // Fullscreen Toggle
+            // Fullscreen Toggle (SVG)
             if (widget.onFullScreenToggle != null)
               Material(
                 color: Colors.transparent,
@@ -674,7 +566,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(12),
@@ -682,12 +574,16 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                         color: Colors.white.withValues(alpha: 0.18),
                       ),
                     ),
-                    child: Icon(
+                    child: SvgPicture.asset(
                       widget.isFullScreen
-                          ? Icons.fullscreen_exit_rounded
-                          : Icons.fullscreen_rounded,
-                      color: Colors.white,
-                      size: 20,
+                          ? 'assets/icons/player/salir-pantalla-completa.svg'
+                          : 'assets/icons/player/pantalla-completa.svg',
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
+                      width: 18,
+                      height: 18,
                     ),
                   ),
                 ),
@@ -742,3 +638,4 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     );
   }
 }
+
