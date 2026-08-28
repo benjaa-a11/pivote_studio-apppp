@@ -5,8 +5,10 @@ import 'package:pivote/features/favorites/presentation/providers/favorites_provi
 import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
 class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
@@ -14,7 +16,7 @@ class FavoritesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = theme.isDark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -26,7 +28,7 @@ class FavoritesScreen extends StatelessWidget {
             );
 
             return CustomScrollView(
-              physics: const ClampingScrollPhysics(),
+              physics: const BouncingScrollPhysics(),
               slivers: [
                 // Header
                 SliverToBoxAdapter(
@@ -192,29 +194,28 @@ class FavoritesScreen extends StatelessWidget {
               ],
             ),
           ),
-          // Delete button (Trash bin matching rest of app)
+          // Delete button with ApplePressable
           if (count > 0)
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => _showClearDialog(context, favoritesProvider),
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.error.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: theme.colorScheme.error.withValues(alpha: 0.15),
-                      width: 1.2,
-                    ),
+            ApplePressable(
+              scaleDownFactor: 0.90,
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => _showClearDialog(context, favoritesProvider),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.error.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: theme.colorScheme.error.withValues(alpha: 0.18),
+                    width: 1.0,
                   ),
-                  child: Icon(
-                    Icons.delete_outline_rounded,
-                    size: 18,
-                    color: theme.colorScheme.error,
-                  ),
+                  boxShadow: AppShadows.appleDepth(context, elevation: 0.5),
+                ),
+                child: Icon(
+                  Icons.delete_outline_rounded,
+                  size: 18,
+                  color: theme.colorScheme.error,
                 ),
               ),
             ),
@@ -328,34 +329,49 @@ class FavoritesScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 28),
-            // Explore button
-            SizedBox(
-              height: 46,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  try {
-                    DefaultTabController.of(context).animateTo(0);
-                  } catch (e) {
-                    // Fallback
-                  }
-                },
-                icon: const Icon(Icons.explore_rounded, size: 18),
-                label: Text(
-                  'Explorar canales',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
+            // Explore button with ApplePressable
+            ApplePressable(
+              scaleDownFactor: 0.94,
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                try {
+                  DefaultTabController.of(context).animateTo(0);
+                } catch (e) {
+                  // Fallback
+                }
+              },
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: isDark ? AppTheme.darkBg : Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.explore_rounded,
+                      size: 18,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Explorar canales',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: isDark ? Colors.black : Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

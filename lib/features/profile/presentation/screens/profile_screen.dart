@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
@@ -9,6 +8,7 @@ import 'package:pivote/core/services/cache_manager_service.dart';
 import 'package:pivote/core/services/greeting_service.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
@@ -24,6 +24,7 @@ import 'package:pivote/features/profile/presentation/screens/storage_manager_scr
 import 'package:pivote/features/profile/presentation/screens/support_screen.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -58,110 +59,115 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = theme.isDark;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: CustomScrollView(
-        physics: const ClampingScrollPhysics(),
-        slivers: [
-          _buildHero(context, isDark),
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                const SizedBox(height: 16),
-                _buildStatsOverview(context, isDark),
-                const SizedBox(height: 14),
-                _buildQuickActions(context),
-                _buildSection(context, 'Preferencias', [
-                  _buildSettingTile(
-                    context,
-                    icon: Icons.palette_outlined,
-                    title: 'Apariencia',
-                    subtitle: 'Modo oscuro y pantalla activa',
-                    accent: theme.colorScheme.primary,
-                    onTap: () => _open(const AppearanceSettingsScreen()),
-                  ),
-                  _buildSettingTile(
-                    context,
-                    icon: Icons.notifications_none_rounded,
-                    title: 'Notificaciones',
-                    subtitle: 'Alertas de eventos y partidos',
-                    accent: const Color(0xFF5B8CFF),
-                    onTap: () => _open(const NotificationsSettingsScreen()),
-                  ),
-                  _buildSettingTile(
-                    context,
-                    icon: Icons.storage_outlined,
-                    title: 'Almacenamiento',
-                    subtitle: 'Caché · $_cacheSize',
-                    accent: const Color(0xFFE58B46),
-                    onTap: () {
-                      _open(const StorageManagerScreen())
-                          .then((_) => _loadCacheInfo());
-                    },
-                  ),
-                ]),
-                _buildSection(context, 'Actividad y Contenido', [
-                  _buildSettingTile(
-                    context,
-                    icon: Icons.emoji_events_outlined,
-                    title: 'Mi Actividad',
-                    subtitle: 'Insignias, tiempo y nivel de usuario',
-                    accent: const Color(0xFFF59E0B),
-                    onTap: () => _open(const ActivityScreen()),
-                  ),
-                  _buildSettingTile(
-                    context,
-                    icon: Icons.history_rounded,
-                    title: 'Historial de reproducción',
-                    subtitle: 'Canales y contenido reciente',
-                    accent: const Color(0xFF10B981),
-                    onTap: () => _open(const HistoryScreen()),
-                  ),
-                  _buildSettingTile(
-                    context,
-                    icon: Icons.speed_rounded,
-                    title: 'Diagnóstico de streaming',
-                    subtitle: 'Velocidad, ping, DNS y estabilidad',
-                    accent: const Color(0xFF5B8CFF),
-                    onTap: () => _open(const DiagnosticsScreen()),
-                  ),
-                ]),
-                _buildSection(context, 'Soporte y seguridad', [
-                  _buildSettingTile(
-                    context,
-                    icon: Icons.support_agent_rounded,
-                    title: 'Ayuda y soporte',
-                    subtitle: 'Preguntas frecuentes y canales directos',
-                    accent: const Color(0xFF35B77A),
-                    onTap: () => _open(const SupportScreen()),
-                  ),
-                  _buildSettingTile(
-                    context,
-                    icon: Icons.shield_outlined,
-                    title: 'Privacidad y seguridad',
-                    subtitle: 'Protección de cuenta y datos locales',
-                    accent: const Color(0xFF7C69F4),
-                    onTap: () => _open(const PrivacySecurityScreen()),
-                  ),
-                  _buildSettingTile(
-                    context,
-                    icon: Icons.info_outline_rounded,
-                    title: 'Acerca de Pivote',
-                    subtitle: 'Versión $_appVersion',
-                    accent: const Color(0xFF74ACDF),
-                    onTap: () => _showAboutDialog(context),
-                  ),
-                ]),
-                _buildLogout(context),
-                const SizedBox(height: 28),
-                _buildFooter(context),
-                const SizedBox(height: 100),
-              ],
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _buildHero(context, isDark),
             ),
-          ),
-        ],
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
+                  _buildStatsOverview(context, isDark),
+                  const SizedBox(height: 14),
+                  _buildQuickActions(context),
+                  _buildSection(context, 'Preferencias', [
+                    _buildSettingTile(
+                      context,
+                      icon: Icons.palette_outlined,
+                      title: 'Apariencia',
+                      subtitle: 'Modo oscuro y pantalla activa',
+                      accent: theme.colorScheme.primary,
+                      onTap: () => _open(const AppearanceSettingsScreen()),
+                    ),
+                    _buildSettingTile(
+                      context,
+                      icon: Icons.notifications_none_rounded,
+                      title: 'Notificaciones',
+                      subtitle: 'Alertas de eventos y partidos',
+                      accent: const Color(0xFF5B8CFF),
+                      onTap: () => _open(const NotificationsSettingsScreen()),
+                    ),
+                    _buildSettingTile(
+                      context,
+                      icon: Icons.storage_outlined,
+                      title: 'Almacenamiento',
+                      subtitle: 'Caché · $_cacheSize',
+                      accent: const Color(0xFFE58B46),
+                      onTap: () {
+                        _open(const StorageManagerScreen())
+                            .then((_) => _loadCacheInfo());
+                      },
+                    ),
+                  ]),
+                  _buildSection(context, 'Actividad y Contenido', [
+                    _buildSettingTile(
+                      context,
+                      icon: Icons.emoji_events_outlined,
+                      title: 'Mi Actividad',
+                      subtitle: 'Insignias, tiempo y nivel de usuario',
+                      accent: const Color(0xFFF59E0B),
+                      onTap: () => _open(const ActivityScreen()),
+                    ),
+                    _buildSettingTile(
+                      context,
+                      icon: Icons.history_rounded,
+                      title: 'Historial de reproducción',
+                      subtitle: 'Canales y contenido reciente',
+                      accent: const Color(0xFF10B981),
+                      onTap: () => _open(const HistoryScreen()),
+                    ),
+                    _buildSettingTile(
+                      context,
+                      icon: Icons.speed_rounded,
+                      title: 'Diagnóstico de streaming',
+                      subtitle: 'Velocidad, ping, DNS y estabilidad',
+                      accent: const Color(0xFF5B8CFF),
+                      onTap: () => _open(const DiagnosticsScreen()),
+                    ),
+                  ]),
+                  _buildSection(context, 'Soporte y seguridad', [
+                    _buildSettingTile(
+                      context,
+                      icon: Icons.support_agent_rounded,
+                      title: 'Ayuda y soporte',
+                      subtitle: 'Preguntas frecuentes y canales directos',
+                      accent: const Color(0xFF35B77A),
+                      onTap: () => _open(const SupportScreen()),
+                    ),
+                    _buildSettingTile(
+                      context,
+                      icon: Icons.shield_outlined,
+                      title: 'Privacidad y seguridad',
+                      subtitle: 'Protección de cuenta y datos locales',
+                      accent: const Color(0xFF7C69F4),
+                      onTap: () => _open(const PrivacySecurityScreen()),
+                    ),
+                    _buildSettingTile(
+                      context,
+                      icon: Icons.info_outline_rounded,
+                      title: 'Acerca de Pivote',
+                      subtitle: 'Versión $_appVersion',
+                      accent: const Color(0xFF74ACDF),
+                      onTap: () => _showAboutDialog(context),
+                    ),
+                  ]),
+                  _buildLogout(context),
+                  const SizedBox(height: 28),
+                  _buildFooter(context),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -173,189 +179,163 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final imagePath = userProvider.profileImagePath;
     final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
-    return SliverAppBar(
-      expandedHeight: 360,
-      pinned: false,
-      stretch: true,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      automaticallyImplyLeading: false,
-      backgroundColor: theme.scaffoldBackgroundColor,
-      surfaceTintColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding: EdgeInsets.zero,
-        stretchModes: const [
-          StretchMode.zoomBackground,
-          StretchMode.blurBackground,
-        ],
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark
-                  ? [const Color(0xFF131B16), const Color(0xFF080C0A)]
-                  : [const Color(0xFFE2F9C2), const Color(0xFFF7FAF2)],
-            ),
-          ),
-          child: Stack(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [const Color(0xFF131915), theme.scaffoldBackgroundColor]
+              : [const Color(0xFFE8F7D2), theme.scaffoldBackgroundColor],
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Centered Apple Profile Avatar
+          Stack(
+            alignment: Alignment.center,
             children: [
-              Positioned(
-                top: -80,
-                right: -60,
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: isDark ? .12 : .28),
-                    shape: BoxShape.circle,
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: primaryColor.withValues(alpha: isDark ? 0.70 : 0.85),
+                    width: 2.5,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: isDark ? 0.22 : 0.15),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: primaryColor.withValues(alpha: 0.12),
+                  backgroundImage:
+                      imagePath != null ? FileImage(File(imagePath)) : null,
+                  child: imagePath == null
+                      ? Icon(Icons.person_rounded, size: 52, color: primaryColor)
+                      : null,
                 ),
               ),
               Positioned(
-                bottom: -100,
-                left: -80,
-                child: Container(
-                  width: 280,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: isDark ? .06 : .12),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
-                  child: Column(
-                    children: [
-                      const Spacer(),
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: primaryColor.withValues(alpha: .75),
-                                  width: 2.5),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: primaryColor.withValues(alpha: 0.2),
-                                  blurRadius: 18,
-                                  spreadRadius: 2,
-                                ),
-                              ],
-                            ),
-                            child: CircleAvatar(
-                              radius: 52,
-                              backgroundColor:
-                                  primaryColor.withValues(alpha: .12),
-                              backgroundImage: imagePath != null
-                                  ? FileImage(File(imagePath))
-                                  : null,
-                              child: imagePath == null
-                                  ? Icon(Icons.person_rounded,
-                                      size: 54,
-                                      color: primaryColor)
-                                  : null,
-                            ),
-                          ),
-                          Positioned(
-                            right: 2,
-                            bottom: 2,
-                            child: Material(
-                              color: primaryColor,
-                              shape: const CircleBorder(),
-                              elevation: 3,
-                              child: InkWell(
-                                onTap: () {
-                                  HapticFeedback.mediumImpact();
-                                  userProvider.updateProfileImage();
-                                },
-                                customBorder: const CircleBorder(),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(9),
-                                  child: Icon(Icons.camera_alt_rounded,
-                                      size: 16,
-                                      color: isDark ? Colors.black : Colors.white),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        GreetingService.getGreeting(),
-                        style: GoogleFonts.spaceGrotesk(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: .55)),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        user?.name.isNotEmpty == true
-                            ? user!.name
-                            : 'Usuario Pivote',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.spaceGrotesk(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.8),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        user?.email ?? 'Sesión activa',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.spaceGrotesk(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: .52)),
-                      ),
-                      const SizedBox(height: 14),
-                      Material(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: .08)
-                            : Colors.white.withValues(alpha: .75),
-                        borderRadius: BorderRadius.circular(14),
-                        child: InkWell(
-                          onTap: () => _open(const EditProfileScreen()),
-                          borderRadius: BorderRadius.circular(14),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 9),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.edit_rounded,
-                                    size: 15,
-                                    color: primaryColor),
-                                const SizedBox(width: 7),
-                                Text(
-                                  'Editar perfil',
-                                  style: GoogleFonts.spaceGrotesk(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w800),
-                                ),
-                              ],
-                            ),
-                          ),
+                right: 0,
+                bottom: 2,
+                child: ApplePressable(
+                  scaleDownFactor: 0.88,
+                  onTap: () {
+                    userProvider.updateProfileImage();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: primaryColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
                         ),
-                      ),
-                      const Spacer(),
-                    ],
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.camera_alt_rounded,
+                      size: 15,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 14),
+
+          // Greeting
+          Text(
+            GreetingService.getGreeting(),
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+            ),
+          ),
+          const SizedBox(height: 4),
+
+          // User Name
+          Text(
+            user?.name.isNotEmpty == true ? user!.name : 'Usuario Pivote',
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.6,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 2),
+
+          // Email
+          Text(
+            user?.email ?? 'Sesión activa',
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.50),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Edit Profile CTA Pill
+          ApplePressable(
+            scaleDownFactor: 0.94,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            onTap: () => _open(const EditProfileScreen()),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : Colors.black.withValues(alpha: 0.06),
+                  width: 1.0,
+                ),
+                boxShadow: AppShadows.appleDepth(context, elevation: 0.5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.edit_rounded, size: 14, color: primaryColor),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Editar perfil',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -373,20 +353,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
+          color: isDark ? AppTheme.darkBg2 : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isDark
                 ? Colors.white.withValues(alpha: 0.08)
                 : Colors.black.withValues(alpha: 0.06),
+            width: 1.0,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: AppShadows.appleDepth(context, elevation: 0.8),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -510,44 +485,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
       IconData icon, String title, String subtitle, VoidCallback onTap,
       {Color? accent}) {
     final theme = Theme.of(context);
+    final isDark = theme.isDark;
     final color = accent ?? theme.colorScheme.primary;
-    return Material(
-      color: theme.colorScheme.surface,
+
+    return ApplePressable(
+      scaleDownFactor: 0.94,
       borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 13, 12, 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: color.withValues(alpha: .12)),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 13, 12, 12),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.darkBg2 : Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.06),
+            width: 1.0,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                    color: color.withValues(alpha: .1),
-                    borderRadius: BorderRadius.circular(10)),
-                child: Icon(icon, size: 17, color: color),
+          boxShadow: AppShadows.appleDepth(context, elevation: 0.6),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(height: 10),
-              Text(title,
-                  style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 1),
-              Text(subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.spaceGrotesk(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: theme.hintColor)),
-            ],
-          ),
+              child: Icon(icon, size: 17, color: color),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: theme.hintColor,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -555,47 +544,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSection(BuildContext context, String title, List<Widget> items) {
     final theme = Theme.of(context);
+    final isDark = theme.isDark;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 3, bottom: 9),
-            child: Row(
-              children: [
-                Text(title,
-                    style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13.5, fontWeight: FontWeight.w900)),
-                const Spacer(),
-                Container(
-                    width: 24,
-                    height: 3,
-                    decoration: BoxDecoration(
-                        color: theme.colorScheme.primary
-                            .withValues(alpha: .3),
-                        borderRadius: BorderRadius.circular(99))),
-              ],
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              title.toUpperCase(),
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+              ),
             ),
           ),
-          Material(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: theme.dividerColor.withValues(alpha: .07))),
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkBg2 : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.06),
+                width: 1.0,
+              ),
+              boxShadow: AppShadows.appleDepth(context, elevation: 0.7),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
               child: Column(
                 children: [
                   for (int i = 0; i < items.length; i++) ...[
                     items[i],
                     if (i < items.length - 1)
                       Divider(
-                          height: 1,
-                          indent: 68,
-                          endIndent: 14,
-                          color: theme.dividerColor.withValues(alpha: .06)),
+                        height: 1,
+                        indent: 64,
+                        endIndent: 16,
+                        color: theme.dividerColor.withValues(alpha: 0.06),
+                      ),
                   ],
                 ],
               ),
@@ -614,47 +606,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Color? accent}) {
     final theme = Theme.of(context);
     final color = accent ?? theme.colorScheme.primary;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          child: Row(
-            children: [
-              Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                      color: color.withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(13)),
-                  child: Icon(icon, size: 20, color: color)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.spaceGrotesk(
-                            fontSize: 14.5, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 2),
-                    Text(subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.spaceGrotesk(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: theme.hintColor)),
-                  ],
-                ),
+
+    return ApplePressable(
+      scaleDownFactor: 0.98,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
               ),
-              const SizedBox(width: 8),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 13, color: theme.hintColor.withValues(alpha: .55)),
-            ],
-          ),
+              child: Icon(icon, size: 19, color: color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: theme.hintColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 13,
+              color: theme.hintColor.withValues(alpha: 0.45),
+            ),
+          ],
         ),
       ),
     );
@@ -662,37 +666,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildLogout(BuildContext context) {
     final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 0),
-      child: Material(
-        color: theme.colorScheme.error.withValues(alpha: .065),
+      child: ApplePressable(
+        scaleDownFactor: 0.96,
         borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          onTap: () => _showLogoutDialog(context),
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 15),
-            decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                    color: theme.colorScheme.error.withValues(alpha: .12))),
-            child: Row(
-              children: [
-                Icon(Icons.logout_rounded,
-                    color: theme.colorScheme.error, size: 20),
-                const SizedBox(width: 11),
-                Expanded(
-                    child: Text('Cerrar sesión',
-                        style: GoogleFonts.spaceGrotesk(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: theme.colorScheme.error))),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    color: theme.colorScheme.error.withValues(alpha: .55),
-                    size: 13),
-              ],
+        onTap: () => _showLogoutDialog(context),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 15),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.error.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: theme.colorScheme.error.withValues(alpha: 0.18),
+              width: 1.0,
             ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.logout_rounded,
+                  color: theme.colorScheme.error, size: 20),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Text(
+                  'Cerrar sesión',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: theme.colorScheme.error.withValues(alpha: 0.55),
+                size: 13,
+              ),
+            ],
           ),
         ),
       ),

@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
@@ -7,6 +6,7 @@ import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/soccer/presentation/widgets/match_details_bottom_sheet.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
 class SoccerMatchCard extends StatelessWidget {
   final SoccerMatch match;
@@ -34,114 +34,108 @@ class SoccerMatchCard extends StatelessWidget {
     final league = data.leagues.firstWhere((l) => l.id == match.leagueId,
         orElse: () => SoccerLeague(id: match.leagueId, name: 'Desconocida', country: '', shortName: ''));
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) {
-              return ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.5,
-                ),
-                child: MatchDetailsBottomSheet(
-                  match: match,
-                  homeTeam: homeTeam,
-                  awayTeam: awayTeam,
-                  league: league,
-                ),
-              );
-            },
-          );
-        },
-        splashColor: theme.colorScheme.primary.withValues(alpha: 0.04),
-        highlightColor: theme.colorScheme.primary.withValues(alpha: 0.02),
-        borderRadius: isLast
-            ? const BorderRadius.vertical(bottom: Radius.circular(20))
-            : null,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            border: isLast
-                ? null
-                : Border(
-                    bottom: BorderSide(
-                      color: isDark
-                          ? AppTheme.darkBorder.withValues(alpha: 0.2)
-                          : AppTheme.lightBorder.withValues(alpha: 0.4),
-                      width: 1,
-                    ),
-                  ),
-          ),
-          child: Row(
-            children: [
-              // Status and Time Column
-              SizedBox(
-                width: 72,
-                child: _buildTimeColumn(theme, isDark),
+    return ApplePressable(
+      scaleDownFactor: 0.98,
+      borderRadius: isLast
+          ? const BorderRadius.vertical(bottom: Radius.circular(20))
+          : BorderRadius.zero,
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) {
+            return ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.5,
               ),
-
-              // Vertical Divider with gradient
-              Container(
-                height: 48,
-                width: 1,
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      isDark
-                          ? AppTheme.darkBorder.withValues(alpha: 0.65)
-                          : AppTheme.lightBorder.withValues(alpha: 0.5),
-                      Colors.transparent,
-                    ],
+              child: MatchDetailsBottomSheet(
+                match: match,
+                homeTeam: homeTeam,
+                awayTeam: awayTeam,
+                league: league,
+              ),
+            );
+          },
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : Border(
+                  bottom: BorderSide(
+                    color: isDark
+                        ? AppTheme.darkBorder.withValues(alpha: 0.2)
+                        : AppTheme.lightBorder.withValues(alpha: 0.4),
+                    width: 1,
                   ),
                 ),
-              ),
+        ),
+        child: Row(
+          children: [
+            // Status and Time Column
+            SizedBox(
+              width: 72,
+              child: _buildTimeColumn(theme, isDark),
+            ),
 
-              // Match Details: Teams and Score
-              Expanded(
-                child: Column(
-                  children: [
-                    _buildTeamRow(
-                        homeTeam,
-                        match.score.isNotEmpty ? match.score[0] : null,
-                        theme,
-                        isDark,
-                        true),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 40),
-                          Expanded(
-                            child: Divider(
-                              height: 1,
-                              color: isDark
-                                  ? AppTheme.darkBorder.withValues(alpha: 0.55)
-                                  : AppTheme.lightBorder.withValues(alpha: 0.3),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    _buildTeamRow(
-                        awayTeam,
-                        match.score.isNotEmpty ? match.score[1] : null,
-                        theme,
-                        isDark,
-                        false),
+            // Vertical Divider with gradient
+            Container(
+              height: 48,
+              width: 1,
+              margin: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    isDark
+                        ? AppTheme.darkBorder.withValues(alpha: 0.65)
+                        : AppTheme.lightBorder.withValues(alpha: 0.8),
+                    Colors.transparent,
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+
+            // Teams and Scores Column
+            Expanded(
+              child: Column(
+                children: [
+                  _buildTeamRow(
+                      homeTeam,
+                      match.score.isNotEmpty ? match.score[0] : null,
+                      theme,
+                      isDark,
+                      true),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 0.5,
+                            color: isDark
+                                ? AppTheme.darkBorder.withValues(alpha: 0.15)
+                                : AppTheme.lightBorder.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildTeamRow(
+                      awayTeam,
+                      match.score.isNotEmpty ? match.score[1] : null,
+                      theme,
+                      isDark,
+                      false),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
