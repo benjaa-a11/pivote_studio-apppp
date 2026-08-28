@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
 class FloatingBottomBarItem {
   final Widget icon;
@@ -29,49 +31,42 @@ class FloatingBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = theme.isDark;
 
-    final backgroundColor = theme.cardColor.withValues(alpha: isDark ? 0.88 : 0.93);
-    final borderColor = theme.colorScheme.outline.withValues(alpha: isDark ? 0.15 : 0.10);
+    final backgroundColor = theme.cardColor.withValues(alpha: isDark ? 0.82 : 0.88);
+    final specularBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.white.withValues(alpha: 0.70);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(9999),
-        border: Border.all(color: borderColor, width: 1.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.42 : 0.11),
-            blurRadius: 24,
-            spreadRadius: 1,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.05),
-            blurRadius: 8,
-            spreadRadius: -1,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(color: specularBorderColor, width: 1.0),
+        boxShadow: AppShadows.appleDepth(context, elevation: 1.4),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(9999),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(
+            sigmaX: AppMaterials.blurRegular,
+            sigmaY: AppMaterials.blurRegular,
+          ),
           child: Container(
             decoration: BoxDecoration(
               color: backgroundColor,
-              borderRadius: BorderRadius.circular(9999),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  theme.colorScheme.surface.withValues(alpha: isDark ? 0.08 : 0.30),
+                  (isDark ? Colors.white : Colors.black)
+                      .withValues(alpha: isDark ? 0.06 : 0.02),
                   Colors.transparent,
                 ],
               ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final usableWidth = constraints.maxWidth;
@@ -80,34 +75,35 @@ class FloatingBottomBar extends StatelessWidget {
                 return Stack(
                   alignment: Alignment.center,
                   children: [
+                    // Apple-style sliding pill indicator with spring curve
                     AnimatedPositioned(
-                      duration: const Duration(milliseconds: 320),
-                      curve: Curves.easeInOutCubic,
+                      duration: const Duration(milliseconds: 340),
+                      curve: AppAnimations.appleSpringEase,
                       left: selectedIndex * itemWidth + 4,
                       width: itemWidth - 8,
-                      top: 2,
-                      bottom: 2,
+                      top: 3,
+                      bottom: 3,
                       child: Container(
                         decoration: BoxDecoration(
                           color: theme.colorScheme.primary.withValues(
-                            alpha: isDark ? 0.15 : 0.12,
+                            alpha: isDark ? 0.16 : 0.12,
                           ),
-                          borderRadius: BorderRadius.circular(9999),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                           border: Border.all(
                             color: theme.colorScheme.primary.withValues(
-                              alpha: isDark ? 0.25 : 0.20,
+                              alpha: isDark ? 0.28 : 0.22,
                             ),
-                            width: 1,
+                            width: 1.0,
                           ),
-                          boxShadow: isDark
-                              ? [
-                                  BoxShadow(
-                                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ]
-                              : null,
+                          boxShadow: [
+                            BoxShadow(
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: isDark ? 0.12 : 0.06,
+                              ),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -118,12 +114,12 @@ class FloatingBottomBar extends StatelessWidget {
                         final isSelected = index == selectedIndex;
 
                         return Expanded(
-                          child: GestureDetector(
+                          child: ApplePressable(
+                            scaleDownFactor: 0.94,
+                            enableHaptics: true,
                             onTap: () {
-                              HapticFeedback.selectionClick();
                               onDestinationSelected(index);
                             },
-                            behavior: HitTestBehavior.opaque,
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 6),
                               color: Colors.transparent,
@@ -132,11 +128,13 @@ class FloatingBottomBar extends StatelessWidget {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   AnimatedScale(
-                                    scale: isSelected ? 1.05 : 1.0,
-                                    duration: const Duration(milliseconds: 250),
-                                    curve: Curves.easeOutBack,
+                                    scale: isSelected ? 1.08 : 1.0,
+                                    duration: const Duration(milliseconds: 220),
+                                    curve: AppAnimations.appleSpringEase,
                                     child: AnimatedSwitcher(
-                                      duration: const Duration(milliseconds: 200),
+                                      duration: const Duration(milliseconds: 180),
+                                      switchInCurve: Curves.easeOut,
+                                      switchOutCurve: Curves.easeIn,
                                       child: isSelected
                                           ? SizedBox(
                                               key: ValueKey('active_$index'),
@@ -148,15 +146,16 @@ class FloatingBottomBar extends StatelessWidget {
                                             ),
                                     ),
                                   ),
-                                  const SizedBox(height: 2),
+                                  const SizedBox(height: 3),
                                   Text(
                                     item.label,
                                     style: TextStyle(
                                       fontSize: 10.5,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                      letterSpacing: -0.2,
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                       color: isSelected
                                           ? theme.colorScheme.primary
-                                          : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                          : theme.colorScheme.onSurface.withValues(alpha: 0.52),
                                     ),
                                   ),
                                 ],

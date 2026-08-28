@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/dialog_styles.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
 export 'package:pivote/core/theme/dialog_styles.dart' show AppDialogType;
 
@@ -224,8 +225,11 @@ class _DialogButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final bg = !isPrimary
-        ? theme.colorScheme.onSurface.withAlpha(15)
+        ? (isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.black.withValues(alpha: 0.05))
         : isDestructive
             ? theme.colorScheme.error
             : accentColor ?? theme.colorScheme.primary;
@@ -233,29 +237,45 @@ class _DialogButton extends StatelessWidget {
         ? theme.colorScheme.onSurface
         : isDestructive
             ? Colors.white
-            : theme.brightness == Brightness.dark
+            : isDark
                 ? const Color(0xFF090B0F)
                 : Colors.white;
 
-    return InkWell(
-      onTap: () {
-        HapticFeedback.mediumImpact();
-        onTap();
-      },
+    return ApplePressable(
+      scaleDownFactor: 0.96,
       borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 15),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(16),
+          border: !isPrimary
+              ? Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
+                )
+              : null,
           boxShadow: isPrimary
-              ? [BoxShadow(color: bg.withValues(alpha: .3), blurRadius: 12, offset: const Offset(0, 4))]
+              ? [
+                  BoxShadow(
+                    color: bg.withValues(alpha: 0.28),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
               : null,
         ),
         child: Text(
           label,
-          style: GoogleFonts.spaceGrotesk(fontSize: 15, fontWeight: FontWeight.bold, color: fg, letterSpacing: .3),
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: fg,
+            letterSpacing: -0.2,
+          ),
         ),
       ),
     );
@@ -272,25 +292,43 @@ class _ModernBottomSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final mq = MediaQuery.of(context);
     final dark = theme.brightness == Brightness.dark;
+
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          constraints: BoxConstraints(maxHeight: mq.size.height * .92),
+          constraints: BoxConstraints(maxHeight: mq.size.height * 0.92),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surface.withValues(alpha: dark ? .85 : .9),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            border: Border.all(color: theme.dividerColor.withValues(alpha: .1)),
+            color: (dark ? AppTheme.darkBg1 : Colors.white)
+                .withValues(alpha: dark ? 0.85 : 0.92),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border(
+              top: BorderSide(
+                color: dark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.white.withValues(alpha: 0.80),
+                width: 1.0,
+              ),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.only(top: 12, bottom: 8),
-                child: Container(width: 48, height: 4, decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(4))),
+                padding: const EdgeInsets.only(top: 10, bottom: 8),
+                child: Container(
+                  width: 36,
+                  height: 4.5,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
               ),
-              scrollable ? Flexible(child: SingleChildScrollView(child: child)) : Flexible(child: child),
+              scrollable
+                  ? Flexible(child: SingleChildScrollView(child: child))
+                  : Flexible(child: child),
             ],
           ),
         ),

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
 /// Discovery row for the Home screen. Surfaces the three other content
 /// pillars of the app (Fútbol, Películas, Radio) with real, live counts
@@ -100,79 +101,79 @@ class _QuickAccessCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.mAll,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md, vertical: AppSpacing.lg),
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkBg2 : Colors.white,
-            borderRadius: AppRadius.mAll,
-            border: Border.all(
-              color: isDark
-                  ? AppTheme.darkBorder.withValues(alpha: 0.6)
-                  : AppTheme.lightBorder,
-              width: 1.2,
-            ),
-            boxShadow: AppShadows.card(context),
+    return ApplePressable(
+      scaleDownFactor: 0.95,
+      borderRadius: AppRadius.mAll,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppTheme.darkBg2.withValues(alpha: 0.92)
+              : Colors.white,
+          borderRadius: AppRadius.mAll,
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.black.withValues(alpha: 0.06),
+            width: 1.0,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
-                      borderRadius: AppRadius.sAll,
-                    ),
-                    child: Icon(icon, size: 18, color: accent),
+          boxShadow: AppShadows.appleDepth(context, elevation: 0.7),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
+                    borderRadius: AppRadius.sAll,
                   ),
-                  if (isLive)
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.error,
-                        shape: BoxShape.circle,
-                        boxShadow:
-                            AppShadows.glow(theme.colorScheme.error, alpha: 0.6),
-                      ),
+                  child: Icon(icon, size: 18, color: accent),
+                ),
+                if (isLive)
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error,
+                      shape: BoxShape.circle,
+                      boxShadow:
+                          AppShadows.glow(theme.colorScheme.error, alpha: 0.6),
                     ),
-                ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              label,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
+                color: theme.colorScheme.onSurface,
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                label,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.onSurface,
-                ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              caption,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: isLive
+                    ? theme.colorScheme.error
+                    : (isDark ? AppTheme.darkText3 : AppTheme.lightText3),
               ),
-              const SizedBox(height: 2),
-              Text(
-                caption,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  color: isLive
-                      ? theme.colorScheme.error
-                      : (isDark ? AppTheme.darkText3 : AppTheme.lightText3),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

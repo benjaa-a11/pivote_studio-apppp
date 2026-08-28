@@ -10,6 +10,7 @@ import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/home/presentation/widgets/category_chips_row.dart';
 import 'package:pivote/features/home/presentation/providers/notifications_provider.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
 class UnifiedHomeHeader extends StatelessWidget {
   final void Function(int tabIndex)? onNavigateToTab;
@@ -131,33 +132,41 @@ class UnifiedHomeHeader extends StatelessWidget {
     required String heroTag,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
+    return ApplePressable(
+      scaleDownFactor: 0.92,
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppTheme.darkBg2.withValues(alpha: 0.85)
+              : theme.colorScheme.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
             color: isDark
-                ? AppTheme.darkBg2
-                : theme.colorScheme.primary.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : theme.colorScheme.primary.withValues(alpha: 0.12),
-            ),
+                ? Colors.white.withValues(alpha: 0.10)
+                : theme.colorScheme.primary.withValues(alpha: 0.14),
+            width: 1.0,
           ),
-          alignment: Alignment.center,
-          child: Hero(
-            tag: heroTag,
-            child: Icon(
-              icon,
-              size: 20,
-              color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-            ),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+        ),
+        alignment: Alignment.center,
+        child: Hero(
+          tag: heroTag,
+          child: Icon(
+            icon,
+            size: 20,
+            color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
           ),
         ),
       ),

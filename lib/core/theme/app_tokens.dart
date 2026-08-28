@@ -86,10 +86,48 @@ class AppShadows {
       ),
     ];
   }
+
+  /// Apple-style layered shadow (ambient diffuse + contact depth)
+  static List<BoxShadow> appleDepth(BuildContext context, {double elevation = 1.0}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return [
+      // Ambient shadow
+      BoxShadow(
+        color: Colors.black.withValues(alpha: isDark ? 0.25 * elevation : 0.04 * elevation),
+        blurRadius: 18 * elevation,
+        spreadRadius: 0,
+        offset: Offset(0, 4 * elevation),
+      ),
+      // Direct contact shadow
+      BoxShadow(
+        color: Colors.black.withValues(alpha: isDark ? 0.15 * elevation : 0.03 * elevation),
+        blurRadius: 6 * elevation,
+        spreadRadius: -2 * elevation,
+        offset: Offset(0, 2 * elevation),
+      ),
+    ];
+  }
 }
 
 class AppGradients {
   AppGradients._();
+
+  /// Apple specular border highlight: top edge catches light, bottom softens.
+  static LinearGradient specularBorder(bool isDark) {
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: isDark
+          ? [
+              Colors.white.withValues(alpha: 0.16),
+              Colors.white.withValues(alpha: 0.03),
+            ]
+          : [
+              Colors.white.withValues(alpha: 0.70),
+              Colors.black.withValues(alpha: 0.06),
+            ],
+    );
+  }
 
   /// The deep violet-to-obsidian backdrop used by UnifiedHomeHeader.
   /// Reused here so Fútbol / Perfil headers can match it instead of
@@ -137,6 +175,22 @@ class AppGradients {
       ],
       stops: const [0.4, 1.0],
     );
+  }
+}
+
+/// Apple Material tokens (frosted glass, blur sigma, specular overlays)
+class AppMaterials {
+  AppMaterials._();
+
+  static const double blurUltraThin = 10.0;
+  static const double blurThin = 16.0;
+  static const double blurRegular = 24.0;
+  static const double blurHeavy = 32.0;
+
+  static Color glassBg(BuildContext context, {double? alphaOverride}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final alpha = alphaOverride ?? (isDark ? 0.75 : 0.82);
+    return (isDark ? AppTheme.darkBg1 : Colors.white).withValues(alpha: alpha);
   }
 }
 

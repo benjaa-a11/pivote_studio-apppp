@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
 class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -29,25 +31,28 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = theme.isDark;
     final topPadding = MediaQuery.of(context).padding.top;
 
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        filter: ImageFilter.blur(
+          sigmaX: AppMaterials.blurRegular,
+          sigmaY: AppMaterials.blurRegular,
+        ),
         child: Container(
           height: height + topPadding,
           padding: EdgeInsets.fromLTRB(16, topPadding, 16, 0),
           decoration: BoxDecoration(
             color: isDark
-                ? AppTheme.darkBg.withValues(alpha: 0.75)
-                : AppTheme.lightBg.withValues(alpha: 0.8),
+                ? AppTheme.darkBg.withValues(alpha: 0.78)
+                : AppTheme.lightBg.withValues(alpha: 0.82),
             border: Border(
               bottom: BorderSide(
                 color: isDark
-                    ? AppTheme.darkBorder.withValues(alpha: 0.4)
-                    : AppTheme.lightBorder.withValues(alpha: 0.5),
-                width: 1.2,
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.06),
+                width: 1.0,
               ),
             ),
           ),
@@ -73,8 +78,8 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
                       title,
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.6,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
                         color: theme.colorScheme.onSurface,
                         height: 1.1,
                       ),
@@ -115,33 +120,30 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   Widget _buildDefaultBackButton(
       BuildContext context, bool isDark, ThemeData theme) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onBackPressed ?? () => Navigator.pop(context),
-        borderRadius: BorderRadius.circular(14),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
+    return ApplePressable(
+      scaleDownFactor: 0.92,
+      borderRadius: BorderRadius.circular(14),
+      onTap: onBackPressed ?? () => Navigator.pop(context),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isDark
+              ? AppTheme.darkBg2.withValues(alpha: 0.70)
+              : AppTheme.lightBg2.withValues(alpha: 0.70),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
             color: isDark
-                ? AppTheme.darkBg2.withValues(alpha: 0.5)
-                : AppTheme.lightBg2.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDark
-                  ? AppTheme.darkBorder.withValues(alpha: 0.3)
-                  : AppTheme.lightBorder,
-              width: 1,
-            ),
+                ? Colors.white.withValues(alpha: 0.10)
+                : Colors.black.withValues(alpha: 0.06),
+            width: 1.0,
           ),
-          child: Center(
-            child: Icon(
-              Icons.arrow_back_ios_new_rounded,
-              size: 14,
-              color: theme.colorScheme.onSurface,
-            ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 15,
+            color: theme.colorScheme.onSurface,
           ),
         ),
       ),
