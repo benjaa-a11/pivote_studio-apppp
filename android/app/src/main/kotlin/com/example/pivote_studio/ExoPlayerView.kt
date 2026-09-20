@@ -101,8 +101,10 @@ class ExoPlayerPlatformView(
             val k2 = creationParams["k2"] as? String
             @Suppress("UNCHECKED_CAST")
             val clearkeys = creationParams["clearkeys"] as? Map<String, String>
+            @Suppress("UNCHECKED_CAST")
+            val headers = creationParams["headers"] as? Map<String, String>
             if (url != null) {
-                initializePlayer(url, k1, k2, clearkeys, null)
+                initializePlayer(url, k1, k2, clearkeys, headers)
             }
         }
     }
@@ -177,8 +179,12 @@ class ExoPlayerPlatformView(
             .build()
 
         // ── HTTP DataSource with custom headers ──
+        val customUserAgent = headers?.entries?.firstOrNull { 
+            it.key.equals("user-agent", ignoreCase = true) 
+        }?.value ?: userAgent
+
         val httpFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent(userAgent)
+            .setUserAgent(customUserAgent)
             .setConnectTimeoutMs(10_000)
             .setReadTimeoutMs(10_000)
             .setAllowCrossProtocolRedirects(true)
@@ -271,23 +277,40 @@ class ExoPlayerPlatformView(
      * Build ClearKey JSON with a SINGLE key pair (legacy k1/k2 format).
      */
     private fun buildClearKeyJson(kid: String, key: String): String {
-        val kidB64 = hexToBase64Url(kid)
-        val keyB64 = hexToBase64Url(key)
+        val kidB64 = toBase64Url(kid)
+        val keyB64 = toBase64Url(key)
         return """{"keys":[{"kty":"oct","k":"$keyB64","kid":"$kidB64"}],"type":"temporary"}"""
     }
 
     /**
      * Build ClearKey JSON with MULTIPLE key pairs.
-     * Input: Map<keyId(hex), key(hex)>  →  JSON {"keys":[...], "type":"temporary"}
-     * Each entry becomes a separate object in the keys array.
+     * Input: Map<keyId, key>  →  JSON {"keys":[...], "type":"temporary"}
+     * Supports both hex and base64url input keys.
      */
     private fun buildMultiClearKeyJson(keys: Map<String, String>): String {
         val keysArray = keys.entries.joinToString(",") { (kid, key) ->
-            val kidB64 = hexToBase64Url(kid)
-            val keyB64 = hexToBase64Url(key)
+            val kidB64 = toBase64Url(kid)
+            val keyB64 = toBase64Url(key)
             """{"kty":"oct","k":"$keyB64","kid":"$kidB64"}"""
         }
         return """{"keys":[$keysArray],"type":"temporary"}"""
+    }
+
+    /**
+     * Converts a key or key ID to base64url.
+     * If 32-character hex, converts hex -> bytes -> base64url.
+     * If already base64url, cleans padding and normalizes URL-safe characters.
+     */
+    private fun toBase64Url(keyOrKid: String): String {
+        val trimmed = keyOrKid.trim()
+        val cleanHex = trimmed.replace("-", "").replace(" ", "")
+        if (cleanHex.length == 32 && cleanHex.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) {
+            return hexToBase64Url(cleanHex)
+        }
+        return trimmed
+            .replace("+", "-")
+            .replace("/", "_")
+            .replace("=", "")
     }
 
     /**

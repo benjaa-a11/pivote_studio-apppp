@@ -527,6 +527,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           k1: _currentStream!.k1,
           k2: _currentStream!.k2,
           clearkeys: _currentStream!.clearkeys,
+          headers: _currentStream!.headers,
           channelName: widget.channel.name,
           currentServer: _serverIndex + 1,
           totalServers: widget.channel.streamUrl.length,

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class EventCamera {
   final int id;
   final String nombre;
@@ -71,22 +73,63 @@ class Channel {
       logoUrls = List<String>.from(json['logoUrl']);
     } else if (json['logoUrl'] is String) {
       logoUrls = [json['logoUrl']];
+    } else if (json['icono'] is String && (json['icono'] as String).isNotEmpty) {
+      logoUrls = [json['icono']];
+    } else if (json['logo'] is String && (json['logo'] as String).isNotEmpty) {
+      logoUrls = [json['logo']];
     }
 
-    // Parse streamUrl - supports both old String format and new Map format
+    // Root headers if present
+    Map<String, String>? rootHeaders;
+    if (json['headers'] is Map) {
+      rootHeaders = Map<String, String>.from(
+        (json['headers'] as Map).map(
+          (key, value) => MapEntry(key.toString(), value.toString()),
+        ),
+      );
+    }
+
+    // Parse streamUrl - supports old String format, Map format, and external CLEARKEY format
     List<StreamSource> streams = [];
     if (json['streamUrl'] is List) {
       for (var item in json['streamUrl']) {
         if (item is String) {
           // Old format: simple string URL
-          streams.add(StreamSource(url: item));
+          streams.add(StreamSource(url: item, headers: rootHeaders));
         } else if (item is Map<String, dynamic>) {
-          // New format: map with url, k1, k2
-          streams.add(StreamSource.fromJson(item));
+          // New format: map with url, k1, k2, clearkeys, headers
+          final s = StreamSource.fromJson(item);
+          if (s.headers == null && rootHeaders != null) {
+            streams.add(StreamSource(
+              url: s.url,
+              k1: s.k1,
+              k2: s.k2,
+              label: s.label,
+              clearkeys: s.clearkeys,
+              headers: rootHeaders,
+            ));
+          } else {
+            streams.add(s);
+          }
         }
       }
     } else if (json['streamUrl'] is String) {
-      streams = [StreamSource(url: json['streamUrl'])];
+      streams = [StreamSource(url: json['streamUrl'], headers: rootHeaders)];
+    }
+
+    // Support external CLEARKEY format (e.g. ESPN / Flow format where URL and DRM are at root)
+    final rootStreamUrl = json['original_url'] ?? json['url'];
+    final drmLicenseUri = json['drm_license_uri']?.toString();
+    if (streams.isEmpty && rootStreamUrl != null && rootStreamUrl.toString().isNotEmpty) {
+      Map<String, String>? clearkeys;
+      if (drmLicenseUri != null && drmLicenseUri.isNotEmpty) {
+        clearkeys = StreamSource.parseDrmLicenseUri(drmLicenseUri);
+      }
+      streams.add(StreamSource(
+        url: rootStreamUrl.toString(),
+        clearkeys: clearkeys,
+        headers: rootHeaders,
+      ));
     }
 
     // Parse camaras
@@ -97,9 +140,21 @@ class Channel {
           .toList();
     }
 
+    final rawName = json['name']?.toString() ?? '';
+    final rawId = json['id']?.toString();
+    final fallbackId = rawName.isNotEmpty
+        ? rawName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_')
+        : '';
+    final id = (rawId != null && rawId.isNotEmpty) ? rawId : fallbackId;
+
+    final rawType = json['type']?.toString();
+    final type = (rawType != null && rawType.toUpperCase() == 'CLEARKEY')
+        ? 'dash'
+        : rawType;
+
     return Channel(
-      id: json['id'] ?? '',
-      name: json['name'] ?? '',
+      id: id,
+      name: rawName,
       category: json['category'] ?? '',
       logoUrl: logoUrls,
       streamUrl: streams,
@@ -108,7 +163,7 @@ class Channel {
       isHidden: json['isHidden'] ?? false,
       order: json['order'] ?? 999,
       isFavorite: json['isFavorite'] ?? false,
-      type: json['type'],
+      type: type,
       quality: json['quality'],
       evento: json['evento'],
       camaras: eventCameras,
@@ -137,10 +192,11 @@ class Channel {
   StreamType getStreamType(String url) {
     // Priority 1: Use explicit type field if available
     if (type != null) {
-      if (type!.toLowerCase() == 'dash' || type!.toLowerCase() == 'mpd') {
+      final t = type!.toLowerCase();
+      if (t == 'dash' || t == 'mpd' || t == 'clearkey') {
         return StreamType.dash;
       }
-      if (type!.toLowerCase() == 'hls') return StreamType.m3u8;
+      if (t == 'hls') return StreamType.m3u8;
     }
 
     // Priority 2: Check if the current stream has DRM keys (always DASH/MPD)
@@ -213,13 +269,14 @@ class Channel {
   }
 }
 
-/// Represents a stream source with URL and optional DRM keys
+/// Represents a stream source with URL, optional DRM keys, and optional HTTP headers
 class StreamSource {
   final String url;
   final String? k1; // Legacy: Key ID for single-key DRM
   final String? k2; // Legacy: Key for single-key DRM
   final String? label; // Optional label like "Servidor 1", "HD", etc.
   final Map<String, String>? clearkeys; // Multi-key ClearKey DRM: {keyId: key, ...}
+  final Map<String, String>? headers; // Custom HTTP headers (Origin, Referer, User-Agent, etc.)
 
   StreamSource({
     required this.url,
@@ -227,10 +284,13 @@ class StreamSource {
     this.k2,
     this.label,
     this.clearkeys,
+    this.headers,
   });
 
   factory StreamSource.fromJson(Map<String, dynamic> json) {
-    // Parse clearkeys map from Firestore
+    final url = json['url'] ?? json['original_url'] ?? '';
+
+    // Parse clearkeys map from Firestore or from drm_license_uri if present
     Map<String, String>? parsedClearkeys;
     if (json['clearkeys'] != null && json['clearkeys'] is Map) {
       parsedClearkeys = Map<String, String>.from(
@@ -238,14 +298,27 @@ class StreamSource {
           (key, value) => MapEntry(key.toString(), value.toString()),
         ),
       );
+    } else if (json['drm_license_uri'] != null) {
+      parsedClearkeys = parseDrmLicenseUri(json['drm_license_uri'].toString());
+    }
+
+    // Parse custom HTTP headers
+    Map<String, String>? parsedHeaders;
+    if (json['headers'] != null && json['headers'] is Map) {
+      parsedHeaders = Map<String, String>.from(
+        (json['headers'] as Map).map(
+          (key, value) => MapEntry(key.toString(), value.toString()),
+        ),
+      );
     }
 
     return StreamSource(
-      url: json['url'] ?? '',
+      url: url.toString(),
       k1: json['k1'],
       k2: json['k2'],
       label: json['label'],
       clearkeys: parsedClearkeys,
+      headers: parsedHeaders,
     );
   }
 
@@ -257,7 +330,92 @@ class StreamSource {
     if (clearkeys != null && clearkeys!.isNotEmpty) {
       map['clearkeys'] = clearkeys;
     }
+    if (headers != null && headers!.isNotEmpty) {
+      map['headers'] = headers;
+    }
     return map;
+  }
+
+  /// Parses drm_license_uri (e.g. "kid:0Hn_o3V-gzVhH8SL5rpH_w,k:BQWdHLIbZwilXpwm-zji8w" or JSON)
+  /// and converts keys from base64url to hex.
+  static Map<String, String> parseDrmLicenseUri(String uri) {
+    final result = <String, String>{};
+    final trimmed = uri.trim();
+
+    // Check for JSON format first
+    if (trimmed.startsWith('{')) {
+      try {
+        final decoded = jsonDecode(trimmed);
+        if (decoded is Map) {
+          if (decoded['keys'] is List) {
+            for (var k in decoded['keys']) {
+              if (k is Map && k['kid'] != null && k['k'] != null) {
+                result[normalizeKeyToHex(k['kid'].toString())] =
+                    normalizeKeyToHex(k['k'].toString());
+              }
+            }
+          } else if (decoded['kid'] != null && decoded['k'] != null) {
+            result[normalizeKeyToHex(decoded['kid'].toString())] =
+                normalizeKeyToHex(decoded['k'].toString());
+          }
+        }
+        if (result.isNotEmpty) return result;
+      } catch (_) {}
+    }
+
+    // Pattern 1: kid:VALUE,k:VALUE (comma, space, or semicolon separated)
+    final pairRegex = RegExp(
+      r'kid:([a-zA-Z0-9_\-=]+)[\s,;]+k:([a-zA-Z0-9_\-=]+)',
+      caseSensitive: false,
+    );
+    for (final match in pairRegex.allMatches(trimmed)) {
+      final kid = match.group(1);
+      final k = match.group(2);
+      if (kid != null && k != null) {
+        result[normalizeKeyToHex(kid)] = normalizeKeyToHex(k);
+      }
+    }
+
+    // Pattern 2 (inverse): k:VALUE,kid:VALUE
+    if (result.isEmpty) {
+      final inverseRegex = RegExp(
+        r'k:([a-zA-Z0-9_\-=]+)[\s,;]+kid:([a-zA-Z0-9_\-=]+)',
+        caseSensitive: false,
+      );
+      for (final match in inverseRegex.allMatches(trimmed)) {
+        final k = match.group(1);
+        final kid = match.group(2);
+        if (kid != null && k != null) {
+          result[normalizeKeyToHex(kid)] = normalizeKeyToHex(k);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /// Normalizes a key or key ID to a 32-character hexadecimal string.
+  /// If already 32-char hex, returns lowercased hex.
+  /// If base64/base64url, decodes and converts to hex string.
+  static String normalizeKeyToHex(String keyOrKid) {
+    final clean = keyOrKid.trim();
+    final hexCandidate = clean.replaceAll('-', '').replaceAll(' ', '');
+    // If it's already a 32-character hex string
+    if (hexCandidate.length == 32 &&
+        RegExp(r'^[0-9a-fA-F]{32}$').hasMatch(hexCandidate)) {
+      return hexCandidate.toLowerCase();
+    }
+    // Try base64 / base64url decoding
+    try {
+      var b64 = clean.replaceAll('-', '+').replaceAll('_', '/');
+      while (b64.length % 4 != 0) {
+        b64 += '=';
+      }
+      final bytes = base64.decode(b64);
+      return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    } catch (_) {
+      return clean;
+    }
   }
 
   /// Returns true if this stream has DRM keys (multi-key or legacy single-key)

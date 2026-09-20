@@ -236,6 +236,8 @@ class _ExoPlayerWidgetState extends State<ExoPlayerWidget> {
         if (widget.k2 != null) 'k2': widget.k2,
         if (widget.clearkeys != null && widget.clearkeys!.isNotEmpty)
           'clearkeys': widget.clearkeys,
+        if (widget.headers != null && widget.headers!.isNotEmpty)
+          'headers': widget.headers,
       },
       creationParamsCodec: const StandardMessageCodec(),
       onPlatformViewCreated: _onPlatformViewCreated,
