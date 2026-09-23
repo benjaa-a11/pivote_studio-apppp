@@ -96,9 +96,9 @@ class Channel {
         if (item is String) {
           // Old format: simple string URL
           streams.add(StreamSource(url: item, headers: rootHeaders));
-        } else if (item is Map<String, dynamic>) {
+        } else if (item is Map) {
           // New format: map with url, k1, k2, clearkeys, headers
-          final s = StreamSource.fromJson(item);
+          final s = StreamSource.fromJson(Map<String, dynamic>.from(item));
           if (s.headers == null && rootHeaders != null) {
             streams.add(StreamSource(
               url: s.url,
@@ -107,6 +107,7 @@ class Channel {
               label: s.label,
               clearkeys: s.clearkeys,
               headers: rootHeaders,
+              drmLicenseUri: s.drmLicenseUri,
             ));
           } else {
             streams.add(s);
@@ -129,6 +130,7 @@ class Channel {
         url: rootStreamUrl.toString(),
         clearkeys: clearkeys,
         headers: rootHeaders,
+        drmLicenseUri: drmLicenseUri,
       ));
     }
 
@@ -277,6 +279,7 @@ class StreamSource {
   final String? label; // Optional label like "Servidor 1", "HD", etc.
   final Map<String, String>? clearkeys; // Multi-key ClearKey DRM: {keyId: key, ...}
   final Map<String, String>? headers; // Custom HTTP headers (Origin, Referer, User-Agent, etc.)
+  final String? drmLicenseUri; // Raw DRM license URI (kid:...,k:... or JSON)
 
   StreamSource({
     required this.url,
@@ -285,10 +288,12 @@ class StreamSource {
     this.label,
     this.clearkeys,
     this.headers,
+    this.drmLicenseUri,
   });
 
   factory StreamSource.fromJson(Map<String, dynamic> json) {
     final url = json['url'] ?? json['original_url'] ?? '';
+    final drmLicenseUri = json['drm_license_uri']?.toString();
 
     // Parse clearkeys map from Firestore or from drm_license_uri if present
     Map<String, String>? parsedClearkeys;
@@ -298,8 +303,8 @@ class StreamSource {
           (key, value) => MapEntry(key.toString(), value.toString()),
         ),
       );
-    } else if (json['drm_license_uri'] != null) {
-      parsedClearkeys = parseDrmLicenseUri(json['drm_license_uri'].toString());
+    } else if (drmLicenseUri != null && drmLicenseUri.isNotEmpty) {
+      parsedClearkeys = parseDrmLicenseUri(drmLicenseUri);
     }
 
     // Parse custom HTTP headers
@@ -314,11 +319,12 @@ class StreamSource {
 
     return StreamSource(
       url: url.toString(),
-      k1: json['k1'],
-      k2: json['k2'],
-      label: json['label'],
+      k1: json['k1']?.toString(),
+      k2: json['k2']?.toString(),
+      label: json['label']?.toString() ?? json['name']?.toString(),
       clearkeys: parsedClearkeys,
       headers: parsedHeaders,
+      drmLicenseUri: drmLicenseUri,
     );
   }
 
@@ -333,7 +339,22 @@ class StreamSource {
     if (headers != null && headers!.isNotEmpty) {
       map['headers'] = headers;
     }
+    if (drmLicenseUri != null && drmLicenseUri!.isNotEmpty) {
+      map['drm_license_uri'] = drmLicenseUri;
+    }
     return map;
+  }
+
+  /// Returns the effective raw drm_license_uri string
+  String? get effectiveDrmLicenseUri {
+    if (drmLicenseUri != null && drmLicenseUri!.isNotEmpty) return drmLicenseUri;
+    if (clearkeys != null && clearkeys!.isNotEmpty) {
+      return clearkeys!.entries.map((e) => 'kid:${e.key},k:${e.value}').join(',');
+    }
+    if (k1 != null && k2 != null && k1!.isNotEmpty && k2!.isNotEmpty) {
+      return 'kid:$k1,k:$k2';
+    }
+    return null;
   }
 
   /// Parses drm_license_uri (e.g. "kid:0Hn_o3V-gzVhH8SL5rpH_w,k:BQWdHLIbZwilXpwm-zji8w" or JSON)

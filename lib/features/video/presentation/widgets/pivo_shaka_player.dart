@@ -36,6 +36,9 @@ class PivoShakaPlayer extends StatefulWidget {
   final String? k2;
   final Map<String, String>? clearkeys; // Multi-key ClearKey DRM
   final Map<String, String>? headers; // Custom HTTP headers
+  final String? drmLicenseUri;
+  final String? type;
+  final String? icono;
   final String channelName;
   final int currentServer;
   final int totalServers;
@@ -49,6 +52,9 @@ class PivoShakaPlayer extends StatefulWidget {
     this.k2,
     this.clearkeys,
     this.headers,
+    this.drmLicenseUri,
+    this.type,
+    this.icono,
     required this.channelName,
     required this.currentServer,
     required this.totalServers,
@@ -125,6 +131,8 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.url != widget.url ||
         oldWidget.k1 != widget.k1 ||
+        oldWidget.drmLicenseUri != widget.drmLicenseUri ||
+        oldWidget.type != widget.type ||
         oldWidget.clearkeys != widget.clearkeys ||
         oldWidget.headers != widget.headers) {
       _resetAndReload();
@@ -319,8 +327,12 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
             child: AspectRatio(
               aspectRatio: _getAspectRatio(),
               child: ExoPlayerWidget(
-                key: ValueKey('${widget.url}_${widget.k1}_${widget.clearkeys?.length ?? 0}_${widget.headers?.length ?? 0}'),
+                key: ValueKey('${widget.url}_${widget.k1}_${widget.drmLicenseUri}_${widget.clearkeys?.length ?? 0}_${widget.headers?.length ?? 0}'),
                 url: widget.url,
+                name: widget.channelName,
+                type: widget.type,
+                drmLicenseUri: widget.drmLicenseUri,
+                icono: widget.icono,
                 k1: widget.k1,
                 k2: widget.k2,
                 clearkeys: widget.clearkeys,

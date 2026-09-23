@@ -124,6 +124,10 @@ class ExoPlayerController {
   /// Initialize with MPD stream + optional ClearKey DRM (multi-key or legacy)
   Future<void> initialize({
     required String url,
+    String? name,
+    String? type,
+    String? drmLicenseUri,
+    String? icono,
     String? k1,
     String? k2,
     Map<String, String>? clearkeys,
@@ -133,6 +137,12 @@ class ExoPlayerController {
     try {
       await _methodChannel!.invokeMethod('initialize', {
         'url': url,
+        'original_url': url,
+        if (name != null && name.isNotEmpty) 'name': name,
+        if (type != null && type.isNotEmpty) 'type': type,
+        if (drmLicenseUri != null && drmLicenseUri.isNotEmpty)
+          'drm_license_uri': drmLicenseUri,
+        if (icono != null && icono.isNotEmpty) 'icono': icono,
         if (k1 != null && k1.isNotEmpty) 'k1': k1,
         if (k2 != null && k2.isNotEmpty) 'k2': k2,
         if (clearkeys != null && clearkeys.isNotEmpty) 'clearkeys': clearkeys,
@@ -199,6 +209,10 @@ class ExoPlayerController {
 /// Widget that renders the native ExoPlayer via AndroidView
 class ExoPlayerWidget extends StatefulWidget {
   final String url;
+  final String? name;
+  final String? type;
+  final String? drmLicenseUri;
+  final String? icono;
   final String? k1;
   final String? k2;
   final Map<String, String>? clearkeys; // Multi-key ClearKey DRM
@@ -210,6 +224,10 @@ class ExoPlayerWidget extends StatefulWidget {
   const ExoPlayerWidget({
     super.key,
     required this.url,
+    this.name,
+    this.type,
+    this.drmLicenseUri,
+    this.icono,
     this.k1,
     this.k2,
     this.clearkeys,
@@ -232,6 +250,15 @@ class _ExoPlayerWidgetState extends State<ExoPlayerWidget> {
       viewType: 'pivote-exoplayer',
       creationParams: <String, dynamic>{
         'url': widget.url,
+        'original_url': widget.url,
+        if (widget.name != null && widget.name!.isNotEmpty)
+          'name': widget.name,
+        if (widget.type != null && widget.type!.isNotEmpty)
+          'type': widget.type,
+        if (widget.drmLicenseUri != null && widget.drmLicenseUri!.isNotEmpty)
+          'drm_license_uri': widget.drmLicenseUri,
+        if (widget.icono != null && widget.icono!.isNotEmpty)
+          'icono': widget.icono,
         if (widget.k1 != null) 'k1': widget.k1,
         if (widget.k2 != null) 'k2': widget.k2,
         if (widget.clearkeys != null && widget.clearkeys!.isNotEmpty)

@@ -80,9 +80,9 @@ dependencies {
     /* =========================
        MEDIA3 EXOPLAYER (MPD/DASH + ClearKey DRM)
        ========================= */
-    implementation("androidx.media3:media3-exoplayer:1.5.1")
-    implementation("androidx.media3:media3-exoplayer-dash:1.5.1")
-    implementation("androidx.media3:media3-ui:1.5.1")
+    implementation("androidx.media3:media3-exoplayer:1.11.1")
+    implementation("androidx.media3:media3-exoplayer-dash:1.11.1")
+    implementation("androidx.media3:media3-ui:1.11.1")
 
     /* =========================
        DESUGARING (requerido por flutter_local_notifications)
