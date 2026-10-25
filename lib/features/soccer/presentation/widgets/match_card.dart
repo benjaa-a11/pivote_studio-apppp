@@ -5,6 +5,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
+import 'package:pivote/features/soccer/presentation/widgets/soccer_pitch_painter.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
@@ -27,657 +28,747 @@ class MatchCard extends StatelessWidget {
 
   bool get isLive => match.isLive;
 
+  Color _effectiveTeamColor(SoccerTeam team, bool isHome) {
+    final c = team.primaryColor;
+    if (c == null) {
+      return isHome ? AppTheme.darkAccent : const Color(0xFF3B82F6);
+    }
+    // Si es demasiado oscuro en modo oscuro, levantamos luminosidad
+    if (c.computeLuminance() < 0.05) {
+      return isHome ? const Color(0xFF22C55E) : const Color(0xFF3B82F6);
+    }
+    // Si es blanco puro en modo oscuro, dar un sutil tinte
+    if (c.computeLuminance() > 0.95) {
+      return isHome ? const Color(0xFFE2E8F0) : const Color(0xFFCBD5E1);
+    }
+    return c;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (soccerData == null) return const SizedBox.shrink();
 
     final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = screenWidth * 0.88;
+    final cardWidth = (screenWidth * 0.88).clamp(310.0, 420.0);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     final teamA = soccerData!.teams.firstWhere(
       (t) => t.id == match.homeTeamId,
       orElse: () => SoccerTeam(
-          id: match.homeTeamId,
-          name: match.homeTeam,
-          shortName: match.homeTeam),
+        id: match.homeTeamId,
+        name: match.homeTeam,
+        shortName: match.homeTeam,
+      ),
     );
     final teamB = soccerData!.teams.firstWhere(
       (t) => t.id == match.awayTeamId,
       orElse: () => SoccerTeam(
-          id: match.awayTeamId,
-          name: match.awayTeam,
-          shortName: match.awayTeam),
+        id: match.awayTeamId,
+        name: match.awayTeam,
+        shortName: match.awayTeam,
+      ),
     );
     final league = soccerData!.leagues.firstWhere(
       (t) => t.id == match.leagueId,
       orElse: () => SoccerLeague(
-          id: match.leagueId, name: 'Liga', country: '', shortName: 'L'),
+        id: match.leagueId,
+        name: 'Liga',
+        country: '',
+        shortName: 'L',
+      ),
     );
+
+    final homeColor = _effectiveTeamColor(teamA, true);
+    final awayColor = _effectiveTeamColor(teamB, false);
     final tournamentLogoUrl = league.logoUrl ?? '';
+
+    final hasMultipleChannels =
+        match.tvChannels.where((c) => c.id != null).length > 1;
 
     return Container(
       width: cardWidth,
-      height: 260,
+      height: 265,
       margin: const EdgeInsets.only(right: 14),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: AppRadius.xlAll,
-        border: Border.all(
-          color: isLive
-              ? theme.colorScheme.error.withValues(alpha: isDark ? 0.35 : 0.22)
-              : (isDark
-                  ? AppTheme.darkBorder.withValues(alpha: 0.5)
-                  : AppTheme.lightBorder),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isLive
-                ? theme.colorScheme.error
-                    .withValues(alpha: isDark ? 0.18 : 0.1)
-                : Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
-            blurRadius: isLive ? 20 : 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header with league info
-          _buildHeader(context, league, tournamentLogoUrl, theme, isDark),
-
-          // Divider
-          Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.transparent,
-                  isDark
-                      ? AppTheme.darkBorder.withValues(alpha: 0.95)
-                      : AppTheme.lightBorder.withValues(alpha: 0.5),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-
-          // Teams section
-          Expanded(
-            child: _buildTeamsSection(context, teamA, teamB, theme, isDark),
-          ),
-
-          // Divider
-          Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.transparent,
-                  isDark
-                      ? AppTheme.darkBorder.withValues(alpha: 0.95)
-                      : AppTheme.lightBorder.withValues(alpha: 0.5),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-
-          // Footer
-          _buildFooter(context, theme, isDark),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, SoccerLeague league,
-      String tournamentLogoUrl, ThemeData theme, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-      decoration: BoxDecoration(
-        borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            (isDark ? Colors.white : Colors.black).withValues(alpha: 0.03),
-            Colors.transparent,
-          ],
-        ),
-      ),
-      child: Row(
-        children: [
-          // Tournament logo
-          if (tournamentLogoUrl.isNotEmpty)
-            Container(
-              width: 40,
-              height: 40,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : Colors.black.withValues(alpha: 0.03),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : Colors.black.withValues(alpha: 0.04),
-                ),
-              ),
-              child: CachedNetworkImage(
-                cacheManager: ImageCacheHelper.logoCacheManager,
-                key: ValueKey<String>(tournamentLogoUrl),
-                imageUrl: tournamentLogoUrl,
-                fit: BoxFit.contain,
-                memCacheWidth: 200,
-                memCacheHeight: 200,
-                maxWidthDiskCache: 200,
-                maxHeightDiskCache: 200,
-                fadeInDuration: const Duration(milliseconds: 150),
-                fadeOutDuration: const Duration(milliseconds: 50),
-                placeholder: (context, url) => const SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Center(
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: PivoteLoader(
-                        strokeWidth: 2,
-                        color: Colors.white24,
-                        size: 16,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          onTap: () {
+            if (hasMultipleChannels) {
+              _showChannelOptions(context);
+            } else {
+              onWatchMatch();
+            }
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            children: [
+              // ─── 1. Fondo base ───
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF0F131C) : theme.cardColor,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isLive
+                          ? const Color(0xFFFF5468).withValues(alpha: isDark ? 0.45 : 0.3)
+                          : (isDark
+                              ? const Color(0xFF1E2533)
+                              : AppTheme.lightBorder),
+                      width: isLive ? 1.4 : 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isLive
+                            ? const Color(0xFFFF5468)
+                                .withValues(alpha: isDark ? 0.22 : 0.12)
+                            : Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                        blurRadius: isLive ? 22 : 14,
+                        offset: const Offset(0, 8),
                       ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ─── 2. Glow radial escudo local (izquierda) ───
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: RadialGradient(
+                      center: const Alignment(-1.15, -0.05),
+                      radius: 1.15,
+                      colors: [
+                        homeColor.withValues(alpha: isDark ? 0.30 : 0.18),
+                        homeColor.withValues(alpha: 0.0),
+                      ],
+                      stops: const [0.0, 0.75],
                     ),
                   ),
                 ),
-                errorWidget: (context, error, stackTrace) {
-                  return FaIcon(
-                    FontAwesomeIcons.trophy,
-                    size: 20,
-                    color: Colors.amber.withValues(alpha: 0.6),
-                  );
-                },
               ),
-            )
-          else
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Colors.amber.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+
+              // ─── 3. Glow radial escudo visitante (derecha) ───
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: RadialGradient(
+                      center: const Alignment(1.15, -0.05),
+                      radius: 1.15,
+                      colors: [
+                        awayColor.withValues(alpha: isDark ? 0.30 : 0.18),
+                        awayColor.withValues(alpha: 0.0),
+                      ],
+                      stops: const [0.0, 0.75],
+                    ),
+                  ),
+                ),
               ),
-              child: FaIcon(
-                FontAwesomeIcons.trophy,
+
+              // ─── 4. Cancha de fútbol vectorizada (pitch outline) ───
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: CustomPaint(
+                    painter: SoccerPitchPainter(
+                      lineColor: (isDark ? Colors.white : Colors.black)
+                          .withValues(alpha: isDark ? 0.085 : 0.05),
+                      strokeWidth: 1.3,
+                    ),
+                  ),
+                ),
+              ),
+
+              // ─── 5. Contenido interactivo del Hero ───
+              Positioned.fill(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                  child: Column(
+                    children: [
+                      // Header con liga y pill de estado
+                      _buildHeader(league, tournamentLogoUrl, theme, isDark),
+
+                      const Spacer(),
+
+                      // Match Center: Equipos y Marcador / Hora
+                      _buildTeamsMatchCenter(
+                        context,
+                        teamA,
+                        teamB,
+                        homeColor,
+                        awayColor,
+                        theme,
+                        isDark,
+                      ),
+
+                      const Spacer(),
+
+                      // Footer con canales de TV y botón de reproducción
+                      _buildFooter(
+                        context,
+                        hasMultipleChannels,
+                        theme,
+                        isDark,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Top Header: Liga, Etapa y Pill de Estado ───
+  Widget _buildHeader(
+    SoccerLeague league,
+    String tournamentLogoUrl,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return Row(
+      children: [
+        // Logo de la liga
+        if (tournamentLogoUrl.isNotEmpty)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: CachedNetworkImage(
+              cacheManager: ImageCacheHelper.logoCacheManager,
+              imageUrl: tournamentLogoUrl,
+              width: 20,
+              height: 20,
+              fit: BoxFit.contain,
+              errorWidget: (_, __, ___) => const Icon(
+                Icons.emoji_events_outlined,
                 size: 18,
-                color: Colors.amber.withValues(alpha: 0.6),
+                color: Colors.amber,
               ),
             ),
+          )
+        else
+          const Icon(
+            Icons.emoji_events_outlined,
+            size: 18,
+            color: Colors.amber,
+          ),
+        const SizedBox(width: 8),
 
-          const SizedBox(width: 12),
-
-          // League name & stage
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  league.name,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.onSurface,
-                    letterSpacing: -0.2,
-                    height: 1.2,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (match.stage.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    match.stage,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: theme.hintColor,
-                      height: 1.2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
+        // Nombre de la liga y fecha
+        Expanded(
+          child: Text(
+            '${league.name}${match.stage.isNotEmpty ? ' · ${match.stage}' : ''}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? const Color(0xFFAAB3C5) : theme.hintColor,
             ),
           ),
+        ),
+        const SizedBox(width: 8),
 
-          // Live indicator
-          if (isLive) _HeroLiveIndicator(theme: theme),
-        ],
+        // Pill de estado (En vivo, Final o Programado)
+        _buildStatusPill(theme, isDark),
+      ],
+    );
+  }
+
+  Widget _buildStatusPill(ThemeData theme, bool isDark) {
+    if (isLive) {
+      return _PulsingLivePill(
+        timeStatus: match.timeStatus.isNotEmpty ? match.timeStatus : 'EN VIVO',
+      );
+    }
+
+    if (match.isFinished) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF161B27) : Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(
+            color: isDark ? const Color(0xFF1E2533) : Colors.black.withValues(alpha: 0.06),
+          ),
+        ),
+        child: Text(
+          'Final',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+          ),
+        ),
+      );
+    }
+
+    // Programado
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF161B27) : Colors.black.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E2533) : Colors.black.withValues(alpha: 0.06),
+        ),
+      ),
+      child: Text(
+        '${match.dayLabel} · ${match.formattedTime}',
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+        ),
       ),
     );
   }
 
-  Widget _buildTeamsSection(BuildContext context, dynamic teamA, dynamic teamB,
-      ThemeData theme, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Team A
-          Expanded(
-            child: _buildTeam(
-                context, teamA.shortName, teamA.logoUrl ?? '', theme, isDark),
-          ),
+  // ─── Match Center: Equipo Local, Marcador y Equipo Visitante ───
+  Widget _buildTeamsMatchCenter(
+    BuildContext context,
+    SoccerTeam teamA,
+    SoccerTeam teamB,
+    Color homeColor,
+    Color awayColor,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    final homeScorers = match.getScorersSummary(match.homeTeamId);
+    final awayScorers = match.getScorersSummary(match.awayTeamId);
 
-          // Center: Score or Time
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: _buildCenterInfo(context, theme, isDark),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Columna Equipo Local
+        Expanded(
+          child: _buildTeamColumn(
+            teamA,
+            homeColor,
+            homeScorers,
+            theme,
+            isDark,
           ),
+        ),
 
-          // Team B
-          Expanded(
-            child: _buildTeam(
-                context, teamB.shortName, teamB.logoUrl ?? '', theme, isDark),
+        // Centro: Marcador / Hora y barra de progreso
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: _buildCenterDisplay(theme, isDark),
+        ),
+
+        // Columna Equipo Visitante
+        Expanded(
+          child: _buildTeamColumn(
+            teamB,
+            awayColor,
+            awayScorers,
+            theme,
+            isDark,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildTeam(BuildContext context, String teamName, String logoUrl,
-      ThemeData theme, bool isDark) {
+  Widget _buildTeamColumn(
+    SoccerTeam team,
+    Color teamColor,
+    String scorers,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    final logoUrl = team.logoUrl ?? '';
+
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Team logo — clean, no background
-        SizedBox(
-          width: 68,
-          height: 68,
+        // Escudo del equipo con aura y fallback refinado
+        Container(
+          width: 58,
+          height: 58,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isDark
+                ? const Color(0xFF13171F)
+                : Colors.white,
+            border: Border.all(
+              color: teamColor.withValues(alpha: isDark ? 0.35 : 0.25),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: teamColor.withValues(alpha: isDark ? 0.25 : 0.12),
+                blurRadius: 12,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(7),
           child: logoUrl.isNotEmpty
               ? CachedNetworkImage(
                   cacheManager: ImageCacheHelper.logoCacheManager,
-                  key: ValueKey<String>(logoUrl),
                   imageUrl: logoUrl,
                   fit: BoxFit.contain,
-                  memCacheWidth: 200,
-                  memCacheHeight: 200,
-                  maxWidthDiskCache: 200,
-                  maxHeightDiskCache: 200,
-                  fadeInDuration: const Duration(milliseconds: 150),
-                  fadeOutDuration: const Duration(milliseconds: 50),
-                  placeholder: (context, url) => const Center(
+                  memCacheWidth: 160,
+                  memCacheHeight: 160,
+                  placeholder: (_, __) => const Center(
                     child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: PivoteLoader(
-                        strokeWidth: 2,
-                        color: Colors.white24,
-                        size: 20,
-                      ),
+                      width: 16,
+                      height: 16,
+                      child: PivoteLoader(strokeWidth: 2, size: 16),
                     ),
                   ),
-                  errorWidget: (context, error, stackTrace) {
-                    return FaIcon(
-                      FontAwesomeIcons.shield,
-                      size: 28,
-                      color: theme.hintColor.withValues(alpha: 0.3),
-                    );
-                  },
+                  errorWidget: (_, __, ___) => Center(
+                    child: FaIcon(
+                      FontAwesomeIcons.shieldHalved,
+                      size: 24,
+                      color: teamColor,
+                    ),
+                  ),
                 )
-              : FaIcon(
-                  FontAwesomeIcons.shield,
-                  size: 32,
-                  color: theme.hintColor.withValues(alpha: 0.3),
+              : Center(
+                  child: FaIcon(
+                    FontAwesomeIcons.shieldHalved,
+                    size: 24,
+                    color: teamColor,
+                  ),
                 ),
         ),
         const SizedBox(height: 8),
 
-        // Team name
-        SizedBox(
-          height: 34,
-          child: Center(
-            child: Text(
-              teamName,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
-                height: 1.3,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+        // Nombre del equipo
+        Text(
+          team.shortName.isNotEmpty ? team.shortName : team.name,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: theme.colorScheme.onSurface,
+            letterSpacing: -0.2,
           ),
         ),
+
+        // Resumen de goleadores (ej: "Cavani 34'")
+        if (scorers.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            scorers,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: isDark ? const Color(0xFFB7BFD0) : theme.hintColor,
+            ),
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildCenterInfo(BuildContext context, ThemeData theme, bool isDark) {
-    String timeText = '';
-    try {
-      final parts = match.startTime.split(' ');
-      if (parts.length > 1) {
-        timeText = parts[1];
-      } else {
-        timeText = match.startTime;
-      }
-    } catch (e) {
-      timeText = match.startTime;
-    }
-
+  Widget _buildCenterDisplay(ThemeData theme, bool isDark) {
     final isFinished = match.isFinished;
-    final timeStatus = match.timeStatus;
 
-    // Show score if live or finished
+    // Partido en Vivo o Finalizado con marcador disponible
     if ((isLive || isFinished) && match.score.isNotEmpty) {
-      return _buildScoreDisplay(theme, isDark, isFinished);
-    }
+      final homeScore = match.score.isNotEmpty ? match.score[0].toString() : '0';
+      final awayScore = match.score.length > 1 ? match.score[1].toString() : '0';
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (timeStatus.toLowerCase().contains('prog') ||
-            timeStatus.toLowerCase().contains('aplaz') ||
-            timeStatus.toLowerCase().contains('susp'))
-          Column(
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Marcador gigante
+          Row(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  border: Border.all(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.18)),
+              Text(
+                homeScore,
+                style: GoogleFonts.bigShouldersDisplay(
+                  fontSize: 46,
+                  fontWeight: FontWeight.w900,
+                  height: 1.0,
+                  color: isLive ? AppTheme.darkAccent : theme.colorScheme.onSurface,
                 ),
-                child: Text(
-                  timeStatus.toUpperCase(),
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                    color: theme.colorScheme.primary,
-                    letterSpacing: 0.5,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Container(
+                  width: 14,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.white : Colors.black)
+                        .withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-              const SizedBox(height: 6),
               Text(
-                timeText,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 16,
+                awayScore,
+                style: GoogleFonts.bigShouldersDisplay(
+                  fontSize: 46,
                   fontWeight: FontWeight.w900,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.8),
+                  height: 1.0,
+                  color: isLive ? AppTheme.darkAccent : theme.colorScheme.onSurface,
                 ),
               ),
             ],
-          )
-        else ...[
-          Text(
-            'HOY',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: theme.hintColor,
-              letterSpacing: 1.0,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            timeText,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: theme.colorScheme.primary,
-              height: 1.0,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildScoreDisplay(ThemeData theme, bool isDark, bool isFinished) {
-    final homeScore = match.score.isNotEmpty ? match.score[0].toString() : '0';
-    final awayScore = match.score.length > 1 ? match.score[1].toString() : '0';
-
-    final scoreColor =
-        isLive ? theme.colorScheme.error : theme.colorScheme.onSurface;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Status label
-        if (isLive)
-          Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.error.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-            ),
-            child: Text(
-              match.timeStatus.isNotEmpty ? match.timeStatus : 'EN VIVO',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-                color: theme.colorScheme.error,
-                letterSpacing: 0.3,
-              ),
-            ),
-          )
-        else if (isFinished)
-          Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: (isDark ? Colors.white : Colors.black)
-                  .withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-            ),
-            child: Text(
-              'FINAL',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-                color: theme.hintColor.withValues(alpha: 0.5),
-                letterSpacing: 0.5,
-              ),
-            ),
           ),
 
-        // Score
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              homeScore,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: scoreColor,
+          // Barra de progreso del tiempo de juego si está en vivo
+          if (isLive) ...[
+            const SizedBox(height: 6),
+            Container(
+              width: 74,
+              height: 4,
+              decoration: BoxDecoration(
+                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                ':',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: scoreColor.withValues(alpha: 0.4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: match.elapsedPercent,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkAccent,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.darkAccent.withValues(alpha: 0.5),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-            Text(
-              awayScore,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: scoreColor,
-              ),
-            ),
           ],
+        ],
+      );
+    }
+
+    // Partido Programado
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          match.formattedTime,
+          style: GoogleFonts.bigShouldersDisplay(
+            fontSize: 40,
+            fontWeight: FontWeight.w900,
+            height: 1.0,
+            color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          match.dayLabel.toUpperCase(),
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+            letterSpacing: 0.8,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildFooter(BuildContext context, ThemeData theme, bool isDark) {
-    final hasMultipleChannels =
-        match.tvChannels.where((c) => c.id != null).length > 1;
+  // ─── Footer: Canales de TV y Botón de Acción ───
+  Widget _buildFooter(
+    BuildContext context,
+    bool hasMultipleChannels,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    final tvs = match.tvChannelsDisplay;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-      child: SizedBox(
-        height: 44,
-        child: isLive
-            ? _buildLiveButton(context, hasMultipleChannels, theme, isDark)
-            : match.isWatchable
-                ? _buildWatchButton(context, hasMultipleChannels, theme, isDark)
-                : _buildComingSoonButton(context, theme, isDark),
+    return Row(
+      children: [
+        // Canales de transmisión
+        Expanded(
+          child: Row(
+            children: [
+              Icon(
+                Icons.tv_rounded,
+                size: 14,
+                color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  tvs.isNotEmpty ? tvs : 'Transmisión en vivo',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? const Color(0xFFAAB3C5) : theme.hintColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // Botón de acción para ver
+        if (isLive)
+          _buildLiveButton(context, hasMultipleChannels, theme, isDark)
+        else if (match.isWatchable)
+          _buildWatchButton(context, hasMultipleChannels, theme, isDark)
+        else
+          _buildInfoButton(context, hasMultipleChannels, theme, isDark),
+      ],
+    );
+  }
+
+  Widget _buildLiveButton(
+    BuildContext context,
+    bool hasMultipleChannels,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ElevatedButton.icon(
+          onPressed: onWatchMatch,
+          icon: const Icon(Icons.play_arrow_rounded, size: 16),
+          label: Text(
+            'En vivo',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFFF5468),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 0,
+            shadowColor: const Color(0xFFFF5468).withValues(alpha: 0.4),
+          ),
+        ),
+        if (hasMultipleChannels) ...[
+          const SizedBox(width: 6),
+          _buildOptionsButton(context, theme, isDark),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildWatchButton(
+    BuildContext context,
+    bool hasMultipleChannels,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ElevatedButton.icon(
+          onPressed: onWatchMatch,
+          icon: const Icon(Icons.play_arrow_rounded, size: 16),
+          label: Text(
+            'Ver señal',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+            foregroundColor: isDark ? Colors.black : Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 0,
+          ),
+        ),
+        if (hasMultipleChannels) ...[
+          const SizedBox(width: 6),
+          _buildOptionsButton(context, theme, isDark),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildInfoButton(
+    BuildContext context,
+    bool hasMultipleChannels,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF161B27) : Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E2533) : Colors.black.withValues(alpha: 0.06),
+        ),
       ),
-    );
-  }
-
-  Widget _buildLiveButton(BuildContext context, bool hasMultipleChannels,
-      ThemeData theme, bool isDark) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: onWatchMatch,
-            icon: const FaIcon(FontAwesomeIcons.solidCirclePlay, size: 16),
-            label: Text(
-              'Ver en vivo',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.error,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: AppRadius.mAll,
-              ),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.schedule_rounded,
+            size: 13,
+            color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Próximo',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
             ),
           ),
-        ),
-        if (hasMultipleChannels) ...[
-          const SizedBox(width: 8),
-          _buildOptionsButton(context, theme, isDark),
         ],
-      ],
-    );
-  }
-
-  Widget _buildWatchButton(BuildContext context, bool hasMultipleChannels,
-      ThemeData theme, bool isDark) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: onWatchMatch,
-            icon: const FaIcon(FontAwesomeIcons.circlePlay, size: 16),
-            label: Text(
-              'Ver partido',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: isDark ? AppTheme.darkBg : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: AppRadius.mAll,
-              ),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-            ),
-          ),
-        ),
-        if (hasMultipleChannels) ...[
-          const SizedBox(width: 8),
-          _buildOptionsButton(context, theme, isDark),
-        ],
-      ],
+      ),
     );
   }
 
   Widget _buildOptionsButton(
-      BuildContext context, ThemeData theme, bool isDark) {
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+  ) {
     return Container(
-      width: 44,
-      height: 44,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkBg3 : AppTheme.lightBg2,
-        borderRadius: AppRadius.mAll,
+        color: isDark ? const Color(0xFF161B27) : AppTheme.lightBg2,
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isDark
-              ? AppTheme.darkBorder.withValues(alpha: 0.5)
-              : AppTheme.lightBorder,
+          color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
         ),
       ),
       child: IconButton(
         onPressed: () => _showChannelOptions(context),
-        icon: FaIcon(
-          FontAwesomeIcons.ellipsis,
-          color: theme.hintColor,
+        icon: Icon(
+          Icons.more_horiz_rounded,
+          color: isDark ? const Color(0xFFAAB3C5) : theme.hintColor,
           size: 18,
         ),
         padding: EdgeInsets.zero,
-      ),
-    );
-  }
-
-  Widget _buildComingSoonButton(
-      BuildContext context, ThemeData theme, bool isDark) {
-    return Container(
-      width: double.infinity,
-      height: 44,
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkBg3 : AppTheme.lightBg2,
-        borderRadius: AppRadius.mAll,
-        border: Border.all(
-          color: isDark
-              ? AppTheme.darkBorder.withValues(alpha: 0.3)
-              : AppTheme.lightBorder,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FaIcon(
-            FontAwesomeIcons.clock,
-            size: 14,
-            color: theme.hintColor.withValues(alpha: 0.5),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            'Próximamente',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: theme.hintColor.withValues(alpha: 0.5),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -702,7 +793,6 @@ class MatchCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Handle
             Center(
               child: Container(
                 width: 36,
@@ -717,7 +807,7 @@ class MatchCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
-                'Selecciona un canal',
+                'Selecciona una señal',
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -756,8 +846,8 @@ class MatchCard extends StatelessWidget {
                   vertical: 4,
                 ),
                 leading: Container(
-                  width: 50,
-                  height: 50,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: isDark ? AppTheme.darkBg3 : AppTheme.lightBg2,
                     borderRadius: BorderRadius.circular(12),
@@ -771,35 +861,19 @@ class MatchCard extends StatelessWidget {
                   child: channel.logoUrl.isNotEmpty
                       ? CachedNetworkImage(
                           cacheManager: ImageCacheHelper.logoCacheManager,
-                          key: ValueKey<String>(channel.logoUrl.first),
                           imageUrl: channel.logoUrl.first,
                           fit: BoxFit.contain,
                           memCacheWidth: 150,
                           memCacheHeight: 150,
-                          fadeInDuration: const Duration(milliseconds: 150),
-                          fadeOutDuration: const Duration(milliseconds: 50),
-                          placeholder: (context, url) => const Center(
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: PivoteLoader(
-                                strokeWidth: 2,
-                                color: Colors.white24,
-                                size: 16,
-                              ),
-                            ),
+                          errorWidget: (_, __, ___) => Icon(
+                            Icons.live_tv_rounded,
+                            color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                            size: 22,
                           ),
-                          errorWidget: (context, error, stackTrace) {
-                            return Icon(
-                              Icons.live_tv_rounded,
-                              color: theme.colorScheme.primary,
-                              size: 22,
-                            );
-                          },
                         )
                       : Icon(
                           Icons.live_tv_rounded,
-                          color: theme.colorScheme.primary,
+                          color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
                           size: 22,
                         ),
                 ),
@@ -815,12 +889,13 @@ class MatchCard extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                    color: (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
+                        .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.play_arrow_rounded,
-                    color: theme.colorScheme.primary,
+                    color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
                     size: 18,
                   ),
                 ),
@@ -832,7 +907,8 @@ class MatchCard extends StatelessWidget {
                   Navigator.push(
                     context,
                     AppAnimations.createFadeRoute(
-                        PlayerScreen(channel: channel)),
+                      PlayerScreen(channel: channel),
+                    ),
                   );
                 },
               );
@@ -844,17 +920,17 @@ class MatchCard extends StatelessWidget {
   }
 }
 
-/// Animated live indicator for hero cards
-class _HeroLiveIndicator extends StatefulWidget {
-  final ThemeData theme;
+/// Pulsing live indicator pill with animated glowing dot
+class _PulsingLivePill extends StatefulWidget {
+  final String timeStatus;
 
-  const _HeroLiveIndicator({required this.theme});
+  const _PulsingLivePill({required this.timeStatus});
 
   @override
-  State<_HeroLiveIndicator> createState() => _HeroLiveIndicatorState();
+  State<_PulsingLivePill> createState() => _PulsingLivePillState();
 }
 
-class _HeroLiveIndicatorState extends State<_HeroLiveIndicator>
+class _PulsingLivePillState extends State<_PulsingLivePill>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _pulseAnimation;
@@ -863,10 +939,10 @@ class _HeroLiveIndicatorState extends State<_HeroLiveIndicator>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1100),
       vsync: this,
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.4, end: 1.0).animate(
+    _pulseAnimation = Tween<double>(begin: 0.35, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
@@ -883,20 +959,13 @@ class _HeroLiveIndicatorState extends State<_HeroLiveIndicator>
       animation: _pulseAnimation,
       builder: (context, child) {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           decoration: BoxDecoration(
-            color: widget.theme.colorScheme.error.withValues(alpha: 0.12),
+            color: const Color(0xFFFF5468).withValues(alpha: 0.16),
             borderRadius: BorderRadius.circular(AppRadius.pill),
             border: Border.all(
-              color: widget.theme.colorScheme.error.withValues(alpha: 0.25),
+              color: const Color(0xFFFF5468).withValues(alpha: 0.35),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: widget.theme.colorScheme.error
-                    .withValues(alpha: _pulseAnimation.value * 0.15),
-                blurRadius: 8,
-              ),
-            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -905,26 +974,25 @@ class _HeroLiveIndicatorState extends State<_HeroLiveIndicator>
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: widget.theme.colorScheme.error
+                  color: const Color(0xFFFF5468)
                       .withValues(alpha: _pulseAnimation.value),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: widget.theme.colorScheme.error
-                          .withValues(alpha: _pulseAnimation.value * 0.5),
-                      blurRadius: 4,
+                      color: const Color(0xFFFF5468)
+                          .withValues(alpha: _pulseAnimation.value * 0.6),
+                      blurRadius: 5,
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 6),
               Text(
-                'EN VIVO',
+                widget.timeStatus,
                 style: GoogleFonts.spaceGrotesk(
-                  fontSize: 9,
+                  fontSize: 11,
                   fontWeight: FontWeight.w900,
-                  color: widget.theme.colorScheme.error,
-                  letterSpacing: 0.5,
+                  color: const Color(0xFFFF5468),
                 ),
               ),
             ],

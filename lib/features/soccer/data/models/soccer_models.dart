@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class SoccerLeague {
   final String id;
   final String name;
@@ -29,20 +31,57 @@ class SoccerTeam {
   final String name;
   final String shortName;
   final String? logoUrl;
+  final String? primaryColorHex;
+  final String? textColorHex;
 
   SoccerTeam({
     required this.id,
     required this.name,
     required this.shortName,
     this.logoUrl,
+    this.primaryColorHex,
+    this.textColorHex,
   });
 
+  Color? get primaryColor {
+    if (primaryColorHex == null || primaryColorHex!.isEmpty) return null;
+    return _parseHexColor(primaryColorHex!);
+  }
+
+  Color? get textColor {
+    if (textColorHex == null || textColorHex!.isEmpty) return null;
+    return _parseHexColor(textColorHex!);
+  }
+
+  Color primaryColorOr(Color fallback) {
+    return primaryColor ?? fallback;
+  }
+
+  static Color? _parseHexColor(String hex) {
+    try {
+      String cleanHex = hex.replaceAll('#', '').trim();
+      if (cleanHex.length == 3) {
+        cleanHex = cleanHex.split('').map((c) => '$c$c').join('');
+      }
+      if (cleanHex.length == 6) {
+        cleanHex = 'FF$cleanHex';
+      }
+      if (cleanHex.length == 8) {
+        return Color(int.parse('0x$cleanHex'));
+      }
+    } catch (_) {}
+    return null;
+  }
+
   factory SoccerTeam.fromJson(Map<String, dynamic> json) {
+    final colors = json['colors'] as Map<String, dynamic>?;
     return SoccerTeam(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       shortName: json['shortName'] ?? '',
       logoUrl: json['logoUrl'] as String?,
+      primaryColorHex: colors?['primary'] as String?,
+      textColorHex: colors?['text'] as String?,
     );
   }
 }
@@ -208,6 +247,72 @@ class SoccerMatch {
     }
 
     return false;
+  }
+
+  /// Minuto transcurrido estimado (0.0 a 1.0) para la barra de progreso
+  double get elapsedPercent {
+    if (isFinished) return 1.0;
+    final ts = timeStatus.toLowerCase();
+    if (ts.contains('entretiempo') || ts.contains('et') || ts.contains('descanso')) {
+      return 0.50;
+    }
+    final match = RegExp(r'\d+').firstMatch(ts.isNotEmpty ? ts : time);
+    if (match != null) {
+      final minute = int.tryParse(match.group(0) ?? '') ?? 0;
+      return (minute / 90.0).clamp(0.05, 1.0);
+    }
+    return isLive ? 0.45 : 0.0;
+  }
+
+  /// Hora en formato HH:mm
+  String get formattedTime {
+    try {
+      final parts = startTime.split(' ');
+      if (parts.length > 1) return parts[1];
+    } catch (_) {}
+    return startTime;
+  }
+
+  /// Etiqueta de día: 'Hoy' o 'dd/MM'
+  String get dayLabel {
+    try {
+      final parts = startTime.split(' ');
+      if (parts.isNotEmpty) {
+        final dParts = parts[0].split('-');
+        if (dParts.length >= 3) {
+          final now = DateTime.now();
+          final isToday = now.day == int.tryParse(dParts[0]) &&
+              now.month == int.tryParse(dParts[1]) &&
+              now.year == int.tryParse(dParts[2]);
+          if (isToday) return 'Hoy';
+          return '${dParts[0]}/${dParts[1]}';
+        }
+      }
+    } catch (_) {}
+    return 'Hoy';
+  }
+
+  /// Resumen formateado de goleadores para un equipo (ej: "Cavani 34' 68'")
+  String getScorersSummary(String teamId) {
+    final teamGoals = goals.where((g) => g.teamId == teamId).toList()
+      ..sort((a, b) => a.time.compareTo(b.time));
+    if (teamGoals.isEmpty) return '';
+
+    final Map<String, List<String>> byPlayer = {};
+    for (final g in teamGoals) {
+      final name = g.playerShortName.isNotEmpty ? g.playerShortName : 'Gol';
+      final disp = g.timeToDisplay.isNotEmpty ? g.timeToDisplay : "${g.time}'";
+      byPlayer.putIfAbsent(name, () => []).add(disp);
+    }
+
+    return byPlayer.entries.map((e) => '${e.key} ${e.value.join(' ')}').join(' · ');
+  }
+
+  /// Nombres de canales para mostrar en el footer del hero
+  String get tvChannelsDisplay {
+    final names = tvChannels.map((c) => c.name.trim()).where((n) => n.isNotEmpty).toList();
+    if (names.isEmpty) return '';
+    return names.take(2).join(' · ');
   }
 }
 
