@@ -1,0 +1,68 @@
+name: Pivote Android CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pivote-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Resolve, analyze and build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.6'
+          channel: stable
+          cache: true
+
+      - name: Flutter and Java versions
+        run: |
+          flutter --version
+          dart --version
+          java -version
+          flutter doctor -v
+
+      - name: Validate Android Gradle wrapper
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew --version
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart sources
+        run: flutter analyze --no-pub
+
+      - name: Build release APK
+        run: flutter build apk --release --no-pub --verbose
+
+      - name: Upload APK when generated
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pivote-android-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: ignore
+          retention-days: 7
