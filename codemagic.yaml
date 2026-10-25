@@ -1,27 +1,31 @@
 workflows:
   pivote-android:
     name: Pivote - Android APK
-
     max_build_duration: 60
 
     environment:
-      flutter: stable
+      flutter: 3.41.6
+      java: 17
 
     scripts:
-      - name: Clean project
+      - name: Verify build toolchain
         script: |
-          flutter clean
+          flutter --version
+          dart --version
+          java -version
+          flutter doctor -v
 
-      - name: Get dependencies
+      - name: Resolve dependencies
         script: |
           flutter pub get
 
-      - name: Build Release APK
+      - name: Build release APK
         script: |
-          flutter build apk --release
+          flutter build apk --release --verbose
 
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
+      - flutter_build_*.log
 
     publishing:
       email:
