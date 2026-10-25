@@ -43,12 +43,6 @@ jobs:
           java -version
           flutter doctor -v
 
-      - name: Validate Android Gradle wrapper
-        run: |
-          chmod +x android/gradlew
-          cd android
-          ./gradlew --version
-
       - name: Resolve dependencies
         run: flutter pub get
 
