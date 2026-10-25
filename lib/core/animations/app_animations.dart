@@ -269,7 +269,8 @@ class _StaggeredAnimationState extends State<_StaggeredAnimation>
   }
 
   void _startAnimation() async {
-    await Future.delayed(widget.delay * widget.index);
+    final effectiveIndex = widget.index.clamp(0, 6);
+    await Future.delayed(widget.delay * effectiveIndex);
     if (mounted) {
       _controller.forward();
     }

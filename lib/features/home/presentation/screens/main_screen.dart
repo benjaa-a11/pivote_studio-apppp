@@ -13,6 +13,7 @@ import 'package:pivote/features/soccer/presentation/providers/soccer_provider.da
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/shared/widgets/common/user_avatar.dart';
 import 'package:pivote/shared/widgets/common/floating_bottom_bar.dart';
+import 'package:pivote/shared/widgets/common/animated_indexed_stack.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -224,7 +225,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       extendBody: true,
       body: Stack(
         children: [
-          IndexedStack(
+          AnimatedIndexedStack(
             index: _selectedIndex,
             children: _screens,
           ),

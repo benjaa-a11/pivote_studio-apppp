@@ -80,8 +80,10 @@ class SearchRadioTile extends StatelessWidget {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: radio.logoUrl.isNotEmpty
-                        ? CachedNetworkImage(
+                    child: Hero(
+                      tag: 'radio_tile_logo_${radio.id}',
+                      child: radio.logoUrl.isNotEmpty
+                          ? CachedNetworkImage(
                             key: ValueKey<String>(radio.logoUrl),
                             cacheManager: ImageCacheHelper.logoCacheManager,
                             imageUrl: radio.logoUrl,
@@ -110,6 +112,7 @@ class SearchRadioTile extends StatelessWidget {
                             color: theme.colorScheme.primary
                                 .withValues(alpha: 0.6),
                           ),
+                    ),
                   ),
                 ),
                 if (isPlaying)

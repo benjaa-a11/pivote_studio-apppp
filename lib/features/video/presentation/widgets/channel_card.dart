@@ -91,7 +91,10 @@ class ChannelCard extends StatelessWidget {
                       ),
                     ),
                     child: Center(
-                      child: _buildChannelLogo(context, isDark),
+                      child: Hero(
+                        tag: 'channel_logo_${channel.id}',
+                        child: _buildChannelLogo(context, isDark),
+                      ),
                     ),
                   ),
                 ),

@@ -324,24 +324,27 @@ class _PlayerScreenState extends State<PlayerScreen> {
               borderRadius: BorderRadius.circular(16),
               child: Padding(
                 padding: const EdgeInsets.all(6),
-                child: logoUrl.isNotEmpty
-                    ? CachedNetworkImage(
-                        key: ValueKey<String>(logoUrl),
-                        cacheManager: ImageCacheHelper.logoCacheManager,
-                        imageUrl: logoUrl,
-                        fit: BoxFit.contain,
-                        memCacheWidth: 150,
-                        errorWidget: (context, error, stackTrace) => Icon(
+                child: Hero(
+                  tag: 'channel_logo_${_currentChannel.id}',
+                  child: logoUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                          key: ValueKey<String>(logoUrl),
+                          cacheManager: ImageCacheHelper.logoCacheManager,
+                          imageUrl: logoUrl,
+                          fit: BoxFit.contain,
+                          memCacheWidth: 150,
+                          errorWidget: (context, error, stackTrace) => Icon(
+                            Icons.tv_rounded,
+                            size: 32,
+                            color: primaryColor,
+                          ),
+                        )
+                      : Icon(
                           Icons.tv_rounded,
                           size: 32,
                           color: primaryColor,
                         ),
-                      )
-                    : Icon(
-                        Icons.tv_rounded,
-                        size: 32,
-                        color: primaryColor,
-                      ),
+                ),
               ),
             ),
           ),

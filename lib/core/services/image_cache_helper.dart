@@ -45,14 +45,14 @@ class ImageCacheHelper {
   /// Configura los límites del caché de imágenes en RAM de Flutter.
   /// Debe llamarse una sola vez al inicio de la app (en main()).
   ///
-  /// Por defecto Flutter solo guarda 100 MB → con muchos logos se expulsan
-  /// imágenes de la RAM → aparecen y desaparecen en la UI.
+  /// 1500 imágenes / 150 MB: equilibrio entre retención de logos y
+  /// presión de RAM en dispositivos de gama media (2-4 GB RAM).
   static void configurePaintingCache() {
-    // 2000 imágenes en RAM (default: 1000)
-    PaintingBinding.instance.imageCache.maximumSize = 2000;
-    // 300 MB en RAM (default: 100 MB)
-    PaintingBinding.instance.imageCache.maximumSizeBytes = 300 * 1024 * 1024;
-    debugPrint('✅ Flutter image cache configurado: 2000 imgs / 300 MB');
+    // 1500 imágenes en RAM (default: 1000)
+    PaintingBinding.instance.imageCache.maximumSize = 1500;
+    // 150 MB en RAM (default: 100 MB). 300 MB causaba OOM en gama media.
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 150 * 1024 * 1024;
+    debugPrint('✅ Flutter image cache configurado: 1500 imgs / 150 MB');
   }
 
   /// Pre-carga una lista de URLs en el caché en background usando [logoCacheManager].

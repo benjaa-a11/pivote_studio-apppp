@@ -150,21 +150,16 @@ class ChannelProvider extends ChangeNotifier {
         return Channel.fromJson(data);
       }).toList();
 
-      // Debug: Mostrar todos los IDs de canales cargados
-      debugPrint('📺 Canales cargados desde Firestore:');
-      for (var channel in _channels) {
-        debugPrint('  - ${channel.id}: ${channel.name}');
-      }
+      debugPrint('📺 Canales cargados: ${_channels.length}');
 
       _applyFilters();
       _isInitialized = true;
       await _loadViewCounts();
 
-      // Pre-cargar logos de canales en background para evitar el "primer arranque lento"
-      // Los logos se descargan al caché de disco sin bloquear la UI
+      // Pre-cargar logos de canales en background
       _warmUpChannelLogos();
     } catch (e) {
-      debugPrint('Error loading channels from Firestore: $e');
+      debugPrint('❌ ChannelProvider: Error cargando canales: $e');
       _isInitialized = true; // Still mark as initialized to not block app
     } finally {
       _isLoading = false;
@@ -257,31 +252,10 @@ class ChannelProvider extends ChangeNotifier {
   }
 
   Channel? getChannelById(String id) {
-    debugPrint('🔎 getChannelById llamado con ID: "$id"');
-    debugPrint('📊 Total de canales en memoria: ${_channels.length}');
-
     try {
-      final channel = _channels.firstWhere(
-        (channel) {
-          final match = channel.id == id;
-          if (match) {
-            debugPrint('✅ Match encontrado: ${channel.id} == $id');
-          }
-          return match;
-        },
-      );
-
-      debugPrint('✅ Canal encontrado exitosamente: ${channel.name}');
-      return channel;
+      return _channels.firstWhere((channel) => channel.id == id);
     } catch (e) {
-      debugPrint('❌ Canal NO encontrado con ID: "$id"');
-      debugPrint('📋 IDs disponibles:');
-      for (var channel in _channels.take(10)) {
-        debugPrint('  - "${channel.id}" (${channel.name})');
-      }
-      if (_channels.length > 10) {
-        debugPrint('  ... y ${_channels.length - 10} canales más');
-      }
+      debugPrint('⚠️ ChannelProvider: Canal no encontrado con ID: "$id"');
       return null;
     }
   }

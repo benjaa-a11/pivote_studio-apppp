@@ -323,6 +323,8 @@ class AppTheme {
         return darkBorder2;
       }),
     ),
+
+    pageTransitionsTheme: _pageTransitionsTheme,
   );
 
   // ==================== TEMA CLARO ====================
@@ -555,5 +557,18 @@ class AppTheme {
         ),
       ),
     ),
+
+    pageTransitionsTheme: _pageTransitionsTheme,
+  );
+
+  static const PageTransitionsTheme _pageTransitionsTheme =
+      PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+      TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+      TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+    },
   );
 }

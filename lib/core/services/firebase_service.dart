@@ -108,7 +108,7 @@ class FirebaseService {
 
   /// Users collection reference
   static CollectionReference get usersCollection {
-    return firestore.collection('usuarios-pivote');
+    return firestore.collection('usuarios');
   }
 
   /// Channels collection reference

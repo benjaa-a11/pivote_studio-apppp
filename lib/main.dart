@@ -214,7 +214,40 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
     }
 
     if (_isCheckingAuth) {
-      return const SizedBox.shrink();
+      // Mostrar logo + spinner mientras se verifica la sesión.
+      // Antes: SizedBox.shrink() → pantalla en negro durante ~1-2 s.
+      return Scaffold(
+        backgroundColor: AppTheme.darkBg,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: Image.asset(
+                  'assets/logo.png',
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.play_circle_fill,
+                    size: 60,
+                    color: AppTheme.darkAccent,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              const SizedBox(
+                width: 36,
+                height: 36,
+                child: PivoteLoader(
+                  color: AppTheme.darkAccent,
+                  strokeWidth: 3,
+                  size: 36,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     if (!_isLoggedIn) {

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:pivote/shared/screens/no_internet_screen.dart';
 
+/// Envuelve la aplicación y muestra [NoInternetScreen] cuando no hay
+/// conectividad. Compatible con connectivity_plus 5.0.2 (emite ConnectivityResult).
 class ConnectivityWrapper extends StatefulWidget {
   final Widget child;
 
@@ -13,43 +15,38 @@ class ConnectivityWrapper extends StatefulWidget {
 
 class _ConnectivityWrapperState extends State<ConnectivityWrapper> {
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return StreamBuilder<ConnectivityResult>(
       stream: Connectivity().onConnectivityChanged,
       builder: (context, snapshot) {
-        final result = snapshot.data;
-
-        // While we don't have the first result, we check it manually
+        // Mientras espera el primer evento del stream, comprobación inicial
         if (snapshot.connectionState == ConnectionState.waiting) {
           return FutureBuilder<ConnectivityResult>(
             future: Connectivity().checkConnectivity(),
             builder: (context, initialSnapshot) {
               if (!initialSnapshot.hasData) {
-                return const Scaffold(body: SizedBox.shrink());
+                // Optimista: muestra la app mientras se espera el resultado
+                return widget.child;
               }
               return _buildContent(context, initialSnapshot.data!);
             },
           );
         }
 
-        return _buildContent(context, result ?? ConnectivityResult.none);
+        return _buildContent(
+          context,
+          snapshot.data ?? ConnectivityResult.none,
+        );
       },
     );
   }
 
   Widget _buildContent(BuildContext context, ConnectivityResult result) {
-    final isOffline = result == ConnectivityResult.none;
-
-    if (isOffline) {
+    if (result == ConnectivityResult.none) {
       return NoInternetScreen(
         onRetry: () async {
+          // El stream notificará automáticamente cuando cambie el estado
           await Connectivity().checkConnectivity();
-          // The stream will notify us if it changes
         },
       );
     }

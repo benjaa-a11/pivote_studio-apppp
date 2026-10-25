@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shimmer/shimmer.dart';
 
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
@@ -11,7 +12,6 @@ import 'package:pivote/features/soccer/presentation/widgets/soccer_match_card.da
 import 'package:pivote/features/soccer/presentation/widgets/matches_hero.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 enum SoccerStatusFilter { all, live, scheduled, finished }
 
@@ -862,11 +862,275 @@ class _FutbolScreenState extends State<FutbolScreen> {
   }
 
   Widget _buildLoadingState(ThemeData theme, bool isDark) {
-    return Center(
-      child: PivoteLoader(
-        color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-        strokeWidth: 3,
-        size: 38,
+    final baseColor = isDark ? const Color(0xFF131824) : Colors.grey.shade300;
+    final highlightColor = isDark ? const Color(0xFF222B3D) : Colors.grey.shade100;
+    final cardColor = isDark ? const Color(0xFF0F131C) : theme.cardColor;
+
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Shimmer.fromColors(
+        baseColor: baseColor,
+        highlightColor: highlightColor,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header shimmer
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 130,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 180,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+
+            // Filter pills shimmer
+            Row(
+              children: List.generate(4, (i) {
+                return Expanded(
+                  child: Container(
+                    height: 34,
+                    margin: EdgeInsets.only(right: i < 3 ? 8 : 0),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 20),
+
+            // Hero Match Card shimmer
+            Container(
+              height: 146,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+                  width: 1,
+                ),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 70,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: baseColor,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: baseColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            width: 60,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: baseColor,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        width: 32,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: baseColor,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: baseColor,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: baseColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // League Title shimmer
+            Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  width: 140,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Match rows shimmer
+            Container(
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                children: List.generate(3, (i) {
+                  return Container(
+                    height: 64,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      border: i < 2
+                          ? Border(
+                              bottom: BorderSide(
+                                color: isDark
+                                    ? const Color(0xFF1E2533)
+                                    : AppTheme.lightBorder,
+                                width: 0.8,
+                              ),
+                            )
+                          : null,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: baseColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Container(
+                              width: 90,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: baseColor,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          width: 40,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: baseColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Container(
+                              width: 90,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: baseColor,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: baseColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
