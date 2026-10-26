@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
+import 'package:pivote/features/video/presentation/screens/external_channels_screen.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -93,6 +94,37 @@ class NotificationsScreen extends StatelessWidget {
                     height: 1.55,
                     fontWeight: FontWeight.w500,
                     color: theme.hintColor,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ExternalChannelsScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.live_tv_rounded, size: 20),
+                    label: Text(
+                      'VER LISTA DE CANALES',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
