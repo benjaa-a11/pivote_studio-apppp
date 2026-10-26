@@ -92,13 +92,16 @@ class UnifiedHomeHeader extends StatelessWidget {
                           right: -3,
                           top: -4,
                           child: Container(
-                            constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
+                            constraints: const BoxConstraints(
+                                minWidth: 17, minHeight: 17),
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.error,
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: isDark ? AppTheme.darkBg2 : theme.scaffoldBackgroundColor,
+                                color: isDark
+                                    ? AppTheme.darkBg2
+                                    : theme.scaffoldBackgroundColor,
                                 width: 2,
                               ),
                             ),
@@ -181,7 +184,9 @@ class UnifiedHomeHeader extends StatelessWidget {
         List<SoccerMatch> featuredMatches = [];
         if (!isLoading && soccerData != null) {
           featuredMatches = soccerData.matches.where((match) {
-            if (match.shouldRemoveFromHero || match.isAutoFinished) return false;
+            if (match.shouldRemoveFromHero || match.isAutoFinished) {
+              return false;
+            }
             final isFeatured = match.isLive ||
                 match.isScheduled ||
                 (match.isFinished && !match.shouldRemoveFromHero);

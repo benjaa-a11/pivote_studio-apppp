@@ -90,7 +90,8 @@ class Ascenso2026Service {
     final response = await http.get(_uri, headers: const {
       'Accept': 'text/html,application/xhtml+xml,application/json',
       'Accept-Language': 'es-AR,es;q=0.9',
-      'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/151.0 Mobile Safari/537.36',
+      'User-Agent':
+          'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/151.0 Mobile Safari/537.36',
       'Cache-Control': 'no-cache',
     }).timeout(const Duration(seconds: 12));
 
@@ -116,7 +117,9 @@ class Ascenso2026Service {
 
   static Ascenso2026Snapshot _parseHtml(Document document) {
     final title = _firstNonEmpty([
-          document.querySelector('meta[property="og:title"]')?.attributes['content'],
+          document
+              .querySelector('meta[property="og:title"]')
+              ?.attributes['content'],
           document.querySelector('h1')?.text,
           document.querySelector('title')?.text,
         ]) ??
@@ -128,7 +131,8 @@ class Ascenso2026Service {
     ]);
 
     final sections = <String>{};
-    for (final node in document.querySelectorAll('h1, h2, h3, h4, nav a, [role="tab"]')) {
+    for (final node
+        in document.querySelectorAll('h1, h2, h3, h4, nav a, [role="tab"]')) {
       final text = _clean(node.text);
       if (text.length >= 3 && text.length <= 80) sections.add(text);
     }
@@ -198,8 +202,11 @@ class Ascenso2026Service {
     _walkJson(decoded, matches, standings, rankings, sections);
 
     return _snapshot(
-      title: _findString(decoded, ['title', 'name', 'eventName', 'championshipName']) ?? 'Ascenso 2026',
-      updated: _findString(decoded, ['updatedAt', 'updated_at', 'lastUpdated', 'lastUpdate']),
+      title: _findString(
+              decoded, ['title', 'name', 'eventName', 'championshipName']) ??
+          'Ascenso 2026',
+      updated: _findString(
+          decoded, ['updatedAt', 'updated_at', 'lastUpdated', 'lastUpdate']),
       matches: matches,
       standings: standings,
       rankings: rankings,
@@ -217,7 +224,8 @@ class Ascenso2026Service {
   }) {
     final matchMap = <String, AscensoFixtureItem>{};
     for (final item in matches) {
-      matchMap['${item.title}|${item.subtitle}|${item.score}|${item.date}'] = item;
+      matchMap['${item.title}|${item.subtitle}|${item.score}|${item.date}'] =
+          item;
     }
 
     final standingMap = <String, AscensoStandingItem>{};
@@ -234,8 +242,10 @@ class Ascenso2026Service {
       title: title,
       updatedLabel: updated,
       matches: matchMap.values.take(100).toList(),
-      standings: standingMap.values.toList()..sort((a, b) => a.position.compareTo(b.position)),
-      rankings: rankingMap.values.take(60).toList()..sort((a, b) => a.position.compareTo(b.position)),
+      standings: standingMap.values.toList()
+        ..sort((a, b) => a.position.compareTo(b.position)),
+      rankings: rankingMap.values.take(60).toList()
+        ..sort((a, b) => a.position.compareTo(b.position)),
       sections: sections.take(20).toList(),
     );
   }
@@ -267,9 +277,14 @@ class Ascenso2026Service {
     final ranking = _rankingFromMap(map);
     if (ranking != null) rankings.add(ranking);
 
-    if (keyText.contains('category') || keyText.contains('stage') || keyText.contains('group') || keyText.contains('phase')) {
+    if (keyText.contains('category') ||
+        keyText.contains('stage') ||
+        keyText.contains('group') ||
+        keyText.contains('phase')) {
       final label = _findString(map, ['name', 'title', 'label', 'description']);
-      if (label != null && label.length >= 3 && label.length <= 80) sections.add(label);
+      if (label != null && label.length >= 3 && label.length <= 80) {
+        sections.add(label);
+      }
     }
 
     for (final value in map.values) {
@@ -278,18 +293,28 @@ class Ascenso2026Service {
   }
 
   static AscensoFixtureItem? _matchFromMap(Map<String, dynamic> map) {
-    final home = _findString(map, ['homeTeam', 'home', 'teamA', 'team1', 'localTeam', 'mandante']);
-    final away = _findString(map, ['awayTeam', 'away', 'teamB', 'team2', 'visitorTeam', 'visitante']);
+    final home = _findString(
+        map, ['homeTeam', 'home', 'teamA', 'team1', 'localTeam', 'mandante']);
+    final away = _findString(map,
+        ['awayTeam', 'away', 'teamB', 'team2', 'visitorTeam', 'visitante']);
     if (home == null || away == null || home == away) return null;
 
-    final score = _findString(map, ['score', 'result', 'placar', 'resultado']) ?? _pairScore(map);
-    final status = _findString(map, ['status', 'state', 'timeStatus', 'gameStatus']);
-    final date = _findString(map, ['date', 'startTime', 'datetime', 'matchDate', 'scheduledAt']);
-    final venue = _findString(map, ['venue', 'field', 'stadium', 'location', 'cancha']);
+    final score =
+        _findString(map, ['score', 'result', 'placar', 'resultado']) ??
+            _pairScore(map);
+    final status =
+        _findString(map, ['status', 'state', 'timeStatus', 'gameStatus']);
+    final date = _findString(
+        map, ['date', 'startTime', 'datetime', 'matchDate', 'scheduledAt']);
+    final venue =
+        _findString(map, ['venue', 'field', 'stadium', 'location', 'cancha']);
 
     return AscensoFixtureItem(
       title: '$home vs $away',
-      subtitle: _clean([date, venue].whereType<String>().where((e) => e.isNotEmpty).join(' · ')),
+      subtitle: _clean([date, venue]
+          .whereType<String>()
+          .where((e) => e.isNotEmpty)
+          .join(' · ')),
       status: status,
       score: score,
       date: date,
@@ -298,12 +323,17 @@ class Ascenso2026Service {
   }
 
   static AscensoStandingItem? _standingFromMap(Map<String, dynamic> map) {
-    final team = _findString(map, ['team', 'teamName', 'name', 'club', 'equipo']);
+    final team =
+        _findString(map, ['team', 'teamName', 'name', 'club', 'equipo']);
     if (team == null || team.length < 2) return null;
 
     final hasTableSignal = map.keys.any((key) {
       final k = key.toString().toLowerCase();
-      return k.contains('points') || k.contains('pontos') || k.contains('pts') || k.contains('wins') || k.contains('played');
+      return k.contains('points') ||
+          k.contains('pontos') ||
+          k.contains('pts') ||
+          k.contains('wins') ||
+          k.contains('played');
     });
     if (!hasTableSignal) return null;
 
@@ -315,19 +345,26 @@ class Ascenso2026Service {
       draws: _findInt(map, ['draws', 'ties', 'empates', 'e']) ?? 0,
       losses: _findInt(map, ['losses', 'defeats', 'derrotas', 'd']) ?? 0,
       goalsFor: _findInt(map, ['goalsFor', 'gf', 'goals_scored', 'favor']) ?? 0,
-      goalsAgainst: _findInt(map, ['goalsAgainst', 'ga', 'goals_conceded', 'contra']) ?? 0,
+      goalsAgainst:
+          _findInt(map, ['goalsAgainst', 'ga', 'goals_conceded', 'contra']) ??
+              0,
       points: _findInt(map, ['points', 'pontos', 'pts']) ?? 0,
     );
   }
 
   static AscensoRankingItem? _rankingFromMap(Map<String, dynamic> map) {
-    final name = _findString(map, ['player', 'playerName', 'athlete', 'athleteName', 'name']);
+    final name = _findString(
+        map, ['player', 'playerName', 'athlete', 'athleteName', 'name']);
     final team = _findString(map, ['team', 'teamName', 'club', 'equipo']) ?? '';
-    final value = _findString(map, ['goals', 'score', 'value', 'total', 'points', 'pontos']);
+    final value = _findString(
+        map, ['goals', 'score', 'value', 'total', 'points', 'pontos']);
     if (name == null || value == null || team.isEmpty) return null;
     final looksLikeRanking = map.keys.any((key) {
       final k = key.toString().toLowerCase();
-      return k.contains('goal') || k.contains('scorer') || k.contains('ranking') || k.contains('points');
+      return k.contains('goal') ||
+          k.contains('scorer') ||
+          k.contains('ranking') ||
+          k.contains('points');
     });
     if (!looksLikeRanking) return null;
 
@@ -349,7 +386,9 @@ class Ascenso2026Service {
     final score = _scoreFrom(combined);
     final status = _detectStatus(combined);
 
-    if (score != null || RegExp(r'\b\d{1,2}:\d{2}\b').hasMatch(combined) || status != null) {
+    if (score != null ||
+        RegExp(r'\b\d{1,2}:\d{2}\b').hasMatch(combined) ||
+        status != null) {
       matches.add(AscensoFixtureItem(
         title: cells.take(2).join(' vs '),
         subtitle: cells.length > 2 ? cells.skip(2).take(3).join(' · ') : '',
@@ -378,8 +417,11 @@ class Ascenso2026Service {
   static List<String> _extractJsonCandidates(String source) {
     final candidates = <String>[];
     final patterns = <RegExp>[
-      RegExp(r'''<script[^>]+type=["']application/json["'][^>]*>(.*?)</script>''', dotAll: true, caseSensitive: false),
-      RegExp(r'''__NEXT_DATA__[^>]*>(.*?)</script>''', dotAll: true, caseSensitive: false),
+      RegExp(
+          r'''<script[^>]+type=["']application/json["'][^>]*>(.*?)</script>''',
+          dotAll: true, caseSensitive: false),
+      RegExp(r'''__NEXT_DATA__[^>]*>(.*?)</script>''',
+          dotAll: true, caseSensitive: false),
     ];
 
     for (final pattern in patterns) {
@@ -399,15 +441,19 @@ class Ascenso2026Service {
   }
 
   static String? _pairScore(Map<String, dynamic> map) {
-    final home = _findInt(map, ['homeScore', 'homeGoals', 'scoreHome', 'localScore']);
-    final away = _findInt(map, ['awayScore', 'awayGoals', 'scoreAway', 'visitorScore']);
+    final home =
+        _findInt(map, ['homeScore', 'homeGoals', 'scoreHome', 'localScore']);
+    final away =
+        _findInt(map, ['awayScore', 'awayGoals', 'scoreAway', 'visitorScore']);
     if (home == null || away == null) return null;
     return '$home - $away';
   }
 
-  static String? _scoreFrom(String value) => RegExp(r'\b\d{1,2}\s*[-:]\s*\d{1,2}\b').firstMatch(value)?.group(0);
+  static String? _scoreFrom(String value) =>
+      RegExp(r'\b\d{1,2}\s*[-:]\s*\d{1,2}\b').firstMatch(value)?.group(0);
 
-  static String _clean(String value) => value.replaceAll(RegExp(r'\s+'), ' ').trim();
+  static String _clean(String value) =>
+      value.replaceAll(RegExp(r'\s+'), ' ').trim();
 
   static String? _firstNonEmpty(Iterable<String?> values) {
     for (final value in values) {

@@ -266,8 +266,7 @@ class AuthService {
       _requireFirebase();
       debugPrint('🔵 AuthService: Fetching user data from Firestore: $uid');
 
-      final doc =
-          await _firestore.collection(_usersCollection).doc(uid).get();
+      final doc = await _firestore.collection(_usersCollection).doc(uid).get();
 
       if (doc.exists && doc.data() != null) {
         debugPrint('✅ AuthService: User data retrieved from Firestore');

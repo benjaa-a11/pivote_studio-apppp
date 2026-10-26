@@ -38,11 +38,13 @@ class UserProvider with ChangeNotifier {
     _syncTimer?.cancel();
     _syncTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
       if (_user != null) {
-        debugPrint('🔄 UserProvider: Running periodic 30-second Firestore check...');
+        debugPrint(
+            '🔄 UserProvider: Running periodic 30-second Firestore check...');
         try {
           await refreshUser();
         } catch (e) {
-          debugPrint('❌ UserProvider: Error during periodic background check: $e');
+          debugPrint(
+              '❌ UserProvider: Error during periodic background check: $e');
         }
       } else {
         timer.cancel();
@@ -67,7 +69,8 @@ class UserProvider with ChangeNotifier {
       _user = await AuthService.getUser();
 
       if (_user != null) {
-        debugPrint('✅ UserProvider: User data loaded: ${_user!.email} (Suspended: ${_user!.isSuspended})');
+        debugPrint(
+            '✅ UserProvider: User data loaded: ${_user!.email} (Suspended: ${_user!.isSuspended})');
       } else {
         debugPrint('⚠️ UserProvider: No user data found');
       }
@@ -181,13 +184,13 @@ class UserProvider with ChangeNotifier {
       startSyncTimer();
 
       // Async FCM Token sync
-      NotificationService.getToken().then((token) {
+      unawaited(NotificationService.getToken().then((token) {
         if (token != null) {
-          AuthService.updateFcmToken(token);
+          unawaited(AuthService.updateFcmToken(token));
         }
       }).catchError((err) {
         debugPrint('⚠️ UserProvider: Error fetching FCM token on login: $err');
-      });
+      }));
 
       debugPrint('✅ UserProvider: Login complete');
     } catch (e) {
@@ -218,13 +221,14 @@ class UserProvider with ChangeNotifier {
       startSyncTimer();
 
       // Async FCM Token sync
-      NotificationService.getToken().then((token) {
+      unawaited(NotificationService.getToken().then((token) {
         if (token != null) {
-          AuthService.updateFcmToken(token);
+          unawaited(AuthService.updateFcmToken(token));
         }
       }).catchError((err) {
-        debugPrint('⚠️ UserProvider: Error fetching FCM token on registration: $err');
-      });
+        debugPrint(
+            '⚠️ UserProvider: Error fetching FCM token on registration: $err');
+      }));
 
       debugPrint('✅ UserProvider: Registration complete');
     } catch (e) {

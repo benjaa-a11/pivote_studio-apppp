@@ -69,7 +69,9 @@ class SoccerPitchPainter extends CustomPainter {
 
     // Right Goal Area (Area chica)
     final rightSmallBoxLeft = w - 4 - smallBoxW;
-    canvas.drawRect(Rect.fromLTWH(rightSmallBoxLeft, smallBoxTop, smallBoxW, smallBoxH), paint);
+    canvas.drawRect(
+        Rect.fromLTWH(rightSmallBoxLeft, smallBoxTop, smallBoxW, smallBoxH),
+        paint);
 
     // Right penalty spot
     final rightSpotX = w - 4 - boxW * 0.68;

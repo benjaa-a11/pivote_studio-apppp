@@ -73,7 +73,8 @@ class Channel {
       logoUrls = List<String>.from(json['logoUrl']);
     } else if (json['logoUrl'] is String) {
       logoUrls = [json['logoUrl']];
-    } else if (json['icono'] is String && (json['icono'] as String).isNotEmpty) {
+    } else if (json['icono'] is String &&
+        (json['icono'] as String).isNotEmpty) {
       logoUrls = [json['icono']];
     } else if (json['logo'] is String && (json['logo'] as String).isNotEmpty) {
       logoUrls = [json['logo']];
@@ -121,7 +122,9 @@ class Channel {
     // Support external CLEARKEY format (e.g. ESPN / Flow format where URL and DRM are at root)
     final rootStreamUrl = json['original_url'] ?? json['url'];
     final drmLicenseUri = json['drm_license_uri']?.toString();
-    if (streams.isEmpty && rootStreamUrl != null && rootStreamUrl.toString().isNotEmpty) {
+    if (streams.isEmpty &&
+        rootStreamUrl != null &&
+        rootStreamUrl.toString().isNotEmpty) {
       Map<String, String>? clearkeys;
       if (drmLicenseUri != null && drmLicenseUri.isNotEmpty) {
         clearkeys = StreamSource.parseDrmLicenseUri(drmLicenseUri);
@@ -277,8 +280,10 @@ class StreamSource {
   final String? k1; // Legacy: Key ID for single-key DRM
   final String? k2; // Legacy: Key for single-key DRM
   final String? label; // Optional label like "Servidor 1", "HD", etc.
-  final Map<String, String>? clearkeys; // Multi-key ClearKey DRM: {keyId: key, ...}
-  final Map<String, String>? headers; // Custom HTTP headers (Origin, Referer, User-Agent, etc.)
+  final Map<String, String>?
+      clearkeys; // Multi-key ClearKey DRM: {keyId: key, ...}
+  final Map<String, String>?
+      headers; // Custom HTTP headers (Origin, Referer, User-Agent, etc.)
   final String? drmLicenseUri; // Raw DRM license URI (kid:...,k:... or JSON)
 
   StreamSource({
@@ -347,9 +352,13 @@ class StreamSource {
 
   /// Returns the effective raw drm_license_uri string
   String? get effectiveDrmLicenseUri {
-    if (drmLicenseUri != null && drmLicenseUri!.isNotEmpty) return drmLicenseUri;
+    if (drmLicenseUri != null && drmLicenseUri!.isNotEmpty) {
+      return drmLicenseUri;
+    }
     if (clearkeys != null && clearkeys!.isNotEmpty) {
-      return clearkeys!.entries.map((e) => 'kid:${e.key},k:${e.value}').join(',');
+      return clearkeys!.entries
+          .map((e) => 'kid:${e.key},k:${e.value}')
+          .join(',');
     }
     if (k1 != null && k2 != null && k1!.isNotEmpty && k2!.isNotEmpty) {
       return 'kid:$k1,k:$k2';
@@ -445,8 +454,7 @@ class StreamSource {
       (k1 != null && k2 != null && k1!.isNotEmpty && k2!.isNotEmpty);
 
   /// Returns true if this stream uses multi-key ClearKey DRM
-  bool get hasMultiClearKeys =>
-      clearkeys != null && clearkeys!.isNotEmpty;
+  bool get hasMultiClearKeys => clearkeys != null && clearkeys!.isNotEmpty;
 
   /// Returns the effective ClearKey map (multi-key or legacy single-key as map)
   Map<String, String>? get effectiveClearkeys {

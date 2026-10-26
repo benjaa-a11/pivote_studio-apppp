@@ -93,7 +93,8 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
+                          color:
+                              isDark ? AppTheme.darkText3 : AppTheme.lightText3,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

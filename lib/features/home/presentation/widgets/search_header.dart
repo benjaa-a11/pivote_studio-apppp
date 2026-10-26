@@ -124,14 +124,14 @@ class _SearchHeaderState extends State<SearchHeader> {
                       : theme.colorScheme.primary.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: theme.colorScheme.primary.withValues(
-                        alpha: isDark ? 0.22 : 0.18),
+                    color: theme.colorScheme.primary
+                        .withValues(alpha: isDark ? 0.22 : 0.18),
                     width: 1.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: theme.colorScheme.primary.withValues(
-                          alpha: isDark ? 0.08 : 0.04),
+                      color: theme.colorScheme.primary
+                          .withValues(alpha: isDark ? 0.08 : 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),

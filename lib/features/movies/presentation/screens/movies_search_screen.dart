@@ -7,7 +7,6 @@ import 'package:pivote/features/movies/presentation/widgets/movie_card.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 
-
 class MoviesSearchScreen extends StatefulWidget {
   const MoviesSearchScreen({super.key});
 
@@ -164,7 +163,8 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
   }
 
   // ── Search Header ──────────────────────────────────────────────────────────
-  Widget _buildSearchHeader(BuildContext context, ThemeData theme, bool isDark) {
+  Widget _buildSearchHeader(
+      BuildContext context, ThemeData theme, bool isDark) {
     final topPad = MediaQuery.of(context).padding.top;
 
     return Container(
@@ -425,7 +425,8 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                           deleteIcon: Icon(
                             Icons.close_rounded,
                             size: 14,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.6),
                           ),
                         ),
                       );
@@ -560,7 +561,8 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -580,8 +582,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
     );
   }
 
-  Widget _buildResults(
-      MoviesProvider provider, ThemeData theme, bool isDark) {
+  Widget _buildResults(MoviesProvider provider, ThemeData theme, bool isDark) {
     final results = provider.movies;
 
     if (results.isEmpty) {
@@ -590,7 +591,8 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
 
     final query = _searchController.text.toLowerCase();
     final suggestions = provider.allMovies
-        .where((m) => m.title.toLowerCase().contains(query) &&
+        .where((m) =>
+            m.title.toLowerCase().contains(query) &&
             m.title.toLowerCase() != query)
         .take(3)
         .map((m) => m.title)
@@ -778,7 +780,8 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 13,
                       height: 1.5,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                      color:
+                          theme.colorScheme.onSurface.withValues(alpha: 0.55),
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,

@@ -13,7 +13,7 @@ class MovieEngineConfig {
   // Optimizations for static VOD contents (MP4 / HLS)
   static const int demuxerMaxBytes = 128 * 1024 * 1024; // 128 MB buffer
   static const double cacheSecs = 30.0; // 30s cache
-  
+
   static const int maxRetryAttempts = 3;
   static const int backoffBaseMs = 1000;
   static const int backoffMaxMs = 4000;
@@ -21,7 +21,7 @@ class MovieEngineConfig {
   static const Map<String, String> mpvVodProps = {
     'cache': 'yes',
     'cache-pause': 'yes',
-    'cache-pause-wait': '3', 
+    'cache-pause-wait': '3',
     'cache-secs': '$cacheSecs',
     'demuxer-max-bytes': '$demuxerMaxBytes',
     'demuxer-max-back-bytes': '33554432', // 32 MB back buffer
@@ -225,12 +225,15 @@ class MovieVideoEngine extends ChangeNotifier {
 
   void _onPlaying(bool playing) {
     if (_disposed) return;
-    
+
     MoviePlayerStatus status = _state.status;
     if (playing) {
-      status = _state.isBuffering ? MoviePlayerStatus.buffering : MoviePlayerStatus.playing;
+      status = _state.isBuffering
+          ? MoviePlayerStatus.buffering
+          : MoviePlayerStatus.playing;
     } else {
-      if (status != MoviePlayerStatus.completed && status != MoviePlayerStatus.error) {
+      if (status != MoviePlayerStatus.completed &&
+          status != MoviePlayerStatus.error) {
         status = MoviePlayerStatus.paused;
       }
     }
@@ -329,7 +332,7 @@ class MovieVideoEngine extends ChangeNotifier {
 
     final delay = (MovieEngineConfig.backoffBaseMs * (1 << (_retryCount - 1)))
         .clamp(MovieEngineConfig.backoffBaseMs, MovieEngineConfig.backoffMaxMs);
-    
+
     debugPrint('🔄 VOD Engine error retry #$_retryCount in ${delay}ms');
     await Future.delayed(Duration(milliseconds: delay));
 
@@ -345,7 +348,8 @@ class MovieVideoEngine extends ChangeNotifier {
   EmbedResolution? _resolution;
   int _candidateIndex = 0;
 
-  Future<void> load(String url, {Duration startPosition = Duration.zero}) async {
+  Future<void> load(String url,
+      {Duration startPosition = Duration.zero}) async {
     if (_disposed) return;
 
     _currentUrl = url;
@@ -405,7 +409,8 @@ class MovieVideoEngine extends ChangeNotifier {
     return true;
   }
 
-  Future<void> _loadInternal(String url, {Duration startPosition = Duration.zero}) async {
+  Future<void> _loadInternal(String url,
+      {Duration startPosition = Duration.zero}) async {
     if (_disposed) return;
 
     try {
@@ -422,11 +427,11 @@ class MovieVideoEngine extends ChangeNotifier {
     try {
       final media = Media(streamUrl, httpHeaders: headers);
       await _player.open(Playlist([media]), play: true);
-      
+
       if (startPosition > Duration.zero) {
         await _player.seek(startPosition);
       }
-      
+
       debugPrint('🎬 MovieVideoEngine: opened stream -> $streamUrl');
     } catch (e) {
       debugPrint('❌ MovieVideoEngine load error: $e');

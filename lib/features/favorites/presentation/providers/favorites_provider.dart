@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -81,7 +82,7 @@ class FavoritesProvider extends ChangeNotifier {
       notifyListeners();
 
       // Sync with Firestore in background
-      _syncFromFirestore();
+      unawaited(_syncFromFirestore());
     } catch (e) {
       debugPrint('Error loading favorites: $e');
     }
@@ -108,10 +109,7 @@ class FavoritesProvider extends ChangeNotifier {
       _isSyncing = true;
       notifyListeners();
 
-      await FirebaseFirestore.instance
-          .collection('usuarios')
-          .doc(uid)
-          .set({
+      await FirebaseFirestore.instance.collection('usuarios').doc(uid).set({
         'favorites': _favoriteIds.toList(),
       }, SetOptions(merge: true));
 

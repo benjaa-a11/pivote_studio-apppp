@@ -344,7 +344,8 @@ class IPTVEngine extends ChangeNotifier {
 
   /// Load a new stream URL. Optionally pass [k1]/[k2] for ClearKey DRM.
   /// Pass [referer] when stream was resolved from a PHP page for CDN auth.
-  Future<void> load(String url, {String? k1, String? k2, String? referer}) async {
+  Future<void> load(String url,
+      {String? k1, String? k2, String? referer}) async {
     if (_disposed) return;
 
     _currentUrl = url;

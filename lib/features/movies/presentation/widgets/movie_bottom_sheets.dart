@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 
-
 // Helper function to build custom bottom sheet base
 Widget _buildSheetWrapper({
   required BuildContext context,
@@ -117,7 +116,7 @@ class SubtitleSelectorSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subTracks = tracks.subtitle;
-    
+
     // We add an option for "No Subtitles"
 
     return _buildSheetWrapper(
@@ -133,7 +132,7 @@ class SubtitleSelectorSheet extends StatelessWidget {
           itemBuilder: (context, index) {
             final isNone = index == 0;
             final track = isNone ? SubtitleTrack.no() : subTracks[index - 1];
-            
+
             // Check if selected
             bool isSelected;
             if (isNone) {
@@ -142,7 +141,9 @@ class SubtitleSelectorSheet extends StatelessWidget {
               isSelected = selectedTrack.id == track.id;
             }
 
-            String title = isNone ? 'Desactivados' : (track.title ?? track.language ?? 'Subtítulo $index');
+            String title = isNone
+                ? 'Desactivados'
+                : (track.title ?? track.language ?? 'Subtítulo $index');
             if (track.language != null && track.title != null) {
               title = '${track.title} [${track.language!.toUpperCase()}]';
             }
@@ -153,20 +154,26 @@ class SubtitleSelectorSheet extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(
-                  color: isSelected ? AppTheme.darkAccent.withValues(alpha: 0.5) : AppTheme.darkBorder,
+                    color: isSelected
+                        ? AppTheme.darkAccent.withValues(alpha: 0.5)
+                        : AppTheme.darkBorder,
                     width: 1.5,
                   ),
                 ),
-                tileColor: isSelected ? AppTheme.darkAccent.withValues(alpha: 0.1) : AppTheme.darkBg3,
+                tileColor: isSelected
+                    ? AppTheme.darkAccent.withValues(alpha: 0.1)
+                    : AppTheme.darkBg3,
                 title: Text(
                   title,
                   style: GoogleFonts.spaceGrotesk(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                     color: isSelected ? AppTheme.darkAccent : Colors.white,
                   ),
                 ),
                 trailing: isSelected
-                    ? const Icon(Icons.check_circle_rounded, color: AppTheme.darkAccent)
+                    ? const Icon(Icons.check_circle_rounded,
+                        color: AppTheme.darkAccent)
                     : null,
                 onTap: () {
                   onTrackSelected(track);
@@ -211,7 +218,8 @@ class AudioTrackSelectorSheet extends StatelessWidget {
             final track = audioTracks[index];
             final isSelected = selectedTrack.id == track.id;
 
-            String title = track.title ?? track.language ?? 'Pista de Audio ${index + 1}';
+            String title =
+                track.title ?? track.language ?? 'Pista de Audio ${index + 1}';
             if (track.language != null && track.title != null) {
               title = '${track.title} [${track.language!.toUpperCase()}]';
             }
@@ -222,20 +230,26 @@ class AudioTrackSelectorSheet extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(
-                    color: isSelected ? AppTheme.darkAccent.withValues(alpha: 0.5) : AppTheme.darkBorder,
+                    color: isSelected
+                        ? AppTheme.darkAccent.withValues(alpha: 0.5)
+                        : AppTheme.darkBorder,
                     width: 1.5,
                   ),
                 ),
-                tileColor: isSelected ? AppTheme.darkAccent.withValues(alpha: 0.1) : AppTheme.darkBg3,
+                tileColor: isSelected
+                    ? AppTheme.darkAccent.withValues(alpha: 0.1)
+                    : AppTheme.darkBg3,
                 title: Text(
                   title,
                   style: GoogleFonts.spaceGrotesk(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                     color: isSelected ? AppTheme.darkAccent : Colors.white,
                   ),
                 ),
                 trailing: isSelected
-                    ? const Icon(Icons.check_circle_rounded, color: AppTheme.darkAccent)
+                    ? const Icon(Icons.check_circle_rounded,
+                        color: AppTheme.darkAccent)
                     : null,
                 onTap: () {
                   onTrackSelected(track);

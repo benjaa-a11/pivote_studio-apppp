@@ -68,7 +68,8 @@ class AppCachedImage extends StatelessWidget {
       memCacheHeight: memCacheHeight,
       maxWidthDiskCache: maxWidthDiskCache ?? memCacheWidth,
       maxHeightDiskCache: maxHeightDiskCache ?? memCacheHeight,
-      placeholder: (context, url) => placeholder ?? _buildShimmer(context, isDark),
+      placeholder: (context, url) =>
+          placeholder ?? _buildShimmer(context, isDark),
       errorWidget: (context, url, error) => _buildErrorWidget(context, isDark),
     );
 
@@ -82,7 +83,8 @@ class AppCachedImage extends StatelessWidget {
   Widget _buildShimmer(BuildContext context, bool isDark) {
     return Shimmer.fromColors(
       baseColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE8E8E8),
-      highlightColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
+      highlightColor:
+          isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
       period: const Duration(milliseconds: 1200),
       child: Container(
         width: width,
@@ -162,11 +164,12 @@ class TeamShieldImage extends StatelessWidget {
       memCacheWidth: 150,
       memCacheHeight: 150,
       useLogoManager: true,
-      errorWidget: fallbackIcon ?? Icon(
-        Icons.shield_outlined,
-        size: size * 0.5,
-        color: isDark ? Colors.white30 : Colors.black26,
-      ),
+      errorWidget: fallbackIcon ??
+          Icon(
+            Icons.shield_outlined,
+            size: size * 0.5,
+            color: isDark ? Colors.white30 : Colors.black26,
+          ),
     );
   }
 }

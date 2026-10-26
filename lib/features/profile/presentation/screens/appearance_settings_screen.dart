@@ -16,7 +16,8 @@ class AppearanceSettingsScreen extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
     final wakelock = context.watch<WakelockService>();
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -25,6 +26,7 @@ class AppearanceSettingsScreen extends StatelessWidget {
         subtitle: 'Personalizá cómo se ve y funciona Pivote',
       ),
       body: ListView(
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
         children: [
           // Banner
@@ -150,9 +152,8 @@ class AppearanceSettingsScreen extends StatelessWidget {
             subtitle: wakelock.keepScreenOn
                 ? 'La pantalla no se apagará mientras reproduces contenido'
                 : 'La pantalla seguirá el tiempo de apagado del dispositivo',
-            accent: wakelock.keepScreenOn
-                ? const Color(0xFFFFA726)
-                : primaryColor,
+            accent:
+                wakelock.keepScreenOn ? const Color(0xFFFFA726) : primaryColor,
             trailing: Switch.adaptive(
               value: wakelock.keepScreenOn,
               activeThumbColor: primaryColor,

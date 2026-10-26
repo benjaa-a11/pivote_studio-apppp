@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -66,7 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SafeArea(
         top: false,
         child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
               child: _buildHero(context, isDark),
@@ -177,7 +178,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final userProvider = context.watch<UserProvider>();
     final user = userProvider.user;
     final imagePath = userProvider.profileImagePath;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Container(
       width: double.infinity,
@@ -209,7 +211,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: primaryColor.withValues(alpha: isDark ? 0.22 : 0.15),
+                      color:
+                          primaryColor.withValues(alpha: isDark ? 0.22 : 0.15),
                       blurRadius: 20,
                       spreadRadius: 2,
                     ),
@@ -221,7 +224,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   backgroundImage:
                       imagePath != null ? FileImage(File(imagePath)) : null,
                   child: imagePath == null
-                      ? Icon(Icons.person_rounded, size: 52, color: primaryColor)
+                      ? Icon(Icons.person_rounded,
+                          size: 52, color: primaryColor)
                       : null,
                 ),
               ),
@@ -258,14 +262,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 14),
 
-          // Greeting
-          Text(
-            GreetingService.getGreeting(),
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
-            ),
+          // Greeting & Status Pill
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                GreetingService.getGreeting(),
+                style: GoogleFonts.spaceGrotesk(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.darkAccent.withValues(alpha: isDark ? 0.15 : 0.2),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: AppTheme.darkAccent.withValues(alpha: 0.4),
+                    width: 0.8,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: const BoxDecoration(
+                        color: AppTheme.darkAccent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'ACTIVO',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        color: isDark ? AppTheme.darkAccent : Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
 
@@ -351,14 +395,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkBg2 : Colors.white,
+          color: isDark ? const Color(0xFF131722) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
+                ? const Color(0xFF1E2533)
+                : AppTheme.lightBorder,
             width: 1.0,
           ),
           boxShadow: AppShadows.appleDepth(context, elevation: 0.8),
@@ -366,19 +410,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _statItem(
-              context,
-              label: 'Tiempo activo',
-              value: totalMinutes >= 60
-                  ? '${(totalMinutes / 60).toStringAsFixed(1)} h'
-                  : '$totalMinutes m',
-              icon: Icons.timer_outlined,
-              accent: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+            InkWell(
+              onTap: () => _open(const ActivityScreen()),
+              borderRadius: BorderRadius.circular(12),
+              child: _statItem(
+                context,
+                label: 'Tiempo activo',
+                value: totalMinutes >= 60
+                    ? '${(totalMinutes / 60).toStringAsFixed(1)} h'
+                    : '$totalMinutes m',
+                icon: Icons.timer_outlined,
+                accent: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+              ),
             ),
             Container(
               width: 1,
               height: 36,
-              color: theme.dividerColor.withValues(alpha: 0.08),
+              color: isDark
+                  ? const Color(0xFF1E2533)
+                  : theme.dividerColor.withValues(alpha: 0.1),
             ),
             _statItem(
               context,
@@ -390,14 +440,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               width: 1,
               height: 36,
-              color: theme.dividerColor.withValues(alpha: 0.08),
+              color: isDark
+                  ? const Color(0xFF1E2533)
+                  : theme.dividerColor.withValues(alpha: 0.1),
             ),
-            _statItem(
-              context,
-              label: 'Estado App',
-              value: 'Óptimo',
-              icon: Icons.check_circle_rounded,
-              accent: const Color(0xFF10B981),
+            InkWell(
+              onTap: () {
+                _open(const StorageManagerScreen())
+                    .then((_) => _loadCacheInfo());
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: _statItem(
+                context,
+                label: 'Caché',
+                value: _cacheSize.replaceAll('Calculando…', '...'),
+                icon: Icons.storage_outlined,
+                accent: const Color(0xFFE58B46),
+              ),
             ),
           ],
         ),
@@ -450,18 +509,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           Expanded(
             child: _quickAction(
-              Icons.person_outline_rounded,
-              'Cuenta',
-              'Editar datos',
-              () => _open(const EditProfileScreen()),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _quickAction(
               Icons.speed_rounded,
-              'Streaming',
               'Diagnóstico',
+              'Red & Servidor',
               () => _open(const DiagnosticsScreen()),
               accent: const Color(0xFF5B8CFF),
             ),
@@ -469,10 +519,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: _quickAction(
+              Icons.history_rounded,
+              'Historial',
+              'Vistos recién',
+              () => _open(const HistoryScreen()),
+              accent: const Color(0xFF10B981),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _quickAction(
               Icons.storage_outlined,
               'Almacén',
-              'Caché',
-              () => _open(const StorageManagerScreen()),
+              'Limpiar caché',
+              () => _open(const StorageManagerScreen())
+                  .then((_) => _loadCacheInfo()),
               accent: const Color(0xFFE58B46),
             ),
           ),
@@ -495,12 +556,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 13, 12, 12),
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkBg2 : Colors.white,
+          color: isDark ? const Color(0xFF131722) : Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
+                ? const Color(0xFF1E2533)
+                : AppTheme.lightBorder,
             width: 1.0,
           ),
           boxShadow: AppShadows.appleDepth(context, elevation: 0.6),
@@ -565,12 +626,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           Container(
             decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkBg2 : Colors.white,
+              color: isDark ? const Color(0xFF131722) : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.06),
+                    ? const Color(0xFF1E2533)
+                    : AppTheme.lightBorder,
                 width: 1.0,
               ),
               boxShadow: AppShadows.appleDepth(context, elevation: 0.7),
@@ -746,10 +807,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (confirmed == true) {
       await AuthService.logout();
       if (!context.mounted) return;
-      Provider.of<UserProvider>(context, listen: false).clearUser();
+      await Provider.of<UserProvider>(context, listen: false).clearUser();
+      if (!context.mounted) return;
       AppNotifications.showInfo(context, 'Sesión cerrada correctamente');
-      Navigator.of(context).pushAndRemoveUntil(
-          AppAnimations.createFadeRoute(const LoginScreen()), (route) => false);
+      unawaited(Navigator.of(context).pushAndRemoveUntil(
+          AppAnimations.createFadeRoute(const LoginScreen()), (route) => false));
     }
   }
 
@@ -776,7 +838,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: theme.colorScheme.primary.withValues(alpha: .12),
                       shape: BoxShape.circle),
                   child: Icon(Icons.play_circle_fill_rounded,
-                      color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary, size: 36)),
+                      color: isDark
+                          ? AppTheme.darkAccent
+                          : theme.colorScheme.primary,
+                      size: 36)),
               const SizedBox(height: 12),
               Text('Pivote Studio',
                   style: GoogleFonts.spaceGrotesk(
@@ -827,7 +892,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await Future.delayed(const Duration(seconds: 2));
     if (!context.mounted) return;
     Navigator.pop(context);
-    AppDialogs.showAlert(
+    await AppDialogs.showAlert(
         context: context,
         title: 'Todo actualizado',
         message: 'Tenés la última versión de Pivote Studio instalada.',

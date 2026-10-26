@@ -33,7 +33,8 @@ class FloatingBottomBar extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.isDark;
 
-    final backgroundColor = theme.cardColor.withValues(alpha: isDark ? 0.82 : 0.88);
+    final backgroundColor =
+        theme.cardColor.withValues(alpha: isDark ? 0.82 : 0.88);
     final specularBorderColor = isDark
         ? Colors.white.withValues(alpha: 0.12)
         : Colors.white.withValues(alpha: 0.70);
@@ -132,7 +133,8 @@ class FloatingBottomBar extends StatelessWidget {
                                     duration: const Duration(milliseconds: 220),
                                     curve: AppAnimations.appleSpringEase,
                                     child: AnimatedSwitcher(
-                                      duration: const Duration(milliseconds: 180),
+                                      duration:
+                                          const Duration(milliseconds: 180),
                                       switchInCurve: Curves.easeOut,
                                       switchOutCurve: Curves.easeIn,
                                       child: isSelected
@@ -152,10 +154,13 @@ class FloatingBottomBar extends StatelessWidget {
                                     style: TextStyle(
                                       fontSize: 10.5,
                                       letterSpacing: -0.2,
-                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
                                       color: isSelected
                                           ? theme.colorScheme.primary
-                                          : theme.colorScheme.onSurface.withValues(alpha: 0.52),
+                                          : theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.52),
                                     ),
                                   ),
                                 ],

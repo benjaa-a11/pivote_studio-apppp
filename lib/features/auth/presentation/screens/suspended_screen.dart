@@ -76,10 +76,14 @@ class _SuspendedScreenState extends State<SuspendedScreen> {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: (isDark ? AppTheme.darkDangerDim : AppTheme.lightDangerDim),
+                    color: (isDark
+                        ? AppTheme.darkDangerDim
+                        : AppTheme.lightDangerDim),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: (isDark ? AppTheme.darkDanger : AppTheme.lightDanger).withValues(alpha: 0.5),
+                      color:
+                          (isDark ? AppTheme.darkDanger : AppTheme.lightDanger)
+                              .withValues(alpha: 0.5),
                       width: 2,
                     ),
                   ),
@@ -135,7 +139,9 @@ class _SuspendedScreenState extends State<SuspendedScreen> {
                       child: ElevatedButton(
                         onPressed: _isChecking ? null : _checkStatus,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                          backgroundColor: isDark
+                              ? AppTheme.darkAccent
+                              : theme.colorScheme.primary,
                           foregroundColor: isDark ? Colors.black : Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),

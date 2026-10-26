@@ -254,7 +254,11 @@ class _RadiosScreenState extends State<RadiosScreen> {
     ThemeData theme,
     bool isDark,
   ) {
-    final categories = ['Todas', 'Favoritas', ...provider.categories.where((c) => c != 'Todas')];
+    final categories = [
+      'Todas',
+      'Favoritas',
+      ...provider.categories.where((c) => c != 'Todas')
+    ];
     final favCount = provider.radios.where((r) => r.isFavorite).length;
 
     return Container(
@@ -280,13 +284,10 @@ class _RadiosScreenState extends State<RadiosScreen> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               curve: AppAnimations.appleSpringEase,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? (isDark
-                        ? AppTheme.darkAccent
-                        : theme.colorScheme.primary)
+                    ? (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
                     : (isDark
                         ? AppTheme.darkBg2.withValues(alpha: 0.85)
                         : Colors.white),
@@ -312,7 +313,8 @@ class _RadiosScreenState extends State<RadiosScreen> {
                       ]
                     : [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.04),
+                          color: Colors.black
+                              .withValues(alpha: isDark ? 0.18 : 0.04),
                           blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),

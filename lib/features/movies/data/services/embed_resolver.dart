@@ -43,8 +43,7 @@ class EmbedResolver {
   EmbedResolver._();
   static final EmbedResolver instance = EmbedResolver._();
 
-  static const String _userAgent =
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+  static const String _userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
       'AppleWebKit/537.36 (KHTML, like Gecko) '
       'Chrome/124.0.0.0 Safari/537.36';
 
@@ -128,8 +127,9 @@ class EmbedResolver {
       html = res.body;
       if (html.trim().isEmpty && embedUrl != url) {
         // Fallback to the original URL if the /e/ variant returned nothing.
-        final res2 =
-            await _client.get(Uri.parse(url), headers: headers).timeout(timeout);
+        final res2 = await _client
+            .get(Uri.parse(url), headers: headers)
+            .timeout(timeout);
         html = res2.body;
       }
     } catch (e) {

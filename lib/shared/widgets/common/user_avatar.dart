@@ -28,7 +28,8 @@ class UserAvatar extends StatelessWidget {
     final cleanLastName = lastName.trim();
 
     String firstLetter = cleanName.isNotEmpty ? cleanName[0].toUpperCase() : '';
-    String secondLetter = cleanLastName.isNotEmpty ? cleanLastName[0].toUpperCase() : '';
+    String secondLetter =
+        cleanLastName.isNotEmpty ? cleanLastName[0].toUpperCase() : '';
 
     if (firstLetter.isEmpty && secondLetter.isEmpty) {
       return 'P';
@@ -92,7 +93,8 @@ class UserAvatar extends StatelessWidget {
                     color: borderColor ??
                         (isDark
                             ? theme.colorScheme.primary.withValues(alpha: 0.4)
-                            : theme.colorScheme.primary.withValues(alpha: 0.25)),
+                            : theme.colorScheme.primary
+                                .withValues(alpha: 0.25)),
                     width: size > 30 ? 1.5 : 1.0,
                   )
                 : null,

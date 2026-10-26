@@ -44,8 +44,7 @@ class ChannelCard extends StatelessWidget {
             } else {
               Navigator.push(
                 context,
-                AppAnimations.createRoute(
-                    PlayerScreen(channel: channel)),
+                AppAnimations.createRoute(PlayerScreen(channel: channel)),
               );
             }
           },
@@ -83,9 +82,7 @@ class ChannelCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isEvent
                           ? Colors.transparent
-                          : (isDark
-                              ? AppTheme.darkCard
-                              : AppTheme.lightBg2),
+                          : (isDark ? AppTheme.darkCard : AppTheme.lightBg2),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(15),
                       ),

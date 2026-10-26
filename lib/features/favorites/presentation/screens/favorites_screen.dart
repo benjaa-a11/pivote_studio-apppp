@@ -140,20 +140,24 @@ class FavoritesScreen extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  theme.colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.14),
-                  theme.colorScheme.primary.withValues(alpha: isDark ? 0.06 : 0.04),
+                  theme.colorScheme.primary
+                      .withValues(alpha: isDark ? 0.22 : 0.14),
+                  theme.colorScheme.primary
+                      .withValues(alpha: isDark ? 0.06 : 0.04),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.35 : 0.25),
+                color: theme.colorScheme.primary
+                    .withValues(alpha: isDark ? 0.35 : 0.25),
                 width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: theme.colorScheme.primary.withValues(alpha: isDark ? 0.08 : 0.04),
+                  color: theme.colorScheme.primary
+                      .withValues(alpha: isDark ? 0.08 : 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -184,7 +188,9 @@ class FavoritesScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  count > 0 ? 'Tu colección personal' : 'Guardá tus canales preferidos',
+                  count > 0
+                      ? 'Tu colección personal'
+                      : 'Guardá tus canales preferidos',
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

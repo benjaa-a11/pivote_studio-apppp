@@ -239,7 +239,9 @@ class SoccerMatchCard extends StatelessWidget {
             style: GoogleFonts.spaceGrotesk(
               fontSize: 12.5,
               fontWeight: FontWeight.w800,
-              color: isDark ? const Color(0xFFEEF1F6) : theme.colorScheme.onSurface,
+              color: isDark
+                  ? const Color(0xFFEEF1F6)
+                  : theme.colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 2),
@@ -290,7 +292,8 @@ class SoccerMatchCard extends StatelessWidget {
     required ThemeData theme,
     required bool isDark,
   }) {
-    final teamColor = team.primaryColor ?? (isDark ? const Color(0xFF262C36) : AppTheme.lightBorder);
+    final teamColor = team.primaryColor ??
+        (isDark ? const Color(0xFF262C36) : AppTheme.lightBorder);
     final scoreStr = score != null ? score.toString() : '';
 
     final nameColor = isLoser
@@ -351,7 +354,8 @@ class SoccerMatchCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.spaceGrotesk(
                   fontSize: 13,
-                  fontWeight: isWinner || isLive ? FontWeight.w800 : FontWeight.w600,
+                  fontWeight:
+                      isWinner || isLive ? FontWeight.w800 : FontWeight.w600,
                   color: nameColor,
                 ),
               ),
@@ -424,7 +428,9 @@ class SoccerMatchCard extends StatelessWidget {
     return Icon(
       Icons.chevron_right_rounded,
       size: 18,
-      color: isDark ? const Color(0xFF7C879B) : theme.hintColor.withValues(alpha: 0.5),
+      color: isDark
+          ? const Color(0xFF7C879B)
+          : theme.hintColor.withValues(alpha: 0.5),
     );
   }
 }

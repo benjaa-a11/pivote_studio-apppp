@@ -12,7 +12,8 @@ class SupportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -21,6 +22,7 @@ class SupportScreen extends StatelessWidget {
         subtitle: 'Preguntas frecuentes y atención directa',
       ),
       body: ListView(
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
         children: [
           _buildHero(context, isDark, primaryColor),
@@ -64,7 +66,6 @@ class SupportScreen extends StatelessWidget {
             'En Perfil > Preferencias > Almacenamiento puedes presionar "Limpiar todo el almacenamiento" para vaciar imágenes y archivos temporales de forma segura.',
             isDark,
           ),
-
           const SizedBox(height: 24),
           Text(
             'Comunidad y redes',
@@ -111,7 +112,6 @@ class SupportScreen extends StatelessWidget {
               ),
             ],
           ),
-
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(16),
@@ -194,7 +194,8 @@ class SupportScreen extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: isDark
                       ? primaryColor.withValues(alpha: 0.15)
@@ -321,8 +322,7 @@ class SupportScreen extends StatelessWidget {
           child: ExpansionTile(
             tilePadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            childrenPadding:
-                const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(18),
               side: BorderSide(

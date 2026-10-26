@@ -27,7 +27,7 @@ class WakelockService extends ChangeNotifier {
     } catch (e) {
       // Fallback: enable wakelock by default
       _keepScreenOn = true;
-      _applyWakelock();
+      await _applyWakelock();
       debugPrint('⚠️ WakelockService init error: $e');
     }
   }

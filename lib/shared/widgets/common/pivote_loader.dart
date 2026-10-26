@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 ///   aspect-ratio: 1;
 ///   border-radius: 50%;
 ///   background: #25b09b;
-///   --_m: 
+///   --_m:
 ///     conic-gradient(#0000 10%,#000),
 ///     linear-gradient(#000 0 0) content-box;
 ///   -webkit-mask: var(--_m);
@@ -110,7 +110,7 @@ class _PivoteCSSLoaderPainter extends CustomPainter {
         colors: [
           color.withValues(alpha: 0.0), // 0% is transparent
           color.withValues(alpha: 0.0), // 10% remains transparent (the gap)
-          color,                  // 100% is fully opaque (the tail fade)
+          color, // 100% is fully opaque (the tail fade)
         ],
         stops: const [
           0.0,
@@ -120,7 +120,8 @@ class _PivoteCSSLoaderPainter extends CustomPainter {
       ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.butt; // Flat edges exactly matching the CSS conic-gradient/mask effect
+      ..strokeCap = StrokeCap
+          .butt; // Flat edges exactly matching the CSS conic-gradient/mask effect
 
     canvas.drawArc(
       rect,
@@ -135,9 +136,8 @@ class _PivoteCSSLoaderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PivoteCSSLoaderPainter oldDelegate) {
-    return oldDelegate.progress != progress || 
-           oldDelegate.color != color || 
-           oldDelegate.strokeWidth != strokeWidth;
+    return oldDelegate.progress != progress ||
+        oldDelegate.color != color ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }
-

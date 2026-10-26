@@ -79,7 +79,8 @@ class SearchFilterChips extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? theme.colorScheme.primary
@@ -116,7 +117,8 @@ class SearchFilterChips extends StatelessWidget {
                       item.label,
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 12.5,
-                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
                         color: isSelected
                             ? Colors.white
                             : theme.colorScheme.onSurface,

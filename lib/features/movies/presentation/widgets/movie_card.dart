@@ -74,9 +74,8 @@ class MovieCard extends StatelessWidget {
                       child: Icon(
                         Icons.movie_rounded,
                         size: 32,
-                        color: isDark
-                            ? AppTheme.darkText3
-                            : AppTheme.lightText3,
+                        color:
+                            isDark ? AppTheme.darkText3 : AppTheme.lightText3,
                       ),
                     ),
                   ),
@@ -167,8 +166,8 @@ class MovieCard extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 3.5),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 3.5),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.70),
                       borderRadius: BorderRadius.circular(8),

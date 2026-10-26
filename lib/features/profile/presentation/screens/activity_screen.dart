@@ -14,7 +14,8 @@ class ActivityScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -98,7 +99,8 @@ class ActivityScreen extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: primaryColor.withValues(alpha: isDark ? 0.08 : 0.04),
+                              color: primaryColor.withValues(
+                                  alpha: isDark ? 0.08 : 0.04),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -230,8 +232,8 @@ class ActivityScreen extends StatelessWidget {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 8, vertical: 3),
                                         decoration: BoxDecoration(
-                                          color: primaryColor
-                                              .withValues(alpha: 0.12),
+                                          color: primaryColor.withValues(
+                                              alpha: 0.12),
                                           borderRadius:
                                               BorderRadius.circular(8),
                                         ),
@@ -275,8 +277,8 @@ class ActivityScreen extends StatelessWidget {
                               const SizedBox(height: 16),
                               Divider(
                                 height: 1,
-                                color: theme.dividerColor
-                                    .withValues(alpha: 0.08),
+                                color:
+                                    theme.dividerColor.withValues(alpha: 0.08),
                               ),
                               const SizedBox(height: 14),
                               Row(
@@ -311,8 +313,8 @@ class ActivityScreen extends StatelessWidget {
                                     backgroundColor: isDark
                                         ? Colors.white.withValues(alpha: 0.08)
                                         : Colors.black.withValues(alpha: 0.06),
-                                    valueColor:
-                                        AlwaysStoppedAnimation<Color>(primaryColor),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        primaryColor),
                                   ),
                                 ),
                               ),

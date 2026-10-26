@@ -529,8 +529,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
           clearkeys: _currentStream!.clearkeys,
           headers: _currentStream!.headers,
           drmLicenseUri: _currentStream!.effectiveDrmLicenseUri,
-          type: widget.channel.type ?? (_currentStream!.isDash ? 'CLEARKEY' : null),
-          icono: widget.channel.logoUrl.isNotEmpty ? widget.channel.logoUrl.first : null,
+          type: widget.channel.type ??
+              (_currentStream!.isDash ? 'CLEARKEY' : null),
+          icono: widget.channel.logoUrl.isNotEmpty
+              ? widget.channel.logoUrl.first
+              : null,
           channelName: widget.channel.name,
           currentServer: _serverIndex + 1,
           totalServers: widget.channel.streamUrl.length,

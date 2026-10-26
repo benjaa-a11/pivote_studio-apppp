@@ -29,7 +29,7 @@ class MoviePlayerScreen extends StatefulWidget {
 class _MoviePlayerScreenState extends State<MoviePlayerScreen>
     with SingleTickerProviderStateMixin {
   late MovieVideoEngine _engine;
-  
+
   // Animation states
   bool _isReady = false;
 
@@ -71,7 +71,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
       DeviceOrientation.landscapeRight,
     ]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    
+
     // Enable Wake Lock
     WakelockPlus.enable();
 
@@ -106,7 +106,8 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
     }
 
     // When playback starts, show controls briefly if we haven't shown them yet
-    if (_engine.state.status == MoviePlayerStatus.playing && !_hasShownInitialControls) {
+    if (_engine.state.status == MoviePlayerStatus.playing &&
+        !_hasShownInitialControls) {
       _hasShownInitialControls = true;
       setState(() {
         _showControls = true;
@@ -115,7 +116,9 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
     }
 
     // Automatically hide controls after movie starts playing
-    if (_engine.state.status == MoviePlayerStatus.playing && _showControls && _hideControlsTimer == null) {
+    if (_engine.state.status == MoviePlayerStatus.playing &&
+        _showControls &&
+        _hideControlsTimer == null) {
       _startHideControlsTimer();
     }
   }
@@ -127,7 +130,10 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
       return;
     }
     _hideControlsTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted && _showControls && _engine.state.status == MoviePlayerStatus.playing && !_isDragging) {
+      if (mounted &&
+          _showControls &&
+          _engine.state.status == MoviePlayerStatus.playing &&
+          !_isDragging) {
         setState(() {
           _showControls = false;
         });
@@ -222,11 +228,14 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
   void _saveCurrentPosition() {
     final pos = _engine.state.position;
     final dur = _engine.state.duration;
-    
+
     // Don't save if position is too close to end (e.g. within last 30s) or duration is 0
     if (dur > Duration.zero && (dur - pos) > const Duration(seconds: 30)) {
-      context.read<MoviesProvider>().savePlaybackPosition(widget.movie.id, pos, duration: dur);
-    } else if (dur > Duration.zero && (dur - pos) <= const Duration(seconds: 30)) {
+      context
+          .read<MoviesProvider>()
+          .savePlaybackPosition(widget.movie.id, pos, duration: dur);
+    } else if (dur > Duration.zero &&
+        (dur - pos) <= const Duration(seconds: 30)) {
       context.read<MoviesProvider>().clearPlaybackPosition(widget.movie.id);
     }
   }
@@ -235,7 +244,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
   void dispose() {
     _hideControlsTimer?.cancel();
     _progressSaveTimer?.cancel();
-    
+
     // Save final position before leaving
     if (_engine.state.status != MoviePlayerStatus.completed) {
       _saveCurrentPosition();
@@ -290,7 +299,8 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                             color: Colors.black,
                             child: Video(
                               controller: _engine.videoController,
-                              controls: null, // Null is custom controls handled by us
+                              controls:
+                                  null, // Null is custom controls handled by us
                               fit: _videoFit,
                             ),
                           ),
@@ -300,9 +310,10 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                         // ONLY rendered once the first frame has decoded and playback has started
                         if (_hasStartedPlayback &&
                             (state.status == MoviePlayerStatus.playing ||
-                             state.status == MoviePlayerStatus.paused ||
-                             state.status == MoviePlayerStatus.buffering ||
-                             state.status == MoviePlayerStatus.completed) && !state.hasError)
+                                state.status == MoviePlayerStatus.paused ||
+                                state.status == MoviePlayerStatus.buffering ||
+                                state.status == MoviePlayerStatus.completed) &&
+                            !state.hasError)
                           MovieControlsOverlay(
                             engine: _engine,
                             movie: widget.movie,
@@ -320,8 +331,8 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                         if (!_hasStartedPlayback &&
                             !state.hasError &&
                             (state.status == MoviePlayerStatus.loading ||
-                             state.status == MoviePlayerStatus.idle ||
-                             state.status == MoviePlayerStatus.buffering))
+                                state.status == MoviePlayerStatus.idle ||
+                                state.status == MoviePlayerStatus.buffering))
                           MovieLoadingOverlay(
                             movie: widget.movie,
                             retryAttempt: state.retryAttempt,
@@ -336,7 +347,8 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
 
                         // ── Error Message Overlay ──
                         if (state.hasError)
-                          _buildErrorOverlay(state.errorMessage ?? 'Error desconocido de reproducción'),
+                          _buildErrorOverlay(state.errorMessage ??
+                              'Error desconocido de reproducción'),
                       ],
                     ),
                   );

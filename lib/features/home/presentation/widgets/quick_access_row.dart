@@ -32,18 +32,16 @@ class QuickAccessRow extends StatelessWidget {
           Expanded(
             child: Consumer<SoccerProvider>(
               builder: (context, soccer, child) {
-                final liveCount = soccer.soccerData?.matches
-                        .where((m) => m.isLive)
-                        .length ??
-                    0;
+                final liveCount =
+                    soccer.soccerData?.matches.where((m) => m.isLive).length ??
+                        0;
                 return _QuickAccessCard(
                   isDark: isDark,
                   icon: Icons.sports_soccer_rounded,
                   accent: const Color(0xFFE83600),
                   label: 'Fútbol',
-                  caption: liveCount > 0
-                      ? '$liveCount en vivo'
-                      : 'Ver partidos',
+                  caption:
+                      liveCount > 0 ? '$liveCount en vivo' : 'Ver partidos',
                   isLive: liveCount > 0,
                   onTap: () => onNavigateToTab(0),
                 );
@@ -109,9 +107,8 @@ class _QuickAccessCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md, vertical: AppSpacing.lg),
         decoration: BoxDecoration(
-          color: isDark
-              ? AppTheme.darkBg2.withValues(alpha: 0.92)
-              : Colors.white,
+          color:
+              isDark ? AppTheme.darkBg2.withValues(alpha: 0.92) : Colors.white,
           borderRadius: AppRadius.mAll,
           border: Border.all(
             color: isDark

@@ -144,7 +144,8 @@ class _ModernDialog extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Center(child: Icon(iconData, color: iconColor, size: 34)),
+                child:
+                    Center(child: Icon(iconData, color: iconColor, size: 34)),
               ),
               const SizedBox(height: 24),
               Text(
@@ -353,7 +354,9 @@ class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
   void initState() {
     super.initState();
     _failsafe = Timer(const Duration(seconds: 7), () {
-      if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
     });
     _animateProgress();
   }
@@ -390,8 +393,14 @@ class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
             decoration: BoxDecoration(
               color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(26),
-              border: Border.all(color: theme.dividerColor.withValues(alpha: .08)),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: dark ? .25 : .10), blurRadius: 34, offset: const Offset(0, 16))],
+              border:
+                  Border.all(color: theme.dividerColor.withValues(alpha: .08)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: dark ? .25 : .10),
+                    blurRadius: 34,
+                    offset: const Offset(0, 16))
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -399,11 +408,16 @@ class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
                 Container(
                   width: 58,
                   height: 58,
-                  decoration: BoxDecoration(color: accent.withValues(alpha: .10), borderRadius: BorderRadius.circular(18)),
+                  decoration: BoxDecoration(
+                      color: accent.withValues(alpha: .10),
+                      borderRadius: BorderRadius.circular(18)),
                   child: PivoteLoader(color: accent, strokeWidth: 3, size: 30),
                 ),
                 const SizedBox(height: 18),
-                Text(widget.message, textAlign: TextAlign.center, style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w800, fontSize: 14.5)),
+                Text(widget.message,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.spaceGrotesk(
+                        fontWeight: FontWeight.w800, fontSize: 14.5)),
                 const SizedBox(height: 13),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(99),
@@ -415,7 +429,14 @@ class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
                   ),
                 ),
                 const SizedBox(height: 9),
-                Text('Podés esperar unos segundos mientras terminamos la comprobación.', textAlign: TextAlign.center, style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w500, color: theme.hintColor, height: 1.35)),
+                Text(
+                    'Podés esperar unos segundos mientras terminamos la comprobación.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.spaceGrotesk(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w500,
+                        color: theme.hintColor,
+                        height: 1.35)),
               ],
             ),
           ),

@@ -30,9 +30,8 @@ class MovieLoadingOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backdrop = movie.backdropUrl.isNotEmpty
-        ? movie.backdropUrl
-        : movie.posterUrl;
+    final backdrop =
+        movie.backdropUrl.isNotEmpty ? movie.backdropUrl : movie.posterUrl;
 
     return AnimatedSwitcher(
       duration: AppAnimations.slow,

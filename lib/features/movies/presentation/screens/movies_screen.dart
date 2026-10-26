@@ -20,7 +20,8 @@ class MoviesScreen extends StatefulWidget {
 }
 
 class _MoviesScreenState extends State<MoviesScreen> {
-  final PageController _carouselController = PageController(viewportFraction: 0.92);
+  final PageController _carouselController =
+      PageController(viewportFraction: 0.92);
   int _activeCarouselIndex = 0;
 
   @override
@@ -68,7 +69,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
                   !moviesProvider.isLoading &&
                   moviesProvider.featuredMovies.isNotEmpty)
                 SliverToBoxAdapter(
-                  child: _buildFeaturedCarousel(theme, isDark, moviesProvider.featuredMovies),
+                  child: _buildFeaturedCarousel(
+                      theme, isDark, moviesProvider.featuredMovies),
                 ),
 
               // 4. Genre Filter Horizontal Carousel
@@ -84,7 +86,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
                   child: _buildSectionTitle(theme, 'Seguir Viendo', isDark),
                 ),
                 SliverToBoxAdapter(
-                  child: _buildResumeList(moviesProvider.resumeMovies, moviesProvider),
+                  child: _buildResumeList(
+                      moviesProvider.resumeMovies, moviesProvider),
                 ),
               ],
 
@@ -105,7 +108,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
                   moviesProvider.trendingMovies.isNotEmpty &&
                   moviesProvider.selectedGenre == 'Todos') ...[
                 SliverToBoxAdapter(
-                  child: _buildSectionTitle(theme, 'Tendencias Populares', isDark),
+                  child:
+                      _buildSectionTitle(theme, 'Tendencias Populares', isDark),
                 ),
                 SliverToBoxAdapter(
                   child: _buildTrendingList(moviesProvider.trendingMovies),
@@ -117,7 +121,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
 
               // 6. Skeletonized Main Movies Grid
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 sliver: _buildMoviesGrid(moviesProvider, isDark),
               ),
 
@@ -216,7 +221,9 @@ class _MoviesScreenState extends State<MoviesScreen> {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
-                          color: isDark ? AppTheme.darkAccent : Colors.orange.shade900,
+                          color: isDark
+                              ? AppTheme.darkAccent
+                              : Colors.orange.shade900,
                           letterSpacing: 0.5,
                         ),
                       ),
@@ -264,7 +271,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
                 child: Icon(
                   Icons.search_rounded,
                   size: 22,
-                  color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                  color:
+                      isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
                 ),
               ),
             ),
@@ -274,8 +282,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
     );
   }
 
-
-  Widget _buildFeaturedCarousel(ThemeData theme, bool isDark, List<Movie> featured) {
+  Widget _buildFeaturedCarousel(
+      ThemeData theme, bool isDark, List<Movie> featured) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -384,7 +392,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppTheme.darkAccent,
                         borderRadius: BorderRadius.circular(6),
@@ -430,7 +439,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
     );
   }
 
-  Widget _buildGenreFilterCarousel(ThemeData theme, bool isDark, MoviesProvider provider) {
+  Widget _buildGenreFilterCarousel(
+      ThemeData theme, bool isDark, MoviesProvider provider) {
     final list = provider.genres;
 
     return Container(
@@ -469,7 +479,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.15),
                           blurRadius: 8,
                           spreadRadius: 1,
                         )
@@ -482,7 +493,9 @@ class _MoviesScreenState extends State<MoviesScreen> {
                   style: GoogleFonts.spaceGrotesk(
                     fontSize: 12,
                     fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    color: isSelected ? theme.colorScheme.primary : theme.hintColor,
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.hintColor,
                   ),
                 ),
               ),
@@ -553,8 +566,9 @@ class _MoviesScreenState extends State<MoviesScreen> {
           final movie = resumeList[index];
           final position = provider.getPlaybackPosition(movie.id);
           final duration = provider.getMovieDuration(movie.id);
-          final progress = duration > Duration.zero 
-              ? (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0)
+          final progress = duration > Duration.zero
+              ? (position.inMilliseconds / duration.inMilliseconds)
+                  .clamp(0.0, 1.0)
               : 0.0;
 
           return GestureDetector(
@@ -577,7 +591,9 @@ class _MoviesScreenState extends State<MoviesScreen> {
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(
-                      alpha: Theme.of(context).brightness == Brightness.dark ? 0.25 : 0.05,
+                      alpha: Theme.of(context).brightness == Brightness.dark
+                          ? 0.25
+                          : 0.05,
                     ),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
@@ -595,7 +611,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
                         fit: BoxFit.cover,
                         errorWidget: (context, url, error) => Container(
                           color: AppTheme.darkBg2,
-                          child: const Icon(Icons.movie_rounded, color: Colors.white24, size: 32),
+                          child: const Icon(Icons.movie_rounded,
+                              color: Colors.white24, size: 32),
                         ),
                       ),
                     ),
@@ -642,7 +659,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
                             child: LinearProgressIndicator(
                               value: progress,
                               backgroundColor: Colors.white24,
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.darkAccent),
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AppTheme.darkAccent),
                               minHeight: 3,
                             ),
                           ),
@@ -760,8 +778,14 @@ class _MoviesScreenState extends State<MoviesScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                    Theme.of(context).colorScheme.secondary.withValues(alpha: 0.15),
+                    Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.15),
+                    Theme.of(context)
+                        .colorScheme
+                        .secondary
+                        .withValues(alpha: 0.15),
                   ],
                 ),
                 shape: BoxShape.circle,
@@ -795,7 +819,8 @@ class _MoviesScreenState extends State<MoviesScreen> {
               icon: const Icon(Icons.refresh_rounded, size: 20),
               label: const Text('Limpiar filtros'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 elevation: 0,
               ),
             ),

@@ -192,4 +192,3 @@ class SearchService {
     return suggestions.take(maxSuggestions).toList();
   }
 }
-

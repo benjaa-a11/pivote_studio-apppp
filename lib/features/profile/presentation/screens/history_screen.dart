@@ -57,14 +57,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final ok = await AppDialogs.showConfirm(
       context: context,
       title: '¿Vaciar historial?',
-      message: 'Se eliminarán los canales reproducidos recientemente en este dispositivo.',
+      message:
+          'Se eliminarán los canales reproducidos recientemente en este dispositivo.',
       confirmLabel: 'Vaciar historial',
       cancelLabel: 'Cancelar',
       isDestructive: true,
       type: AppDialogType.error,
     );
     if (ok != true) return;
-    HapticFeedback.mediumImpact();
+    await HapticFeedback.mediumImpact();
     await ViewingHistoryService.clearHistory();
     if (!mounted) return;
     await _load();
@@ -117,7 +118,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget _card(BuildContext context, Channel channel) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
     final logo = channel.getLogoUrl(isDark);
 
     return Material(
@@ -266,7 +268,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget _empty(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Center(
       child: Padding(

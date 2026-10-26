@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -55,7 +56,7 @@ void main() async {
   SoccerService.prefetchLiveSoccerData();
   final audioManager = AudioManager();
 
-  SystemChrome.setPreferredOrientations([
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
     DeviceOrientation.landscapeLeft,
@@ -160,22 +161,24 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
         } else {
           // Sync local UserProvider state as well
           if (mounted) {
-            final userProvider = Provider.of<UserProvider>(context, listen: false);
-            final favoritesProvider = Provider.of<FavoritesProvider>(context, listen: false);
+            final userProvider =
+                Provider.of<UserProvider>(context, listen: false);
+            final favoritesProvider =
+                Provider.of<FavoritesProvider>(context, listen: false);
 
             if (userProvider.user == null) {
               await userProvider.refreshUser();
             }
 
             // Trigger favorites sync too!
-            favoritesProvider.refreshFromFirestore();
+            unawaited(favoritesProvider.refreshFromFirestore());
 
             // Trigger FCM token sync too!
-            NotificationService.getToken().then((token) {
+            unawaited(NotificationService.getToken().then((token) {
               if (token != null) {
-                AuthService.updateFcmToken(token);
+                unawaited(AuthService.updateFcmToken(token));
               }
-            });
+            }));
 
             setState(() {
               _isLoggedIn = true;

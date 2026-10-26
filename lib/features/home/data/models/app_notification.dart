@@ -60,7 +60,8 @@ class AppNotification {
       imageUrl: json['imageUrl'] as String?,
       deepLink: json['deepLink'] as String?,
       source: json['source'] as String? ?? 'Pivote',
-      publishedAt: DateTime.tryParse(json['publishedAt'] as String? ?? '') ?? DateTime.now(),
+      publishedAt: DateTime.tryParse(json['publishedAt'] as String? ?? '') ??
+          DateTime.now(),
       type: type,
     );
   }

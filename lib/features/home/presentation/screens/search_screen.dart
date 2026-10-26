@@ -150,7 +150,7 @@ class _SearchScreenState extends State<SearchScreen>
 
   Future<void> _removeHistoryItem(String item) async {
     await SearchService.removeSearchQuery(item);
-    _loadHistory();
+    await _loadHistory();
   }
 
   void _confirmClearAllHistory() {
@@ -228,7 +228,7 @@ class _SearchScreenState extends State<SearchScreen>
                         onPressed: () async {
                           Navigator.pop(context);
                           await SearchService.clearSearchHistory();
-                          _loadHistory();
+                          await _loadHistory();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: theme.colorScheme.error,
@@ -275,8 +275,9 @@ class _SearchScreenState extends State<SearchScreen>
     final filteredMatches =
         _getFilteredMatches(soccerProvider.soccerData, query);
 
-    final totalCount =
-        filteredChannels.length + filteredRadios.length + filteredMatches.length;
+    final totalCount = filteredChannels.length +
+        filteredRadios.length +
+        filteredMatches.length;
 
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -507,8 +508,7 @@ class _SearchScreenState extends State<SearchScreen>
                     hintStyle: GoogleFonts.spaceGrotesk(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w500,
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
                     prefixIcon: Icon(
                       Icons.search_rounded,
@@ -548,8 +548,7 @@ class _SearchScreenState extends State<SearchScreen>
                     focusedBorder: InputBorder.none,
                     errorBorder: InputBorder.none,
                     disabledBorder: InputBorder.none,
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
               ),
@@ -742,9 +741,8 @@ class _SearchScreenState extends State<SearchScreen>
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? AppTheme.darkBg2
-                        : theme.colorScheme.surface,
+                    color:
+                        isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isDark
@@ -1319,8 +1317,7 @@ class _SearchScreenState extends State<SearchScreen>
               child: Icon(
                 Icons.search_off_rounded,
                 size: 38,
-                color:
-                    isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
               ),
             ),
             const SizedBox(height: 20),

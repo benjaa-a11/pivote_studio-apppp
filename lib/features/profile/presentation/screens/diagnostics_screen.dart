@@ -49,7 +49,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
 
   Future<void> _runTest() async {
     if (_isTesting) return;
-    HapticFeedback.mediumImpact();
+    await HapticFeedback.mediumImpact();
 
     setState(() {
       _isTesting = true;
@@ -96,22 +96,23 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
       await Future.delayed(const Duration(milliseconds: 65));
       if (!mounted) return;
       final progress = i / 27;
-      final sample = target * (.35 + .65 * progress) + (Random().nextDouble() * 5 - 2.5);
+      final sample =
+          target * (.35 + .65 * progress) + (Random().nextDouble() * 5 - 2.5);
       _speed = max(0, sample);
       _stability = 94 + Random().nextDouble() * 5;
       _loss = Random().nextDouble() > .94 ? .1 : 0;
       setState(() {});
-      _gaugeController.animateTo(
+      unawaited(_gaugeController.animateTo(
         min(_speed / 100, 1),
         duration: const Duration(milliseconds: 80),
-      );
+      ));
     }
 
     setState(() => _status = 'Generando recomendación...');
     await Future.delayed(const Duration(milliseconds: 650));
     if (!mounted) return;
 
-    HapticFeedback.mediumImpact();
+    await HapticFeedback.mediumImpact();
     setState(() {
       _isTesting = false;
       _completed = true;
@@ -164,7 +165,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
               constraints: BoxConstraints(maxWidth: contentWidth),
               child: SingleChildScrollView(
                 physics: const ClampingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(wide ? 28 : 16, 18, wide ? 28 : 16, 36),
+                padding:
+                    EdgeInsets.fromLTRB(wide ? 28 : 16, 18, wide ? 28 : 16, 36),
                 child: Column(
                   children: [
                     _StatusCard(
@@ -182,14 +184,19 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: dark
-                              ? [const Color(0xFF141C14), const Color(0xFF101410)]
+                              ? [
+                                  const Color(0xFF141C14),
+                                  const Color(0xFF101410)
+                                ]
                               : [const Color(0xFFF1F7E8), Colors.white],
                         ),
                         borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: accent.withValues(alpha: .12)),
+                        border:
+                            Border.all(color: accent.withValues(alpha: .12)),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: dark ? .16 : .04),
+                            color: Colors.black
+                                .withValues(alpha: dark ? .16 : .04),
                             blurRadius: 26,
                             offset: const Offset(0, 12),
                           ),
@@ -217,10 +224,12 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       AnimatedSwitcher(
-                                        duration: const Duration(milliseconds: 180),
+                                        duration:
+                                            const Duration(milliseconds: 180),
                                         child: Text(
                                           _speed.toStringAsFixed(1),
-                                          key: ValueKey(_speed.toStringAsFixed(1)),
+                                          key: ValueKey(
+                                              _speed.toStringAsFixed(1)),
                                           style: GoogleFonts.spaceGrotesk(
                                             fontSize: wide ? 48 : 42,
                                             height: .95,
@@ -241,7 +250,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                                       ),
                                       if (_ping > 0) ...[
                                         const SizedBox(height: 8),
-                                        _MiniPill(label: 'PING $_ping ms', color: accent),
+                                        _MiniPill(
+                                            label: 'PING $_ping ms',
+                                            color: accent),
                                       ],
                                     ],
                                   ),
@@ -258,7 +269,8 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                                   : _completed
                                       ? '${_quality(_finalSpeed)} · ${_resolution(_finalSpeed)}'
                                       : 'Velocidad estimada para streaming',
-                              key: ValueKey('$_isTesting-$_completed-$_finalSpeed'),
+                              key: ValueKey(
+                                  '$_isTesting-$_completed-$_finalSpeed'),
                               textAlign: TextAlign.center,
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 13,
@@ -273,7 +285,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                             height: 54,
                             child: ElevatedButton.icon(
                               onPressed: _isTesting ? null : _runTest,
-                              icon: Icon(_completed ? Icons.replay_rounded : Icons.play_arrow_rounded),
+                              icon: Icon(_completed
+                                  ? Icons.replay_rounded
+                                  : Icons.play_arrow_rounded),
                               label: Text(
                                 _isTesting
                                     ? 'DIAGNOSTICANDO...'
@@ -288,10 +302,14 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: accent,
-                                foregroundColor: dark ? const Color(0xFF090B0F) : Colors.black,
-                                disabledBackgroundColor: accent.withValues(alpha: .28),
+                                foregroundColor: dark
+                                    ? const Color(0xFF090B0F)
+                                    : Colors.black,
+                                disabledBackgroundColor:
+                                    accent.withValues(alpha: .28),
                                 elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18)),
                               ),
                             ),
                           ),
@@ -303,22 +321,66 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                       builder: (context, statConstraints) {
                         final twoColumns = statConstraints.maxWidth >= 520;
                         final cards = [
-                          _MetricCard(title: 'Ping', value: _ping > 0 ? '$_ping ms' : '--', caption: _ping == 0 ? 'Esperando prueba' : _ping < 30 ? 'Excelente' : _ping < 80 ? 'Normal' : 'Elevado', icon: Icons.speed_rounded, color: const Color(0xFF5B8CFF), dark: dark),
-                          _MetricCard(title: 'Estabilidad', value: _stability > 0 ? '${_stability.toStringAsFixed(1)}%' : '--', caption: _stability > 97 ? 'Muy alta' : _stability > 0 ? 'Estable' : 'Esperando prueba', icon: Icons.show_chart_rounded, color: const Color(0xFF35B77A), dark: dark),
-                          _MetricCard(title: 'Pérdida', value: '${_loss.toStringAsFixed(2)}%', caption: _loss == 0 ? 'Sin pérdida' : 'Leve interferencia', icon: Icons.swap_vert_rounded, color: const Color(0xFFE4A93A), dark: dark),
-                          _MetricCard(title: 'Estado', value: _completed ? _quality(_finalSpeed) : 'En espera', caption: _completed ? 'Perfil de red' : 'Sin diagnóstico', icon: Icons.shield_rounded, color: qualityColor, dark: dark),
+                          _MetricCard(
+                              title: 'Ping',
+                              value: _ping > 0 ? '$_ping ms' : '--',
+                              caption: _ping == 0
+                                  ? 'Esperando prueba'
+                                  : _ping < 30
+                                      ? 'Excelente'
+                                      : _ping < 80
+                                          ? 'Normal'
+                                          : 'Elevado',
+                              icon: Icons.speed_rounded,
+                              color: const Color(0xFF5B8CFF),
+                              dark: dark),
+                          _MetricCard(
+                              title: 'Estabilidad',
+                              value: _stability > 0
+                                  ? '${_stability.toStringAsFixed(1)}%'
+                                  : '--',
+                              caption: _stability > 97
+                                  ? 'Muy alta'
+                                  : _stability > 0
+                                      ? 'Estable'
+                                      : 'Esperando prueba',
+                              icon: Icons.show_chart_rounded,
+                              color: const Color(0xFF35B77A),
+                              dark: dark),
+                          _MetricCard(
+                              title: 'Pérdida',
+                              value: '${_loss.toStringAsFixed(2)}%',
+                              caption: _loss == 0
+                                  ? 'Sin pérdida'
+                                  : 'Leve interferencia',
+                              icon: Icons.swap_vert_rounded,
+                              color: const Color(0xFFE4A93A),
+                              dark: dark),
+                          _MetricCard(
+                              title: 'Estado',
+                              value: _completed
+                                  ? _quality(_finalSpeed)
+                                  : 'En espera',
+                              caption: _completed
+                                  ? 'Perfil de red'
+                                  : 'Sin diagnóstico',
+                              icon: Icons.shield_rounded,
+                              color: qualityColor,
+                              dark: dark),
                         ];
                         return GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: cards.length,
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: twoColumns ? 2 : 1,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                             childAspectRatio: twoColumns ? 2.6 : 4.0,
                           ),
-                          itemBuilder: (_, i) => RepaintBoundary(child: cards[i]),
+                          itemBuilder: (_, i) =>
+                              RepaintBoundary(child: cards[i]),
                         );
                       },
                     ),
@@ -329,9 +391,11 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: qualityColor.withValues(alpha: dark ? .09 : .06),
+                          color:
+                              qualityColor.withValues(alpha: dark ? .09 : .06),
                           borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: qualityColor.withValues(alpha: .22)),
+                          border: Border.all(
+                              color: qualityColor.withValues(alpha: .22)),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,17 +403,29 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                             Container(
                               width: 44,
                               height: 44,
-                              decoration: BoxDecoration(color: qualityColor.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)),
-                              child: Icon(Icons.auto_awesome_rounded, color: qualityColor),
+                              decoration: BoxDecoration(
+                                  color: qualityColor.withValues(alpha: .12),
+                                  borderRadius: BorderRadius.circular(14)),
+                              child: Icon(Icons.auto_awesome_rounded,
+                                  color: qualityColor),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('RECOMENDACIÓN', style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.1, color: qualityColor)),
+                                  Text('RECOMENDACIÓN',
+                                      style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: 1.1,
+                                          color: qualityColor)),
                                   const SizedBox(height: 5),
-                                  Text(_resolution(_finalSpeed), style: GoogleFonts.spaceGrotesk(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -.6)),
+                                  Text(_resolution(_finalSpeed),
+                                      style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: -.6)),
                                   const SizedBox(height: 6),
                                   Text(
                                     _finalSpeed >= 25
@@ -359,7 +435,11 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                                             : _finalSpeed >= 5
                                                 ? 'Podés usar HD, aunque conviene evitar descargas pesadas en paralelo.'
                                                 : 'Conviene reducir la calidad y mejorar la señal Wi-Fi para evitar cortes.',
-                                    style: GoogleFonts.spaceGrotesk(fontSize: 12.5, height: 1.45, fontWeight: FontWeight.w600, color: theme.hintColor),
+                                    style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 12.5,
+                                        height: 1.45,
+                                        fontWeight: FontWeight.w600,
+                                        color: theme.hintColor),
                                   ),
                                 ],
                               ),
@@ -372,7 +452,11 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                     Text(
                       'Los resultados son orientativos y pueden variar según el servidor, la congestión y la calidad de la señal.',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.spaceGrotesk(fontSize: 10.5, height: 1.4, fontWeight: FontWeight.w500, color: theme.hintColor.withValues(alpha: .8)),
+                      style: GoogleFonts.spaceGrotesk(
+                          fontSize: 10.5,
+                          height: 1.4,
+                          fontWeight: FontWeight.w500,
+                          color: theme.hintColor.withValues(alpha: .8)),
                     ),
                   ],
                 ),
@@ -391,7 +475,11 @@ class _StatusCard extends StatelessWidget {
   final String status;
   final bool testing;
 
-  const _StatusCard({required this.dark, required this.accent, required this.status, required this.testing});
+  const _StatusCard(
+      {required this.dark,
+      required this.accent,
+      required this.status,
+      required this.testing});
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +490,8 @@ class _StatusCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: dark ? const Color(0xFF111820) : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(17),
-        border: Border.all(color: theme.colorScheme.onSurface.withValues(alpha: .055)),
+        border: Border.all(
+            color: theme.colorScheme.onSurface.withValues(alpha: .055)),
       ),
       child: Row(
         children: [
@@ -410,12 +499,28 @@ class _StatusCard extends StatelessWidget {
             duration: const Duration(milliseconds: 220),
             width: 34,
             height: 34,
-            decoration: BoxDecoration(color: accent.withValues(alpha: .1), borderRadius: BorderRadius.circular(11)),
-            child: Icon(testing ? Icons.network_check_rounded : Icons.info_outline_rounded, size: 18, color: accent),
+            decoration: BoxDecoration(
+                color: accent.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(11)),
+            child: Icon(
+                testing
+                    ? Icons.network_check_rounded
+                    : Icons.info_outline_rounded,
+                size: 18,
+                color: accent),
           ),
           const SizedBox(width: 10),
-          Expanded(child: Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.spaceGrotesk(fontSize: 12.5, fontWeight: FontWeight.w700))),
-          if (testing) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+          Expanded(
+              child: Text(status,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12.5, fontWeight: FontWeight.w700))),
+          if (testing)
+            const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2)),
         ],
       ),
     );
@@ -430,8 +535,12 @@ class _MiniPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(color: color.withValues(alpha: .09), borderRadius: BorderRadius.circular(999)),
-        child: Text(label, style: GoogleFonts.spaceGrotesk(fontSize: 9.5, fontWeight: FontWeight.w900, color: color)),
+        decoration: BoxDecoration(
+            color: color.withValues(alpha: .09),
+            borderRadius: BorderRadius.circular(999)),
+        child: Text(label,
+            style: GoogleFonts.spaceGrotesk(
+                fontSize: 9.5, fontWeight: FontWeight.w900, color: color)),
       );
 }
 
@@ -442,7 +551,13 @@ class _MetricCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final bool dark;
-  const _MetricCard({required this.title, required this.value, required this.caption, required this.icon, required this.color, required this.dark});
+  const _MetricCard(
+      {required this.title,
+      required this.value,
+      required this.caption,
+      required this.icon,
+      required this.color,
+      required this.dark});
 
   @override
   Widget build(BuildContext context) {
@@ -456,15 +571,40 @@ class _MetricCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(width: 40, height: 40, decoration: BoxDecoration(color: color.withValues(alpha: .10), borderRadius: BorderRadius.circular(13)), child: Icon(icon, size: 19, color: color)),
+          Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                  color: color.withValues(alpha: .10),
+                  borderRadius: BorderRadius.circular(13)),
+              child: Icon(icon, size: 19, color: color)),
           const SizedBox(width: 11),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(title, style: GoogleFonts.spaceGrotesk(fontSize: 10.5, fontWeight: FontWeight.w800, color: theme.hintColor)),
-              const SizedBox(height: 2),
-              Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.spaceGrotesk(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: -.3)),
-              Text(caption, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.spaceGrotesk(fontSize: 9.5, fontWeight: FontWeight.w600, color: color)),
-            ]),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(title,
+                      style: GoogleFonts.spaceGrotesk(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: theme.hintColor)),
+                  const SizedBox(height: 2),
+                  Text(value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.spaceGrotesk(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -.3)),
+                  Text(caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.spaceGrotesk(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                          color: color)),
+                ]),
           ),
         ],
       ),
@@ -477,14 +617,17 @@ class _GaugePainter extends CustomPainter {
   final Color accent;
   final bool dark;
 
-  const _GaugePainter({required this.value, required this.accent, required this.dark});
+  const _GaugePainter(
+      {required this.value, required this.accent, required this.dark});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.shortestSide / 2 - 14;
     final track = Paint()
-      ..color = dark ? Colors.white.withValues(alpha: .08) : Colors.black.withValues(alpha: .06)
+      ..color = dark
+          ? Colors.white.withValues(alpha: .08)
+          : Colors.black.withValues(alpha: .06)
       ..strokeWidth = 14
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -496,17 +639,27 @@ class _GaugePainter extends CustomPainter {
 
     const start = 2.35;
     const sweep = 2.88;
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep, false, track);
-    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start, sweep * value, false, progress);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start,
+        sweep, false, track);
+    canvas.drawArc(Rect.fromCircle(center: center, radius: radius), start,
+        sweep * value, false, progress);
 
     final needleAngle = start + sweep * value;
-    final needle = Paint()..color = accent..strokeWidth = 3.5..strokeCap = StrokeCap.round;
-    final end = Offset(center.dx + (radius - 16) * cos(needleAngle), center.dy + (radius - 16) * sin(needleAngle));
+    final needle = Paint()
+      ..color = accent
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+    final end = Offset(center.dx + (radius - 16) * cos(needleAngle),
+        center.dy + (radius - 16) * sin(needleAngle));
     canvas.drawLine(center, end, needle);
     canvas.drawCircle(center, 8, Paint()..color = accent);
-    canvas.drawCircle(center, 4, Paint()..color = dark ? const Color(0xFF101410) : Colors.white);
+    canvas.drawCircle(center, 4,
+        Paint()..color = dark ? const Color(0xFF101410) : Colors.white);
   }
 
   @override
-  bool shouldRepaint(covariant _GaugePainter oldDelegate) => oldDelegate.value != value || oldDelegate.accent != accent || oldDelegate.dark != dark;
+  bool shouldRepaint(covariant _GaugePainter oldDelegate) =>
+      oldDelegate.value != value ||
+      oldDelegate.accent != accent ||
+      oldDelegate.dark != dark;
 }

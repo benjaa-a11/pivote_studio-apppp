@@ -253,7 +253,9 @@ class SoccerMatch {
   double get elapsedPercent {
     if (isFinished) return 1.0;
     final ts = timeStatus.toLowerCase();
-    if (ts.contains('entretiempo') || ts.contains('et') || ts.contains('descanso')) {
+    if (ts.contains('entretiempo') ||
+        ts.contains('et') ||
+        ts.contains('descanso')) {
       return 0.50;
     }
     final match = RegExp(r'\d+').firstMatch(ts.isNotEmpty ? ts : time);
@@ -305,12 +307,17 @@ class SoccerMatch {
       byPlayer.putIfAbsent(name, () => []).add(disp);
     }
 
-    return byPlayer.entries.map((e) => '${e.key} ${e.value.join(' ')}').join(' · ');
+    return byPlayer.entries
+        .map((e) => '${e.key} ${e.value.join(' ')}')
+        .join(' · ');
   }
 
   /// Nombres de canales para mostrar en el footer del hero
   String get tvChannelsDisplay {
-    final names = tvChannels.map((c) => c.name.trim()).where((n) => n.isNotEmpty).toList();
+    final names = tvChannels
+        .map((c) => c.name.trim())
+        .where((n) => n.isNotEmpty)
+        .toList();
     if (names.isEmpty) return '';
     return names.take(2).join(' · ');
   }

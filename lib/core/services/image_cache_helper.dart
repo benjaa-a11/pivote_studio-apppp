@@ -71,7 +71,8 @@ class ImageCacheHelper {
         .toList();
 
     if (urlsToPreload.isEmpty) return;
-    debugPrint('🔥 Pre-cargando ${urlsToPreload.length} imágenes en background...');
+    debugPrint(
+        '🔥 Pre-cargando ${urlsToPreload.length} imágenes en background...');
 
     for (final url in urlsToPreload) {
       // ignore: unawaited_futures

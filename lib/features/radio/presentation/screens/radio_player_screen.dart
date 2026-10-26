@@ -113,7 +113,8 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     });
   }
 
-  void _showSleepTimerSheet(BuildContext context, ThemeData theme, bool isDark) {
+  void _showSleepTimerSheet(
+      BuildContext context, ThemeData theme, bool isDark) {
     showModalBottomSheet(
       context: context,
       backgroundColor: isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
@@ -143,7 +144,9 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                     Icon(
                       Icons.timer_outlined,
                       size: 20,
-                      color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                      color: isDark
+                          ? AppTheme.darkAccent
+                          : theme.colorScheme.primary,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -166,16 +169,21 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                     leading: Icon(
                       Icons.alarm_rounded,
                       color: isCurrent
-                          ? (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
+                          ? (isDark
+                              ? AppTheme.darkAccent
+                              : theme.colorScheme.primary)
                           : theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                     title: Text(
                       '$m minutos',
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 14.5,
-                        fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight:
+                            isCurrent ? FontWeight.w800 : FontWeight.w600,
                         color: isCurrent
-                            ? (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
+                            ? (isDark
+                                ? AppTheme.darkAccent
+                                : theme.colorScheme.primary)
                             : theme.colorScheme.onSurface,
                       ),
                     ),
@@ -223,11 +231,13 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
     );
   }
 
-  void _goToNextRadio(RadioProvider provider, AudioManager audioManager, bool next) {
+  void _goToNextRadio(
+      RadioProvider provider, AudioManager audioManager, bool next) {
     final radios = provider.radios;
     if (radios.isEmpty) return;
 
-    final currentIndex = radios.indexWhere((r) => r.id == (audioManager.currentRadio?.id ?? widget.radio.id));
+    final currentIndex = radios.indexWhere(
+        (r) => r.id == (audioManager.currentRadio?.id ?? widget.radio.id));
     if (currentIndex == -1) return;
 
     int newIndex = next ? currentIndex + 1 : currentIndex - 1;
@@ -236,7 +246,9 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
 
     final targetRadio = radios[newIndex];
     audioManager.playRadio(targetRadio);
-  }  @override
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.isDark;
@@ -267,8 +279,8 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                 builder: (context, constraints) {
                   return SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
                         minHeight: constraints.maxHeight - 24,
@@ -379,9 +391,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: isDark
-                  ? AppTheme.darkBg2
-                  : Colors.white,
+              color: isDark ? AppTheme.darkBg2 : Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isDark
@@ -470,9 +480,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppTheme.darkBg2
-                      : Colors.white,
+                  color: isDark ? AppTheme.darkBg2 : Colors.white,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: _sleepMinutesRemaining > 0
@@ -507,9 +515,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppTheme.darkBg2
-                      : Colors.white,
+                  color: isDark ? AppTheme.darkBg2 : Colors.white,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
                     color: isDark
@@ -716,9 +722,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppTheme.darkBg2
-                      : Colors.white,
+                  color: isDark ? AppTheme.darkBg2 : Colors.white,
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
                     color: isDark
@@ -793,9 +797,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppTheme.darkBg2
-                      : Colors.white,
+                  color: isDark ? AppTheme.darkBg2 : Colors.white,
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
                     color: isDark

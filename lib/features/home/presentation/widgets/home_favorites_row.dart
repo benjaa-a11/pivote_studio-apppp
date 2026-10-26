@@ -63,7 +63,8 @@ class HomeFavoritesRow extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 itemCount: favorites.length,
-                separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
+                separatorBuilder: (_, __) =>
+                    const SizedBox(width: AppSpacing.md),
                 itemBuilder: (context, index) {
                   return SizedBox(
                     width: 130,

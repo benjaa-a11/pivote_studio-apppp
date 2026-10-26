@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 /// Centralized animation configurations for consistent app-wide animations
@@ -12,10 +13,14 @@ class AppAnimations {
 
   // Apple Design Physics & Curves
   // Damping 1.0 (critically damped) default, Damping 0.8 for momentum interactions
-  static const Curve appleDefault = Cubic(0.2, 0.0, 0.0, 1.0); // Apple fluid curve
-  static const Curve appleSpringEase = Cubic(0.16, 1.0, 0.3, 1.0); // Critically damped feel
-  static const Curve appleSpringBouncy = Cubic(0.34, 1.56, 0.64, 1.0); // Subtle overshoot
-  static const Curve appleSheetCurve = Cubic(0.32, 0.72, 0.0, 1.0); // Apple modal sheet curve
+  static const Curve appleDefault =
+      Cubic(0.2, 0.0, 0.0, 1.0); // Apple fluid curve
+  static const Curve appleSpringEase =
+      Cubic(0.16, 1.0, 0.3, 1.0); // Critically damped feel
+  static const Curve appleSpringBouncy =
+      Cubic(0.34, 1.56, 0.64, 1.0); // Subtle overshoot
+  static const Curve appleSheetCurve =
+      Cubic(0.32, 0.72, 0.0, 1.0); // Apple modal sheet curve
 
   // Animation Curves - Professional and smooth
   static const Curve defaultCurve = Curves.easeInOut;
@@ -272,7 +277,7 @@ class _StaggeredAnimationState extends State<_StaggeredAnimation>
     final effectiveIndex = widget.index.clamp(0, 6);
     await Future.delayed(widget.delay * effectiveIndex);
     if (mounted) {
-      _controller.forward();
+      unawaited(_controller.forward());
     }
   }
 

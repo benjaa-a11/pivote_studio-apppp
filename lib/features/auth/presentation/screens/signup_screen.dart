@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -75,7 +76,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
 
     setState(() => _isLoading = true);
     try {
@@ -89,9 +90,9 @@ class _SignUpScreenState extends State<SignUpScreen>
 
       if (mounted) {
         AppNotifications.showSuccess(context, '¡Bienvenido a Pivote!');
-        Navigator.of(context).pushReplacement(
+        unawaited(Navigator.of(context).pushReplacement(
           AppAnimations.createFadeRoute(const MainScreen()),
-        );
+        ));
       }
     } catch (e) {
       if (mounted) {
@@ -256,7 +257,9 @@ class _SignUpScreenState extends State<SignUpScreen>
             ),
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Ingresá tu correo';
-              if (!v.contains('@') || !v.contains('.')) return 'Correo inválido';
+              if (!v.contains('@') || !v.contains('.')) {
+                return 'Correo inválido';
+              }
               return null;
             },
           ),
@@ -317,8 +320,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                   size: 20,
                   color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
                 ),
-                onPressed: () => setState(
-                    () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
+                onPressed: () => setState(() =>
+                    _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
               ),
             ),
             validator: (v) {
@@ -353,9 +356,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                     'Tu contraseña se almacena encriptada y nunca se comparte.',
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 12,
-                      color: isDark
-                          ? AppTheme.darkText2
-                          : AppTheme.lightText2,
+                      color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
                       height: 1.4,
                     ),
                   ),

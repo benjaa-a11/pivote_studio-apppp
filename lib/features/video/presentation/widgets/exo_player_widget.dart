@@ -187,7 +187,8 @@ class ExoPlayerController {
   Future<void> seekTo(Duration position) async {
     if (_disposed || _methodChannel == null) return;
     try {
-      await _methodChannel!.invokeMethod('seekTo', {'position': position.inMilliseconds});
+      await _methodChannel!
+          .invokeMethod('seekTo', {'position': position.inMilliseconds});
     } catch (_) {}
   }
 
@@ -196,7 +197,7 @@ class ExoPlayerController {
 
   Future<void> dispose() async {
     _disposed = true;
-    _eventSub?.cancel();
+    await _eventSub?.cancel();
     _listeners.clear();
     if (_methodChannel != null) {
       try {
@@ -251,10 +252,8 @@ class _ExoPlayerWidgetState extends State<ExoPlayerWidget> {
       creationParams: <String, dynamic>{
         'url': widget.url,
         'original_url': widget.url,
-        if (widget.name != null && widget.name!.isNotEmpty)
-          'name': widget.name,
-        if (widget.type != null && widget.type!.isNotEmpty)
-          'type': widget.type,
+        if (widget.name != null && widget.name!.isNotEmpty) 'name': widget.name,
+        if (widget.type != null && widget.type!.isNotEmpty) 'type': widget.type,
         if (widget.drmLicenseUri != null && widget.drmLicenseUri!.isNotEmpty)
           'drm_license_uri': widget.drmLicenseUri,
         if (widget.icono != null && widget.icono!.isNotEmpty)

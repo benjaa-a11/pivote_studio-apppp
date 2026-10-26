@@ -84,34 +84,34 @@ class SearchRadioTile extends StatelessWidget {
                       tag: 'radio_tile_logo_${radio.id}',
                       child: radio.logoUrl.isNotEmpty
                           ? CachedNetworkImage(
-                            key: ValueKey<String>(radio.logoUrl),
-                            cacheManager: ImageCacheHelper.logoCacheManager,
-                            imageUrl: radio.logoUrl,
-                            fit: BoxFit.cover,
-                            memCacheWidth: 120,
-                            placeholder: (context, url) => Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: theme.colorScheme.primary,
+                              key: ValueKey<String>(radio.logoUrl),
+                              cacheManager: ImageCacheHelper.logoCacheManager,
+                              imageUrl: radio.logoUrl,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 120,
+                              placeholder: (context, url) => Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: theme.colorScheme.primary,
+                                  ),
                                 ),
                               ),
-                            ),
-                            errorWidget: (context, url, error) => Icon(
+                              errorWidget: (context, url, error) => Icon(
+                                Icons.radio_rounded,
+                                size: 24,
+                                color: theme.colorScheme.primary
+                                    .withValues(alpha: 0.6),
+                              ),
+                            )
+                          : Icon(
                               Icons.radio_rounded,
                               size: 24,
                               color: theme.colorScheme.primary
                                   .withValues(alpha: 0.6),
                             ),
-                          )
-                        : Icon(
-                            Icons.radio_rounded,
-                            size: 24,
-                            color: theme.colorScheme.primary
-                                .withValues(alpha: 0.6),
-                          ),
                     ),
                   ),
                 ),
@@ -208,8 +208,7 @@ class SearchRadioTile extends StatelessWidget {
                     ? theme.colorScheme.primary
                     : (isDark
                         ? Colors.white.withValues(alpha: 0.07)
-                        : theme.colorScheme.primary
-                            .withValues(alpha: 0.08)),
+                        : theme.colorScheme.primary.withValues(alpha: 0.08)),
                 shape: BoxShape.circle,
               ),
               child: Center(

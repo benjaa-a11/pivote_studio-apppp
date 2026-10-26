@@ -191,13 +191,15 @@ class _PremiumToastState extends State<_PremiumToast>
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                      color:
+                          Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
                   children: [
                     // Icon Container
@@ -207,7 +209,8 @@ class _PremiumToastState extends State<_PremiumToast>
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: cfg.color.withValues(alpha: isDark ? 0.18 : 0.12),
+                          color:
+                              cfg.color.withValues(alpha: isDark ? 0.18 : 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -243,8 +246,10 @@ class _PremiumToastState extends State<_PremiumToast>
                               fontWeight: FontWeight.w500,
                               height: 1.25,
                               color: isDark
-                                  ? const Color(0xFFF0F4F8).withValues(alpha: 0.95)
-                                  : const Color(0xFF1C222B).withValues(alpha: 0.9),
+                                  ? const Color(0xFFF0F4F8)
+                                      .withValues(alpha: 0.95)
+                                  : const Color(0xFF1C222B)
+                                      .withValues(alpha: 0.9),
                             ),
                           ),
                         ],

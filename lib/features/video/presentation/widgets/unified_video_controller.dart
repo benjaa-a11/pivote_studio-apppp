@@ -243,7 +243,8 @@ class _WebControllerAdapter implements UnifiedVideoController {
   @override
   Future<void> retry() => _js('window.retryCurrentServer()');
   @override
-  Future<void> seek(Duration position) => _js('window.seek(${position.inSeconds})');
+  Future<void> seek(Duration position) =>
+      _js('window.seek(${position.inSeconds})');
 
   Future<void> _js(String script) async {
     if (_disposed) return;

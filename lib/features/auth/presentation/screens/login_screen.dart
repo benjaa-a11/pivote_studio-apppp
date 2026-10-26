@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -62,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
 
     final userProvider = context.read<UserProvider>();
 
@@ -73,11 +74,11 @@ class _LoginScreenState extends State<LoginScreen>
         _passwordController.text,
       );
       if (mounted) {
-        context.read<AppActivityService>().onUserLogin();
+        unawaited(context.read<AppActivityService>().onUserLogin());
         AppNotifications.showSuccess(context, '¡Bienvenido de nuevo!');
-        Navigator.of(context).pushReplacement(
+        unawaited(Navigator.of(context).pushReplacement(
           AppAnimations.createFadeRoute(const MainScreen()),
-        );
+        ));
       }
     } catch (e) {
       if (mounted) {
@@ -123,7 +124,8 @@ class _LoginScreenState extends State<LoginScreen>
                       'Al iniciar sesión aceptas nuestra\nPolítica de Privacidad y Términos de Servicio',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+                        color:
+                            theme.colorScheme.onSurface.withValues(alpha: 0.38),
                         height: 1.5,
                       ),
                     ),
@@ -150,9 +152,7 @@ class _LoginScreenState extends State<LoginScreen>
             color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg1,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isDark
-                  ? AppTheme.darkBorder
-                  : AppTheme.lightBorder,
+              color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
             ),
           ),
           padding: const EdgeInsets.all(10),
@@ -190,9 +190,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   Widget _buildForm(BuildContext context, ThemeData theme, bool isDark) {
-    final fieldBg = isDark
-        ? AppTheme.darkBg2
-        : AppTheme.lightBg1;
+    final fieldBg = isDark ? AppTheme.darkBg2 : AppTheme.lightBg1;
     final borderColor = isDark ? AppTheme.darkBorder2 : AppTheme.lightBorder;
 
     return Form(
@@ -266,7 +264,9 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
             validator: (value) {
-              if (value == null || value.isEmpty) return 'Ingresá tu contraseña';
+              if (value == null || value.isEmpty) {
+                return 'Ingresá tu contraseña';
+              }
               if (value.length < 6) return 'Mínimo 6 caracteres';
               return null;
             },
@@ -343,8 +343,7 @@ class _LoginScreenState extends State<LoginScreen>
       prefixIcon: Padding(
         padding: const EdgeInsets.only(left: 14, right: 10),
         child: Icon(icon,
-            size: 18,
-            color: isDark ? AppTheme.darkText3 : AppTheme.lightText3),
+            size: 18, color: isDark ? AppTheme.darkText3 : AppTheme.lightText3),
       ),
       suffixIcon: suffix,
       border: OutlineInputBorder(

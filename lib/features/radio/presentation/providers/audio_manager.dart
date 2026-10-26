@@ -89,9 +89,9 @@ class AudioManager extends ChangeNotifier {
     // Si es la misma radio y ya está cargada
     if (_currentRadio?.id == radio.id) {
       if (_status == AudioManagerStatus.playing) {
-        pause();
+        await pause();
       } else {
-        resume();
+        await resume();
       }
       return;
     }

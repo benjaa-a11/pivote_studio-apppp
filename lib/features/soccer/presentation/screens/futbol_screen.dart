@@ -9,7 +9,6 @@ import 'package:shimmer/shimmer.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:pivote/features/soccer/presentation/widgets/soccer_match_card.dart';
-import 'package:pivote/features/soccer/presentation/widgets/matches_hero.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 
@@ -25,14 +24,6 @@ class FutbolScreen extends StatefulWidget {
 class _FutbolScreenState extends State<FutbolScreen> {
   String _selectedLeagueId = 'all';
   SoccerStatusFilter _selectedStatus = SoccerStatusFilter.all;
-  final TextEditingController _searchController = TextEditingController();
-  bool _isSearchOpen = false;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   String _getFormattedSpanishDate() {
     final now = DateTime.now();
@@ -71,7 +62,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
     final soccerProvider = context.watch<SoccerProvider>();
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF080B11) : theme.scaffoldBackgroundColor,
+      backgroundColor:
+          isDark ? const Color(0xFF080B11) : theme.scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: _buildContent(soccerProvider, theme, isDark),
@@ -102,23 +94,10 @@ class _FutbolScreenState extends State<FutbolScreen> {
     final scheduledMatches = allMatches.where((m) => m.isScheduled).toList();
     final finishedMatches = allMatches.where((m) => m.isFinished).toList();
 
-    // Partidos destacados para el Hero (en vivo si hay, sino los primeros 4 próximos)
-    List<SoccerMatch> heroMatches = [];
-    if (_selectedStatus != SoccerStatusFilter.finished) {
-      if (liveMatches.isNotEmpty) {
-        heroMatches = liveMatches;
-      } else {
-        heroMatches = scheduledMatches.take(4).toList();
-      }
-      if (_selectedLeagueId != 'all') {
-        heroMatches =
-            heroMatches.where((m) => m.leagueId == _selectedLeagueId).toList();
-      }
-    }
-
     return RefreshIndicator(
       color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-      backgroundColor: isDark ? const Color(0xFF131722) : theme.colorScheme.surface,
+      backgroundColor:
+          isDark ? const Color(0xFF131722) : theme.colorScheme.surface,
       strokeWidth: 2.5,
       onRefresh: () => provider.fetchData(),
       child: CustomScrollView(
@@ -127,8 +106,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
           parent: ClampingScrollPhysics(),
         ),
         slivers: [
-          // ─── Header estilo Pivote Live con fecha y buscador ───
-          _buildSliverHeader(theme, isDark, liveMatches.length, allMatches.length),
+          // ─── Header estilo Pivote Live con fecha ───
+          _buildSliverHeader(
+              theme, isDark, liveMatches.length, allMatches.length),
 
           // ─── Pestañas de Estado (Todos, En Vivo, Próximos, Finalizados) ───
           SliverToBoxAdapter(
@@ -147,18 +127,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
             child: _buildLeagueRail(soccerData, theme, isDark),
           ),
 
-          // ─── Hero Carrusel de Partidos (En juego ahora o Lo que viene) ───
-          if (heroMatches.isNotEmpty)
-            SliverToBoxAdapter(
-              child: MatchesHero(
-                showHeader: true,
-                sectionTitle: liveMatches.isNotEmpty
-                    ? 'En juego ahora'
-                    : 'Lo que viene',
-                matchesOverride: heroMatches,
-              ),
-            ),
-
           // ─── Separador sutil antes de la lista ───
           const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
@@ -174,7 +142,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
     );
   }
 
-  // ─── Sliver Header: Logo PIVOTE LIVE + Fecha + Botón Búsqueda ───
+  // ─── Sliver Header: Logo PIVOTE LIVE + Fecha ───
   Widget _buildSliverHeader(
     ThemeData theme,
     bool isDark,
@@ -187,14 +155,16 @@ class _FutbolScreenState extends State<FutbolScreen> {
       elevation: 0,
       backgroundColor: Colors.transparent,
       automaticallyImplyLeading: false,
-      toolbarHeight: _isSearchOpen ? 122 : 64,
+      toolbarHeight: 58,
       flexibleSpace: ClipRect(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: (isDark ? const Color(0xFF080B11) : theme.scaffoldBackgroundColor)
+              color: (isDark
+                      ? const Color(0xFF080B11)
+                      : theme.scaffoldBackgroundColor)
                   .withValues(alpha: isDark ? 0.90 : 0.94),
               border: Border(
                 bottom: BorderSide(
@@ -205,145 +175,85 @@ class _FutbolScreenState extends State<FutbolScreen> {
                 ),
               ),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Logo PIVOTE LIVE (con 'LIVE' en verde lima brillante)
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
                   children: [
-                    // Logo PIVOTE LIVE (con 'LIVE' en verde lima brillante)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          'PIVOTE',
-                          style: GoogleFonts.bigShouldersDisplay(
-                            fontSize: 27,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                            color: isDark ? const Color(0xFFEEF1F6) : theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: AppTheme.darkAccent,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'LIVE',
-                            style: GoogleFonts.bigShouldersDisplay(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              color: const Color(0xFF080B11),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(width: 10),
-
-                    // Fecha en español
-                    Expanded(
-                      child: Text(
-                        _getFormattedSpanishDate(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-                        ),
+                    Text(
+                      'PIVOTE',
+                      style: GoogleFonts.bigShouldersDisplay(
+                        fontSize: 27,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        color: isDark
+                            ? const Color(0xFFEEF1F6)
+                            : theme.colorScheme.onSurface,
                       ),
                     ),
-
-                    // Botón de búsqueda rápida
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          setState(() {
-                            _isSearchOpen = !_isSearchOpen;
-                            if (!_isSearchOpen) {
-                              _searchController.clear();
-                            }
-                          });
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: _isSearchOpen
-                                ? AppTheme.darkAccent
-                                : (isDark
-                                    ? const Color(0xFF161B27)
-                                    : Colors.black.withValues(alpha: 0.05)),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
-                            ),
-                          ),
-                          child: Icon(
-                            _isSearchOpen ? Icons.close_rounded : Icons.search_rounded,
-                            size: 19,
-                            color: _isSearchOpen
-                                ? const Color(0xFF080B11)
-                                : (isDark ? const Color(0xFFEEF1F6) : theme.colorScheme.onSurface),
-                          ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkAccent,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'LIVE',
+                        style: GoogleFonts.bigShouldersDisplay(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF080B11),
                         ),
                       ),
                     ),
                   ],
                 ),
 
-                // Campo de búsqueda expandible
-                if (_isSearchOpen) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF131722) : theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark
-                            ? AppTheme.darkAccent.withValues(alpha: 0.4)
-                            : theme.colorScheme.primary.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      autofocus: true,
-                      onChanged: (val) => setState(() {}),
-                      cursorColor: AppTheme.darkAccent,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? const Color(0xFFEEF1F6) : theme.colorScheme.onSurface,
-                      ),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: 'Buscar equipo, liga o señal...',
-                        hintStyle: GoogleFonts.spaceGrotesk(
-                          fontSize: 12.5,
-                          color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-                        ),
-                        prefixIcon: const Icon(
-                          Icons.search_rounded,
-                          size: 18,
-                          color: AppTheme.darkAccent,
-                        ),
-                        prefixIconConstraints:
-                            const BoxConstraints(minWidth: 36, minHeight: 36),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 11),
-                      ),
+                // Fecha en español estilizada en píldora moderna
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF131722)
+                        : Colors.black.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isDark
+                          ? const Color(0xFF1E2533)
+                          : AppTheme.lightBorder,
                     ),
                   ),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        size: 13,
+                        color: isDark
+                            ? AppTheme.darkAccent
+                            : theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _getFormattedSpanishDate(),
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? const Color(0xFFC7CFDD)
+                              : const Color(0xFF334155),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -411,15 +321,20 @@ class _FutbolScreenState extends State<FutbolScreen> {
               borderRadius: BorderRadius.circular(12),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? (isDark ? const Color(0xFF161B27) : theme.colorScheme.surface)
+                      ? (isDark
+                          ? const Color(0xFF161B27)
+                          : theme.colorScheme.surface)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isSelected
-                        ? (isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder)
+                        ? (isDark
+                            ? const Color(0xFF1E2533)
+                            : AppTheme.lightBorder)
                         : Colors.transparent,
                   ),
                   boxShadow: isSelected && isDark
@@ -450,10 +365,15 @@ class _FutbolScreenState extends State<FutbolScreen> {
                       item.label,
                       style: GoogleFonts.spaceGrotesk(
                         fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        fontWeight:
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
                         color: isSelected
-                            ? (isDark ? const Color(0xFFEEF1F6) : theme.colorScheme.onSurface)
-                            : (isDark ? const Color(0xFF7C879B) : theme.hintColor),
+                            ? (isDark
+                                ? const Color(0xFFEEF1F6)
+                                : theme.colorScheme.onSurface)
+                            : (isDark
+                                ? const Color(0xFF7C879B)
+                                : theme.hintColor),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -462,11 +382,16 @@ class _FutbolScreenState extends State<FutbolScreen> {
                       style: GoogleFonts.bigShouldersDisplay(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: isSelected && item.filter == SoccerStatusFilter.live
-                            ? const Color(0xFFFF5468)
-                            : isSelected
-                                ? (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
-                                : (isDark ? const Color(0xFF7C879B) : theme.hintColor),
+                        color:
+                            isSelected && item.filter == SoccerStatusFilter.live
+                                ? const Color(0xFFFF5468)
+                                : isSelected
+                                    ? (isDark
+                                        ? AppTheme.darkAccent
+                                        : theme.colorScheme.primary)
+                                    : (isDark
+                                        ? const Color(0xFF7C879B)
+                                        : theme.hintColor),
                       ),
                     ),
                   ],
@@ -492,9 +417,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
     }
 
     // Filtrar solo ligas con al menos 1 partido
-    final activeLeagues = data.leagues
-        .where((l) => (leagueCounts[l.id] ?? 0) > 0)
-        .toList();
+    final activeLeagues =
+        data.leagues.where((l) => (leagueCounts[l.id] ?? 0) > 0).toList();
 
     return Container(
       height: 42,
@@ -564,7 +488,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected
-                  ? (isDark ? AppTheme.darkAccent.withValues(alpha: 0.6) : theme.colorScheme.primary)
+                  ? (isDark
+                      ? AppTheme.darkAccent.withValues(alpha: 0.6)
+                      : theme.colorScheme.primary)
                   : (isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder),
               width: isSelected ? 1.4 : 1,
             ),
@@ -594,7 +520,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                   color: isSelected
-                      ? (isDark ? const Color(0xFFEEF1F6) : theme.colorScheme.onSurface)
+                      ? (isDark
+                          ? const Color(0xFFEEF1F6)
+                          : theme.colorScheme.onSurface)
                       : (isDark ? const Color(0xFF7C879B) : theme.hintColor),
                 ),
               ),
@@ -626,8 +554,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
 
     // Filtro por liga
     if (_selectedLeagueId != 'all') {
-      filteredMatches =
-          filteredMatches.where((m) => m.leagueId == _selectedLeagueId).toList();
+      filteredMatches = filteredMatches
+          .where((m) => m.leagueId == _selectedLeagueId)
+          .toList();
     }
 
     // Filtro por estado
@@ -637,19 +566,6 @@ class _FutbolScreenState extends State<FutbolScreen> {
       filteredMatches = filteredMatches.where((m) => m.isScheduled).toList();
     } else if (_selectedStatus == SoccerStatusFilter.finished) {
       filteredMatches = filteredMatches.where((m) => m.isFinished).toList();
-    }
-
-    // Filtro por buscador
-    final query = _searchController.text.trim().toLowerCase();
-    if (query.isNotEmpty) {
-      filteredMatches = filteredMatches.where((m) {
-        final home = m.homeTeam.toLowerCase();
-        final away = m.awayTeam.toLowerCase();
-        final channels = m.tvChannels.map((c) => c.name.toLowerCase()).join(' ');
-        return home.contains(query) ||
-            away.contains(query) ||
-            channels.contains(query);
-      }).toList();
     }
 
     if (filteredMatches.isEmpty) {
@@ -749,7 +665,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.3,
-                        color: isDark ? const Color(0xFFEEF1F6) : theme.colorScheme.onSurface,
+                        color: isDark
+                            ? const Color(0xFFEEF1F6)
+                            : theme.colorScheme.onSurface,
                       ),
                     ),
                     if (league.country.isNotEmpty)
@@ -758,7 +676,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                          color: isDark
+                              ? const Color(0xFF7C879B)
+                              : theme.hintColor,
                         ),
                       ),
                   ],
@@ -837,7 +757,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
         Icon(
           Icons.sports_soccer_outlined,
           size: 46,
-          color: isDark ? const Color(0xFF7C879B) : theme.hintColor.withValues(alpha: 0.5),
+          color: isDark
+              ? const Color(0xFF7C879B)
+              : theme.hintColor.withValues(alpha: 0.5),
         ),
         const SizedBox(height: 14),
         Text(
@@ -863,7 +785,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
 
   Widget _buildLoadingState(ThemeData theme, bool isDark) {
     final baseColor = isDark ? const Color(0xFF131824) : Colors.grey.shade300;
-    final highlightColor = isDark ? const Color(0xFF222B3D) : Colors.grey.shade100;
+    final highlightColor =
+        isDark ? const Color(0xFF222B3D) : Colors.grey.shade100;
     final cardColor = isDark ? const Color(0xFF0F131C) : theme.cardColor;
 
     return SingleChildScrollView(
@@ -938,7 +861,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
                 color: cardColor,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+                  color:
+                      isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
                   width: 1,
                 ),
               ),
@@ -1049,7 +973,8 @@ class _FutbolScreenState extends State<FutbolScreen> {
                 color: cardColor,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+                  color:
+                      isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
                   width: 1,
                 ),
               ),

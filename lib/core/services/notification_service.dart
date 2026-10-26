@@ -7,11 +7,13 @@ import 'package:pivote/features/auth/data/services/auth_service.dart';
 
 class NotificationService {
   static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _channelId = 'pivote_notifications';
   static const String _channelName = 'Pivote Notifications';
-  static const String _channelDescription = 'Notificaciones de la aplicación Pivote';
+  static const String _channelDescription =
+      'Notificaciones de la aplicación Pivote';
   static ValueChanged<RemoteMessage>? onMessageReceived;
   static final List<RemoteMessage> _pendingMessages = [];
 
@@ -24,15 +26,24 @@ class NotificationService {
   static Future<void> initializeWithoutPermission() async {
     try {
       final settings = await _messaging.getNotificationSettings();
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) await _setupNotificationHandlers();
-    } catch (e) { debugPrint('❌ Error initializing Notification Service: $e'); }
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        await _setupNotificationHandlers();
+      }
+    } catch (e) {
+      debugPrint('❌ Error initializing Notification Service: $e');
+    }
   }
 
   static Future<void> initialize() async {
     try {
-      final settings = await _messaging.requestPermission(alert: true, badge: true, sound: true, provisional: false);
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) await _setupNotificationHandlers();
-    } catch (e) { debugPrint('❌ Error initializing Notification Service: $e'); }
+      final settings = await _messaging.requestPermission(
+          alert: true, badge: true, sound: true, provisional: false);
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        await _setupNotificationHandlers();
+      }
+    } catch (e) {
+      debugPrint('❌ Error initializing Notification Service: $e');
+    }
   }
 
   static Future<void> _setupNotificationHandlers() async {
@@ -47,22 +58,48 @@ class NotificationService {
   }
 
   static Future<void> _initializeLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(requestAlertPermission: true, requestBadgePermission: true, requestSoundPermission: true);
-    const initSettings = InitializationSettings(android: androidSettings, iOS: iosSettings);
-    await _localNotifications.initialize(initSettings, onDidReceiveNotificationResponse: _onNotificationTapped);
-    const androidChannel = AndroidNotificationChannel(_channelId, _channelName, description: _channelDescription, importance: Importance.high, enableVibration: true, playSound: true);
-    await _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(androidChannel);
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true);
+    const initSettings =
+        InitializationSettings(android: androidSettings, iOS: iosSettings);
+    await _localNotifications.initialize(initSettings,
+        onDidReceiveNotificationResponse: _onNotificationTapped);
+    const androidChannel = AndroidNotificationChannel(_channelId, _channelName,
+        description: _channelDescription,
+        importance: Importance.high,
+        enableVibration: true,
+        playSound: true);
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(androidChannel);
   }
 
-  static Future<String?> getToken() async { try { return await _messaging.getToken(); } catch (e) { debugPrint('❌ Error getting FCM token: $e'); return null; } }
+  static Future<String?> getToken() async {
+    try {
+      return await _messaging.getToken();
+    } catch (e) {
+      debugPrint('❌ Error getting FCM token: $e');
+      return null;
+    }
+  }
 
   static Future<void> _saveTokenToFirestore(String token) async {
     try {
       final uid = AuthService.currentUserId;
       if (uid == null) return;
-      await _firestore.collection('usuarios').doc(uid).update({'fcmToken': token, 'fcmTokenUpdatedAt': FieldValue.serverTimestamp(), 'notificationsDisabled': false});
-    } catch (e) { debugPrint('❌ Error saving FCM token: $e'); }
+      await _firestore.collection('usuarios').doc(uid).update({
+        'fcmToken': token,
+        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+        'notificationsDisabled': false
+      });
+    } catch (e) {
+      debugPrint('❌ Error saving FCM token: $e');
+    }
   }
 
   static Future<void> _handleForegroundMessage(RemoteMessage message) async {
@@ -71,7 +108,19 @@ class NotificationService {
     final notification = message.notification;
     final android = message.notification?.android;
     if (notification != null) {
-      await _localNotifications.show(notification.hashCode, notification.title, notification.body, NotificationDetails(android: AndroidNotificationDetails(_channelId, _channelName, channelDescription: _channelDescription, importance: Importance.high, priority: Priority.high, icon: android?.smallIcon ?? '@mipmap/ic_launcher'), iOS: const DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true)), payload: message.data.toString());
+      await _localNotifications.show(
+          notification.hashCode,
+          notification.title,
+          notification.body,
+          NotificationDetails(
+              android: AndroidNotificationDetails(_channelId, _channelName,
+                  channelDescription: _channelDescription,
+                  importance: Importance.high,
+                  priority: Priority.high,
+                  icon: android?.smallIcon ?? '@mipmap/ic_launcher'),
+              iOS: const DarwinNotificationDetails(
+                  presentAlert: true, presentBadge: true, presentSound: true)),
+          payload: message.data.toString());
     }
   }
 
@@ -80,33 +129,60 @@ class NotificationService {
     onMessageReceived?.call(message);
   }
 
-  static void _onNotificationTapped(NotificationResponse response) { debugPrint('🔔 Local notification tapped: ${response.payload}'); }
+  static void _onNotificationTapped(NotificationResponse response) {
+    debugPrint('🔔 Local notification tapped: ${response.payload}');
+  }
 
-  static Future<bool> areNotificationsEnabled() async { final settings = await _messaging.getNotificationSettings(); return settings.authorizationStatus == AuthorizationStatus.authorized; }
+  static Future<bool> areNotificationsEnabled() async {
+    final settings = await _messaging.getNotificationSettings();
+    return settings.authorizationStatus == AuthorizationStatus.authorized;
+  }
 
   static Future<bool> requestPermission() async {
     try {
-      if (await Permission.notification.isDenied) { final status = await Permission.notification.request(); if (status.isDenied) return false; }
-      final settings = await _messaging.requestPermission(alert: true, badge: true, sound: true);
-      final authorized = settings.authorizationStatus == AuthorizationStatus.authorized;
+      if (await Permission.notification.isDenied) {
+        final status = await Permission.notification.request();
+        if (status.isDenied) return false;
+      }
+      final settings = await _messaging.requestPermission(
+          alert: true, badge: true, sound: true);
+      final authorized =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
       if (authorized) await initialize();
       return authorized;
-    } catch (_) { return false; }
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<void> disableNotifications() async {
     try {
       final uid = AuthService.currentUserId;
       if (uid == null) return;
-      await _firestore.collection('usuarios').doc(uid).update({'fcmToken': FieldValue.delete(), 'notificationsDisabled': true});
+      await _firestore.collection('usuarios').doc(uid).update(
+          {'fcmToken': FieldValue.delete(), 'notificationsDisabled': true});
       await _messaging.deleteToken();
-    } catch (e) { debugPrint('❌ Error disabling notifications: $e'); }
+    } catch (e) {
+      debugPrint('❌ Error disabling notifications: $e');
+    }
   }
 
   static Future<void> sendTestNotification() async {
-    await _localNotifications.show(0, 'Notificación de prueba', 'Las notificaciones están funcionando correctamente', const NotificationDetails(android: AndroidNotificationDetails(_channelId, _channelName, channelDescription: _channelDescription, importance: Importance.high, priority: Priority.high), iOS: DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true)));
+    await _localNotifications.show(
+        0,
+        'Notificación de prueba',
+        'Las notificaciones están funcionando correctamente',
+        const NotificationDetails(
+            android: AndroidNotificationDetails(_channelId, _channelName,
+                channelDescription: _channelDescription,
+                importance: Importance.high,
+                priority: Priority.high),
+            iOS: DarwinNotificationDetails(
+                presentAlert: true, presentBadge: true, presentSound: true)));
   }
 }
 
 @pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async { debugPrint('🔔 Background message received: ${message.messageId}'); }
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('🔔 Background message received: ${message.messageId}');
+}

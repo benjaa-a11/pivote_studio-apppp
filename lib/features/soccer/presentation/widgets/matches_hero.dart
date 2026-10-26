@@ -114,7 +114,9 @@ class _MatchesHeroState extends State<MatchesHero> {
                     children: [
                       Text(
                         widget.sectionTitle ??
-                            (hasLiveMatches ? 'En juego ahora' : 'Lo que viene'),
+                            (hasLiveMatches
+                                ? 'En juego ahora'
+                                : 'Lo que viene'),
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,

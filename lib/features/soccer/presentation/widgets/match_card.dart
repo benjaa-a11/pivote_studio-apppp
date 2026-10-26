@@ -5,7 +5,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
-import 'package:pivote/features/soccer/presentation/widgets/soccer_pitch_painter.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
@@ -112,7 +111,8 @@ class MatchCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: isLive
-                          ? const Color(0xFFFF5468).withValues(alpha: isDark ? 0.45 : 0.3)
+                          ? const Color(0xFFFF5468)
+                              .withValues(alpha: isDark ? 0.45 : 0.3)
                           : (isDark
                               ? const Color(0xFF1E2533)
                               : AppTheme.lightBorder),
@@ -123,7 +123,8 @@ class MatchCard extends StatelessWidget {
                         color: isLive
                             ? const Color(0xFFFF5468)
                                 .withValues(alpha: isDark ? 0.22 : 0.12)
-                            : Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                            : Colors.black
+                                .withValues(alpha: isDark ? 0.35 : 0.08),
                         blurRadius: isLive ? 22 : 14,
                         offset: const Offset(0, 8),
                       ),
@@ -138,10 +139,10 @@ class MatchCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24),
                     gradient: RadialGradient(
-                      center: const Alignment(-1.15, -0.05),
-                      radius: 1.15,
+                      center: const Alignment(-0.85, -0.05),
+                      radius: 1.0,
                       colors: [
-                        homeColor.withValues(alpha: isDark ? 0.30 : 0.18),
+                        homeColor.withValues(alpha: isDark ? 0.32 : 0.20),
                         homeColor.withValues(alpha: 0.0),
                       ],
                       stops: const [0.0, 0.75],
@@ -156,10 +157,10 @@ class MatchCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24),
                     gradient: RadialGradient(
-                      center: const Alignment(1.15, -0.05),
-                      radius: 1.15,
+                      center: const Alignment(0.85, -0.05),
+                      radius: 1.0,
                       colors: [
-                        awayColor.withValues(alpha: isDark ? 0.30 : 0.18),
+                        awayColor.withValues(alpha: isDark ? 0.32 : 0.20),
                         awayColor.withValues(alpha: 0.0),
                       ],
                       stops: const [0.0, 0.75],
@@ -168,21 +169,7 @@ class MatchCard extends StatelessWidget {
                 ),
               ),
 
-              // ─── 4. Cancha de fútbol vectorizada (pitch outline) ───
-              Positioned.fill(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: CustomPaint(
-                    painter: SoccerPitchPainter(
-                      lineColor: (isDark ? Colors.white : Colors.black)
-                          .withValues(alpha: isDark ? 0.085 : 0.05),
-                      strokeWidth: 1.3,
-                    ),
-                  ),
-                ),
-              ),
-
-              // ─── 5. Contenido interactivo del Hero ───
+              // ─── 4. Contenido interactivo del Hero ───
               Positioned.fill(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
@@ -190,6 +177,17 @@ class MatchCard extends StatelessWidget {
                     children: [
                       // Header con liga y pill de estado
                       _buildHeader(league, tournamentLogoUrl, theme, isDark),
+
+                      const SizedBox(height: 10),
+
+                      // Línea divisoria horizontal superior
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.06),
+                      ),
 
                       const Spacer(),
 
@@ -206,7 +204,18 @@ class MatchCard extends StatelessWidget {
 
                       const Spacer(),
 
-                      // Footer con canales de TV y botón de reproducción
+                      // Línea divisoria horizontal inferior
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.06),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // Footer con botón de acción (Próximo, Ver partido, En vivo)
                       _buildFooter(
                         context,
                         hasMultipleChannels,
@@ -231,6 +240,8 @@ class MatchCard extends StatelessWidget {
     ThemeData theme,
     bool isDark,
   ) {
+    final showStatusPill = isLive || match.isFinished;
+
     return Row(
       children: [
         // Logo de la liga
@@ -265,16 +276,17 @@ class MatchCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.spaceGrotesk(
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: FontWeight.w700,
-              color: isDark ? const Color(0xFFAAB3C5) : theme.hintColor,
+              letterSpacing: -0.1,
+              color: isDark ? const Color(0xFFC7CFDD) : const Color(0xFF334155),
             ),
           ),
         ),
-        const SizedBox(width: 8),
-
-        // Pill de estado (En vivo, Final o Programado)
-        _buildStatusPill(theme, isDark),
+        if (showStatusPill) ...[
+          const SizedBox(width: 8),
+          _buildStatusPill(theme, isDark),
+        ],
       ],
     );
   }
@@ -290,10 +302,14 @@ class MatchCard extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF161B27) : Colors.black.withValues(alpha: 0.05),
+          color: isDark
+              ? const Color(0xFF161B27)
+              : Colors.black.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(
-            color: isDark ? const Color(0xFF1E2533) : Colors.black.withValues(alpha: 0.06),
+            color: isDark
+                ? const Color(0xFF1E2533)
+                : Colors.black.withValues(alpha: 0.06),
           ),
         ),
         child: Text(
@@ -307,25 +323,8 @@ class MatchCard extends StatelessWidget {
       );
     }
 
-    // Programado
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF161B27) : Colors.black.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(
-          color: isDark ? const Color(0xFF1E2533) : Colors.black.withValues(alpha: 0.06),
-        ),
-      ),
-      child: Text(
-        '${match.dayLabel} · ${match.formattedTime}',
-        style: GoogleFonts.spaceGrotesk(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-        ),
-      ),
-    );
+    // Para partidos programados, el horario ya se muestra de forma destacada en el centro
+    return const SizedBox.shrink();
   }
 
   // ─── Match Center: Equipo Local, Marcador y Equipo Visitante ───
@@ -388,28 +387,20 @@ class MatchCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Escudo del equipo con aura y fallback refinado
+        // Escudo del equipo libre (sin círculo sólido ni borde), solo con el degradado de su color
         Container(
           width: 58,
           height: 58,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isDark
-                ? const Color(0xFF13171F)
-                : Colors.white,
-            border: Border.all(
-              color: teamColor.withValues(alpha: isDark ? 0.35 : 0.25),
-              width: 1.5,
+            gradient: RadialGradient(
+              colors: [
+                teamColor.withValues(alpha: isDark ? 0.35 : 0.22),
+                teamColor.withValues(alpha: 0.0),
+              ],
+              radius: 0.75,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: teamColor.withValues(alpha: isDark ? 0.25 : 0.12),
-                blurRadius: 12,
-                spreadRadius: 1,
-              ),
-            ],
           ),
-          padding: const EdgeInsets.all(7),
           child: logoUrl.isNotEmpty
               ? CachedNetworkImage(
                   cacheManager: ImageCacheHelper.logoCacheManager,
@@ -427,7 +418,7 @@ class MatchCard extends StatelessWidget {
                   errorWidget: (_, __, ___) => Center(
                     child: FaIcon(
                       FontAwesomeIcons.shieldHalved,
-                      size: 24,
+                      size: 28,
                       color: teamColor,
                     ),
                   ),
@@ -435,7 +426,7 @@ class MatchCard extends StatelessWidget {
               : Center(
                   child: FaIcon(
                     FontAwesomeIcons.shieldHalved,
-                    size: 24,
+                    size: 28,
                     color: teamColor,
                   ),
                 ),
@@ -480,8 +471,10 @@ class MatchCard extends StatelessWidget {
 
     // Partido en Vivo o Finalizado con marcador disponible
     if ((isLive || isFinished) && match.score.isNotEmpty) {
-      final homeScore = match.score.isNotEmpty ? match.score[0].toString() : '0';
-      final awayScore = match.score.length > 1 ? match.score[1].toString() : '0';
+      final homeScore =
+          match.score.isNotEmpty ? match.score[0].toString() : '0';
+      final awayScore =
+          match.score.length > 1 ? match.score[1].toString() : '0';
 
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -497,7 +490,9 @@ class MatchCard extends StatelessWidget {
                   fontSize: 46,
                   fontWeight: FontWeight.w900,
                   height: 1.0,
-                  color: isLive ? AppTheme.darkAccent : theme.colorScheme.onSurface,
+                  color: isLive
+                      ? AppTheme.darkAccent
+                      : theme.colorScheme.onSurface,
                 ),
               ),
               Padding(
@@ -518,7 +513,9 @@ class MatchCard extends StatelessWidget {
                   fontSize: 46,
                   fontWeight: FontWeight.w900,
                   height: 1.0,
-                  color: isLive ? AppTheme.darkAccent : theme.colorScheme.onSurface,
+                  color: isLive
+                      ? AppTheme.darkAccent
+                      : theme.colorScheme.onSurface,
                 ),
               ),
             ],
@@ -531,7 +528,8 @@ class MatchCard extends StatelessWidget {
               width: 74,
               height: 4,
               decoration: BoxDecoration(
-                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.12),
+                color: (isDark ? Colors.white : Colors.black)
+                    .withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Align(
@@ -585,52 +583,19 @@ class MatchCard extends StatelessWidget {
     );
   }
 
-  // ─── Footer: Canales de TV y Botón de Acción ───
+  // ─── Footer: Botón de Acción Centrado y Elegante ───
   Widget _buildFooter(
     BuildContext context,
     bool hasMultipleChannels,
     ThemeData theme,
     bool isDark,
   ) {
-    final tvs = match.tvChannelsDisplay;
-
-    return Row(
-      children: [
-        // Canales de transmisión
-        Expanded(
-          child: Row(
-            children: [
-              Icon(
-                Icons.tv_rounded,
-                size: 14,
-                color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-              ),
-              const SizedBox(width: 5),
-              Expanded(
-                child: Text(
-                  tvs.isNotEmpty ? tvs : 'Transmisión en vivo',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? const Color(0xFFAAB3C5) : theme.hintColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-
-        // Botón de acción para ver
-        if (isLive)
-          _buildLiveButton(context, hasMultipleChannels, theme, isDark)
-        else if (match.isWatchable)
-          _buildWatchButton(context, hasMultipleChannels, theme, isDark)
-        else
-          _buildInfoButton(context, hasMultipleChannels, theme, isDark),
-      ],
+    return Center(
+      child: isLive
+          ? _buildLiveButton(context, hasMultipleChannels, theme, isDark)
+          : (match.isWatchable
+              ? _buildWatchButton(context, hasMultipleChannels, theme, isDark)
+              : _buildInfoButton(context, hasMultipleChannels, theme, isDark)),
     );
   }
 
@@ -645,18 +610,19 @@ class MatchCard extends StatelessWidget {
       children: [
         ElevatedButton.icon(
           onPressed: onWatchMatch,
-          icon: const Icon(Icons.play_arrow_rounded, size: 16),
+          icon: const Icon(Icons.play_arrow_rounded, size: 18),
           label: Text(
             'En vivo',
             style: GoogleFonts.spaceGrotesk(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
             ),
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFFFF5468),
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -665,7 +631,7 @@ class MatchCard extends StatelessWidget {
           ),
         ),
         if (hasMultipleChannels) ...[
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           _buildOptionsButton(context, theme, isDark),
         ],
       ],
@@ -683,18 +649,20 @@ class MatchCard extends StatelessWidget {
       children: [
         ElevatedButton.icon(
           onPressed: onWatchMatch,
-          icon: const Icon(Icons.play_arrow_rounded, size: 16),
+          icon: const Icon(Icons.play_arrow_rounded, size: 18),
           label: Text(
-            'Ver señal',
+            'Ver partido',
             style: GoogleFonts.spaceGrotesk(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
             ),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+            backgroundColor:
+                isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
             foregroundColor: isDark ? Colors.black : Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -702,7 +670,7 @@ class MatchCard extends StatelessWidget {
           ),
         ),
         if (hasMultipleChannels) ...[
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           _buildOptionsButton(context, theme, isDark),
         ],
       ],
@@ -715,34 +683,60 @@ class MatchCard extends StatelessWidget {
     ThemeData theme,
     bool isDark,
   ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF161B27) : Colors.black.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isDark ? const Color(0xFF1E2533) : Colors.black.withValues(alpha: 0.06),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.schedule_rounded,
-            size: 13,
-            color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            'Próximo',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              if (hasMultipleChannels) {
+                _showChannelOptions(context);
+              } else {
+                onWatchMatch();
+              }
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF161B27)
+                    : Colors.black.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF1E2533)
+                      : Colors.black.withValues(alpha: 0.06),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 15,
+                    color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Próximo',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? const Color(0xFF9EABB9) : theme.hintColor,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
+        ),
+        if (hasMultipleChannels) ...[
+          const SizedBox(width: 8),
+          _buildOptionsButton(context, theme, isDark),
         ],
-      ),
+      ],
     );
   }
 
@@ -867,13 +861,17 @@ class MatchCard extends StatelessWidget {
                           memCacheHeight: 150,
                           errorWidget: (_, __, ___) => Icon(
                             Icons.live_tv_rounded,
-                            color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                            color: isDark
+                                ? AppTheme.darkAccent
+                                : theme.colorScheme.primary,
                             size: 22,
                           ),
                         )
                       : Icon(
                           Icons.live_tv_rounded,
-                          color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                          color: isDark
+                              ? AppTheme.darkAccent
+                              : theme.colorScheme.primary,
                           size: 22,
                         ),
                 ),
@@ -889,13 +887,17 @@ class MatchCard extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
+                    color: (isDark
+                            ? AppTheme.darkAccent
+                            : theme.colorScheme.primary)
                         .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.play_arrow_rounded,
-                    color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                    color: isDark
+                        ? AppTheme.darkAccent
+                        : theme.colorScheme.primary,
                     size: 18,
                   ),
                 ),

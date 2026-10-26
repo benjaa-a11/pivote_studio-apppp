@@ -327,7 +327,8 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
             child: AspectRatio(
               aspectRatio: _getAspectRatio(),
               child: ExoPlayerWidget(
-                key: ValueKey('${widget.url}_${widget.k1}_${widget.drmLicenseUri}_${widget.clearkeys?.length ?? 0}_${widget.headers?.length ?? 0}'),
+                key: ValueKey(
+                    '${widget.url}_${widget.k1}_${widget.drmLicenseUri}_${widget.clearkeys?.length ?? 0}_${widget.headers?.length ?? 0}'),
                 url: widget.url,
                 name: widget.channelName,
                 type: widget.type,

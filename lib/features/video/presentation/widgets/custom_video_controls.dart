@@ -484,7 +484,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: srv.typeColor(context).withValues(alpha: 0.2),
+                              color:
+                                  srv.typeColor(context).withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -638,4 +639,3 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     );
   }
 }
-

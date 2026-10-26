@@ -88,19 +88,22 @@ class AppShadows {
   }
 
   /// Apple-style layered shadow (ambient diffuse + contact depth)
-  static List<BoxShadow> appleDepth(BuildContext context, {double elevation = 1.0}) {
+  static List<BoxShadow> appleDepth(BuildContext context,
+      {double elevation = 1.0}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return [
       // Ambient shadow
       BoxShadow(
-        color: Colors.black.withValues(alpha: isDark ? 0.25 * elevation : 0.04 * elevation),
+        color: Colors.black
+            .withValues(alpha: isDark ? 0.25 * elevation : 0.04 * elevation),
         blurRadius: 18 * elevation,
         spreadRadius: 0,
         offset: Offset(0, 4 * elevation),
       ),
       // Direct contact shadow
       BoxShadow(
-        color: Colors.black.withValues(alpha: isDark ? 0.15 * elevation : 0.03 * elevation),
+        color: Colors.black
+            .withValues(alpha: isDark ? 0.15 * elevation : 0.03 * elevation),
         blurRadius: 6 * elevation,
         spreadRadius: -2 * elevation,
         offset: Offset(0, 2 * elevation),
@@ -144,7 +147,8 @@ class AppGradients {
 
   /// Accent-tinted glass panel — primary color fading into transparent.
   /// Used for banners, highlighted cards, CTA surfaces.
-  static LinearGradient accentGlass(BuildContext context, {bool isDark = false}) {
+  static LinearGradient accentGlass(BuildContext context,
+      {bool isDark = false}) {
     final scheme = Theme.of(context).colorScheme;
     return LinearGradient(
       begin: Alignment.topLeft,

@@ -158,7 +158,8 @@ class MovieDetailScreen extends StatelessWidget {
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,
                                 height: 1.15,
-                                color: isDark ? Colors.white : AppTheme.lightText,
+                                color:
+                                    isDark ? Colors.white : AppTheme.lightText,
                                 letterSpacing: -0.6,
                               ),
                             ),
@@ -169,7 +170,9 @@ class MovieDetailScreen extends StatelessWidget {
                                 Icon(
                                   Icons.calendar_today_rounded,
                                   size: 13,
-                                  color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
+                                  color: isDark
+                                      ? AppTheme.darkText2
+                                      : AppTheme.lightText2,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
@@ -177,14 +180,18 @@ class MovieDetailScreen extends StatelessWidget {
                                   style: GoogleFonts.spaceGrotesk(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
+                                    color: isDark
+                                        ? AppTheme.darkText2
+                                        : AppTheme.lightText2,
                                   ),
                                 ),
                                 const SizedBox(width: 16),
                                 Icon(
                                   Icons.schedule_rounded,
                                   size: 13,
-                                  color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
+                                  color: isDark
+                                      ? AppTheme.darkText2
+                                      : AppTheme.lightText2,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
@@ -192,7 +199,9 @@ class MovieDetailScreen extends StatelessWidget {
                                   style: GoogleFonts.spaceGrotesk(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
-                                    color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
+                                    color: isDark
+                                        ? AppTheme.darkText2
+                                        : AppTheme.lightText2,
                                   ),
                                 ),
                               ],
@@ -206,7 +215,9 @@ class MovieDetailScreen extends StatelessWidget {
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
+                                color: isDark
+                                    ? AppTheme.darkText3
+                                    : AppTheme.lightText3,
                               ),
                             ),
                           ],
@@ -223,7 +234,8 @@ class MovieDetailScreen extends StatelessWidget {
                     runSpacing: 8,
                     children: movie.genres.map((genre) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: isDark
                               ? AppTheme.darkBg2.withValues(alpha: 0.6)
@@ -241,7 +253,8 @@ class MovieDetailScreen extends StatelessWidget {
                           style: GoogleFonts.spaceGrotesk(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white70 : AppTheme.lightText2,
+                            color:
+                                isDark ? Colors.white70 : AppTheme.lightText2,
                           ),
                         ),
                       );
@@ -257,9 +270,12 @@ class MovieDetailScreen extends StatelessWidget {
                       child: Builder(
                         builder: (context) {
                           if (savedPosition > const Duration(seconds: 10)) {
-                            final double progress = totalDuration > Duration.zero
-                                ? (savedPosition.inMilliseconds / totalDuration.inMilliseconds).clamp(0.0, 1.0)
-                                : 0.0;
+                            final double progress =
+                                totalDuration > Duration.zero
+                                    ? (savedPosition.inMilliseconds /
+                                            totalDuration.inMilliseconds)
+                                        .clamp(0.0, 1.0)
+                                    : 0.0;
 
                             return Column(
                               mainAxisSize: MainAxisSize.min,
@@ -275,15 +291,18 @@ class MovieDetailScreen extends StatelessWidget {
                                           gradient: LinearGradient(
                                             colors: [
                                               AppTheme.darkAccent,
-                                              AppTheme.darkAccent.withValues(alpha: 0.8),
+                                              AppTheme.darkAccent
+                                                  .withValues(alpha: 0.8),
                                             ],
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                           ),
-                                          borderRadius: BorderRadius.circular(18),
+                                          borderRadius:
+                                              BorderRadius.circular(18),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: AppTheme.darkAccent.withValues(alpha: 0.25),
+                                              color: AppTheme.darkAccent
+                                                  .withValues(alpha: 0.25),
                                               blurRadius: 15,
                                               offset: const Offset(0, 4),
                                             ),
@@ -307,11 +326,13 @@ class MovieDetailScreen extends StatelessWidget {
                                             foregroundColor: AppTheme.darkBg,
                                             elevation: 0,
                                             shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(18),
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
                                             ),
                                           ),
                                           child: Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
                                               const Icon(
                                                 Icons.play_arrow_rounded,
@@ -336,17 +357,24 @@ class MovieDetailScreen extends StatelessWidget {
                                     IconButton(
                                       icon: Icon(
                                         Icons.replay_rounded,
-                                        color: isDark ? Colors.white : AppTheme.lightText,
+                                        color: isDark
+                                            ? Colors.white
+                                            : AppTheme.lightText,
                                         size: 24,
                                       ),
                                       tooltip: 'Reproducir desde el inicio',
                                       style: IconButton.styleFrom(
-                                        backgroundColor: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
+                                        backgroundColor: isDark
+                                            ? AppTheme.darkBg2
+                                            : AppTheme.lightBg2,
                                         padding: const EdgeInsets.all(16),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(18),
+                                          borderRadius:
+                                              BorderRadius.circular(18),
                                           side: BorderSide(
-                                            color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
+                                            color: isDark
+                                                ? AppTheme.darkBorder
+                                                : AppTheme.lightBorder,
                                           ),
                                         ),
                                       ),
@@ -364,7 +392,8 @@ class MovieDetailScreen extends StatelessWidget {
                                       },
                                     ),
                                     const SizedBox(width: 12),
-                                    _buildMyListButton(context, moviesProvider, freshMovie, isDark),
+                                    _buildMyListButton(context, moviesProvider,
+                                        freshMovie, isDark),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
@@ -376,21 +405,28 @@ class MovieDetailScreen extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(4),
                                       child: LinearProgressIndicator(
                                         value: progress,
-                                        backgroundColor: isDark ? Colors.white12 : Colors.black12,
-                                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.darkAccent),
+                                        backgroundColor: isDark
+                                            ? Colors.white12
+                                            : Colors.black12,
+                                        valueColor:
+                                            const AlwaysStoppedAnimation<Color>(
+                                                AppTheme.darkAccent),
                                         minHeight: 5,
                                       ),
                                     ),
                                     const SizedBox(height: 6),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
                                           'Te quedaste en ${_formatDuration(savedPosition)}',
                                           style: GoogleFonts.spaceGrotesk(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
-                                            color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
+                                            color: isDark
+                                                ? AppTheme.darkText3
+                                                : AppTheme.lightText3,
                                           ),
                                         ),
                                         if (totalDuration > Duration.zero)
@@ -418,7 +454,8 @@ class MovieDetailScreen extends StatelessWidget {
                                       gradient: LinearGradient(
                                         colors: [
                                           AppTheme.darkAccent,
-                                          AppTheme.darkAccent.withValues(alpha: 0.8),
+                                          AppTheme.darkAccent
+                                              .withValues(alpha: 0.8),
                                         ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
@@ -426,7 +463,8 @@ class MovieDetailScreen extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(18),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: AppTheme.darkAccent.withValues(alpha: 0.35),
+                                          color: AppTheme.darkAccent
+                                              .withValues(alpha: 0.35),
                                           blurRadius: 15,
                                           spreadRadius: 1,
                                           offset: const Offset(0, 6),
@@ -451,11 +489,13 @@ class MovieDetailScreen extends StatelessWidget {
                                         foregroundColor: AppTheme.darkBg,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(18),
+                                          borderRadius:
+                                              BorderRadius.circular(18),
                                         ),
                                       ),
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           const Icon(
                                             Icons.play_arrow_rounded,
@@ -476,7 +516,8 @@ class MovieDetailScreen extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                _buildMyListButton(context, moviesProvider, freshMovie, isDark),
+                                _buildMyListButton(context, moviesProvider,
+                                    freshMovie, isDark),
                               ],
                             );
                           }
@@ -511,7 +552,8 @@ class MovieDetailScreen extends StatelessWidget {
                       scrollDirection: Axis.horizontal,
                       physics: const ClampingScrollPhysics(),
                       itemCount: movie.cast.length,
-                      separatorBuilder: (context, index) => const SizedBox(width: 14),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(width: 14),
                       itemBuilder: (context, index) {
                         final actor = movie.cast[index];
                         return _buildActorItem(actor, isDark);
@@ -527,7 +569,8 @@ class MovieDetailScreen extends StatelessWidget {
                   Row(
                     children: movie.directors.map((director) {
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: isDark ? AppTheme.darkBg1 : AppTheme.lightBg1,
                           borderRadius: BorderRadius.circular(12),
@@ -551,7 +594,8 @@ class MovieDetailScreen extends StatelessWidget {
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : AppTheme.lightText,
+                                color:
+                                    isDark ? Colors.white : AppTheme.lightText,
                               ),
                             ),
                           ],
@@ -609,7 +653,8 @@ class MovieDetailScreen extends StatelessWidget {
   }
 
   Widget _buildActorItem(String name, bool isDark) {
-    final initials = name.split(' ').map((n) => n[0]).take(2).join().toUpperCase();
+    final initials =
+        name.split(' ').map((n) => n[0]).take(2).join().toUpperCase();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -671,13 +716,16 @@ class MovieDetailScreen extends StatelessWidget {
     return '${twoDigits(minutes)}:${twoDigits(seconds)}';
   }
 
-  Widget _buildMyListButton(BuildContext context, MoviesProvider provider, Movie movie, bool isDark) {
+  Widget _buildMyListButton(
+      BuildContext context, MoviesProvider provider, Movie movie, bool isDark) {
     final isFavorite = provider.isMovieFavorite(movie.id);
     return Tooltip(
       message: isFavorite ? 'Quitar de Mi Lista' : 'Agregar a Mi Lista',
       child: IconButton(
         icon: Icon(
-          isFavorite ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined,
+          isFavorite
+              ? Icons.bookmark_added_rounded
+              : Icons.bookmark_add_outlined,
           color: isFavorite
               ? AppTheme.darkAccent
               : (isDark ? Colors.white : AppTheme.lightText),
@@ -697,7 +745,7 @@ class MovieDetailScreen extends StatelessWidget {
         onPressed: () {
           HapticFeedback.mediumImpact();
           provider.toggleMovieFavorite(movie);
-          
+
           ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -705,12 +753,11 @@ class MovieDetailScreen extends StatelessWidget {
               duration: const Duration(seconds: 2),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
+                side: BorderSide(
+                    color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder),
               ),
               content: Text(
-                isFavorite
-                    ? 'Quitada de Mi Lista'
-                    : 'Agregada a Mi Lista',
+                isFavorite ? 'Quitada de Mi Lista' : 'Agregada a Mi Lista',
                 style: GoogleFonts.spaceGrotesk(
                   color: isDark ? Colors.white : AppTheme.lightText,
                   fontWeight: FontWeight.bold,

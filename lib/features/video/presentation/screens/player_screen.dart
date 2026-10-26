@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -121,9 +122,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: isLandscape
-            ? Colors.black
-            : theme.scaffoldBackgroundColor,
+        backgroundColor:
+            isLandscape ? Colors.black : theme.scaffoldBackgroundColor,
         body: isLandscape
             ? _buildLandscapeLayout()
             : SafeArea(
@@ -142,7 +142,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   // Portrait Layout
-  Widget _buildPortraitLayout(BuildContext context, ThemeData theme, bool isDark) {
+  Widget _buildPortraitLayout(
+      BuildContext context, ThemeData theme, bool isDark) {
     return Column(
       children: [
         // Top Bar
@@ -257,14 +258,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     decoration: BoxDecoration(
                       color: isDark
                           ? AppTheme.darkBg2
-                          : theme.colorScheme.primary
-                              .withValues(alpha: 0.06),
+                          : theme.colorScheme.primary.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isDark
                             ? Colors.white.withValues(alpha: 0.08)
-                            : theme.colorScheme.primary
-                                .withValues(alpha: 0.12),
+                            : theme.colorScheme.primary.withValues(alpha: 0.12),
                       ),
                     ),
                     child: Icon(
@@ -273,8 +272,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           : Icons.favorite_border_rounded,
                       color: isFavorite
                           ? const Color(0xFFEF4444)
-                          : theme.colorScheme.onSurface
-                              .withValues(alpha: 0.7),
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       size: 20,
                     ),
                   ),
@@ -289,7 +287,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Widget _buildChannelHeader(
       BuildContext context, ThemeData theme, bool isDark) {
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
     final logoUrl = _currentChannel.getLogoUrl(isDark);
 
     return Padding(
@@ -302,9 +301,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             width: 68,
             height: 68,
             decoration: BoxDecoration(
-              color: isDark
-                  ? AppTheme.darkBg2
-                  : Colors.white,
+              color: isDark ? AppTheme.darkBg2 : Colors.white,
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
                 color: isDark
@@ -528,8 +525,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _buildChannelInfo(
-      BuildContext context, ThemeData theme, bool isDark) {
+  Widget _buildChannelInfo(BuildContext context, ThemeData theme, bool isDark) {
     if (_currentChannel.type == 'evento' || _currentChannel.evento != null) {
       return _buildEventCameras(context);
     }
@@ -560,7 +556,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget _buildProgramGuideSection(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     if (_isLoadingGuide) {
       return Container(
@@ -876,7 +873,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
           border: Border.all(
             color: isSelected
                 ? dominantColor
-                : (isDark ? Colors.white.withAlpha(25) : Colors.black.withAlpha(20)),
+                : (isDark
+                    ? Colors.white.withAlpha(25)
+                    : Colors.black.withAlpha(20)),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
@@ -987,7 +986,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     if (fourChannels.isEmpty) return const SizedBox.shrink();
 
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 20),
@@ -1283,7 +1283,7 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
               onPressed: _isSubmitting
                   ? null
                   : () async {
-                      HapticFeedback.mediumImpact();
+                      unawaited(HapticFeedback.mediumImpact());
                       setState(() => _isSubmitting = true);
                       final nav = Navigator.of(context);
                       await Future.delayed(const Duration(milliseconds: 350));
@@ -1326,4 +1326,3 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
     );
   }
 }
-

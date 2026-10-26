@@ -112,8 +112,8 @@ class NotificationsScreen extends StatelessWidget {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary
-                              .withValues(alpha: 0.08),
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(

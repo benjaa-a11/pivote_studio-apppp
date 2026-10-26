@@ -112,14 +112,17 @@ class SearchMatchTile extends StatelessWidget {
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.5,
-                        color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                        color: isDark
+                            ? AppTheme.darkAccent
+                            : theme.colorScheme.primary,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   if (isLive)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEF4444).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
@@ -153,7 +156,8 @@ class SearchMatchTile extends StatelessWidget {
                     )
                   else if (isScheduled)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: isDark
                             ? Colors.white.withValues(alpha: 0.08)
@@ -161,17 +165,21 @@ class SearchMatchTile extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        match.startTime.isNotEmpty ? match.startTime : 'PROGRAMADO',
+                        match.startTime.isNotEmpty
+                            ? match.startTime
+                            : 'PROGRAMADO',
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.7),
                         ),
                       ),
                     )
                   else
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.grey.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(6),
@@ -181,7 +189,8 @@ class SearchMatchTile extends StatelessWidget {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.6),
                         ),
                       ),
                     ),
@@ -281,7 +290,9 @@ class SearchMatchTile extends StatelessWidget {
                     Icon(
                       Icons.tv_rounded,
                       size: 13,
-                      color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                      color: isDark
+                          ? AppTheme.darkAccent
+                          : theme.colorScheme.primary,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -292,7 +303,8 @@ class SearchMatchTile extends StatelessWidget {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.55),
                         ),
                       ),
                     ),

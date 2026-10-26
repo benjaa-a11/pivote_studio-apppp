@@ -30,8 +30,7 @@ class _ResolverConfig {
   static const int cacheMaxSize = 12;
   static const int maxRedirects = 8;
 
-  static const String userAgent =
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+  static const String userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
       'AppleWebKit/537.36 (KHTML, like Gecko) '
       'Chrome/125.0.0.0 Safari/537.36';
 
@@ -107,7 +106,8 @@ class StreamUrlResolver {
     }
 
     _cache[url] = _CacheEntry(resolved);
-    debugPrint('🗄️ Resolver cached: ${resolved.substring(0, min(80, resolved.length))}');
+    debugPrint(
+        '🗄️ Resolver cached: ${resolved.substring(0, min(80, resolved.length))}');
   }
 
   static String? _getCache(String url) {
@@ -158,7 +158,8 @@ class StreamUrlResolver {
     // ── 4. Cache hit ──────────────────────────────────────────────────
     final cached = _getCache(trimmed);
     if (cached != null) {
-      debugPrint('💾 Resolver cache hit: ${cached.substring(0, min(80, cached.length))}');
+      debugPrint(
+          '💾 Resolver cache hit: ${cached.substring(0, min(80, cached.length))}');
       return ResolveResult(url: cached, referer: trimmed, strategy: 'cache');
     }
 
@@ -167,7 +168,8 @@ class StreamUrlResolver {
       final resolved = await _resolveViaHttp(trimmed);
       if (resolved != null && resolved.isNotEmpty && resolved != trimmed) {
         _putCache(trimmed, resolved);
-        return ResolveResult(url: resolved, referer: trimmed, strategy: 'http-resolved');
+        return ResolveResult(
+            url: resolved, referer: trimmed, strategy: 'http-resolved');
       }
     } catch (e) {
       debugPrint('❌ Resolver error: $e');
@@ -197,7 +199,8 @@ class StreamUrlResolver {
       // Anti-bot headers — mimics a real Chrome browser on Windows
       req.headers
         ..set('User-Agent', _ResolverConfig.userAgent)
-        ..set('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
+        ..set('Accept',
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
         ..set('Accept-Language', 'es-AR,es;q=0.9,en;q=0.8')
         ..set('Accept-Encoding', 'gzip, deflate, br')
         ..set('Connection', 'keep-alive')
@@ -277,39 +280,45 @@ class StreamUrlResolver {
 
   // ── Extraction Strategies ─────────────────────────────────────────────
 
-  static String? _extractM3u8FromHtml(String body, String pageUrl, Uri baseUri) {
+  static String? _extractM3u8FromHtml(
+      String body, String pageUrl, Uri baseUri) {
     // [A] var playbackURL = "https://...m3u8..."
     final a = strategyAPlaybackUrl(body);
     if (a != null) {
-      debugPrint('✅ Resolver [A] playbackURL: ${a.substring(0, min(80, a.length))}');
+      debugPrint(
+          '✅ Resolver [A] playbackURL: ${a.substring(0, min(80, a.length))}');
       return a;
     }
 
     // [B] GB-array + atob() + numeric offset (Clappr pages)
     final b = strategyBGbArray(body);
     if (b != null) {
-      debugPrint('✅ Resolver [B] GB-array: ${b.substring(0, min(80, b.length))}');
+      debugPrint(
+          '✅ Resolver [B] GB-array: ${b.substring(0, min(80, b.length))}');
       return b;
     }
 
     // [C] JWPlayer / Clappr / VideoJS config patterns
     final c = strategyCPlayerConfigs(body);
     if (c != null) {
-      debugPrint('✅ Resolver [C] player-config: ${c.substring(0, min(80, c.length))}');
+      debugPrint(
+          '✅ Resolver [C] player-config: ${c.substring(0, min(80, c.length))}');
       return c;
     }
 
     // [D] <video src> / <source src> HTML5 tags
     final d = strategyDHtmlTags(body, baseUri);
     if (d != null) {
-      debugPrint('✅ Resolver [D] html-tag: ${d.substring(0, min(80, d.length))}');
+      debugPrint(
+          '✅ Resolver [D] html-tag: ${d.substring(0, min(80, d.length))}');
       return d;
     }
 
     // [E] Generic .m3u8 URL anywhere in the page
     final e = strategyEGenericM3u8(body);
     if (e != null) {
-      debugPrint('✅ Resolver [E] generic: ${e.substring(0, min(80, e.length))}');
+      debugPrint(
+          '✅ Resolver [E] generic: ${e.substring(0, min(80, e.length))}');
       return e;
     }
 
@@ -362,7 +371,8 @@ class StreamUrlResolver {
       final gbRaw = gbMatch.group(1)!;
 
       // 2. Parse all [index, "base64"] pairs
-      final pairRegex = RegExp(r'\[\s*(\d+)\s*,\s*["\x27]([A-Za-z0-9+/=]+)["\x27]\s*\]');
+      final pairRegex =
+          RegExp(r'\[\s*(\d+)\s*,\s*["\x27]([A-Za-z0-9+/=]+)["\x27]\s*\]');
       final pairs = <int, String>{};
       for (final m in pairRegex.allMatches(gbRaw)) {
         final idx = int.tryParse(m.group(1)!);
@@ -418,13 +428,18 @@ class StreamUrlResolver {
   static int _extractNumericOffset(String body) {
     // Try to find sum pattern: var k = FuncA() + FuncB()
     // where each function returns a hardcoded integer
-    final funcReturnRegex = RegExp(r'function\s+\w+\s*\(\s*\)\s*\{\s*return\s+(\d+)\s*;\s*\}');
-    final returns = funcReturnRegex.allMatches(body).map((m) => int.tryParse(m.group(1)!) ?? 0).toList();
+    final funcReturnRegex =
+        RegExp(r'function\s+\w+\s*\(\s*\)\s*\{\s*return\s+(\d+)\s*;\s*\}');
+    final returns = funcReturnRegex
+        .allMatches(body)
+        .map((m) => int.tryParse(m.group(1)!) ?? 0)
+        .toList();
 
     if (returns.length >= 2) {
       // Typically k = sum of all such functions
       final sum = returns.fold(0, (a, b) => a + b);
-      debugPrint('🔑 Resolver [B] offset: $sum (from ${returns.length} functions: $returns)');
+      debugPrint(
+          '🔑 Resolver [B] offset: $sum (from ${returns.length} functions: $returns)');
       return sum;
     }
 
@@ -459,7 +474,8 @@ class StreamUrlResolver {
     ];
 
     for (final pat in patterns) {
-      final m = RegExp(pat, caseSensitive: false, dotAll: true).firstMatch(body);
+      final m =
+          RegExp(pat, caseSensitive: false, dotAll: true).firstMatch(body);
       if (m != null) {
         final url = m.group(1)!;
         if (_looksLikeStream(url)) return url;

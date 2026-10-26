@@ -65,10 +65,11 @@ class SoccerProvider extends ChangeNotifier {
       fetchData(silent: true);
       return;
     }
-    
+
     final difference = DateTime.now().difference(_lastFetchedAt!);
     if (difference.inSeconds > 60) {
-      debugPrint('🔄 SoccerProvider: Datos desactualizados (${difference.inSeconds}s), refrescando...');
+      debugPrint(
+          '🔄 SoccerProvider: Datos desactualizados (${difference.inSeconds}s), refrescando...');
       fetchData(silent: true);
     }
   }

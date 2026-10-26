@@ -8,7 +8,6 @@ import 'package:pivote/features/movies/presentation/widgets/movie_video_engine.d
 import 'package:pivote/features/movies/presentation/widgets/movie_bottom_sheets.dart';
 // Pivo Movie Player Controls
 
-
 class MovieControlsOverlay extends StatefulWidget {
   final MovieVideoEngine engine;
   final Movie movie;
@@ -267,7 +266,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
   /// Opens a bottom sheet while keeping the controls visible (pauses the
   /// auto-hide timer via onDragStart/onDragEnd, same as scrubbing).
   Future<void> _openSheet(Widget sheet) async {
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
     widget.onDragStart();
     await showModalBottomSheet(
       context: context,
@@ -340,8 +339,6 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
       if (mounted) setState(() => _showFitIndicator = false);
     });
   }
-
-
 
   @override
   Widget build(BuildContext context) {

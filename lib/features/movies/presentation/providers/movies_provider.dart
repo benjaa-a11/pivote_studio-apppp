@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -13,7 +14,7 @@ class MoviesProvider extends ChangeNotifier {
   bool _isLoading = false;
   String _selectedGenre = 'Todos';
   String _searchQuery = '';
-  
+
   // In-memory cache of movie playback positions and durations
   final Map<String, Duration> _playbackPositions = {};
   final Map<String, Duration> _movieDurations = {};
@@ -41,7 +42,7 @@ class MoviesProvider extends ChangeNotifier {
 
     try {
       _allMovies = await MovieService.getMovies();
-      
+
       // Load saved positions from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       _playbackPositions.clear();
@@ -67,18 +68,24 @@ class MoviesProvider extends ChangeNotifier {
 
   /// Returns featured movies for top sliding carousel
   List<Movie> get featuredMovies {
-    return _allMovies.map((movie) {
-      final cachedPos = _playbackPositions[movie.id] ?? Duration.zero;
-      return movie.copyWith(lastPosition: cachedPos);
-    }).where((m) => m.isFeatured).toList();
+    return _allMovies
+        .map((movie) {
+          final cachedPos = _playbackPositions[movie.id] ?? Duration.zero;
+          return movie.copyWith(lastPosition: cachedPos);
+        })
+        .where((m) => m.isFeatured)
+        .toList();
   }
 
   /// Returns trending movies
   List<Movie> get trendingMovies {
-    return _allMovies.map((movie) {
-      final cachedPos = _playbackPositions[movie.id] ?? Duration.zero;
-      return movie.copyWith(lastPosition: cachedPos);
-    }).where((m) => m.isTrending).toList();
+    return _allMovies
+        .map((movie) {
+          final cachedPos = _playbackPositions[movie.id] ?? Duration.zero;
+          return movie.copyWith(lastPosition: cachedPos);
+        })
+        .where((m) => m.isTrending)
+        .toList();
   }
 
   /// Returns movies with saved progress (Continue Watching)
@@ -98,12 +105,15 @@ class MoviesProvider extends ChangeNotifier {
       return movie.copyWith(lastPosition: cachedPos);
     }).where((movie) {
       final matchesGenre = _selectedGenre == 'Todos' ||
-          movie.genres.any((g) => g.toLowerCase() == _selectedGenre.toLowerCase());
-      
+          movie.genres
+              .any((g) => g.toLowerCase() == _selectedGenre.toLowerCase());
+
       final matchesSearch = _searchQuery.isEmpty ||
           movie.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          movie.genres.any((g) => g.toLowerCase().contains(_searchQuery.toLowerCase())) ||
-          movie.directors.any((d) => d.toLowerCase().contains(_searchQuery.toLowerCase()));
+          movie.genres.any(
+              (g) => g.toLowerCase().contains(_searchQuery.toLowerCase())) ||
+          movie.directors
+              .any((d) => d.toLowerCase().contains(_searchQuery.toLowerCase()));
 
       return matchesGenre && matchesSearch;
     }).toList();
@@ -129,10 +139,14 @@ class MoviesProvider extends ChangeNotifier {
   }
 
   /// Save playback position and duration in memory and SharedPreferences
-  Future<void> savePlaybackPosition(String movieId, Duration position, {Duration? duration}) async {
+  Future<void> savePlaybackPosition(String movieId, Duration position,
+      {Duration? duration}) async {
     // Only update and notify if there's a real change to avoid infinite cycles
     final currentPos = _playbackPositions[movieId] ?? Duration.zero;
-    if ((position.inSeconds - currentPos.inSeconds).abs() < 1 && duration == null) return;
+    if ((position.inSeconds - currentPos.inSeconds).abs() < 1 &&
+        duration == null) {
+      return;
+    }
 
     _playbackPositions[movieId] = position;
     if (duration != null && duration > Duration.zero) {
@@ -153,7 +167,10 @@ class MoviesProvider extends ChangeNotifier {
 
   /// Clear playback position when movie is completed
   Future<void> clearPlaybackPosition(String movieId) async {
-    if (!_playbackPositions.containsKey(movieId) && !_movieDurations.containsKey(movieId)) return;
+    if (!_playbackPositions.containsKey(movieId) &&
+        !_movieDurations.containsKey(movieId)) {
+      return;
+    }
 
     _playbackPositions.remove(movieId);
     _movieDurations.remove(movieId);
@@ -194,10 +211,13 @@ class MoviesProvider extends ChangeNotifier {
   bool get isSyncingFavorites => _isSyncingFavorites;
 
   List<Movie> get favoriteMovies {
-    return _allMovies.map((movie) {
-      final cachedPos = _playbackPositions[movie.id] ?? Duration.zero;
-      return movie.copyWith(lastPosition: cachedPos);
-    }).where((m) => _favoriteMovieIds.contains(m.id)).toList();
+    return _allMovies
+        .map((movie) {
+          final cachedPos = _playbackPositions[movie.id] ?? Duration.zero;
+          return movie.copyWith(lastPosition: cachedPos);
+        })
+        .where((m) => _favoriteMovieIds.contains(m.id))
+        .toList();
   }
 
   bool isMovieFavorite(String movieId) {
@@ -227,7 +247,7 @@ class MoviesProvider extends ChangeNotifier {
       notifyListeners();
 
       // Sync from Firestore in background
-      _syncMovieFavoritesFromFirestore();
+      unawaited(_syncMovieFavoritesFromFirestore());
     } catch (e) {
       debugPrint('❌ Error loading movie favorites: $e');
     }
@@ -252,14 +272,12 @@ class MoviesProvider extends ChangeNotifier {
       _isSyncingFavorites = true;
       notifyListeners();
 
-      await FirebaseFirestore.instance
-          .collection('usuarios')
-          .doc(uid)
-          .set({
+      await FirebaseFirestore.instance.collection('usuarios').doc(uid).set({
         'favoriteMovies': _favoriteMovieIds.toList(),
       }, SetOptions(merge: true));
 
-      debugPrint('✅ Movie favorites synced to Firestore: ${_favoriteMovieIds.length} items');
+      debugPrint(
+          '✅ Movie favorites synced to Firestore: ${_favoriteMovieIds.length} items');
     } catch (e) {
       debugPrint('❌ Error syncing movie favorites to Firestore: $e');
     } finally {
@@ -290,14 +308,15 @@ class MoviesProvider extends ChangeNotifier {
 
           if (remoteIds.isNotEmpty) {
             final remoteSet = Set<String>.from(remoteIds);
-            
+
             // If they are different, update local state
             if (remoteSet.difference(_favoriteMovieIds).isNotEmpty ||
                 _favoriteMovieIds.difference(remoteSet).isNotEmpty) {
               _favoriteMovieIds = remoteSet;
               await _saveMovieFavorites();
               notifyListeners();
-              debugPrint('✅ Movie favorites synced from Firestore: ${_favoriteMovieIds.length} items');
+              debugPrint(
+                  '✅ Movie favorites synced from Firestore: ${_favoriteMovieIds.length} items');
             }
           }
         }

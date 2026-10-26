@@ -184,9 +184,11 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         // Dynamically compute sizing for time boxes to ensure 100% responsivity
         final double horizontalPadding = isCompact ? 12 : 18;
         final double separatorsWidth = 3 * (isCompact ? 10 : 16);
-        final double availableWidthForBoxes = maxWidth - (horizontalPadding * 2) - separatorsWidth;
-        
-        final double timeBoxWidth = (availableWidthForBoxes / 4).clamp(52.0, 75.0);
+        final double availableWidthForBoxes =
+            maxWidth - (horizontalPadding * 2) - separatorsWidth;
+
+        final double timeBoxWidth =
+            (availableWidthForBoxes / 4).clamp(52.0, 75.0);
         final double timeBoxHeight = timeBoxWidth * 1.15;
         final double valueFontSize = (timeBoxWidth * 0.44).clamp(16.0, 30.0);
         final double labelFontSize = (timeBoxWidth * 0.16).clamp(8.0, 10.0);
@@ -250,7 +252,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
                             center: const Alignment(-0.5, -0.6),
                             radius: 1.5,
                             colors: [
-                              _fwcPurple.withValues(alpha: 0.35 * _glowAnimation.value),
+                              _fwcPurple.withValues(
+                                  alpha: 0.35 * _glowAnimation.value),
                               Colors.transparent,
                               Colors.black.withValues(alpha: 0.7),
                             ],
@@ -348,7 +351,10 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: LinearGradient(
-                colors: [Colors.white.withValues(alpha: 0.1), Colors.transparent],
+                colors: [
+                  Colors.white.withValues(alpha: 0.1),
+                  Colors.transparent
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -396,7 +402,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         ),
         // Argentine Mini-Flag (Subtle detail)
         Container(
-          padding: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8, vertical: 4),
+          padding:
+              EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8, vertical: 4),
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(8),
@@ -443,7 +450,9 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             fontSize: isCompact ? 18 : 24,
             fontWeight: FontWeight.w900,
             color: _fwcLime,
-            shadows: [Shadow(color: _fwcLime.withValues(alpha: 0.5), blurRadius: 20)],
+            shadows: [
+              Shadow(color: _fwcLime.withValues(alpha: 0.5), blurRadius: 20)
+            ],
           ),
         ),
       );
@@ -520,7 +529,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(width * 0.3),
               color: Colors.white.withValues(alpha: 0.05),
-              border: Border.all(color: accentColor.withValues(alpha: 0.35), width: 1.5),
+              border: Border.all(
+                  color: accentColor.withValues(alpha: 0.35), width: 1.5),
               boxShadow: [
                 BoxShadow(
                   color: accentColor.withValues(alpha: 0.12),
@@ -571,13 +581,15 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
           Container(
             width: isCompact ? 3 : 4,
             height: isCompact ? 3 : 4,
-            decoration: const BoxDecoration(color: Colors.white30, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+                color: Colors.white30, shape: BoxShape.circle),
           ),
           SizedBox(height: isCompact ? 6 : 8),
           Container(
             width: isCompact ? 3 : 4,
             height: isCompact ? 3 : 4,
-            decoration: const BoxDecoration(color: Colors.white30, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+                color: Colors.white30, shape: BoxShape.circle),
           ),
         ],
       ),
@@ -586,7 +598,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
 
   Widget _buildFooter(bool isCompact) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isCompact ? 12 : 16, vertical: 10),
+      padding:
+          EdgeInsets.symmetric(horizontal: isCompact ? 12 : 16, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(16),
@@ -595,7 +608,8 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.location_on_rounded, size: isCompact ? 12 : 14, color: _fwcOrange),
+          Icon(Icons.location_on_rounded,
+              size: isCompact ? 12 : 14, color: _fwcOrange),
           SizedBox(width: isCompact ? 6 : 8),
           Expanded(
             child: AnimatedSwitcher(
@@ -682,7 +696,8 @@ class _SoccerPitchPainter extends CustomPainter {
       ..strokeWidth = 1.0;
 
     // Outer boundary
-    canvas.drawRect(Rect.fromLTWH(8, 8, size.width - 16, size.height - 16), paint);
+    canvas.drawRect(
+        Rect.fromLTWH(8, 8, size.width - 16, size.height - 16), paint);
 
     // Center line
     final double midX = size.width / 2;
@@ -690,7 +705,8 @@ class _SoccerPitchPainter extends CustomPainter {
 
     // Center circle
     canvas.drawCircle(Offset(midX, size.height / 2), size.height * 0.28, paint);
-    canvas.drawCircle(Offset(midX, size.height / 2), 3, paint..style = PaintingStyle.fill);
+    canvas.drawCircle(
+        Offset(midX, size.height / 2), 3, paint..style = PaintingStyle.fill);
 
     // Penalty areas
     final double areaHeight = size.height * 0.65;
@@ -698,9 +714,12 @@ class _SoccerPitchPainter extends CustomPainter {
     final double areaY = (size.height - areaHeight) / 2;
 
     // Left area
-    canvas.drawRect(Rect.fromLTWH(8, areaY, areaWidth, areaHeight), paint..style = PaintingStyle.stroke);
+    canvas.drawRect(Rect.fromLTWH(8, areaY, areaWidth, areaHeight),
+        paint..style = PaintingStyle.stroke);
     // Right area
-    canvas.drawRect(Rect.fromLTWH(size.width - 8 - areaWidth, areaY, areaWidth, areaHeight), paint);
+    canvas.drawRect(
+        Rect.fromLTWH(size.width - 8 - areaWidth, areaY, areaWidth, areaHeight),
+        paint);
   }
 
   @override

@@ -57,7 +57,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = provider.user;
     if (user == null) return;
 
-    HapticFeedback.mediumImpact();
+    await HapticFeedback.mediumImpact();
     setState(() => _saving = true);
     try {
       final updated = user.copyWith(
@@ -91,7 +91,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final confirmed = await AppDialogs.showConfirm(
       context: context,
       title: '¿Eliminar tu cuenta?',
-      message: 'Esta acción es permanente e irreversible. Se borrarán tus datos y preferencias.',
+      message:
+          'Esta acción es permanente e irreversible. Se borrarán tus datos y preferencias.',
       confirmLabel: 'Eliminar cuenta',
       cancelLabel: 'Cancelar',
       isDestructive: true,
@@ -106,7 +107,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       await userProvider.deleteAccount();
       if (!mounted) return;
-      navigator.pushAndRemoveUntil(
+      await navigator.pushAndRemoveUntil(
         AppAnimations.createFadeRoute(const LoginScreen()),
         (route) => false,
       );
@@ -124,7 +125,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final provider = context.watch<UserProvider>();
     final user = provider.user;
     final imagePath = provider.profileImagePath;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -135,9 +137,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: Stack(
         children: [
           ListView(
+            physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
             children: [
-              _buildAvatar(theme, isDark, primaryColor, provider, imagePath, user?.photoUrl),
+              _buildAvatar(theme, isDark, primaryColor, provider, imagePath,
+                  user?.photoUrl),
               const SizedBox(height: 28),
               Text(
                 'Información personal',
@@ -152,9 +156,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    _field(_nameController, 'Nombre', Icons.person_outline_rounded, theme, isDark, primaryColor),
+                    _field(
+                        _nameController,
+                        'Nombre',
+                        Icons.person_outline_rounded,
+                        theme,
+                        isDark,
+                        primaryColor),
                     const SizedBox(height: 12),
-                    _field(_lastNameController, 'Apellido', Icons.badge_outlined, theme, isDark, primaryColor),
+                    _field(_lastNameController, 'Apellido',
+                        Icons.badge_outlined, theme, isDark, primaryColor),
                     const SizedBox(height: 24),
                     _buildPasswordCard(theme, isDark, primaryColor),
                     const SizedBox(height: 20),
@@ -307,8 +318,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
       child: TextFormField(
         controller: controller,
-        validator: (value) =>
-            value == null || value.trim().isEmpty ? 'Este campo es requerido' : null,
+        validator: (value) => value == null || value.trim().isEmpty
+            ? 'Este campo es requerido'
+            : null,
         style: GoogleFonts.spaceGrotesk(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -345,9 +357,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          onTap: _passwordOpen
-              ? null
-              : () => setState(() => _passwordOpen = true),
+          onTap:
+              _passwordOpen ? null : () => setState(() => _passwordOpen = true),
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -357,7 +368,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.lock_reset_rounded, color: primaryColor, size: 20),
+                          Icon(Icons.lock_reset_rounded,
+                              color: primaryColor, size: 20),
                           const SizedBox(width: 10),
                           Text(
                             'Actualizar contraseña',
@@ -374,7 +386,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         'Contraseña actual',
                         Icons.lock_outline_rounded,
                         _obscureCurrentPass,
-                        () => setState(() => _obscureCurrentPass = !_obscureCurrentPass),
+                        () => setState(
+                            () => _obscureCurrentPass = !_obscureCurrentPass),
                         theme,
                         isDark,
                         primaryColor,
@@ -385,7 +398,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         'Nueva contraseña',
                         Icons.lock_rounded,
                         _obscureNewPass,
-                        () => setState(() => _obscureNewPass = !_obscureNewPass),
+                        () =>
+                            setState(() => _obscureNewPass = !_obscureNewPass),
                         theme,
                         isDark,
                         primaryColor,
@@ -455,9 +469,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return TextFormField(
       controller: controller,
       obscureText: obscure,
-      validator: (value) => value != null && value.isNotEmpty && value.length < 6
-          ? 'Mínimo 6 caracteres'
-          : null,
+      validator: (value) =>
+          value != null && value.isNotEmpty && value.length < 6
+              ? 'Mínimo 6 caracteres'
+              : null,
       style: GoogleFonts.spaceGrotesk(
         fontSize: 13.5,
         fontWeight: FontWeight.w600,
@@ -479,9 +494,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           onPressed: toggleObscure,
         ),
         filled: true,
-        fillColor: isDark
-            ? AppTheme.darkBg2
-            : theme.colorScheme.surface,
+        fillColor: isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(

@@ -13,10 +13,12 @@ class NotificationsSettingsScreen extends StatefulWidget {
   const NotificationsSettingsScreen({super.key});
 
   @override
-  State<NotificationsSettingsScreen> createState() => _NotificationsSettingsScreenState();
+  State<NotificationsSettingsScreen> createState() =>
+      _NotificationsSettingsScreenState();
 }
 
-class _NotificationsSettingsScreenState extends State<NotificationsSettingsScreen> {
+class _NotificationsSettingsScreenState
+    extends State<NotificationsSettingsScreen> {
   bool _enabled = false;
   bool _loading = true;
 
@@ -29,11 +31,14 @@ class _NotificationsSettingsScreenState extends State<NotificationsSettingsScree
   Future<void> _refreshStatus() async {
     final enabled = await NotificationService.areNotificationsEnabled();
     if (!mounted) return;
-    setState(() { _enabled = enabled; _loading = false; });
+    setState(() {
+      _enabled = enabled;
+      _loading = false;
+    });
   }
 
   Future<void> _toggle(bool value) async {
-    HapticFeedback.selectionClick();
+    await HapticFeedback.selectionClick();
     setState(() => _loading = true);
     try {
       if (value) {
@@ -43,14 +48,21 @@ class _NotificationsSettingsScreenState extends State<NotificationsSettingsScree
           return;
         }
         _enabled = true;
-        if (mounted) AppNotifications.showSuccess(context, 'Notificaciones activadas');
+        if (mounted) {
+          AppNotifications.showSuccess(context, 'Notificaciones activadas');
+        }
       } else {
         await NotificationService.disableNotifications();
         _enabled = false;
-        if (mounted) AppNotifications.showInfo(context, 'Notificaciones desactivadas');
+        if (mounted) {
+          AppNotifications.showInfo(context, 'Notificaciones desactivadas');
+        }
       }
     } catch (_) {
-      if (mounted) AppNotifications.showError(context, 'No pudimos actualizar la configuración');
+      if (mounted) {
+        AppNotifications.showError(
+            context, 'No pudimos actualizar la configuración');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -60,24 +72,33 @@ class _NotificationsSettingsScreenState extends State<NotificationsSettingsScree
     AppDialogs.showConfirm(
       context: context,
       title: 'Permiso de notificaciones',
-      message: 'Para no perderte inicios de partidos y estrenos, habilita los permisos de notificación en el sistema.',
+      message:
+          'Para no perderte inicios de partidos y estrenos, habilita los permisos de notificación en el sistema.',
       confirmLabel: 'Abrir Configuración',
       cancelLabel: 'Ahora no',
       type: AppDialogType.warning,
-    ).then((ok) { if (ok == true) openAppSettings(); });
+    ).then((ok) {
+      if (ok == true) openAppSettings();
+    });
   }
 
   Future<void> _sendTest() async {
     if (!_enabled) {
-      AppNotifications.showWarning(context, 'Activá las notificaciones primero');
+      AppNotifications.showWarning(
+          context, 'Activá las notificaciones primero');
       return;
     }
-    HapticFeedback.lightImpact();
+    await HapticFeedback.lightImpact();
     try {
       await NotificationService.sendTestNotification();
-      if (mounted) AppNotifications.showSuccess(context, 'Notificación de prueba enviada con éxito');
+      if (mounted) {
+        AppNotifications.showSuccess(
+            context, 'Notificación de prueba enviada con éxito');
+      }
     } catch (_) {
-      if (mounted) AppNotifications.showError(context, 'No pudimos enviar la prueba');
+      if (mounted) {
+        AppNotifications.showError(context, 'No pudimos enviar la prueba');
+      }
     }
   }
 
@@ -85,7 +106,8 @@ class _NotificationsSettingsScreenState extends State<NotificationsSettingsScree
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -96,6 +118,7 @@ class _NotificationsSettingsScreenState extends State<NotificationsSettingsScree
       body: _loading && !_enabled
           ? const Center(child: PivoteLoader(size: 40))
           : ListView(
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
               children: [
                 // Top Master Status Banner
@@ -107,7 +130,8 @@ class _NotificationsSettingsScreenState extends State<NotificationsSettingsScree
                       end: Alignment.bottomRight,
                       colors: _enabled
                           ? [
-                              primaryColor.withValues(alpha: isDark ? .18 : .14),
+                              primaryColor.withValues(
+                                  alpha: isDark ? .18 : .14),
                               theme.colorScheme.surface,
                             ]
                           : [
@@ -117,12 +141,14 @@ class _NotificationsSettingsScreenState extends State<NotificationsSettingsScree
                     ),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: primaryColor.withValues(alpha: _enabled ? .25 : .08),
+                      color:
+                          primaryColor.withValues(alpha: _enabled ? .25 : .08),
                     ),
                     boxShadow: _enabled
                         ? [
                             BoxShadow(
-                              color: primaryColor.withValues(alpha: isDark ? 0.08 : 0.04),
+                              color: primaryColor.withValues(
+                                  alpha: isDark ? 0.08 : 0.04),
                               blurRadius: 18,
                               offset: const Offset(0, 6),
                             ),

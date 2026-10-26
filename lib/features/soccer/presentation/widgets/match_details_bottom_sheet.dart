@@ -149,7 +149,9 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
-                          color: isDark ? const Color(0xFFAAB3C5) : theme.hintColor,
+                          color: isDark
+                              ? const Color(0xFFAAB3C5)
+                              : theme.hintColor,
                         ),
                       ),
                       const Spacer(),
@@ -242,7 +244,9 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                          color: isDark
+                              ? const Color(0xFF7C879B)
+                              : theme.hintColor,
                         ),
                       ),
                     ),
@@ -255,9 +259,8 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF131722)
-                            : theme.cardColor,
+                        color:
+                            isDark ? const Color(0xFF131722) : theme.cardColor,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isDark
@@ -286,7 +289,8 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: AppTheme.darkAccent.withValues(alpha: 0.15),
+                                color:
+                                    AppTheme.darkAccent.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
@@ -402,7 +406,9 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 style: GoogleFonts.bigShouldersDisplay(
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
-                  color: isLive ? AppTheme.darkAccent : theme.colorScheme.onSurface,
+                  color: isLive
+                      ? AppTheme.darkAccent
+                      : theme.colorScheme.onSurface,
                 ),
               ),
               Padding(
@@ -421,7 +427,9 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 style: GoogleFonts.bigShouldersDisplay(
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
-                  color: isLive ? AppTheme.darkAccent : theme.colorScheme.onSurface,
+                  color: isLive
+                      ? AppTheme.darkAccent
+                      : theme.colorScheme.onSurface,
                 ),
               ),
             ],
@@ -431,7 +439,9 @@ class MatchDetailsBottomSheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: isLive
                   ? const Color(0xFFFF5468).withValues(alpha: 0.15)
-                  : (isDark ? const Color(0xFF161B27) : Colors.black.withValues(alpha: 0.05)),
+                  : (isDark
+                      ? const Color(0xFF161B27)
+                      : Colors.black.withValues(alpha: 0.05)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

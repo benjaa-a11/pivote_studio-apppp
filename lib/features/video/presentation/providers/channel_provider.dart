@@ -174,7 +174,8 @@ class ChannelProvider extends ChangeNotifier {
       final logoUrls = <String>{};
       for (final channel in _channels) {
         if (channel.logoUrl.isNotEmpty) {
-          logoUrls.addAll(channel.logoUrl.where((u) => u.isNotEmpty && u.startsWith('http')));
+          logoUrls.addAll(channel.logoUrl
+              .where((u) => u.isNotEmpty && u.startsWith('http')));
         }
       }
       ImageCacheHelper.warmUpCache(logoUrls.toList(), isLogos: true);

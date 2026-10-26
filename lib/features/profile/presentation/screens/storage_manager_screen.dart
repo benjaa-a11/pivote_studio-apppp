@@ -43,7 +43,8 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
 
     if (type == 'all') {
       title = '¿Liberar todo el espacio?';
-      message = 'Se borrarán todos los datos temporales e imágenes descargadas.';
+      message =
+          'Se borrarán todos los datos temporales e imágenes descargadas.';
     } else if (type == 'images') {
       title = '¿Borrar imágenes en caché?';
       message = 'Se eliminarán las miniaturas y logos guardados temporalmente.';
@@ -64,7 +65,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
 
     if (confirmed != true) return;
 
-    HapticFeedback.mediumImpact();
+    await HapticFeedback.mediumImpact();
     setState(() => _isCleaning = true);
 
     await Future.delayed(const Duration(milliseconds: 700));
@@ -102,7 +103,8 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -113,6 +115,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
       body: _isLoading
           ? const Center(child: PivoteLoader(size: 40))
           : SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,14 +209,16 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                 color: primaryColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: Icon(Icons.storage_rounded,
-                  color: primaryColor, size: 28),
+              child: Icon(Icons.storage_rounded, color: primaryColor, size: 28),
             ),
             const SizedBox(height: 14),
             Text(
               'Espacio Total en Caché',
               style: GoogleFonts.spaceGrotesk(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.7),
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -377,8 +382,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.cleaning_services_rounded,
-                      size: 20,
-                      color: isDark ? Colors.black : Colors.white),
+                      size: 20, color: isDark ? Colors.black : Colors.white),
                   const SizedBox(width: 10),
                   Text(
                     'Limpiar todo el almacenamiento',

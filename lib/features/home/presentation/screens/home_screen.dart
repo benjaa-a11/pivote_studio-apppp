@@ -80,8 +80,8 @@ class _HomeScreenState extends State<HomeScreen>
 
                 // Grid de canales (sin título de sección)
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.md),
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
+                      AppSpacing.md, AppSpacing.lg, AppSpacing.md),
                   sliver: Consumer<ChannelProvider>(
                     builder: (context, channelProvider, child) {
                       final isLoading = channelProvider.isLoading;

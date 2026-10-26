@@ -96,7 +96,8 @@ void main() {
   });
 
   group('AuthService error messages', () {
-    test('getErrorMessage retorna mensaje legible para PivoteAuthException', () {
+    test('getErrorMessage retorna mensaje legible para PivoteAuthException',
+        () {
       final ex = PivoteAuthException(
         code: 'email-already-in-use',
         message: 'raw message',

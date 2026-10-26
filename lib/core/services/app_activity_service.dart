@@ -55,7 +55,8 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
         _firstActiveDate = DateTime.tryParse(firstActiveStr);
       } else {
         _firstActiveDate = DateTime.now();
-        await prefs.setString(_keyFirstActive, _firstActiveDate!.toIso8601String());
+        await prefs.setString(
+            _keyFirstActive, _firstActiveDate!.toIso8601String());
       }
 
       // Increment session count for new app launch
@@ -118,7 +119,8 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
       if (remoteFirstActive != null) {
         final remoteDate = DateTime.tryParse(remoteFirstActive);
         if (remoteDate != null &&
-            (_firstActiveDate == null || remoteDate.isBefore(_firstActiveDate!))) {
+            (_firstActiveDate == null ||
+                remoteDate.isBefore(_firstActiveDate!))) {
           _firstActiveDate = remoteDate;
           await prefs.setString(_keyFirstActive, remoteFirstActive);
         }
@@ -246,8 +248,8 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       _isActive = true;
     } else if (state == AppLifecycleState.paused ||
-               state == AppLifecycleState.inactive ||
-               state == AppLifecycleState.detached) {
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
       _isActive = false;
       _persistActiveTime().then((_) => _syncToFirestore(force: true));
     }

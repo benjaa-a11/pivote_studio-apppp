@@ -11,7 +11,8 @@ class PrivacySecurityScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final primaryColor = isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor =
+        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -20,9 +21,11 @@ class PrivacySecurityScreen extends StatelessWidget {
         subtitle: 'Protección de cuenta, datos y conexiones seguras',
       ),
       body: ListView(
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
         children: [
-          AppAnimations.smoothFadeIn(child: _securityHero(context, isDark, primaryColor)),
+          AppAnimations.smoothFadeIn(
+              child: _securityHero(context, isDark, primaryColor)),
           const SizedBox(height: 28),
           _sectionTitle(context, 'Protección de tu cuenta'),
           const SizedBox(height: 12),
@@ -63,7 +66,8 @@ class PrivacySecurityScreen extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.verified_user_rounded, color: primaryColor, size: 22),
+                Icon(Icons.verified_user_rounded,
+                    color: primaryColor, size: 22),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(

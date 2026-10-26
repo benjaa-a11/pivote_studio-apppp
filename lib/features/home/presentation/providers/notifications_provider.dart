@@ -48,7 +48,9 @@ class NotificationsProvider extends ChangeNotifier {
       for (final item in [...history, ...fresh]) {
         merged[item.id] = item;
       }
-      _items = merged.values.map((item) => item.copyWith(isRead: readIds.contains(item.id))).toList()
+      _items = merged.values
+          .map((item) => item.copyWith(isRead: readIds.contains(item.id)))
+          .toList()
         ..sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
       await _saveHistory(prefs, _items);
     } catch (_) {
@@ -62,10 +64,15 @@ class NotificationsProvider extends ChangeNotifier {
   Future<void> _addRemoteMessage(RemoteMessage message) async {
     final notification = message.notification;
     final data = message.data;
-    final title = notification?.title ?? data['title']?.toString() ?? 'Novedad de Pivote';
-    final body = notification?.body ?? data['body']?.toString() ?? 'Tenés una nueva notificación.';
+    final title =
+        notification?.title ?? data['title']?.toString() ?? 'Novedad de Pivote';
+    final body = notification?.body ??
+        data['body']?.toString() ??
+        'Tenés una nueva notificación.';
     final typeName = data['type']?.toString();
-    final type = AppNotificationType.values.firstWhere((value) => value.name == typeName, orElse: () => AppNotificationType.system);
+    final type = AppNotificationType.values.firstWhere(
+        (value) => value.name == typeName,
+        orElse: () => AppNotificationType.system);
     await addRemoteNotification(
       id: message.messageId ?? 'fcm_${DateTime.now().microsecondsSinceEpoch}',
       title: title,
@@ -74,15 +81,33 @@ class NotificationsProvider extends ChangeNotifier {
       deepLink: data['deepLink']?.toString() ?? data['url']?.toString(),
       source: data['source']?.toString() ?? 'Pivote',
       type: type,
-      publishedAt: DateTime.tryParse(data['publishedAt']?.toString() ?? '') ?? DateTime.now(),
+      publishedAt: DateTime.tryParse(data['publishedAt']?.toString() ?? '') ??
+          DateTime.now(),
     );
   }
 
-  Future<void> addRemoteNotification({required String id, required String title, required String body, String? imageUrl, String? deepLink, String source = 'Pivote', AppNotificationType type = AppNotificationType.system, DateTime? publishedAt}) async {
-    final item = AppNotification(id: id, title: title, body: body, imageUrl: imageUrl, deepLink: deepLink, source: source, type: type, publishedAt: publishedAt ?? DateTime.now());
+  Future<void> addRemoteNotification(
+      {required String id,
+      required String title,
+      required String body,
+      String? imageUrl,
+      String? deepLink,
+      String source = 'Pivote',
+      AppNotificationType type = AppNotificationType.system,
+      DateTime? publishedAt}) async {
+    final item = AppNotification(
+        id: id,
+        title: title,
+        body: body,
+        imageUrl: imageUrl,
+        deepLink: deepLink,
+        source: source,
+        type: type,
+        publishedAt: publishedAt ?? DateTime.now());
     final map = {for (final current in _items) current.id: current};
     map[id] = item;
-    _items = map.values.toList()..sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+    _items = map.values.toList()
+      ..sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await _saveHistory(prefs, _items);
@@ -104,16 +129,35 @@ class NotificationsProvider extends ChangeNotifier {
 
   List<AppNotification> _loadHistory(SharedPreferences prefs) {
     final raw = prefs.getStringList(_historyKey) ?? const [];
-    return raw.map((value) { try { return AppNotification.fromJson(jsonDecode(value) as Map<String, dynamic>); } catch (_) { return null; } }).whereType<AppNotification>().take(50).toList();
+    return raw
+        .map((value) {
+          try {
+            return AppNotification.fromJson(
+                jsonDecode(value) as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<AppNotification>()
+        .take(50)
+        .toList();
   }
 
-  Future<void> _saveHistory(SharedPreferences prefs, List<AppNotification> items) async {
-    await prefs.setStringList(_historyKey, items.take(50).map((item) => jsonEncode(item.toJson())).toList());
+  Future<void> _saveHistory(
+      SharedPreferences prefs, List<AppNotification> items) async {
+    await prefs.setStringList(_historyKey,
+        items.take(50).map((item) => jsonEncode(item.toJson())).toList());
   }
 
   Future<void> _persistReadIds() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_readKey, _items.where((item) => item.isRead).map((item) => item.id).take(100).toList());
+    await prefs.setStringList(
+        _readKey,
+        _items
+            .where((item) => item.isRead)
+            .map((item) => item.id)
+            .take(100)
+            .toList());
     await _saveHistory(prefs, _items);
   }
 }
