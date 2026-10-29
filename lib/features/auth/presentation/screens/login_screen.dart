@@ -7,11 +7,10 @@ import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
-import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/features/auth/presentation/screens/signup_screen.dart';
+import 'package:pivote/features/auth/presentation/widgets/auth_components.dart';
 import 'package:pivote/features/home/presentation/screens/main_screen.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
+
   bool _isPasswordVisible = false;
   bool _isLoading = false;
 
@@ -39,14 +39,16 @@ class _LoginScreenState extends State<LoginScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 650),
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.04),
+      begin: const Offset(0, 0.05),
       end: Offset.zero,
-    ).animate(
-        CurvedAnimation(parent: _animController, curve: Curves.easeOutCubic));
+    ).animate(CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutCubic,
+    ));
     _animController.forward();
   }
 
@@ -89,319 +91,243 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
+  void _handleGoogleSignIn() {
+    unawaited(HapticFeedback.selectionClick());
+    AppNotifications.showInfo(
+      context,
+      'Inicio de sesión con Google próximamente disponible',
+    );
+  }
+
+  void _showForgotPasswordDialog() {
+    final resetEmailController =
+        TextEditingController(text: _emailController.text.trim());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          'Recuperar Contraseña',
+          style: GoogleFonts.figtree(
+            fontWeight: FontWeight.w700,
+            color: kAuthInk,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ingresa tu correo para recibir las instrucciones de recuperación.',
+              style: GoogleFonts.figtree(
+                color: kAuthMuted,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: resetEmailController,
+              keyboardType: TextInputType.emailAddress,
+              style: GoogleFonts.figtree(color: kAuthInk),
+              decoration: InputDecoration(
+                hintText: 'ejemplo@correo.com',
+                hintStyle: GoogleFonts.figtree(color: Colors.grey),
+                filled: true,
+                fillColor: kAuthFieldBg,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.figtree(color: Colors.grey[700]),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0C0C0C),
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              AppNotifications.showSuccess(
+                context,
+                'Si el correo está registrado, recibirás un enlace de recuperación.',
+              );
+            },
+            child: Text(
+              'Enviar enlace',
+              style: GoogleFonts.figtree(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final screenHeight = MediaQuery.of(context).size.height;
+    final canPop = Navigator.of(context).canPop();
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
+      backgroundColor: kAuthHeaderBg,
       resizeToAvoidBottomInset: true,
       body: FadeTransition(
         opacity: _fadeAnim,
         child: SlideTransition(
           position: _slideAnim,
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: screenHeight * 0.07),
-                  // Logo + branding
-                  _buildBranding(isDark),
-                  SizedBox(height: screenHeight * 0.06),
-                  // Formulario
-                  _buildForm(context, theme, isDark),
-                  const SizedBox(height: 16),
-                  // Sign up link
-                  _buildSignUpLink(context, theme),
-                  const SizedBox(height: 24),
-                  // Footer
-                  Center(
-                    child: Text(
-                      'Al iniciar sesión aceptas nuestra\nPolítica de Privacidad y Términos de Servicio',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color:
-                            theme.colorScheme.onSurface.withValues(alpha: 0.38),
-                        height: 1.5,
-                      ),
+          child: Column(
+            children: [
+              // ─── Header compacto con burbujas (fiel al HTML) ───────────
+              AuthHeader(
+                title: 'Login Here',
+                compact: true,
+                onBack: canPop ? () => Navigator.of(context).pop() : null,
+              ),
+
+              // ─── Panel blanco inferior (curvado sobre el header) ───────
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: kAuthPanelBg,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(30),
                     ),
                   ),
-                  const SizedBox(height: 32),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(23, 36, 23, 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Botón Google
+                        AuthGoogleButton(onPressed: _handleGoogleSignIn),
 
-  Widget _buildBranding(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Logo
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg1,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isDark ? AppTheme.darkBorder : AppTheme.lightBorder,
-            ),
-          ),
-          padding: const EdgeInsets.all(10),
-          child: Image.asset(
-            'assets/logo.png',
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.play_circle_fill,
-              color: AppTheme.darkAccent,
-              size: 28,
-            ),
-          ),
-        ),
-        const SizedBox(height: 28),
-        Text(
-          'Bienvenido\nde nuevo',
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 36,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1.0,
-            color: isDark ? AppTheme.darkText : AppTheme.lightText,
-            height: 1.1,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          'Ingresá a tu cuenta para continuar',
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 15,
-            color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-      ],
-    );
-  }
+                        // Separador "or"
+                        const AuthOrDivider(),
 
-  Widget _buildForm(BuildContext context, ThemeData theme, bool isDark) {
-    final fieldBg = isDark ? AppTheme.darkBg2 : AppTheme.lightBg1;
-    final borderColor = isDark ? AppTheme.darkBorder2 : AppTheme.lightBorder;
+                        // Formulario
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              // Email Pill
+                              AuthPillField(
+                                controller: _emailController,
+                                focusNode: _emailFocus,
+                                hint: 'Email',
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => FocusScope.of(context)
+                                    .requestFocus(_passwordFocus),
+                                validator: (v) {
+                                  if (v == null || v.trim().isEmpty) {
+                                    return 'Ingresa tu correo';
+                                  }
+                                  if (!v.contains('@') || !v.contains('.')) {
+                                    return 'Ingresa un correo válido';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 9),
 
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Email
-          _buildLabel('Correo electrónico', isDark),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _emailController,
-            focusNode: _emailFocus,
-            keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.next,
-            onFieldSubmitted: (_) =>
-                FocusScope.of(context).requestFocus(_passwordFocus),
-            style: GoogleFonts.spaceGrotesk(
-              color: isDark ? AppTheme.darkText : AppTheme.lightText,
-              fontSize: 15,
-            ),
-            decoration: _inputDecoration(
-              hint: 'tu@email.com',
-              icon: Icons.email_outlined,
-              fieldBg: fieldBg,
-              borderColor: borderColor,
-              isDark: isDark,
-              theme: theme,
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Ingresá tu correo';
-              }
-              if (!value.contains('@') || !value.contains('.')) {
-                return 'Correo inválido';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 18),
-          // Password
-          _buildLabel('Contraseña', isDark),
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: _passwordController,
-            focusNode: _passwordFocus,
-            obscureText: !_isPasswordVisible,
-            textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) => _handleLogin(),
-            style: GoogleFonts.spaceGrotesk(
-              color: isDark ? AppTheme.darkText : AppTheme.lightText,
-              fontSize: 15,
-            ),
-            decoration: _inputDecoration(
-              hint: '••••••••',
-              icon: Icons.lock_outline_rounded,
-              fieldBg: fieldBg,
-              borderColor: borderColor,
-              isDark: isDark,
-              theme: theme,
-              suffix: IconButton(
-                icon: Icon(
-                  _isPasswordVisible
-                      ? Icons.visibility_rounded
-                      : Icons.visibility_off_rounded,
-                  size: 20,
-                  color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
-                ),
-                onPressed: () =>
-                    setState(() => _isPasswordVisible = !_isPasswordVisible),
-              ),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Ingresá tu contraseña';
-              }
-              if (value.length < 6) return 'Mínimo 6 caracteres';
-              return null;
-            },
-          ),
-          const SizedBox(height: 28),
-          // Botón principal
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _handleLogin,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.darkAccent,
-                foregroundColor: AppTheme.darkBg,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                disabledBackgroundColor:
-                    AppTheme.darkAccent.withValues(alpha: 0.4),
-              ),
-              child: _isLoading
-                  ? const PivoteLoader(
-                      color: AppTheme.darkBg,
-                      size: 22,
-                      strokeWidth: 2.5,
-                    )
-                  : Text(
-                      'Entrar',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                        color: AppTheme.darkBg,
-                      ),
+                              // Password con Eye button
+                              AuthPasswordField(
+                                controller: _passwordController,
+                                focusNode: _passwordFocus,
+                                hint: 'Password',
+                                isVisible: _isPasswordVisible,
+                                onToggleVisibility: () {
+                                  setState(() => _isPasswordVisible =
+                                      !_isPasswordVisible);
+                                },
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => _handleLogin(),
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) {
+                                    return 'Ingresa tu contraseña';
+                                  }
+                                  if (v.length < 6) {
+                                    return 'Mínimo 6 caracteres';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 25),
+
+                        // Botón Principal Negro
+                        AuthMainButton(
+                          label: 'Log in',
+                          isLoading: _isLoading,
+                          onPressed: _handleLogin,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Solicitar nueva contraseña (HTML: .small)
+                        GestureDetector(
+                          onTap: _showForgotPasswordDialog,
+                          child: Text.rich(
+                            TextSpan(
+                              text: 'Request a ',
+                              style: GoogleFonts.figtree(
+                                fontSize: 16,
+                                color: kAuthMuted,
+                              ),
+                              children: const [
+                                TextSpan(
+                                  text: 'New Password',
+                                  style: TextStyle(
+                                    color: kAuthInk,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: kAuthInk,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Enlace hacia Sign up (HTML: .foot.tight)
+                        AuthFootLink(
+                          prefix: 'New here?',
+                          linkText: 'Create an account',
+                          onTap: () {
+                            unawaited(HapticFeedback.selectionClick());
+                            Navigator.of(context).pushReplacement(
+                              AppAnimations.createFadeRoute(
+                                const SignUpScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text, bool isDark) {
-    return Text(
-      text,
-      style: GoogleFonts.spaceGrotesk(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
-        letterSpacing: 0.2,
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration({
-    required String hint,
-    required IconData icon,
-    required Color fieldBg,
-    required Color borderColor,
-    required bool isDark,
-    required ThemeData theme,
-    Widget? suffix,
-  }) {
-    return InputDecoration(
-      hintText: hint,
-      filled: true,
-      fillColor: fieldBg,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      hintStyle: GoogleFonts.spaceGrotesk(
-        color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
-        fontSize: 14,
-      ),
-      prefixIcon: Padding(
-        padding: const EdgeInsets.only(left: 14, right: 10),
-        child: Icon(icon,
-            size: 18, color: isDark ? AppTheme.darkText3 : AppTheme.lightText3),
-      ),
-      suffixIcon: suffix,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: borderColor),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: borderColor),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppTheme.darkAccent, width: 1.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppTheme.darkDanger),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppTheme.darkDanger, width: 1.5),
-      ),
-    );
-  }
-
-  Widget _buildSignUpLink(BuildContext context, ThemeData theme) {
-    final isDark = theme.brightness == Brightness.dark;
-    return Center(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '¿Nuevo en Pivote? ',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 14,
-              color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              Navigator.push(
-                context,
-                AppAnimations.createRoute(const SignUpScreen()),
-              );
-            },
-            child: Text(
-              'Crear cuenta',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.darkAccent,
-                decoration: TextDecoration.underline,
-                decorationColor: AppTheme.darkAccent,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
