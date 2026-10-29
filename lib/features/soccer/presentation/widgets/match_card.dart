@@ -87,7 +87,7 @@ class MatchCard extends StatelessWidget {
 
     return Container(
       width: cardWidth,
-      height: 265,
+      height: 232,
       margin: const EdgeInsets.only(right: 14),
       child: Material(
         color: Colors.transparent,
@@ -172,13 +172,13 @@ class MatchCard extends StatelessWidget {
               // ─── 4. Contenido interactivo del Hero ───
               Positioned.fill(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   child: Column(
                     children: [
                       // Header con liga y pill de estado
                       _buildHeader(league, tournamentLogoUrl, theme, isDark),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
 
                       // Línea divisoria horizontal superior
                       Divider(
@@ -213,7 +213,7 @@ class MatchCard extends StatelessWidget {
                             : Colors.black.withValues(alpha: 0.06),
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
 
                       // Footer con botón de acción (Próximo, Ver partido, En vivo)
                       _buildFooter(
@@ -387,51 +387,43 @@ class MatchCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Escudo del equipo libre (sin círculo sólido ni borde), solo con el degradado de su color
-        Container(
-          width: 58,
-          height: 58,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              colors: [
-                teamColor.withValues(alpha: isDark ? 0.35 : 0.22),
-                teamColor.withValues(alpha: 0.0),
-              ],
-              radius: 0.75,
-            ),
-          ),
-          child: logoUrl.isNotEmpty
-              ? CachedNetworkImage(
-                  cacheManager: ImageCacheHelper.logoCacheManager,
-                  imageUrl: logoUrl,
-                  fit: BoxFit.contain,
-                  memCacheWidth: 160,
-                  memCacheHeight: 160,
-                  placeholder: (_, __) => const Center(
-                    child: SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: PivoteLoader(strokeWidth: 2, size: 16),
+        // Escudo del equipo sin recuadro ni fondo cuadrado, flotando sobre el degradado del hero
+        SizedBox(
+          width: 54,
+          height: 54,
+          child: Center(
+            child: logoUrl.isNotEmpty
+                ? CachedNetworkImage(
+                    cacheManager: ImageCacheHelper.logoCacheManager,
+                    imageUrl: logoUrl,
+                    fit: BoxFit.contain,
+                    memCacheWidth: 160,
+                    memCacheHeight: 160,
+                    placeholder: (_, __) => const Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: PivoteLoader(strokeWidth: 2, size: 16),
+                      ),
                     ),
-                  ),
-                  errorWidget: (_, __, ___) => Center(
+                    errorWidget: (_, __, ___) => Center(
+                      child: FaIcon(
+                        FontAwesomeIcons.shieldHalved,
+                        size: 28,
+                        color: teamColor,
+                      ),
+                    ),
+                  )
+                : Center(
                     child: FaIcon(
                       FontAwesomeIcons.shieldHalved,
                       size: 28,
                       color: teamColor,
                     ),
                   ),
-                )
-              : Center(
-                  child: FaIcon(
-                    FontAwesomeIcons.shieldHalved,
-                    size: 28,
-                    color: teamColor,
-                  ),
-                ),
+          ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
 
         // Nombre del equipo
         Text(
@@ -469,37 +461,40 @@ class MatchCard extends StatelessWidget {
   Widget _buildCenterDisplay(ThemeData theme, bool isDark) {
     final isFinished = match.isFinished;
 
-    // Partido en Vivo o Finalizado con marcador disponible
+    // Partido en Vivo o Finalizado con marcador disponible (sin barra de progreso y perfectamente centrado)
     if ((isLive || isFinished) && match.score.isNotEmpty) {
       final homeScore =
           match.score.isNotEmpty ? match.score[0].toString() : '0';
       final awayScore =
           match.score.length > 1 ? match.score[1].toString() : '0';
 
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Marcador gigante
-          Row(
+      return SizedBox(
+        height: 54,
+        child: Center(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                homeScore,
-                style: GoogleFonts.bigShouldersDisplay(
-                  fontSize: 46,
-                  fontWeight: FontWeight.w900,
-                  height: 1.0,
-                  color: isLive
-                      ? AppTheme.darkAccent
-                      : theme.colorScheme.onSurface,
+              SizedBox(
+                width: 32,
+                child: Text(
+                  homeScore,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.bigShouldersDisplay(
+                    fontSize: 42,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                    color: isLive
+                        ? AppTheme.darkAccent
+                        : theme.colorScheme.onSurface,
+                  ),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Container(
-                  width: 14,
-                  height: 4,
+                  width: 10,
+                  height: 3.5,
                   decoration: BoxDecoration(
                     color: (isDark ? Colors.white : Colors.black)
                         .withValues(alpha: 0.3),
@@ -507,173 +502,145 @@ class MatchCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                awayScore,
-                style: GoogleFonts.bigShouldersDisplay(
-                  fontSize: 46,
-                  fontWeight: FontWeight.w900,
-                  height: 1.0,
-                  color: isLive
-                      ? AppTheme.darkAccent
-                      : theme.colorScheme.onSurface,
+              SizedBox(
+                width: 32,
+                child: Text(
+                  awayScore,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.bigShouldersDisplay(
+                    fontSize: 42,
+                    fontWeight: FontWeight.w900,
+                    height: 1.0,
+                    color: isLive
+                        ? AppTheme.darkAccent
+                        : theme.colorScheme.onSurface,
+                  ),
                 ),
               ),
             ],
           ),
-
-          // Barra de progreso del tiempo de juego si está en vivo
-          if (isLive) ...[
-            const SizedBox(height: 6),
-            Container(
-              width: 74,
-              height: 4,
-              decoration: BoxDecoration(
-                color: (isDark ? Colors.white : Colors.black)
-                    .withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: FractionallySizedBox(
-                  widthFactor: match.elapsedPercent,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkAccent,
-                      borderRadius: BorderRadius.circular(999),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.darkAccent.withValues(alpha: 0.5),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
+        ),
       );
     }
 
     // Partido Programado
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          match.formattedTime,
-          style: GoogleFonts.bigShouldersDisplay(
-            fontSize: 40,
-            fontWeight: FontWeight.w900,
-            height: 1.0,
-            color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-          ),
+    return SizedBox(
+      height: 54,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              match.formattedTime,
+              style: GoogleFonts.bigShouldersDisplay(
+                fontSize: 36,
+                fontWeight: FontWeight.w900,
+                height: 1.0,
+                color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              match.dayLabel.toUpperCase(),
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 2),
-        Text(
-          match.dayLabel.toUpperCase(),
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-            letterSpacing: 0.8,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  // ─── Footer: Botón de Acción Centrado y Elegante ───
+  // ─── Footer: Botón de Acción Adaptado al Ancho de la Tarjeta ───
   Widget _buildFooter(
     BuildContext context,
     bool hasMultipleChannels,
     ThemeData theme,
     bool isDark,
   ) {
-    return Center(
-      child: isLive
-          ? _buildLiveButton(context, hasMultipleChannels, theme, isDark)
-          : (match.isWatchable
-              ? _buildWatchButton(context, hasMultipleChannels, theme, isDark)
-              : _buildInfoButton(context, hasMultipleChannels, theme, isDark)),
+    return Row(
+      children: [
+        Expanded(
+          child: isLive
+              ? _buildLiveButton(context, theme, isDark)
+              : (match.isWatchable
+                  ? _buildWatchButton(context, theme, isDark)
+                  : _buildInfoButton(context, hasMultipleChannels, theme, isDark)),
+        ),
+        if (hasMultipleChannels) ...[
+          const SizedBox(width: 8),
+          _buildOptionsButton(context, theme, isDark),
+        ],
+      ],
     );
   }
 
   Widget _buildLiveButton(
     BuildContext context,
-    bool hasMultipleChannels,
     ThemeData theme,
     bool isDark,
   ) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ElevatedButton.icon(
-          onPressed: onWatchMatch,
-          icon: const Icon(Icons.play_arrow_rounded, size: 18),
-          label: Text(
-            'En vivo',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.2,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF5468),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 0,
-            shadowColor: const Color(0xFFFF5468).withValues(alpha: 0.4),
+    return SizedBox(
+      height: 38,
+      child: ElevatedButton.icon(
+        onPressed: onWatchMatch,
+        icon: const Icon(Icons.play_arrow_rounded, size: 20),
+        label: Text(
+          'En vivo',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
           ),
         ),
-        if (hasMultipleChannels) ...[
-          const SizedBox(width: 8),
-          _buildOptionsButton(context, theme, isDark),
-        ],
-      ],
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFF5468),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+          shadowColor: const Color(0xFFFF5468).withValues(alpha: 0.4),
+        ),
+      ),
     );
   }
 
   Widget _buildWatchButton(
     BuildContext context,
-    bool hasMultipleChannels,
     ThemeData theme,
     bool isDark,
   ) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ElevatedButton.icon(
-          onPressed: onWatchMatch,
-          icon: const Icon(Icons.play_arrow_rounded, size: 18),
-          label: Text(
-            'Ver partido',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.2,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor:
-                isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-            foregroundColor: isDark ? Colors.black : Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 0,
+    return SizedBox(
+      height: 38,
+      child: ElevatedButton.icon(
+        onPressed: onWatchMatch,
+        icon: const Icon(Icons.play_arrow_rounded, size: 20),
+        label: Text(
+          'Ver partido',
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
           ),
         ),
-        if (hasMultipleChannels) ...[
-          const SizedBox(width: 8),
-          _buildOptionsButton(context, theme, isDark),
-        ],
-      ],
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+          foregroundColor: isDark ? Colors.black : Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+      ),
     );
   }
 
@@ -683,60 +650,54 @@ class MatchCard extends StatelessWidget {
     ThemeData theme,
     bool isDark,
   ) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              if (hasMultipleChannels) {
-                _showChannelOptions(context);
-              } else {
-                onWatchMatch();
-              }
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-              decoration: BoxDecoration(
+    return SizedBox(
+      height: 38,
+      child: Material(
+        color: isDark
+            ? const Color(0xFF161B27)
+            : Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () {
+            if (hasMultipleChannels) {
+              _showChannelOptions(context);
+            } else {
+              onWatchMatch();
+            }
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
                 color: isDark
-                    ? const Color(0xFF161B27)
-                    : Colors.black.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF1E2533)
-                      : Colors.black.withValues(alpha: 0.06),
+                    ? const Color(0xFF1E2533)
+                    : Colors.black.withValues(alpha: 0.06),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.schedule_rounded,
+                  size: 15,
+                  color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.schedule_rounded,
-                    size: 15,
-                    color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                const SizedBox(width: 6),
+                Text(
+                  'Próximo',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? const Color(0xFF9EABB9) : theme.hintColor,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Próximo',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? const Color(0xFF9EABB9) : theme.hintColor,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
-        if (hasMultipleChannels) ...[
-          const SizedBox(width: 8),
-          _buildOptionsButton(context, theme, isDark),
-        ],
-      ],
+      ),
     );
   }
 
@@ -745,24 +706,29 @@ class MatchCard extends StatelessWidget {
     ThemeData theme,
     bool isDark,
   ) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
+    return SizedBox(
+      width: 42,
+      height: 38,
+      child: Material(
         color: isDark ? const Color(0xFF161B27) : AppTheme.lightBg2,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () => _showChannelOptions(context),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+              ),
+            ),
+            child: Icon(
+              Icons.more_horiz_rounded,
+              color: isDark ? const Color(0xFFAAB3C5) : theme.hintColor,
+              size: 20,
+            ),
+          ),
         ),
-      ),
-      child: IconButton(
-        onPressed: () => _showChannelOptions(context),
-        icon: Icon(
-          Icons.more_horiz_rounded,
-          color: isDark ? const Color(0xFFAAB3C5) : theme.hintColor,
-          size: 18,
-        ),
-        padding: EdgeInsets.zero,
       ),
     );
   }
@@ -775,147 +741,352 @@ class MatchCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    // Filtramos y deduplicamos canales con señal
+    final availableChannels = <String, dynamic>{};
+    for (var soccerChannel in match.tvChannels) {
+      if (soccerChannel.id != null) {
+        final ch = channelProvider.getChannelById(soccerChannel.id!);
+        if (ch != null && !availableChannels.containsKey(ch.id)) {
+          availableChannels[ch.id] = ch;
+        }
+      }
+    }
+    final channelList = availableChannels.values.toList();
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: theme.scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.hintColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'Selecciona una señal',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                '${match.homeTeam} vs ${match.awayTeam}',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: theme.hintColor,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Divider(
-              height: 1,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F131C) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(
+            top: BorderSide(
               color: isDark
-                  ? AppTheme.darkBorder.withValues(alpha: 0.3)
-                  : AppTheme.lightBorder.withValues(alpha: 0.5),
+                  ? const Color(0xFF1E2533)
+                  : AppTheme.lightBorder,
+              width: 1,
             ),
-            const SizedBox(height: 8),
-            ...match.tvChannels.map((soccerChannel) {
-              if (soccerChannel.id == null) return const SizedBox.shrink();
-              final channel = channelProvider.getChannelById(soccerChannel.id!);
-
-              if (channel == null) return const SizedBox.shrink();
-
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 4,
-                ),
-                leading: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkBg3 : AppTheme.lightBg2,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark
-                          ? AppTheme.darkBorder.withValues(alpha: 0.3)
-                          : AppTheme.lightBorder,
-                    ),
-                  ),
-                  padding: const EdgeInsets.all(6),
-                  child: channel.logoUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                          cacheManager: ImageCacheHelper.logoCacheManager,
-                          imageUrl: channel.logoUrl.first,
-                          fit: BoxFit.contain,
-                          memCacheWidth: 150,
-                          memCacheHeight: 150,
-                          errorWidget: (_, __, ___) => Icon(
-                            Icons.live_tv_rounded,
-                            color: isDark
-                                ? AppTheme.darkAccent
-                                : theme.colorScheme.primary,
-                            size: 22,
-                          ),
-                        )
-                      : Icon(
-                          Icons.live_tv_rounded,
-                          color: isDark
-                              ? AppTheme.darkAccent
-                              : theme.colorScheme.primary,
-                          size: 22,
-                        ),
-                ),
-                title: Text(
-                  channel.name,
-                  style: GoogleFonts.spaceGrotesk(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-                trailing: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: (isDark
-                            ? AppTheme.darkAccent
-                            : theme.colorScheme.primary)
-                        .withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.play_arrow_rounded,
-                    color: isDark
-                        ? AppTheme.darkAccent
-                        : theme.colorScheme.primary,
-                    size: 18,
-                  ),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    AppAnimations.createFadeRoute(
-                      PlayerScreen(channel: channel),
-                    ),
-                  );
-                },
-              );
-            }),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.15),
+              blurRadius: 24,
+              offset: const Offset(0, -6),
+            ),
           ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.white : Colors.black)
+                          .withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: (isLive
+                                  ? const Color(0xFFFF5468)
+                                  : (isDark
+                                      ? AppTheme.darkAccent
+                                      : theme.colorScheme.primary))
+                              .withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.live_tv_rounded,
+                          size: 20,
+                          color: isLive
+                              ? const Color(0xFFFF5468)
+                              : (isDark
+                                  ? AppTheme.darkAccent
+                                  : theme.colorScheme.primary),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Señales disponibles',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w800,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            Text(
+                              '${match.homeTeam} vs ${match.awayTeam}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.spaceGrotesk(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: theme.hintColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF161B27)
+                              : Colors.black.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF1E2533)
+                                : Colors.black.withValues(alpha: 0.06),
+                          ),
+                        ),
+                        child: Text(
+                          '${channelList.length} opciones',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isDark
+                                ? const Color(0xFF9EABB9)
+                                : theme.hintColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: isDark
+                      ? const Color(0xFF1E2533)
+                      : AppTheme.lightBorder.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 8),
+                if (channelList.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(
+                      child: Text(
+                        'No hay señales activas en este momento',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 13,
+                          color: theme.hintColor,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.45,
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      physics: const ClampingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      itemCount: channelList.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final channel = channelList[index];
+                        final logo = channel.logoUrl.isNotEmpty
+                            ? channel.logoUrl.first
+                            : '';
+
+                        return Material(
+                          color: isDark
+                              ? const Color(0xFF141924)
+                              : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(16),
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                AppAnimations.createFadeRoute(
+                                  PlayerScreen(channel: channel),
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF1E2535)
+                                      : const Color(0xFFE2E8F0),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? const Color(0xFF0F131C)
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isDark
+                                            ? const Color(0xFF1E2533)
+                                            : const Color(0xFFE2E8F0),
+                                      ),
+                                    ),
+                                    child: logo.isNotEmpty
+                                        ? CachedNetworkImage(
+                                            cacheManager: ImageCacheHelper
+                                                .logoCacheManager,
+                                            imageUrl: logo,
+                                            fit: BoxFit.contain,
+                                            memCacheWidth: 140,
+                                            memCacheHeight: 140,
+                                            errorWidget: (_, __, ___) => Icon(
+                                              Icons.live_tv_rounded,
+                                              size: 22,
+                                              color: isDark
+                                                  ? AppTheme.darkAccent
+                                                  : theme.colorScheme.primary,
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.live_tv_rounded,
+                                            size: 22,
+                                            color: isDark
+                                                ? AppTheme.darkAccent
+                                                : theme.colorScheme.primary,
+                                          ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          channel.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.spaceGrotesk(
+                                            color: theme.colorScheme.onSurface,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14.5,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Row(
+                                          children: [
+                                            if (isLive) ...[
+                                              Container(
+                                                width: 6,
+                                                height: 6,
+                                                decoration: const BoxDecoration(
+                                                  color: Color(0xFFFF5468),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                'En vivo',
+                                                style: GoogleFonts.spaceGrotesk(
+                                                  color: const Color(0xFFFF5468),
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                '·',
+                                                style: TextStyle(
+                                                  color: theme.hintColor,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                            ],
+                                            Text(
+                                              channel.category.isNotEmpty
+                                                  ? channel.category
+                                                  : 'Señal deportiva',
+                                              style: GoogleFonts.spaceGrotesk(
+                                                color: isDark
+                                                    ? const Color(0xFF7C879B)
+                                                    : theme.hintColor,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: (isLive
+                                              ? const Color(0xFFFF5468)
+                                              : (isDark
+                                                  ? AppTheme.darkAccent
+                                                  : theme.colorScheme.primary))
+                                          .withValues(alpha: isDark ? 0.18 : 0.12),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      Icons.play_arrow_rounded,
+                                      color: isLive
+                                          ? const Color(0xFFFF5468)
+                                          : (isDark
+                                              ? AppTheme.darkAccent
+                                              : theme.colorScheme.primary),
+                                      size: 20,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );

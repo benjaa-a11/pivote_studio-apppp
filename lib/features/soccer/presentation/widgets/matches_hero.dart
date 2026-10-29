@@ -147,7 +147,7 @@ class _MatchesHeroState extends State<MatchesHero> {
                 ),
               ],
               SizedBox(
-                height: 270,
+                height: 236,
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   scrollDirection: Axis.horizontal,
