@@ -3,15 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// ─── Colores EXACTOS del HTML ────────────────────────────────────────────────
-// :root {
-//   --bg:#b7cbe4; --orange:#e9744d; --gold:#d8b968; --green:#4dbb88;
-//   --ink:#111; --muted:#6b6b6b; --field:#f4f4f4; --line:#dcdcdc;
-// }
-const Color kHtmlBg = Color(0xFFB7CBE4);
+// ─── Colores del HTML adaptados a la App Pivote ──────────────────────────────
+// Fondo general de la app (dark mode de Pivote)
+const Color kAuthScreenBg = Color(0xFF090B0F); // darkBg de Pivote
+
+// Colores de la tarjeta y burbujas (del HTML original)
 const Color kHtmlOrange = Color(0xFFE9744D);
 const Color kHtmlGold = Color(0xFFD8B968);
 const Color kHtmlGreen = Color(0xFF4DBB88);
+
+// Colores del panel blanco y sus inputs
 const Color kHtmlInk = Color(0xFF111111);
 const Color kHtmlMuted = Color(0xFF6B6B6B);
 const Color kHtmlField = Color(0xFFF4F4F4);
@@ -20,7 +21,7 @@ const Color kHtmlLine = Color(0xFFDCDCDC);
 const Color kHtmlBtnMain = Color(0xFF0C0C0C);
 const Color kHtmlBtnMainPressed = Color(0xFF222222);
 
-// ─── SVGs Oficiales del HTML ─────────────────────────────────────────────────
+// ─── SVG Oficial de Google ───────────────────────────────────────────────────
 const String _kGoogleSvg = '''
 <svg width="26" height="26" viewBox="0 0 48 48">
   <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/>
@@ -30,58 +31,7 @@ const String _kGoogleSvg = '''
 </svg>
 ''';
 
-const String _kEyeOpenSvg = '''
-<svg width="22" height="22" viewBox="0 0 24 24" fill="#555555">
-  <path d="M12 5C6.500 5 2.700 9 1 12c1.700 3 5.500 7 11 7s9.300-4 11-7c-1.700-3-5.500-7-11-7zm0 11.500a4.500 4.500 0 110-9 4.500 4.500 0 010 9zm0-7a2.500 2.500 0 100 5 2.500 2.500 0 000-5z"/>
-</svg>
-''';
-
-const String _kEyeClosedSvg = '''
-<svg width="22" height="22" viewBox="0 0 24 24" fill="#555555">
-  <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.44-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
-</svg>
-''';
-
-// ─── Fondo de pantalla con manchas radiales del HTML ─────────────────────────
-// radial-gradient(60% 45% at 100% 8%, rgba(255,255,255,.35), transparent 70%),
-// radial-gradient(50% 50% at 0% 85%, rgba(255,255,255,.3), transparent 70%);
-class StageBackgroundPainter extends CustomPainter {
-  const StageBackgroundPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Mancha superior derecha (100% 8%)
-    final p1 = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(1.0, -0.84),
-        radius: 0.70,
-        colors: [
-          Colors.white.withValues(alpha: 0.35),
-          Colors.transparent,
-        ],
-        stops: const [0.0, 0.70],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), p1);
-
-    // Mancha inferior izquierda (0% 85%)
-    final p2 = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(-1.0, 0.70),
-        radius: 0.65,
-        colors: [
-          Colors.white.withValues(alpha: 0.30),
-          Colors.transparent,
-        ],
-        stops: const [0.0, 0.70],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), p2);
-  }
-
-  @override
-  bool shouldRepaint(StageBackgroundPainter oldDelegate) => false;
-}
-
-// ─── Stage Container (Envoltorio de tarjeta centrado) ─────────────────────────
+// ─── Stage Layout (Fondo oscuro de Pivote + Tarjeta centrada) ─────────────────
 class AuthStageLayout extends StatelessWidget {
   final Widget card;
   final VoidCallback? onBack;
@@ -95,38 +45,51 @@ class AuthStageLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kHtmlBg,
+      backgroundColor: kAuthScreenBg,
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // Fondo con manchas radiales
-          const Positioned.fill(
-            child: CustomPaint(
-              painter: StageBackgroundPainter(),
+          // Fondo oscuro de Pivote con gradiente elegante
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF0F141C),
+                    Color(0xFF090B0F),
+                    Color(0xFF060709),
+                  ],
+                ),
+              ),
             ),
           ),
 
-          // Botón volver atrás
+          // Botón volver atrás (icono blanco sobre fondo translúcido)
           if (onBack != null)
             SafeArea(
               child: Align(
                 alignment: Alignment.topLeft,
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 12, top: 8),
+                  padding: const EdgeInsets.only(left: 14, top: 10),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
                       borderRadius: BorderRadius.circular(999),
-                      onTap: onBack,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        onBack!();
+                      },
                       child: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.45),
+                          color: Colors.white.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
                           Icons.arrow_back_ios_new_rounded,
-                          color: kHtmlInk,
+                          color: Colors.white,
                           size: 18,
                         ),
                       ),
@@ -136,7 +99,7 @@ class AuthStageLayout extends StatelessWidget {
               ),
             ),
 
-          // Tarjeta centrada con scroll
+          // Tarjeta flotante centrada
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -160,7 +123,7 @@ class AuthStageLayout extends StatelessWidget {
   }
 }
 
-// ─── Tarjeta con sombra idéntica al HTML ──────────────────────────────────────
+// ─── Tarjeta con bordes de 30px y sombra idéntica al HTML ────────────────────
 // .card { width:370px; border-radius:30px; overflow:hidden; background:var(--orange); box-shadow:0 30px 60px -20px rgba(40,60,100,.35); }
 class AuthCard extends StatelessWidget {
   final Widget hero;
@@ -180,10 +143,15 @@ class AuthCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF283C64).withValues(alpha: 0.35),
-            blurRadius: 60,
-            offset: const Offset(0, 30),
-            spreadRadius: -20,
+            color: Colors.black.withValues(alpha: 0.50),
+            blurRadius: 50,
+            offset: const Offset(0, 25),
+            spreadRadius: -10,
+          ),
+          BoxShadow(
+            color: kHtmlOrange.withValues(alpha: 0.20),
+            blurRadius: 40,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -194,7 +162,6 @@ class AuthCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             hero,
-            // margin-top: -1px en el panel para evitar líneas de subpixel
             Transform.translate(
               offset: const Offset(0, -1),
               child: panel,
@@ -240,7 +207,7 @@ class AuthHero extends StatelessWidget {
             child: Container(color: kHtmlOrange),
           ),
 
-          // Burbuja Dorada (.gold: width 150, height 150, left -75)
+          // Burbuja Dorada (.gold)
           Positioned(
             left: -75,
             top: goldTop,
@@ -254,7 +221,7 @@ class AuthHero extends StatelessWidget {
             ),
           ),
 
-          // Burbuja Verde (.green: width 130, height 130, right -45)
+          // Burbuja Verde (.green)
           Positioned(
             right: -45,
             top: greenTop,
@@ -291,7 +258,7 @@ class AuthHero extends StatelessWidget {
   }
 }
 
-// ─── Panel Blanco (.panel) ───────────────────────────────────────────────────
+// ─── Panel Blanco (.panel) con Theme claro aislado ────────────────────────────
 // .panel { background:#fff; border-radius:30px 30px 0 0; padding:50px 23px 34px; text-align:center; }
 class AuthPanel extends StatelessWidget {
   final List<Widget> children;
@@ -303,24 +270,48 @@ class AuthPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    // Forzamos un ThemeData claro dentro del panel blanco para aislarlo
+    // totalmente del tema oscuro global de la app
+    final lightTheme = ThemeData(
+      brightness: Brightness.light,
+      primaryColor: kHtmlInk,
+      scaffoldBackgroundColor: Colors.white,
+      textSelectionTheme: const TextSelectionThemeData(
+        cursorColor: kHtmlInk,
+        selectionColor: Color(0x33111111),
+        selectionHandleColor: kHtmlInk,
       ),
-      padding: const EdgeInsets.fromLTRB(23, 50, 23, 34),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: children,
+      inputDecorationTheme: const InputDecorationTheme(
+        filled: true,
+        fillColor: kHtmlField,
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        errorBorder: InputBorder.none,
+        focusedErrorBorder: InputBorder.none,
+      ),
+    );
+
+    return Theme(
+      data: lightTheme,
+      child: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        padding: const EdgeInsets.fromLTRB(23, 50, 23, 34),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: children,
+        ),
       ),
     );
   }
 }
 
 // ─── Botón Google (.btn-google) ──────────────────────────────────────────────
-// .btn-google { width:100%; height:50px; border-radius:999px; font:500 17px 'Figtree'; display:flex; align-items:center; justify-content:center; gap:12px; background:#fff; border:1px solid var(--line); color:#333; }
 class AuthGoogleBtn extends StatefulWidget {
   final String label;
   final VoidCallback onTap;
@@ -387,7 +378,6 @@ class _AuthGoogleBtnState extends State<AuthGoogleBtn> {
 }
 
 // ─── Divisor "o" (.or) ───────────────────────────────────────────────────────
-// .or { margin:20px 0 22px; font-size:15px; color:#555 }
 class AuthOrText extends StatelessWidget {
   const AuthOrText({super.key});
 
@@ -407,10 +397,9 @@ class AuthOrText extends StatelessWidget {
   }
 }
 
-// ─── Input Pill Individual (.field.pill) ─────────────────────────────────────
+// ─── Input Pill (.field.pill) con fondo garantizado claro ────────────────────
 // .field { flex:1; min-width:0; height:50px; border:0; outline:0; background:var(--field); font:400 17px 'Figtree'; color:var(--ink); padding:0 23px; }
 // .field:focus { background:#ececec; }
-// .pill { border-radius:999px }
 class AuthPillInput extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -459,6 +448,8 @@ class _AuthPillInputState extends State<AuthPillInput> {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = _isFocused ? kHtmlFieldFocus : kHtmlField;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -469,7 +460,7 @@ class _AuthPillInputState extends State<AuthPillInput> {
           height: 50,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: _isFocused ? kHtmlFieldFocus : kHtmlField,
+            color: bgColor,
             borderRadius: BorderRadius.circular(999),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 23),
@@ -485,10 +476,12 @@ class _AuthPillInputState extends State<AuthPillInput> {
             style: GoogleFonts.figtree(
               fontSize: 17,
               fontWeight: FontWeight.w400,
-              color: kHtmlInk,
+              color: kHtmlInk, // Texto negro visible
             ),
             decoration: InputDecoration(
               isCollapsed: true,
+              filled: true,
+              fillColor: bgColor, // Fondo claro explícito
               border: InputBorder.none,
               focusedBorder: InputBorder.none,
               enabledBorder: InputBorder.none,
@@ -530,8 +523,6 @@ class _AuthPillInputState extends State<AuthPillInput> {
 }
 
 // ─── Fila Dividida Nombre / Apellido (.row con 2 .field) ─────────────────────
-// .row .field:first-child:not(:last-child){border-radius:999px 0 0 999px}
-// .row .field:last-child:not(:first-child){border-radius:0 999px 999px 0}
 class AuthSplitNameRow extends StatefulWidget {
   final TextEditingController firstController;
   final TextEditingController lastController;
@@ -601,6 +592,9 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
       bottomRight: Radius.circular(999),
     );
 
+    final firstBg = _firstFocused ? kHtmlFieldFocus : kHtmlField;
+    final lastBg = _lastFocused ? kHtmlFieldFocus : kHtmlField;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -614,7 +608,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                 curve: Curves.easeOutCubic,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: _firstFocused ? kHtmlFieldFocus : kHtmlField,
+                  color: firstBg,
                   borderRadius: leftRadius,
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 23),
@@ -630,10 +624,12 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                   style: GoogleFonts.figtree(
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
-                    color: kHtmlInk,
+                    color: kHtmlInk, // Texto negro visible
                   ),
                   decoration: InputDecoration(
                     isCollapsed: true,
+                    filled: true,
+                    fillColor: firstBg, // Fondo claro explícito
                     border: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     enabledBorder: InputBorder.none,
@@ -666,7 +662,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                 curve: Curves.easeOutCubic,
                 height: 50,
                 decoration: BoxDecoration(
-                  color: _lastFocused ? kHtmlFieldFocus : kHtmlField,
+                  color: lastBg,
                   borderRadius: rightRadius,
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 23),
@@ -682,10 +678,12 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                   style: GoogleFonts.figtree(
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
-                    color: kHtmlInk,
+                    color: kHtmlInk, // Texto negro visible
                   ),
                   decoration: InputDecoration(
                     isCollapsed: true,
+                    filled: true,
+                    fillColor: lastBg, // Fondo claro explícito
                     border: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     enabledBorder: InputBorder.none,
@@ -729,7 +727,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
   }
 }
 
-// ─── Input Password con Botón Ojo (.row.pw .field + .eye) ───────────────────
+// ─── Input Contraseña + Ojo corregido (Ojo cerrado cuando está oculta) ────────
 // .row.pw .field{border-radius:999px 0 0 999px}
 // .eye { width:54px; height:50px; border:0; background:var(--field); border-radius:0 999px 999px 0; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#555; }
 class AuthPasswordInput extends StatefulWidget {
@@ -756,6 +754,7 @@ class AuthPasswordInput extends StatefulWidget {
 
 class _AuthPasswordInputState extends State<AuthPasswordInput> {
   bool _isFocused = false;
+  // Inicia oculta con puntos ••••••
   bool _isObscured = true;
   String? _errorText;
 
@@ -794,7 +793,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
       children: [
         Row(
           children: [
-            // Password Field
+            // Campo de contraseña
             Expanded(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
@@ -817,10 +816,12 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                   style: GoogleFonts.figtree(
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
-                    color: kHtmlInk,
+                    color: kHtmlInk, // Texto negro visible
                   ),
                   decoration: InputDecoration(
                     isCollapsed: true,
+                    filled: true,
+                    fillColor: bgColor, // Fondo claro explícito
                     border: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     enabledBorder: InputBorder.none,
@@ -845,7 +846,9 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                 ),
               ),
             ),
-            // Eye Button (exact SVG)
+            // Botón ojo (.eye):
+            // CUANDO ESTÁ OCULTA (_isObscured == true): Muestra ojo tachado (oculto)
+            // CUANDO ESTÁ VISIBLE (_isObscured == false): Muestra ojo abierto (visible)
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
@@ -868,11 +871,13 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                       duration: const Duration(milliseconds: 200),
                       transitionBuilder: (child, anim) =>
                           ScaleTransition(scale: anim, child: child),
-                      child: SvgPicture.string(
-                        _isObscured ? _kEyeOpenSvg : _kEyeClosedSvg,
+                      child: Icon(
+                        _isObscured
+                            ? Icons.visibility_off_rounded // Ojo tachado = oculta
+                            : Icons.visibility_rounded, // Ojo abierto = visible
                         key: ValueKey<bool>(_isObscured),
-                        width: 22,
-                        height: 22,
+                        color: const Color(0xFF555555),
+                        size: 22,
                       ),
                     ),
                   ),
@@ -899,8 +904,6 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
 }
 
 // ─── Botón Principal Negro (.btn-main) ────────────────────────────────────────
-// .btn-main { margin-top:25px; border:0; background:#0c0c0c; color:#fff; font-weight:700; width:100%; height:50px; border-radius:999px; }
-// .btn-main:hover { background:#222; }
 class AuthMainBtn extends StatefulWidget {
   final String label;
   final bool isLoading;
@@ -974,8 +977,6 @@ class _AuthMainBtnState extends State<AuthMainBtn> {
 }
 
 // ─── Aviso Legal (.legal) ────────────────────────────────────────────────────
-// .legal { margin:22px 0 0; font-size:15px; line-height:1.4; color:var(--muted) }
-// .legal a { color:var(--ink); text-decoration:none; border-bottom:1px solid var(--ink) }
 class AuthLegalNotice extends StatelessWidget {
   final VoidCallback? onPrivacyTap;
   final VoidCallback? onTermsTap;
@@ -1043,8 +1044,6 @@ class AuthLegalNotice extends StatelessWidget {
 }
 
 // ─── Enlace pequeño (.small: "¿Olvidaste tu contraseña?") ─────────────────────
-// .small { margin:16px 0 0; font-size:16px; color:var(--muted) }
-// .small a { color:var(--ink); text-decoration:none; border-bottom:1px solid var(--ink) }
 class AuthSmallLink extends StatelessWidget {
   final String text;
   final String linkText;
@@ -1095,9 +1094,6 @@ class AuthSmallLink extends StatelessWidget {
 }
 
 // ─── Enlace al pie (.foot.tight) ─────────────────────────────────────────────
-// .foot { margin:26px 0 0; font-size:17px }
-// .foot.tight { margin-top:24px }
-// .foot a { color:var(--ink); text-decoration:none; border-bottom:1px solid var(--ink) }
 class AuthFootLink extends StatelessWidget {
   final String prefix;
   final String linkText;
