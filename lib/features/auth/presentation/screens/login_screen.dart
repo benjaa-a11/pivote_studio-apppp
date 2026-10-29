@@ -27,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen>
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
 
-  bool _isPasswordVisible = false;
   bool _isLoading = false;
 
   late final AnimationController _animController;
@@ -39,11 +38,14 @@ class _LoginScreenState extends State<LoginScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 650),
+      duration: const Duration(milliseconds: 550),
     );
-    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOut,
+    );
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.05),
+      begin: const Offset(0, 0.04),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _animController,
@@ -92,7 +94,6 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _handleGoogleSignIn() {
-    unawaited(HapticFeedback.selectionClick());
     AppNotifications.showInfo(
       context,
       'Inicio de sesión con Google próximamente disponible',
@@ -111,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen>
           'Recuperar Contraseña',
           style: GoogleFonts.figtree(
             fontWeight: FontWeight.w700,
-            color: kAuthInk,
+            color: kHtmlInk,
           ),
         ),
         content: Column(
@@ -121,7 +122,7 @@ class _LoginScreenState extends State<LoginScreen>
             Text(
               'Ingresa tu correo para recibir las instrucciones de recuperación.',
               style: GoogleFonts.figtree(
-                color: kAuthMuted,
+                color: kHtmlMuted,
                 fontSize: 14,
               ),
             ),
@@ -129,12 +130,12 @@ class _LoginScreenState extends State<LoginScreen>
             TextField(
               controller: resetEmailController,
               keyboardType: TextInputType.emailAddress,
-              style: GoogleFonts.figtree(color: kAuthInk),
+              style: GoogleFonts.figtree(color: kHtmlInk),
               decoration: InputDecoration(
                 hintText: 'ejemplo@correo.com',
-                hintStyle: GoogleFonts.figtree(color: Colors.grey),
+                hintStyle: GoogleFonts.figtree(color: const Color(0xFF8A8A8A)),
                 filled: true,
-                fillColor: kAuthFieldBg,
+                fillColor: kHtmlField,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
@@ -150,12 +151,12 @@ class _LoginScreenState extends State<LoginScreen>
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.figtree(color: Colors.grey[700]),
+              style: GoogleFonts.figtree(color: kHtmlMuted),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0C0C0C),
+              backgroundColor: kHtmlBtnMain,
               foregroundColor: Colors.white,
               shape: const StadiumBorder(),
             ),
@@ -180,152 +181,105 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
 
-    return Scaffold(
-      backgroundColor: kAuthHeaderBg,
-      resizeToAvoidBottomInset: true,
-      body: FadeTransition(
+    return AuthStageLayout(
+      onBack: canPop ? () => Navigator.of(context).pop() : null,
+      card: FadeTransition(
         opacity: _fadeAnim,
         child: SlideTransition(
           position: _slideAnim,
-          child: Column(
-            children: [
-              // ─── Header compacto con burbujas (fiel al HTML) ───────────
-              AuthHeader(
-                title: 'Login Here',
-                compact: true,
-                onBack: canPop ? () => Navigator.of(context).pop() : null,
-              ),
+          child: AuthCard(
+            // ─── Hero exacto (.hero.single: height 122px) ───────────────
+            hero: const AuthHero(
+              title: 'Inicia sesión',
+              single: true,
+            ),
+            // ─── Panel blanco (.panel) ──────────────────────────────────
+            panel: AuthPanel(
+              children: [
+                // Botón Google
+                AuthGoogleBtn(
+                  label: 'Iniciar sesión con Google',
+                  onTap: _handleGoogleSignIn,
+                ),
 
-              // ─── Panel blanco inferior (curvado sobre el header) ───────
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: kAuthPanelBg,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(30),
-                    ),
-                  ),
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(23, 36, 23, 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Botón Google
-                        AuthGoogleButton(onPressed: _handleGoogleSignIn),
+                // Separador "o"
+                const AuthOrText(),
 
-                        // Separador "or"
-                        const AuthOrDivider(),
+                // Formulario de campos
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      // Correo electrónico (.field.pill)
+                      AuthPillInput(
+                        controller: _emailController,
+                        focusNode: _emailFocus,
+                        placeholder: 'Correo electrónico',
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => FocusScope.of(context)
+                            .requestFocus(_passwordFocus),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Ingresa tu correo';
+                          }
+                          if (!v.contains('@') || !v.contains('.')) {
+                            return 'Ingresa un correo válido';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 9),
 
-                        // Formulario
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              // Email Pill
-                              AuthPillField(
-                                controller: _emailController,
-                                focusNode: _emailFocus,
-                                hint: 'Email',
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                onSubmitted: (_) => FocusScope.of(context)
-                                    .requestFocus(_passwordFocus),
-                                validator: (v) {
-                                  if (v == null || v.trim().isEmpty) {
-                                    return 'Ingresa tu correo';
-                                  }
-                                  if (!v.contains('@') || !v.contains('.')) {
-                                    return 'Ingresa un correo válido';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 9),
-
-                              // Password con Eye button
-                              AuthPasswordField(
-                                controller: _passwordController,
-                                focusNode: _passwordFocus,
-                                hint: 'Password',
-                                isVisible: _isPasswordVisible,
-                                onToggleVisibility: () {
-                                  setState(() => _isPasswordVisible =
-                                      !_isPasswordVisible);
-                                },
-                                textInputAction: TextInputAction.done,
-                                onSubmitted: (_) => _handleLogin(),
-                                validator: (v) {
-                                  if (v == null || v.isEmpty) {
-                                    return 'Ingresa tu contraseña';
-                                  }
-                                  if (v.length < 6) {
-                                    return 'Mínimo 6 caracteres';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 25),
-
-                        // Botón Principal Negro
-                        AuthMainButton(
-                          label: 'Log in',
-                          isLoading: _isLoading,
-                          onPressed: _handleLogin,
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Solicitar nueva contraseña (HTML: .small)
-                        GestureDetector(
-                          onTap: _showForgotPasswordDialog,
-                          child: Text.rich(
-                            TextSpan(
-                              text: 'Request a ',
-                              style: GoogleFonts.figtree(
-                                fontSize: 16,
-                                color: kAuthMuted,
-                              ),
-                              children: const [
-                                TextSpan(
-                                  text: 'New Password',
-                                  style: TextStyle(
-                                    color: kAuthInk,
-                                    decoration: TextDecoration.underline,
-                                    decorationColor: kAuthInk,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Enlace hacia Sign up (HTML: .foot.tight)
-                        AuthFootLink(
-                          prefix: 'New here?',
-                          linkText: 'Create an account',
-                          onTap: () {
-                            unawaited(HapticFeedback.selectionClick());
-                            Navigator.of(context).pushReplacement(
-                              AppAnimations.createFadeRoute(
-                                const SignUpScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                      // Contraseña (.row.pw)
+                      AuthPasswordInput(
+                        controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        placeholder: 'Contraseña',
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _handleLogin(),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return 'Ingresa tu contraseña';
+                          }
+                          if (v.length < 6) {
+                            return 'Mínimo 6 caracteres';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+
+                // Botón principal negro (.btn-main)
+                AuthMainBtn(
+                  label: 'Iniciar sesión',
+                  isLoading: _isLoading,
+                  onTap: _handleLogin,
+                ),
+
+                // Solicitar nueva contraseña (.small)
+                AuthSmallLink(
+                  text: '¿Olvidaste tu contraseña? ',
+                  linkText: 'Recupérala',
+                  onTap: _showForgotPasswordDialog,
+                ),
+
+                // Enlace hacia Registro (.foot.tight)
+                AuthFootLink(
+                  prefix: '¿Eres nuevo?',
+                  linkText: 'Crea una cuenta',
+                  onTap: () {
+                    Navigator.of(context).pushReplacement(
+                      AppAnimations.createFadeRoute(
+                        const SignUpScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

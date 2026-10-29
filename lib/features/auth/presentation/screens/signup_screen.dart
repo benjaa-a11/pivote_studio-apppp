@@ -30,7 +30,6 @@ class _SignUpScreenState extends State<SignUpScreen>
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
 
-  bool _isPasswordVisible = false;
   bool _isLoading = false;
 
   late final AnimationController _animController;
@@ -42,11 +41,14 @@ class _SignUpScreenState extends State<SignUpScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 650),
+      duration: const Duration(milliseconds: 550),
     );
-    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOut,
+    );
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.05),
+      begin: const Offset(0, 0.04),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _animController,
@@ -100,10 +102,47 @@ class _SignUpScreenState extends State<SignUpScreen>
   }
 
   void _handleGoogleSignUp() {
-    unawaited(HapticFeedback.selectionClick());
     AppNotifications.showInfo(
       context,
       'Registro con Google próximamente disponible',
+    );
+  }
+
+  void _showPolicyDialog(String title, String body) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: kHtmlInk,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            body,
+            style: const TextStyle(
+              color: kHtmlMuted,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kHtmlBtnMain,
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -111,156 +150,137 @@ class _SignUpScreenState extends State<SignUpScreen>
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
 
-    return Scaffold(
-      backgroundColor: kAuthHeaderBg,
-      resizeToAvoidBottomInset: true,
-      body: FadeTransition(
+    return AuthStageLayout(
+      onBack: canPop ? () => Navigator.of(context).pop() : null,
+      card: FadeTransition(
         opacity: _fadeAnim,
         child: SlideTransition(
           position: _slideAnim,
-          child: Column(
-            children: [
-              // ─── Header de 2 líneas con burbujas (fiel al HTML) ─────────
-              AuthHeader(
-                title: 'Create an\naccount',
-                compact: false,
-                onBack: canPop ? () => Navigator.of(context).pop() : null,
-              ),
+          child: AuthCard(
+            // ─── Hero exacto de 2 líneas (.hero: height 174px) ───────────
+            hero: const AuthHero(
+              title: 'Crea una\ncuenta',
+              single: false,
+            ),
+            // ─── Panel blanco (.panel) ──────────────────────────────────
+            panel: AuthPanel(
+              children: [
+                // Botón Google
+                AuthGoogleBtn(
+                  label: 'Registrarse con Google',
+                  onTap: _handleGoogleSignUp,
+                ),
 
-              // ─── Panel blanco inferior (curvado sobre el header) ───────
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: kAuthPanelBg,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(30),
-                    ),
-                  ),
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(23, 34, 23, 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Botón Google
-                        AuthGoogleButton(onPressed: _handleGoogleSignUp),
+                // Separador "o"
+                const AuthOrText(),
 
-                        // Separador "or"
-                        const AuthOrDivider(),
+                // Formulario de campos
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      // Nombre y Apellido (.row con 2 .field)
+                      AuthSplitNameRow(
+                        firstController: _nameController,
+                        lastController: _lastNameController,
+                        firstFocus: _nameFocus,
+                        lastFocus: _lastNameFocus,
+                        firstPlaceholder: 'Nombre',
+                        lastPlaceholder: 'Apellido',
+                        onFirstSubmitted: (_) => FocusScope.of(context)
+                            .requestFocus(_lastNameFocus),
+                        firstValidator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Nombre requerido';
+                          }
+                          return null;
+                        },
+                        onLastSubmitted: (_) => FocusScope.of(context)
+                            .requestFocus(_emailFocus),
+                        lastValidator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Apellido requerido';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 9),
 
-                        // Formulario
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              // Fila First Name + Last Name (HTML: .row con 2 inputs)
-                              AuthSplitPillRow(
-                                leftController: _nameController,
-                                leftFocus: _nameFocus,
-                                leftHint: 'First Name',
-                                leftSubmitted: (_) => FocusScope.of(context)
-                                    .requestFocus(_lastNameFocus),
-                                leftValidator: (v) {
-                                  if (v == null || v.trim().isEmpty) {
-                                    return 'Nombre requerido';
-                                  }
-                                  return null;
-                                },
-                                rightController: _lastNameController,
-                                rightFocus: _lastNameFocus,
-                                rightHint: 'Last Name',
-                                rightSubmitted: (_) => FocusScope.of(context)
-                                    .requestFocus(_emailFocus),
-                                rightValidator: (v) {
-                                  if (v == null || v.trim().isEmpty) {
-                                    return 'Apellido requerido';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 9),
+                      // Correo electrónico (.field.pill)
+                      AuthPillInput(
+                        controller: _emailController,
+                        focusNode: _emailFocus,
+                        placeholder: 'Correo electrónico',
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => FocusScope.of(context)
+                            .requestFocus(_passwordFocus),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) {
+                            return 'Ingresa tu correo';
+                          }
+                          if (!v.contains('@') || !v.contains('.')) {
+                            return 'Ingresa un correo válido';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 9),
 
-                              // Email Pill (HTML: .row .field.pill)
-                              AuthPillField(
-                                controller: _emailController,
-                                focusNode: _emailFocus,
-                                hint: 'Email',
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                onSubmitted: (_) => FocusScope.of(context)
-                                    .requestFocus(_passwordFocus),
-                                validator: (v) {
-                                  if (v == null || v.trim().isEmpty) {
-                                    return 'Ingresa tu correo';
-                                  }
-                                  if (!v.contains('@') || !v.contains('.')) {
-                                    return 'Ingresa un correo válido';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 9),
-
-                              // Password con Eye button (HTML: .row.pw)
-                              AuthPasswordField(
-                                controller: _passwordController,
-                                focusNode: _passwordFocus,
-                                hint: 'Password',
-                                isVisible: _isPasswordVisible,
-                                onToggleVisibility: () {
-                                  setState(() => _isPasswordVisible =
-                                      !_isPasswordVisible);
-                                },
-                                textInputAction: TextInputAction.done,
-                                onSubmitted: (_) => _handleSignUp(),
-                                validator: (v) {
-                                  if (v == null || v.isEmpty) {
-                                    return 'Ingresa tu contraseña';
-                                  }
-                                  if (v.length < 6) {
-                                    return 'Mínimo 6 caracteres';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 25),
-
-                        // Botón Principal Negro (HTML: .btn-main)
-                        AuthMainButton(
-                          label: 'Create account',
-                          isLoading: _isLoading,
-                          onPressed: _handleSignUp,
-                        ),
-
-                        // Aviso Legal (HTML: .legal)
-                        const AuthLegalNotice(),
-
-                        const SizedBox(height: 24),
-
-                        // Enlace hacia Login (HTML: .foot.tight)
-                        AuthFootLink(
-                          prefix: 'Have an account?',
-                          linkText: 'Log in here',
-                          onTap: () {
-                            unawaited(HapticFeedback.selectionClick());
-                            Navigator.of(context).pushReplacement(
-                              AppAnimations.createFadeRoute(
-                                const LoginScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                      // Contraseña (.row.pw)
+                      AuthPasswordInput(
+                        controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        placeholder: 'Contraseña',
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _handleSignUp(),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) {
+                            return 'Ingresa tu contraseña';
+                          }
+                          if (v.length < 6) {
+                            return 'Mínimo 6 caracteres';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+
+                // Botón principal negro (.btn-main)
+                AuthMainBtn(
+                  label: 'Crear cuenta',
+                  isLoading: _isLoading,
+                  onTap: _handleSignUp,
+                ),
+
+                // Aviso Legal (.legal)
+                AuthLegalNotice(
+                  onPrivacyTap: () => _showPolicyDialog(
+                    'Política de Privacidad',
+                    'En Pivote nos tomamos tu privacidad con seriedad. No compartimos tus credenciales ni tus datos personales con terceros.',
+                  ),
+                  onTermsTap: () => _showPolicyDialog(
+                    'Términos de Servicio',
+                    'Al utilizar Pivote aceptas disfrutar de los contenidos y transmisiones de manera responsable.',
+                  ),
+                ),
+
+                // Enlace hacia Login (.foot.tight)
+                AuthFootLink(
+                  prefix: '¿Ya tienes una cuenta?',
+                  linkText: 'Inicia sesión aquí',
+                  onTap: () {
+                    Navigator.of(context).pushReplacement(
+                      AppAnimations.createFadeRoute(
+                        const LoginScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
