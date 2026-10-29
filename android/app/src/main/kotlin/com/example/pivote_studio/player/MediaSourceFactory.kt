@@ -2,6 +2,7 @@ package com.example.pivote_studio.player
 
 import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
@@ -34,9 +35,13 @@ object StreamMediaSourceFactory {
         val uri = Uri.parse(channel.originalUrl)
 
         // 1. Configuración de DRM (ClearKey)
-        val drmSessionManager: DrmSessionManager? = if (channel.isClearKey() && channel.hasDrm()) {
-            val clearKeys = ClearKeyParser.parse(channel.drmLicenseUri)
-            ClearKeyManager.createDrmSessionManager(clearKeys)
+        val drmSessionManager: DrmSessionManager? = if (channel.hasDrm() || channel.isClearKey()) {
+            try {
+                val clearKeys = ClearKeyParser.parse(channel.drmLicenseUri)
+                ClearKeyManager.createDrmSessionManager(clearKeys)
+            } catch (e: Exception) {
+                null
+            }
         } else {
             null
         }
@@ -54,11 +59,18 @@ object StreamMediaSourceFactory {
         httpFactory: androidx.media3.datasource.DataSource.Factory,
         drmSessionManager: DrmSessionManager?
     ): MediaSource {
-        val mediaItem = MediaItem.Builder()
+        val mediaItemBuilder = MediaItem.Builder()
             .setUri(uri)
             .setMimeType(MimeTypes.APPLICATION_MPD)
-            .build()
 
+        if (drmSessionManager != null) {
+            val drmConfig = MediaItem.DrmConfiguration.Builder(C.CLEARKEY_UUID)
+                .setMultiSession(true)
+                .build()
+            mediaItemBuilder.setDrmConfiguration(drmConfig)
+        }
+
+        val mediaItem = mediaItemBuilder.build()
         val dashFactory = DashMediaSource.Factory(httpFactory)
         if (drmSessionManager != null) {
             dashFactory.setDrmSessionManagerProvider { drmSessionManager }
@@ -72,10 +84,17 @@ object StreamMediaSourceFactory {
         httpFactory: androidx.media3.datasource.DataSource.Factory,
         drmSessionManager: DrmSessionManager?
     ): MediaSource {
-        val mediaItem = MediaItem.Builder()
+        val mediaItemBuilder = MediaItem.Builder()
             .setUri(uri)
-            .build()
 
+        if (drmSessionManager != null) {
+            val drmConfig = MediaItem.DrmConfiguration.Builder(C.CLEARKEY_UUID)
+                .setMultiSession(true)
+                .build()
+            mediaItemBuilder.setDrmConfiguration(drmConfig)
+        }
+
+        val mediaItem = mediaItemBuilder.build()
         val factory = DefaultMediaSourceFactory(httpFactory)
         if (drmSessionManager != null) {
             factory.setDrmSessionManagerProvider { drmSessionManager }

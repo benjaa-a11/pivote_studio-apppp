@@ -77,9 +77,9 @@ class _PivoShakaPlayerState extends State<PivoShakaPlayer>
   bool _videoStarted = false;
   int _retries = 0;
 
-  // MPD streams need faster failure detection for high-demand events
-  static const int _maxMpdRetries = 1;
-  static const Duration _mpdLoadTimeout = Duration(seconds: 6);
+  // MPD streams need sufficient time for manifest, keys, init segments and buffering
+  static const int _maxMpdRetries = 2;
+  static const Duration _mpdLoadTimeout = Duration(seconds: 18);
 
   // State
   bool _isLoading = true;

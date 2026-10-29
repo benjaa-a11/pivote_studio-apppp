@@ -20,6 +20,8 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import android.view.LayoutInflater
+import com.example.pivote_studio.R
 import com.example.pivote_studio.data.StreamChannel
 import com.example.pivote_studio.player.NativeMediaPlayer
 import com.example.pivote_studio.player.NativePlayerListener
@@ -38,10 +40,17 @@ class NativePlayerView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr), NativePlayerListener {
 
-    private val playerView: PlayerView = PlayerView(context).apply {
-        useController = false
-        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-        setShutterBackgroundColor(Color.BLACK)
+    private val playerView: PlayerView = try {
+        (LayoutInflater.from(context).inflate(R.layout.native_player_view, this, false) as PlayerView).apply {
+            keepScreenOn = true
+        }
+    } catch (_: Exception) {
+        PlayerView(context).apply {
+            useController = false
+            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+            setShutterBackgroundColor(Color.TRANSPARENT)
+            keepScreenOn = true
+        }
     }
 
     private val loadingProgressBar: ProgressBar = ProgressBar(context).apply {

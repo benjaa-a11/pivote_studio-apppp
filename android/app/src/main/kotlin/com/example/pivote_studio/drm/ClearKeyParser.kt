@@ -51,13 +51,12 @@ object ClearKeyParser {
         val results = mutableListOf<ClearKeyData>()
 
         // 1. Verificar si viene como JSON
-        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
             try {
-                val json = JSONObject(trimmed)
-                if (json.has("keys")) {
-                    val keysArray = json.getJSONArray("keys")
-                    for (i in 0 until keysArray.length()) {
-                        val keyObj = keysArray.getJSONObject(i)
+                if (trimmed.startsWith("[")) {
+                    val arr = org.json.JSONArray(trimmed)
+                    for (i in 0 until arr.length()) {
+                        val keyObj = arr.getJSONObject(i)
                         val kid = keyObj.optString("kid", "").trim()
                         val k = keyObj.optString("k", "").trim()
                         if (kid.isNotEmpty() && k.isNotEmpty()) {
@@ -69,16 +68,39 @@ object ClearKeyParser {
                             )
                         }
                     }
-                } else if (json.has("kid") && (json.has("k") || json.has("key"))) {
-                    val kid = json.optString("kid", "").trim()
-                    val k = (if (json.has("k")) json.optString("k", "") else json.optString("key", "")).trim()
-                    if (kid.isNotEmpty() && k.isNotEmpty()) {
-                        results.add(
-                            ClearKeyData(
-                                kid = toBase64Url(kid),
-                                key = toBase64Url(k)
+                } else {
+                    val json = JSONObject(trimmed)
+                    val keysArray = when {
+                        json.has("keys") -> json.getJSONArray("keys")
+                        json.has("llaves") -> json.getJSONArray("llaves")
+                        else -> null
+                    }
+
+                    if (keysArray != null) {
+                        for (i in 0 until keysArray.length()) {
+                            val keyObj = keysArray.getJSONObject(i)
+                            val kid = keyObj.optString("kid", "").trim()
+                            val k = keyObj.optString("k", "").trim()
+                            if (kid.isNotEmpty() && k.isNotEmpty()) {
+                                results.add(
+                                    ClearKeyData(
+                                        kid = toBase64Url(kid),
+                                        key = toBase64Url(k)
+                                    )
+                                )
+                            }
+                        }
+                    } else if (json.has("kid") && (json.has("k") || json.has("key"))) {
+                        val kid = json.optString("kid", "").trim()
+                        val k = (if (json.has("k")) json.optString("k", "") else json.optString("key", "")).trim()
+                        if (kid.isNotEmpty() && k.isNotEmpty()) {
+                            results.add(
+                                ClearKeyData(
+                                    kid = toBase64Url(kid),
+                                    key = toBase64Url(k)
+                                )
                             )
-                        )
+                        }
                     }
                 }
                 if (results.isNotEmpty()) {

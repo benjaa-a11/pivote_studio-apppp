@@ -44,8 +44,8 @@ object ClearKeyManager {
                 C.CLEARKEY_UUID,
                 FrameworkMediaDrm.DEFAULT_PROVIDER
             )
-            .setMultiSession(false)
-            .setPlayClearSamplesWithoutKeys(false)
+            .setMultiSession(true)
+            .setPlayClearSamplesWithoutKeys(true)
             .build(drmCallback)
     }
 

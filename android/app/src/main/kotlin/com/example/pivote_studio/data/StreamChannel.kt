@@ -20,8 +20,11 @@ data class StreamChannel(
      */
     fun isClearKey(): Boolean {
         val t = type?.trim()?.uppercase()
-        val hasClearKeyUri = drmLicenseUri?.contains("kid:", ignoreCase = true) == true
-        return t == "CLEARKEY" || hasClearKeyUri
+        if (t == "CLEARKEY" || t == "DRM") return true
+        val uri = drmLicenseUri?.trim() ?: return false
+        return uri.contains("kid", ignoreCase = true) ||
+               uri.contains("keys", ignoreCase = true) ||
+               uri.startsWith("{")
     }
 
     /**
@@ -53,17 +56,31 @@ data class StreamChannel(
             // original_url o url
             val originalUrl = (map["original_url"] ?: map["url"])?.toString() ?: ""
 
-            // drm_license_uri puede venir explícito o reconstruirse desde k1/k2 / clearkeys
-            var drmLicenseUri = map["drm_license_uri"]?.toString()
+            // drm_license_uri puede venir explícito o reconstruirse desde clearkeys / k1/k2
+            var drmLicenseUri = map["drm_license_uri"]?.toString()?.trim()
 
-            if (drmLicenseUri.isNullOrBlank()) {
-                val k1 = map["k1"]?.toString()
-                val k2 = map["k2"]?.toString()
-                val clearkeys = map["clearkeys"] as? Map<String, String>
+            val isRemoteHttpUrl = drmLicenseUri?.startsWith("http://", ignoreCase = true) == true ||
+                                  drmLicenseUri?.startsWith("https://", ignoreCase = true) == true
 
-                if (clearkeys != null && clearkeys.isNotEmpty()) {
-                    drmLicenseUri = clearkeys.entries.joinToString(",") { "kid:${it.key},k:${it.value}" }
-                } else if (!k1.isNullOrBlank() && !k2.isNullOrBlank()) {
+            // Procesar clearkeys explícitos recibidos desde Flutter (Map) con máxima prioridad
+            val rawClearkeys = map["clearkeys"] as? Map<*, *>
+            if (rawClearkeys != null && rawClearkeys.isNotEmpty()) {
+                val pairs = rawClearkeys.entries.mapNotNull { (k, v) ->
+                    val kStr = k?.toString()?.trim()
+                    val vStr = v?.toString()?.trim()
+                    if (!kStr.isNullOrEmpty() && !vStr.isNullOrEmpty()) "kid:$kStr,k:$vStr" else null
+                }
+                if (pairs.isNotEmpty()) {
+                    drmLicenseUri = pairs.joinToString(",")
+                }
+            } else if (isRemoteHttpUrl) {
+                // Si drm_license_uri es una URL HTTP y no vinieron claves locales en clearkeys,
+                // no podemos pasársela a LocalMediaDrmCallback como claves porque fallará.
+                drmLicenseUri = null
+            } else if (drmLicenseUri.isNullOrBlank()) {
+                val k1 = map["k1"]?.toString()?.trim()
+                val k2 = map["k2"]?.toString()?.trim()
+                if (!k1.isNullOrBlank() && !k2.isNullOrBlank()) {
                     drmLicenseUri = "kid:$k1,k:$k2"
                 }
             }

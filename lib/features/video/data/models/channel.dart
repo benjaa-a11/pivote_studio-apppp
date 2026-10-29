@@ -352,13 +352,17 @@ class StreamSource {
 
   /// Returns the effective raw drm_license_uri string
   String? get effectiveDrmLicenseUri {
-    if (drmLicenseUri != null && drmLicenseUri!.isNotEmpty) {
-      return drmLicenseUri;
-    }
+    final isRemoteHttpUrl = drmLicenseUri != null &&
+        (drmLicenseUri!.startsWith('http://') ||
+            drmLicenseUri!.startsWith('https://'));
+
     if (clearkeys != null && clearkeys!.isNotEmpty) {
       return clearkeys!.entries
           .map((e) => 'kid:${e.key},k:${e.value}')
           .join(',');
+    }
+    if (drmLicenseUri != null && drmLicenseUri!.isNotEmpty && !isRemoteHttpUrl) {
+      return drmLicenseUri;
     }
     if (k1 != null && k2 != null && k1!.isNotEmpty && k2!.isNotEmpty) {
       return 'kid:$k1,k:$k2';

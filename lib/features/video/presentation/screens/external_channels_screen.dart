@@ -234,14 +234,22 @@ class _ExternalChannelsScreenState extends State<ExternalChannelsScreen> {
     final resolvedClearkeys = _resolvedKeys[item.uri];
     final isDash = item.uri.toLowerCase().endsWith('.mpd') ||
         item.drmScheme.isNotEmpty;
-    final streamType = isDash ? 'dash' : 'hls';
+    final streamType = item.hasDrm ? 'CLEARKEY' : (isDash ? 'dash' : 'hls');
+
+    String? inlineKeysString;
+    if (resolvedClearkeys != null && resolvedClearkeys.isNotEmpty) {
+      inlineKeysString = resolvedClearkeys.entries
+          .map((e) => 'kid:${e.key},k:${e.value}')
+          .join(',');
+    }
 
     final stream = StreamSource(
       url: item.uri,
       label: item.name,
       clearkeys: resolvedClearkeys,
       headers: item.headers.isNotEmpty ? item.headers : null,
-      drmLicenseUri: item.drmLicenseUri.isNotEmpty ? item.drmLicenseUri : null,
+      drmLicenseUri: inlineKeysString ??
+          (item.drmLicenseUri.startsWith('http') ? null : item.drmLicenseUri),
     );
 
     final channel = Channel(

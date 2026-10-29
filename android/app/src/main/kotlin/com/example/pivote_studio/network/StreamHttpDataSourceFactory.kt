@@ -36,8 +36,9 @@ object StreamHttpDataSourceFactory {
             .setAllowCrossProtocolRedirects(true)
             .setKeepPostFor302Redirects(true)
 
-        if (headers.isNotEmpty()) {
-            factory.setDefaultRequestProperties(headers)
+        val customHeaders = headers.filterKeys { !it.equals("user-agent", ignoreCase = true) }
+        if (customHeaders.isNotEmpty()) {
+            factory.setDefaultRequestProperties(customHeaders)
         }
 
         return factory
