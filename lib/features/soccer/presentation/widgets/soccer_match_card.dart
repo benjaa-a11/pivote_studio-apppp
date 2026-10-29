@@ -77,6 +77,8 @@ class SoccerMatchCard extends StatelessWidget {
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
+          showDragHandle: false,
+          useSafeArea: true,
           builder: (context) {
             return ConstrainedBox(
               constraints: BoxConstraints(

@@ -272,6 +272,8 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      showDragHandle: false,
+      useSafeArea: true,
       builder: (_) => sheet,
     );
     if (mounted) widget.onDragEnd();

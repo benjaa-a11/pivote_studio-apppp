@@ -513,6 +513,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      showDragHandle: false,
+      useSafeArea: true,
       builder: (ctx) => _ReportModalSheet(
         channelName: _currentChannel.name,
         onSubmit: (reason) {
