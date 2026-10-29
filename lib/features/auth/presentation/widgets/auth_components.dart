@@ -31,7 +31,7 @@ const String _kGoogleSvg = '''
 </svg>
 ''';
 
-// ─── Stage Layout (Fondo oscuro de Pivote + Tarjeta centrada) ─────────────────
+// ─── Stage Layout (Pantalla completa nativa, sin fondos externos) ─────────────
 class AuthStageLayout extends StatelessWidget {
   final Widget card;
   final VoidCallback? onBack;
@@ -44,87 +44,71 @@ class AuthStageLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kAuthScreenBg,
-      resizeToAvoidBottomInset: true,
-      body: Stack(
-        children: [
-          // Fondo oscuro de Pivote con gradiente elegante
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF0F141C),
-                    Color(0xFF090B0F),
-                    Color(0xFF060709),
-                  ],
-                ),
-              ),
-            ),
-          ),
+    final topPadding = MediaQuery.paddingOf(context).top;
 
-          // Botón volver atrás (icono blanco sobre fondo translúcido)
-          if (onBack != null)
-            SafeArea(
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 14, top: 10),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(999),
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        onBack!();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          // Tarjeta flotante centrada
-          SafeArea(
-            child: Center(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
+        body: Stack(
+          children: [
+            // Contenido con scroll continuo
+            Positioned.fill(
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 24,
-                ),
+                physics: const ClampingScrollPhysics(),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 child: Center(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 370),
+                    constraints: const BoxConstraints(maxWidth: 480),
                     child: card,
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+
+            // Botón volver atrás integrado sobre el Hero superior
+            if (onBack != null)
+              Positioned(
+                top: topPadding + 8,
+                left: 14,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      onBack!();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 }
 
-// ─── Tarjeta con bordes de 30px y sombra idéntica al HTML ────────────────────
-// .card { width:370px; border-radius:30px; overflow:hidden; background:var(--orange); box-shadow:0 30px 60px -20px rgba(40,60,100,.35); }
+// ─── Tarjeta / Contenedor principal adaptado a la pantalla ────────────────────
 class AuthCard extends StatelessWidget {
   final Widget hero;
   final Widget panel;
@@ -137,49 +121,21 @@ class AuthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: kHtmlOrange,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.50),
-            blurRadius: 50,
-            offset: const Offset(0, 25),
-            spreadRadius: -10,
-          ),
-          BoxShadow(
-            color: kHtmlOrange.withValues(alpha: 0.20),
-            blurRadius: 40,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            hero,
-            Transform.translate(
-              offset: const Offset(0, -1),
-              child: panel,
-            ),
-          ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        hero,
+        Transform.translate(
+          offset: const Offset(0, -20),
+          child: panel,
         ),
-      ),
+      ],
     );
   }
 }
 
-// ─── Hero con burbujas EXACTAS del HTML ──────────────────────────────────────
-// .hero { position:relative; height:174px; padding-top:58px; text-align:center; color:#fff; overflow:hidden }
-// .hero.single { height:122px; padding-top:58px }
-// .hero .gold { width:150px; height:150px; left:-75px; top:77px; background:var(--gold) }
-// .hero .green { width:130px; height:130px; right:-45px; top:105px; background:var(--green) }
-// .hero.single .gold { top:57px }
-// .hero.single .green { top:80px }
+// ─── Hero con burbujas EXACTAS del HTML adaptado al notch superior ───────────
 class AuthHero extends StatelessWidget {
   final String title;
   final bool single;
@@ -192,24 +148,27 @@ class AuthHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = single ? 122.0 : 174.0;
-    final goldTop = single ? 57.0 : 77.0;
-    final greenTop = single ? 80.0 : 105.0;
+    final topPadding = MediaQuery.paddingOf(context).top;
+    final contentHeight = single ? 126.0 : 166.0;
+    final totalHeight = topPadding + contentHeight;
+
+    final goldTop = topPadding + (single ? 44.0 : 66.0);
+    final greenTop = topPadding + (single ? 64.0 : 92.0);
 
     return SizedBox(
-      height: height,
+      height: totalHeight,
       width: double.infinity,
       child: Stack(
         clipBehavior: Clip.hardEdge,
         children: [
-          // Fondo naranja
+          // Fondo naranja que llena hasta la parte superior de la pantalla
           Positioned.fill(
             child: Container(color: kHtmlOrange),
           ),
 
           // Burbuja Dorada (.gold)
           Positioned(
-            left: -75,
+            left: -65,
             top: goldTop,
             child: Container(
               width: 150,
@@ -223,7 +182,7 @@ class AuthHero extends StatelessWidget {
 
           // Burbuja Verde (.green)
           Positioned(
-            right: -45,
+            right: -40,
             top: greenTop,
             child: Container(
               width: 130,
@@ -235,11 +194,11 @@ class AuthHero extends StatelessWidget {
             ),
           ),
 
-          // Título h1 (padding-top: 58px)
+          // Título centrado
           Positioned(
-            top: 58,
-            left: 16,
-            right: 16,
+            top: topPadding + (single ? 32 : 46),
+            left: 20,
+            right: 20,
             child: Text(
               title,
               textAlign: TextAlign.center,
@@ -292,15 +251,17 @@ class AuthPanel extends StatelessWidget {
       ),
     );
 
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
     return Theme(
       data: lightTheme,
       child: Container(
         width: double.infinity,
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
-        padding: const EdgeInsets.fromLTRB(23, 50, 23, 34),
+        padding: EdgeInsets.fromLTRB(24, 42, 24, 34 + bottomInset),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,

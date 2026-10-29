@@ -235,15 +235,14 @@ class SoccerMatch {
 
   bool get isWatchable {
     if (isLive) return true;
+    if (isFinished || isAutoFinished) return false;
 
-    if (isScheduled) {
+    final start = startDateTime;
+    if (start != null) {
       final now = DateTime.now();
-      final start = startDateTime;
-      if (start == null) return false;
-
-      // Habilitar 30 minutos antes del inicio
       final diff = start.difference(now);
-      return diff.inMinutes <= 30;
+      // Habilitar cuando falten 45 minutos o menos para el inicio
+      return diff.inMinutes <= 45;
     }
 
     return false;

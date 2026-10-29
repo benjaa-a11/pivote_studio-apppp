@@ -26,6 +26,7 @@ class MatchCard extends StatelessWidget {
   });
 
   bool get isLive => match.isLive;
+  bool get canWatch => match.isWatchable;
 
   Color _effectiveTeamColor(SoccerTeam team, bool isHome) {
     final c = team.primaryColor;
@@ -93,13 +94,15 @@ class MatchCard extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(24),
         child: InkWell(
-          onTap: () {
-            if (hasMultipleChannels) {
-              _showChannelOptions(context);
-            } else {
-              onWatchMatch();
-            }
-          },
+          onTap: canWatch
+              ? () {
+                  if (hasMultipleChannels) {
+                    _showChannelOptions(context);
+                  } else {
+                    onWatchMatch();
+                  }
+                }
+              : null,
           borderRadius: BorderRadius.circular(24),
           child: Stack(
             children: [
@@ -337,18 +340,14 @@ class MatchCard extends StatelessWidget {
     ThemeData theme,
     bool isDark,
   ) {
-    final homeScorers = match.getScorersSummary(match.homeTeamId);
-    final awayScorers = match.getScorersSummary(match.awayTeamId);
-
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // Columna Equipo Local
         Expanded(
           child: _buildTeamColumn(
             teamA,
             homeColor,
-            homeScorers,
             theme,
             isDark,
           ),
@@ -365,7 +364,6 @@ class MatchCard extends StatelessWidget {
           child: _buildTeamColumn(
             teamB,
             awayColor,
-            awayScorers,
             theme,
             isDark,
           ),
@@ -377,7 +375,6 @@ class MatchCard extends StatelessWidget {
   Widget _buildTeamColumn(
     SoccerTeam team,
     Color teamColor,
-    String scorers,
     ThemeData theme,
     bool isDark,
   ) {
@@ -438,22 +435,6 @@ class MatchCard extends StatelessWidget {
             letterSpacing: -0.2,
           ),
         ),
-
-        // Resumen de goleadores (ej: "Cavani 34'")
-        if (scorers.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Text(
-            scorers,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: isDark ? const Color(0xFFB7BFD0) : theme.hintColor,
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -568,13 +549,15 @@ class MatchCard extends StatelessWidget {
         Expanded(
           child: isLive
               ? _buildLiveButton(context, theme, isDark)
-              : (match.isWatchable
-                  ? _buildWatchButton(context, theme, isDark)
-                  : _buildInfoButton(context, hasMultipleChannels, theme, isDark)),
+              : (match.isFinished
+                  ? _buildFinishedButton(context, theme, isDark)
+                  : (canWatch
+                      ? _buildWatchButton(context, theme, isDark)
+                      : _buildUpcomingButton(context, theme, isDark))),
         ),
         if (hasMultipleChannels) ...[
           const SizedBox(width: 8),
-          _buildOptionsButton(context, theme, isDark),
+          _buildOptionsButton(context, theme, isDark, isEnabled: canWatch),
         ],
       ],
     );
@@ -644,58 +627,87 @@ class MatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoButton(
+  Widget _buildUpcomingButton(
     BuildContext context,
-    bool hasMultipleChannels,
     ThemeData theme,
     bool isDark,
   ) {
     return SizedBox(
       height: 38,
-      child: Material(
-        color: isDark
-            ? const Color(0xFF161B27)
-            : Colors.black.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: () {
-            if (hasMultipleChannels) {
-              _showChannelOptions(context);
-            } else {
-              onWatchMatch();
-            }
-          },
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isDark
+              ? const Color(0xFF161B27)
+              : Colors.black.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(12),
-          child: Container(
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark
-                    ? const Color(0xFF1E2533)
-                    : Colors.black.withValues(alpha: 0.06),
+          border: Border.all(
+            color: isDark
+                ? const Color(0xFF1E2533)
+                : Colors.black.withValues(alpha: 0.06),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.schedule_rounded,
+              size: 15,
+              color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Próximamente',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.schedule_rounded,
-                  size: 15,
-                  color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Próximo',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? const Color(0xFF9EABB9) : theme.hintColor,
-                  ),
-                ),
-              ],
-            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFinishedButton(
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    return SizedBox(
+      height: 38,
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isDark
+              ? const Color(0xFF161B27)
+              : Colors.black.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark
+                ? const Color(0xFF1E2533)
+                : Colors.black.withValues(alpha: 0.06),
           ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.check_circle_outline_rounded,
+              size: 15,
+              color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Finalizado',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -704,8 +716,9 @@ class MatchCard extends StatelessWidget {
   Widget _buildOptionsButton(
     BuildContext context,
     ThemeData theme,
-    bool isDark,
-  ) {
+    bool isDark, {
+    required bool isEnabled,
+  }) {
     return SizedBox(
       width: 42,
       height: 38,
@@ -713,7 +726,7 @@ class MatchCard extends StatelessWidget {
         color: isDark ? const Color(0xFF161B27) : AppTheme.lightBg2,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          onTap: () => _showChannelOptions(context),
+          onTap: isEnabled ? () => _showChannelOptions(context) : null,
           borderRadius: BorderRadius.circular(12),
           child: Container(
             decoration: BoxDecoration(
@@ -724,7 +737,9 @@ class MatchCard extends StatelessWidget {
             ),
             child: Icon(
               Icons.more_horiz_rounded,
-              color: isDark ? const Color(0xFFAAB3C5) : theme.hintColor,
+              color: isEnabled
+                  ? (isDark ? const Color(0xFFAAB3C5) : theme.hintColor)
+                  : (isDark ? const Color(0xFF384252) : const Color(0xFFCBD5E1)),
               size: 20,
             ),
           ),
