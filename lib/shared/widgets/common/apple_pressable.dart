@@ -37,8 +37,8 @@ class ApplePressable extends StatefulWidget {
 class _ApplePressableState extends State<ApplePressable>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<double> _scaleAnimation;
-  late final Animation<double> _opacityAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
 
   @override
   void initState() {
@@ -88,6 +88,18 @@ class _ApplePressableState extends State<ApplePressable>
         ),
       );
     }
+    if (oldWidget.opacityDownFactor != widget.opacityDownFactor) {
+      _opacityAnimation = Tween<double>(
+        begin: 1.0,
+        end: widget.opacityDownFactor ?? 1.0,
+      ).animate(
+        CurvedAnimation(
+          parent: _controller,
+          curve: Curves.easeOut,
+          reverseCurve: Curves.easeIn,
+        ),
+      );
+    }
   }
 
   @override
@@ -98,18 +110,30 @@ class _ApplePressableState extends State<ApplePressable>
 
   void _handleTapDown(TapDownDetails details) {
     if (widget.onTap == null && widget.onLongPress == null) return;
-    _controller.forward();
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      _controller.value = 0;
+    } else {
+      _controller.forward();
+    }
     if (widget.enableHaptics) {
       HapticFeedback.lightImpact();
     }
   }
 
   void _handleTapUp(TapUpDetails details) {
-    _controller.reverse();
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      _controller.value = 0;
+    } else {
+      _controller.reverse();
+    }
   }
 
   void _handleTapCancel() {
-    _controller.reverse();
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      _controller.value = 0;
+    } else {
+      _controller.reverse();
+    }
   }
 
   @override
