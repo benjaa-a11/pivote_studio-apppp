@@ -22,6 +22,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import android.view.LayoutInflater
 import com.example.pivote_studio.R
+import com.example.pivote_studio.data.StreamChannel
 import com.example.pivote_studio.player.NativeMediaPlayer
 import com.example.pivote_studio.player.NativePlayerListener
 import com.example.pivote_studio.player.PlayerErrorInfo
