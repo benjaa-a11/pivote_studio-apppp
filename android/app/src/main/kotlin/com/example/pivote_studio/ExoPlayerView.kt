@@ -79,8 +79,9 @@ class ExoPlayerPlatformView(
             override fun onCancel(arguments: Any?) { eventSink = null }
         })
 
-        mediaPlayer.listener = this
-        playerView.attachPlayer(mediaPlayer)
+        // NativePlayerView recibe primero los callbacks para su UI y los reenvía
+        // al PlatformView, que los publica por EventChannel hacia Flutter.
+        playerView.attachPlayer(mediaPlayer, this)
 
         // Preparar con parámetros de creación si los hay
         if (creationParams != null) {
