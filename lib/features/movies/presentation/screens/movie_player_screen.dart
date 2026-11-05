@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:media_kit_video/media_kit_video.dart';
+import 'package:pivote/features/video/presentation/widgets/exo_player_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:pivote/core/theme/app_theme.dart';
@@ -297,11 +297,8 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                         Positioned.fill(
                           child: Container(
                             color: Colors.black,
-                            child: Video(
-                              controller: _engine.videoController,
-                              controls:
-                                  null, // Null is custom controls handled by us
-                              fit: _videoFit,
+                            child: PivotePlayerView(
+                              controller: _engine.controller,
                             ),
                           ),
                         ),

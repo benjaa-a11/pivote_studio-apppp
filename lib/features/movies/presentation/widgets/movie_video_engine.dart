@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 import 'package:pivote/features/movies/data/services/embed_resolver.dart';
+import 'package:pivote/features/video/presentation/widgets/exo_player_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ── VOD Engine Configuration ──────────────────────────────────────────────────
@@ -10,37 +9,97 @@ import 'package:shared_preferences/shared_preferences.dart';
 class MovieEngineConfig {
   MovieEngineConfig._();
 
-  // Optimizations for static VOD contents (MP4 / HLS)
-  static const int demuxerMaxBytes = 128 * 1024 * 1024; // 128 MB buffer
-  static const double cacheSecs = 30.0; // 30s cache
-
   static const int maxRetryAttempts = 3;
   static const int backoffBaseMs = 1000;
   static const int backoffMaxMs = 4000;
-
-  static const Map<String, String> mpvVodProps = {
-    'cache': 'yes',
-    'cache-pause': 'yes',
-    'cache-pause-wait': '3',
-    'cache-secs': '$cacheSecs',
-    'demuxer-max-bytes': '$demuxerMaxBytes',
-    'demuxer-max-back-bytes': '33554432', // 32 MB back buffer
-    'hwdec': 'auto-copy',
-    'vo': 'gpu-next',
-    'gpu-api': 'opengl',
-    'vd-lavc-threads': '0',
-    'ad-lavc-threads': '0',
-    'video-sync': 'audio',
-    'tls-verify': 'no',
-    'force-seekable': 'yes',
-    'audio-pitch-correction': 'yes',
-    'hls-bitrate': 'max',
-    'ytdl-format': 'bestvideo+bestaudio/best',
-  };
+  static const double cacheSecs = 30.0;
 
   static const String userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
       'AppleWebKit/537.36 (KHTML, like Gecko) '
       'Chrome/124.0.0.0 Safari/537.36';
+}
+
+// ── Track Models compatible with UI ──────────────────────────────────────────
+
+class SubtitleTrack {
+  final String id;
+  final String? title;
+  final String? language;
+  final PlayerTrack? nativeTrack;
+
+  const SubtitleTrack({
+    required this.id,
+    this.title,
+    this.language,
+    this.nativeTrack,
+  });
+
+  factory SubtitleTrack.no() => const SubtitleTrack(id: 'no', title: 'Desactivado');
+  factory SubtitleTrack.auto() => const SubtitleTrack(id: 'auto', title: 'Automático');
+
+  static SubtitleTrack fromPlayerTrack(PlayerTrack t) {
+    return SubtitleTrack(
+      id: t.id,
+      title: t.label.isNotEmpty ? t.label : (t.language.isNotEmpty ? t.language.toUpperCase() : null),
+      language: t.language.isNotEmpty ? t.language : null,
+      nativeTrack: t,
+    );
+  }
+}
+
+class AudioTrack {
+  final String id;
+  final String? title;
+  final String? language;
+  final PlayerTrack? nativeTrack;
+
+  const AudioTrack({
+    required this.id,
+    this.title,
+    this.language,
+    this.nativeTrack,
+  });
+
+  factory AudioTrack.auto() => const AudioTrack(id: 'auto', title: 'Automático');
+
+  static AudioTrack fromPlayerTrack(PlayerTrack t) {
+    return AudioTrack(
+      id: t.id,
+      title: t.label.isNotEmpty ? t.label : (t.language.isNotEmpty ? t.language.toUpperCase() : null),
+      language: t.language.isNotEmpty ? t.language : null,
+      nativeTrack: t,
+    );
+  }
+}
+
+class Tracks {
+  final List<SubtitleTrack> subtitle;
+  final List<AudioTrack> audio;
+
+  const Tracks({
+    this.subtitle = const [],
+    this.audio = const [],
+  });
+}
+
+class Track {
+  final SubtitleTrack subtitle;
+  final AudioTrack audio;
+
+  const Track({
+    this.subtitle = const SubtitleTrack(id: 'no', title: 'Desactivado'),
+    this.audio = const AudioTrack(id: 'auto', title: 'Automático'),
+  });
+
+  Track copyWith({
+    SubtitleTrack? subtitle,
+    AudioTrack? audio,
+  }) {
+    return Track(
+      subtitle: subtitle ?? this.subtitle,
+      audio: audio ?? this.audio,
+    );
+  }
 }
 
 // ── State Machine ─────────────────────────────────────────────────────────────
@@ -118,10 +177,6 @@ class MovieEngineState {
     );
   }
 
-  /// True once the player has decoded and displayed at least one frame.
-  /// Used by the UI to distinguish the initial cinematic loading screen
-  /// (before first frame) from mid-playback buffering (frame stays on
-  /// screen, only a small spinner is shown on top).
   bool get hasStartedPlayback =>
       status == MoviePlayerStatus.playing ||
       status == MoviePlayerStatus.paused ||
@@ -137,225 +192,100 @@ class MovieEngineState {
 // ── Engine ────────────────────────────────────────────────────────────────────
 
 class MovieVideoEngine extends ChangeNotifier {
-  late final Player _player;
-  late final VideoController videoController;
+  late final PivotePlayerController _controller;
+  PivotePlayerController get controller => _controller;
 
   MovieEngineState _state = const MovieEngineState();
   MovieEngineState get state => _state;
 
-  Player get player => _player;
-
   String? _currentUrl;
   bool _disposed = false;
   int _retryCount = 0;
+  int get retryCount => _retryCount;
+  Duration _startPosition = Duration.zero;
 
-  // Stream Subscriptions
-  StreamSubscription? _playingSub;
-  StreamSubscription? _bufferingSub;
-  StreamSubscription? _positionSub;
-  StreamSubscription? _durationSub;
-  StreamSubscription? _bufferSub;
-  StreamSubscription? _completedSub;
-  StreamSubscription? _errorSub;
-  StreamSubscription? _tracksSub;
-  StreamSubscription? _trackSub;
+  static const String _speedPrefKey = 'pivote_movie_playback_speed';
 
   MovieVideoEngine() {
-    _player = Player(
-      configuration: const PlayerConfiguration(
-        bufferSize: MovieEngineConfig.demuxerMaxBytes,
-        logLevel: MPVLogLevel.warn,
-        title: 'Pivote Movie Player',
-      ),
-    );
-
-    videoController = VideoController(
-      _player,
-      configuration: const VideoControllerConfiguration(
-        enableHardwareAcceleration: true,
-        androidAttachSurfaceAfterVideoParameters: false,
-      ),
-    );
-
-    _applyMpvProperties();
-    _attachStreams();
-    _restorePreferredSpeed();
+    _controller = PivotePlayerController();
+    _controller.addListener(_onControllerState);
+    _restoreSpeed();
   }
 
-  static const String _speedPrefKey = 'movie_preferred_playback_speed';
-
-  Future<void> _restorePreferredSpeed() async {
+  Future<void> _restoreSpeed() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getDouble(_speedPrefKey);
-      if (saved != null && saved != _state.playbackSpeed && !_disposed) {
-        await setPlaybackSpeed(saved, persist: false);
+      final savedSpeed = prefs.getDouble(_speedPrefKey);
+      if (savedSpeed != null && savedSpeed > 0) {
+        await _controller.setPlaybackSpeed(savedSpeed);
+        _emit(_state.copyWith(playbackSpeed: savedSpeed));
       }
     } catch (_) {}
   }
 
-  Future<void> _applyMpvProperties() async {
-    if (_player.platform is! NativePlayer) return;
-    final native = _player.platform as NativePlayer;
-
-    for (final entry in MovieEngineConfig.mpvVodProps.entries) {
-      try {
-        await native.setProperty(entry.key, entry.value);
-      } catch (e) {
-        debugPrint('⚠️ MPV prop ${entry.key}: $e');
-      }
-    }
-
-    try {
-      await native.setProperty('user-agent', MovieEngineConfig.userAgent);
-    } catch (_) {}
-  }
-
-  void _attachStreams() {
-    _playingSub = _player.stream.playing.listen(_onPlaying);
-    _bufferingSub = _player.stream.buffering.listen(_onBuffering);
-    _positionSub = _player.stream.position.listen(_onPosition);
-    _durationSub = _player.stream.duration.listen(_onDuration);
-    _bufferSub = _player.stream.buffer.listen(_onBuffer);
-    _completedSub = _player.stream.completed.listen(_onCompleted);
-    _errorSub = _player.stream.error.listen(_onError);
-    _tracksSub = _player.stream.tracks.listen(_onTracks);
-    _trackSub = _player.stream.track.listen(_onTrack);
-  }
-
-  void _onPlaying(bool playing) {
+  void _onControllerState() {
     if (_disposed) return;
 
-    MoviePlayerStatus status = _state.status;
-    if (playing) {
-      status = _state.isBuffering
-          ? MoviePlayerStatus.buffering
-          : MoviePlayerStatus.playing;
-    } else {
-      if (status != MoviePlayerStatus.completed &&
-          status != MoviePlayerStatus.error) {
-        status = MoviePlayerStatus.paused;
-      }
+    MoviePlayerStatus newStatus = _state.status;
+
+    if (_controller.hasError) {
+      newStatus = MoviePlayerStatus.error;
+    } else if (_controller.isBuffering) {
+      newStatus = MoviePlayerStatus.buffering;
+    } else if (_controller.isPlaying) {
+      newStatus = MoviePlayerStatus.playing;
+    } else if (_controller.isReady && !_controller.isPlaying) {
+      newStatus = MoviePlayerStatus.paused;
     }
+
+    // Convertir tracks de ExoPlayer a modelos de Movie UI
+    final subTracks = _controller.textTracks.map(SubtitleTrack.fromPlayerTrack).toList();
+    final audTracks = _controller.audioTracks.map(AudioTrack.fromPlayerTrack).toList();
+
+    final currentSub = _controller.selectedSubtitleTrack != null
+        ? SubtitleTrack.fromPlayerTrack(_controller.selectedSubtitleTrack!)
+        : SubtitleTrack.no();
+
+    final currentAud = _controller.selectedAudioTrack != null
+        ? AudioTrack.fromPlayerTrack(_controller.selectedAudioTrack!)
+        : (audTracks.isNotEmpty ? audTracks.first : AudioTrack.auto());
 
     _emit(_state.copyWith(
-      isPlaying: playing,
-      status: status,
-    ));
-  }
-
-  void _onBuffering(bool buffering) {
-    if (_disposed) return;
-
-    MoviePlayerStatus status = _state.status;
-    if (buffering) {
-      status = MoviePlayerStatus.buffering;
-    } else {
-      if (_state.isPlaying) {
-        status = MoviePlayerStatus.playing;
-      } else {
-        status = MoviePlayerStatus.paused;
-      }
-    }
-
-    _emit(_state.copyWith(
-      isBuffering: buffering,
-      status: status,
-    ));
-  }
-
-  void _onPosition(Duration pos) {
-    if (_disposed) return;
-    _emit(_state.copyWith(position: pos));
-  }
-
-  void _onDuration(Duration dur) {
-    if (_disposed) return;
-    _emit(_state.copyWith(duration: dur));
-  }
-
-  void _onBuffer(Duration buf) {
-    if (_disposed) return;
-    _emit(_state.copyWith(buffered: buf));
-  }
-
-  void _onCompleted(bool completed) {
-    if (_disposed) return;
-    if (completed) {
-      _emit(_state.copyWith(status: MoviePlayerStatus.completed));
-    }
-  }
-
-  void _onError(String error) {
-    if (_disposed) return;
-    debugPrint('❌ Movie VOD Engine error: $error');
-    _handlePlaybackError(error);
-  }
-
-  void _onTracks(Tracks tracks) {
-    if (_disposed) return;
-    _emit(_state.copyWith(tracks: tracks));
-  }
-
-  void _onTrack(Track track) {
-    if (_disposed) return;
-    _emit(_state.copyWith(track: track));
-  }
-
-  // ── Error & Retry Handling ────────────────────────────────────────────────
-
-  Future<void> _handlePlaybackError(String error) async {
-    // Before burning a retry on the same URL, try the next resolved stream
-    // candidate (embed hosts often list several mirrors/qualities).
-    if (_advanceCandidate()) {
-      _retryCount = 0;
-      _emit(_state.copyWith(status: MoviePlayerStatus.loading));
-      if (!_disposed && _currentUrl != null) {
-        await _loadInternal(_currentUrl!);
-      }
-      return;
-    }
-
-    if (_retryCount >= MovieEngineConfig.maxRetryAttempts) {
-      _emit(_state.copyWith(
-        status: MoviePlayerStatus.error,
-        errorMessage: 'Error de reproducción. Verifica tu conexión.',
-      ));
-      return;
-    }
-
-    _retryCount++;
-    _emit(_state.copyWith(
-      status: MoviePlayerStatus.loading,
-      retryAttempt: _retryCount,
+      status: newStatus,
+      isPlaying: _controller.isPlaying,
+      isBuffering: _controller.isBuffering,
+      position: _controller.position,
+      duration: _controller.duration,
+      buffered: _controller.buffered,
+      volume: _controller.volume,
+      isMuted: _controller.isMuted,
+      playbackSpeed: _controller.playbackSpeed,
+      errorMessage: _controller.errorMessage,
+      tracks: Tracks(subtitle: subTracks, audio: audTracks),
+      track: Track(subtitle: currentSub, audio: currentAud),
     ));
 
-    final delay = (MovieEngineConfig.backoffBaseMs * (1 << (_retryCount - 1)))
-        .clamp(MovieEngineConfig.backoffBaseMs, MovieEngineConfig.backoffMaxMs);
-
-    debugPrint('🔄 VOD Engine error retry #$_retryCount in ${delay}ms');
-    await Future.delayed(Duration(milliseconds: delay));
-
-    if (!_disposed && _currentUrl != null) {
-      await _loadInternal(_currentUrl!);
+    // Si teníamos una posición inicial pendiente de seek
+    if (_startPosition > Duration.zero && _controller.isReady && _controller.position < const Duration(seconds: 1)) {
+      final pos = _startPosition;
+      _startPosition = Duration.zero;
+      _controller.seekTo(pos);
     }
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  /// Resolution produced by [EmbedResolver] for the current URL: stream
-  /// candidates (fallback list) plus the HTTP headers the CDN expects.
   EmbedResolution? _resolution;
   int _candidateIndex = 0;
 
-  Future<void> load(String url,
-      {Duration startPosition = Duration.zero}) async {
+  Future<void> load(String url, {Duration startPosition = Duration.zero}) async {
     if (_disposed) return;
 
     _currentUrl = url;
     _retryCount = 0;
     _resolution = null;
     _candidateIndex = 0;
+    _startPosition = startPosition;
 
     _emit(_state.copyWith(
       status: MoviePlayerStatus.loading,
@@ -368,113 +298,83 @@ class MovieVideoEngine extends ChangeNotifier {
       retryAttempt: 0,
     ));
 
-    // Resolve embed pages (StreamHG / StreamWish / Filemoon style) into a
-    // real playable stream. Direct media URLs pass straight through.
     try {
       _resolution = await EmbedResolver.instance.resolve(url);
-      debugPrint('🧩 MovieVideoEngine: $_resolution');
     } catch (e) {
       debugPrint('❌ MovieVideoEngine embed resolve failed: $e');
       if (_disposed) return;
-      // If it looked like an embed and scraping failed, surface the error;
-      // otherwise fall back to trying the raw URL directly.
-      if (EmbedResolver.instance.looksLikeEmbed(url)) {
-        _emit(_state.copyWith(
-          status: MoviePlayerStatus.error,
-          errorMessage: 'No se pudo obtener el video de la fuente.',
-        ));
-        return;
-      }
     }
 
     if (_disposed) return;
-    await _loadInternal(url, startPosition: startPosition);
+
+    final targetUrl = _pickStreamUrl(url);
+    await _loadInternal(targetUrl);
   }
 
-  /// The stream URL to actually feed the player for the current attempt.
-  String _effectiveUrl(String fallback) {
-    final res = _resolution;
-    if (res == null || res.candidates.isEmpty) return fallback;
-    return res.candidates[_candidateIndex.clamp(0, res.candidates.length - 1)];
+  String _pickStreamUrl(String fallbackUrl) {
+    final r = _resolution;
+    if (r == null) return fallbackUrl;
+    if (r.candidates.isNotEmpty) {
+      final index = _candidateIndex.clamp(0, r.candidates.length - 1);
+      return r.candidates[index];
+    }
+    return r.primary.isNotEmpty ? r.primary : fallbackUrl;
   }
 
-  /// Advances to the next resolved candidate. Returns true if there was one.
-  bool _advanceCandidate() {
-    final res = _resolution;
-    if (res == null) return false;
-    if (_candidateIndex + 1 >= res.candidates.length) return false;
-    _candidateIndex++;
-    debugPrint(
-        '🧩 MovieVideoEngine: falling back to candidate #$_candidateIndex -> ${res.candidates[_candidateIndex]}');
-    return true;
-  }
-
-  Future<void> _loadInternal(String url,
-      {Duration startPosition = Duration.zero}) async {
+  Future<void> _loadInternal(String streamUrl) async {
     if (_disposed) return;
-
-    try {
-      await _player.stop();
-    } catch (_) {}
 
     final headers = <String, String>{
       'User-Agent': MovieEngineConfig.userAgent,
-      ...?_resolution?.headers,
     };
 
-    final streamUrl = _effectiveUrl(url);
-
-    try {
-      final media = Media(streamUrl, httpHeaders: headers);
-      await _player.open(Playlist([media]), play: true);
-
-      if (startPosition > Duration.zero) {
-        await _player.seek(startPosition);
-      }
-
-      debugPrint('🎬 MovieVideoEngine: opened stream -> $streamUrl');
-    } catch (e) {
-      debugPrint('❌ MovieVideoEngine load error: $e');
-      await _handlePlaybackError(e.toString());
+    if (_resolution != null) {
+      headers.addAll(_resolution!.headers);
     }
+
+    await _controller.prepare(
+      url: streamUrl,
+      headers: headers,
+    );
   }
 
   Future<void> play() async {
     if (_disposed) return;
-    await _player.play();
+    await _controller.play();
   }
 
   Future<void> pause() async {
     if (_disposed) return;
-    await _player.pause();
+    await _controller.pause();
+  }
+
+  Future<void> togglePlayPause() async {
+    if (_disposed) return;
+    await _controller.togglePlayPause();
   }
 
   Future<void> seek(Duration position) async {
     if (_disposed) return;
-    await _player.seek(position);
+    await _controller.seekTo(position);
   }
 
   Future<void> setVolume(double volume) async {
     if (_disposed) return;
-    final clamped = volume.clamp(0.0, 1.0);
-    await _player.setVolume(clamped * 100);
-    _emit(_state.copyWith(
-      volume: clamped,
-      isMuted: clamped == 0.0,
-    ));
+    await _controller.setVolume(volume);
   }
 
   Future<void> setMuted(bool muted) async {
     if (_disposed) return;
-    await _player.setVolume(muted ? 0 : _state.volume * 100);
-    _emit(_state.copyWith(isMuted: muted));
+    if (muted) {
+      await _controller.setVolume(0.0);
+    } else {
+      await _controller.setVolume(_state.volume > 0 ? _state.volume : 1.0);
+    }
   }
 
   Future<void> setPlaybackSpeed(double speed, {bool persist = true}) async {
     if (_disposed) return;
-    await _player.setRate(speed);
-    _emit(_state.copyWith(playbackSpeed: speed));
-
+    await _controller.setPlaybackSpeed(speed);
     if (persist) {
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -485,26 +385,21 @@ class MovieVideoEngine extends ChangeNotifier {
 
   Future<void> setSubtitleTrack(SubtitleTrack track) async {
     if (_disposed) return;
-    await _player.setSubtitleTrack(track);
+    if (track.id == 'no') {
+      await _controller.selectSubtitleTrack(null);
+    } else if (track.nativeTrack != null) {
+      await _controller.selectSubtitleTrack(track.nativeTrack);
+    }
   }
 
   Future<void> setAudioTrack(AudioTrack track) async {
-    if (_disposed) return;
-    await _player.setAudioTrack(track);
+    if (_disposed || track.nativeTrack == null) return;
+    await _controller.selectAudioTrack(track.nativeTrack!);
   }
 
-  Future<void> addSubtitleSource(String url) async {
-    if (_disposed) return;
-    // media_kit supports adding external subtitles via native properties or standard loading.
-    // For general usage, let's keep it simple or allow setting it via uri if supported.
-  }
-
-  /// Immediately stops playback (used before exiting the player screen)
   Future<void> stop() async {
     if (_disposed) return;
-    try {
-      await _player.stop();
-    } catch (_) {}
+    await _controller.pause();
     _emit(_state.copyWith(
       status: MoviePlayerStatus.idle,
       isPlaying: false,
@@ -515,8 +410,6 @@ class MovieVideoEngine extends ChangeNotifier {
   Future<void> retry() async {
     if (_disposed || _currentUrl == null) return;
     _retryCount = 0;
-    // Manual retry: drop the cached resolution so we re-scrape the embed and
-    // get fresh (possibly re-tokenized) stream URLs.
     EmbedResolver.instance.clearCache();
     await load(_currentUrl!, startPosition: _state.position);
   }
@@ -530,16 +423,8 @@ class MovieVideoEngine extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    _playingSub?.cancel();
-    _bufferingSub?.cancel();
-    _positionSub?.cancel();
-    _durationSub?.cancel();
-    _bufferSub?.cancel();
-    _completedSub?.cancel();
-    _errorSub?.cancel();
-    _tracksSub?.cancel();
-    _trackSub?.cancel();
-    _player.dispose();
+    _controller.removeListener(_onControllerState);
+    _controller.dispose();
     super.dispose();
   }
 }

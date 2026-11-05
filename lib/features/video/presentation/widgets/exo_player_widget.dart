@@ -1,155 +1,252 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
-// ExoPlayerWidget — Flutter wrapper for native Android ExoPlayer
-// ════════════════════════════════════════════════════════════════════════════
-//
-// Embeds a native ExoPlayer via PlatformView (AndroidView).
-// Communicates via MethodChannel for control + EventChannel for state.
-//
-// Lifecycle:
-//   onCreate → initialize(url, k1, k2) → playing → dispose
-//
+// PIVOTE MEDIA3 EXOPLAYER CONTROLLER & PLATFORM VIEW
 // ════════════════════════════════════════════════════════════════════════════
 
-/// Callback types for ExoPlayer events
-typedef ExoPlayerEventCallback = void Function(ExoPlayerEvent event);
+/// Información de una pista (Video, Audio o Subtítulo)
+class PlayerTrack {
+  final int groupIndex;
+  final int trackIndex;
+  final bool isSelected;
+  final int bitrate;
+  final int width;
+  final int height;
+  final String language;
+  final String label;
+  final String mimeType;
 
-/// Event from the native ExoPlayer
-class ExoPlayerEvent {
-  final String type;
-  final bool isPlaying;
-  final bool isBuffering;
-  final double volume;
-  final int? errorCode;
-  final String? errorMessage;
-  final String? errorType;
-  final int currentPosition;
-  final int duration;
-  final int bufferedPosition;
-
-  const ExoPlayerEvent({
-    required this.type,
-    this.isPlaying = false,
-    this.isBuffering = false,
-    this.volume = 1.0,
-    this.errorCode,
-    this.errorMessage,
-    this.errorType,
-    this.currentPosition = 0,
-    this.duration = 0,
-    this.bufferedPosition = 0,
+  const PlayerTrack({
+    required this.groupIndex,
+    required this.trackIndex,
+    this.isSelected = false,
+    this.bitrate = 0,
+    this.width = 0,
+    this.height = 0,
+    this.language = '',
+    this.label = '',
+    this.mimeType = '',
   });
 
-  factory ExoPlayerEvent.fromMap(Map<dynamic, dynamic> map) {
-    return ExoPlayerEvent(
-      type: map['type'] as String? ?? 'unknown',
-      isPlaying: map['isPlaying'] as bool? ?? false,
-      isBuffering: map['isBuffering'] as bool? ?? false,
-      volume: (map['volume'] as num?)?.toDouble() ?? 1.0,
-      errorCode: map['code'] as int?,
-      errorMessage: map['message'] as String?,
-      errorType: map['errorType'] as String?,
-      currentPosition: (map['currentPosition'] as num?)?.toInt() ?? 0,
-      duration: (map['duration'] as num?)?.toInt() ?? 0,
-      bufferedPosition: (map['bufferedPosition'] as num?)?.toInt() ?? 0,
-    );
+  String get id => '$groupIndex:$trackIndex';
+
+  String get title {
+    if (label.isNotEmpty) return label;
+    if (language.isNotEmpty) return language.toUpperCase();
+    if (width > 0 && height > 0) return '${height}p';
+    return 'Pista $trackIndex';
   }
 
-  bool get hasError => type == 'error';
-  bool get isReady => type == 'ready';
+  factory PlayerTrack.fromMap(Map<dynamic, dynamic> map) {
+    return PlayerTrack(
+      groupIndex: (map['groupIndex'] as num?)?.toInt() ?? 0,
+      trackIndex: (map['trackIndex'] as num?)?.toInt() ?? 0,
+      isSelected: map['isSelected'] as bool? ?? false,
+      bitrate: (map['bitrate'] as num?)?.toInt() ?? 0,
+      width: (map['width'] as num?)?.toInt() ?? 0,
+      height: (map['height'] as num?)?.toInt() ?? 0,
+      language: map['language'] as String? ?? '',
+      label: map['label'] as String? ?? '',
+      mimeType: map['mimeType'] as String? ?? '',
+    );
+  }
 }
 
-/// Controller for the native ExoPlayer
-class ExoPlayerController {
+/// Estado global de reproducción de Pivote Media3
+class PivotePlayerController extends ChangeNotifier {
   MethodChannel? _methodChannel;
   EventChannel? _eventChannel;
   StreamSubscription? _eventSub;
-  final List<ExoPlayerEventCallback> _listeners = [];
+  int? _viewId;
+  int? get viewId => _viewId;
   bool _disposed = false;
 
-  // Current state
+  // Estados
   bool isPlaying = false;
   bool isBuffering = false;
+  bool isLive = false;
   bool isMuted = false;
   double volume = 1.0;
+  double playbackSpeed = 1.0;
+  Duration position = Duration.zero;
+  Duration duration = Duration.zero;
+  Duration buffered = Duration.zero;
+  int videoWidth = 0;
+  int videoHeight = 0;
   bool hasError = false;
   String? errorMessage;
-  bool isInitialized = false;
+  String? errorCode;
+  bool isReady = false;
 
-  /// Called by the widget when the platform view is created
+  // Tracks disponibles
+  List<PlayerTrack> videoTracks = [];
+  List<PlayerTrack> audioTracks = [];
+  List<PlayerTrack> textTracks = [];
+
+  // Pista seleccionada actualmente
+  PlayerTrack? selectedAudioTrack;
+  PlayerTrack? selectedSubtitleTrack;
+  PlayerTrack? selectedVideoTrack;
+
+  // Parámetros pendientes si se llama a prepare antes de que el PlatformView esté listo
+  Map<String, dynamic>? _pendingPrepareParams;
+
+  /// Vincula los canales nativos cuando se crea la PlatformView
   void attach(int viewId) {
-    _methodChannel = MethodChannel('pivote/exoplayer_$viewId');
-    _eventChannel = EventChannel('pivote/exoplayer_events_$viewId');
+    if (_disposed) return;
+    _viewId = viewId;
+    _methodChannel = MethodChannel('pivote/player_methods_$viewId');
+    _eventChannel = EventChannel('pivote/player_events_$viewId');
 
     _eventSub = _eventChannel!.receiveBroadcastStream().listen(
-      (dynamic event) {
-        if (_disposed || event is! Map) return;
-        final e = ExoPlayerEvent.fromMap(event);
-        _updateState(e);
-        for (final cb in List.of(_listeners)) {
-          cb(e);
-        }
-      },
-      onError: (dynamic error) {
-        debugPrint('❌ ExoPlayer EventChannel error: $error');
+      _handleNativeEvent,
+      onError: (error) {
+        debugPrint('❌ PivotePlayer EventChannel error: $error');
+        hasError = true;
+        errorMessage = error.toString();
+        notifyListeners();
       },
     );
+
+    if (_pendingPrepareParams != null) {
+      final params = _pendingPrepareParams!;
+      _pendingPrepareParams = null;
+      _methodChannel?.invokeMethod('prepare', params);
+    }
   }
 
-  void _updateState(ExoPlayerEvent e) {
-    isPlaying = e.isPlaying;
-    isBuffering = e.isBuffering;
-    volume = e.volume;
+  void _handleNativeEvent(dynamic raw) {
+    if (_disposed || raw is! Map) return;
+    final map = raw;
+    final event = map['event'] as String? ?? '';
 
-    switch (e.type) {
+    switch (event) {
       case 'ready':
-      case 'playing':
-        isInitialized = true;
+        isReady = true;
+        isBuffering = false;
         hasError = false;
         errorMessage = null;
+        isLive = map['isLive'] as bool? ?? false;
+        final durMs = (map['durationMs'] as num?)?.toInt() ?? -1;
+        duration = durMs > 0 ? Duration(milliseconds: durMs) : Duration.zero;
+        videoWidth = (map['videoWidth'] as num?)?.toInt() ?? 0;
+        videoHeight = (map['videoHeight'] as num?)?.toInt() ?? 0;
+        notifyListeners();
         break;
+
+      case 'stateChanged':
+        final state = map['playbackState'] as String? ?? '';
+        isPlaying = map['isPlaying'] as bool? ?? false;
+        isBuffering = state == 'buffering';
+        if (state == 'ready') {
+          isReady = true;
+          hasError = false;
+        }
+        notifyListeners();
+        break;
+
+      case 'position':
+        final posMs = (map['positionMs'] as num?)?.toInt() ?? 0;
+        final bufMs = (map['bufferedMs'] as num?)?.toInt() ?? 0;
+        position = Duration(milliseconds: posMs);
+        buffered = Duration(milliseconds: bufMs);
+        notifyListeners();
+        break;
+
+      case 'tracksChanged':
+        final rawVideos = map['videoTracks'] as List? ?? [];
+        final rawAudios = map['audioTracks'] as List? ?? [];
+        final rawTexts = map['textTracks'] as List? ?? [];
+
+        videoTracks = rawVideos.map((e) => PlayerTrack.fromMap(e as Map)).toList();
+        audioTracks = rawAudios.map((e) => PlayerTrack.fromMap(e as Map)).toList();
+        textTracks = rawTexts.map((e) => PlayerTrack.fromMap(e as Map)).toList();
+
+        selectedAudioTrack = audioTracks.where((t) => t.isSelected).firstOrNull;
+        selectedSubtitleTrack = textTracks.where((t) => t.isSelected).firstOrNull;
+        selectedVideoTrack = videoTracks.where((t) => t.isSelected).firstOrNull;
+        notifyListeners();
+        break;
+
       case 'error':
         hasError = true;
-        errorMessage = e.errorMessage;
+        isBuffering = false;
+        errorCode = map['errorCode'] as String?;
+        errorMessage = map['message'] as String? ?? 'Error de reproducción';
+        notifyListeners();
         break;
-      case 'buffering':
-        isBuffering = true;
+
+      case 'ended':
+        isPlaying = false;
+        isBuffering = false;
+        notifyListeners();
         break;
     }
   }
 
-  /// Initialize with MPD stream + optional ClearKey DRM (multi-key or legacy)
-  Future<void> initialize({
+  /// Carga y reproduce una URL o canal
+  Future<void> prepare({
     required String url,
-    String? name,
     String? type,
-    String? drmLicenseUri,
+    String? channelName,
     String? icono,
+    Map<String, String>? headers,
+    Map<String, String>? clearkeys,
     String? k1,
     String? k2,
-    Map<String, String>? clearkeys,
-    Map<String, String>? headers,
+    String? drmType,
+    String? widevineLicenseUrl,
+    Map<String, String>? widevineLicenseHeaders,
   }) async {
-    if (_disposed || _methodChannel == null) return;
-    try {
-      await _methodChannel!.invokeMethod('initialize', {
-        'url': url,
-        'original_url': url,
-        if (name != null && name.isNotEmpty) 'name': name,
-        if (type != null && type.isNotEmpty) 'type': type,
-        if (drmLicenseUri != null && drmLicenseUri.isNotEmpty)
-          'drm_license_uri': drmLicenseUri,
-        if (icono != null && icono.isNotEmpty) 'icono': icono,
-        if (k1 != null && k1.isNotEmpty) 'k1': k1,
-        if (k2 != null && k2.isNotEmpty) 'k2': k2,
-        if (clearkeys != null && clearkeys.isNotEmpty) 'clearkeys': clearkeys,
-        if (headers != null) 'headers': headers,
-      });
-    } catch (e) {
-      debugPrint('❌ ExoPlayer initialize: $e');
+    if (_disposed) return;
+
+    hasError = false;
+    errorMessage = null;
+    isReady = false;
+    isBuffering = true;
+    notifyListeners();
+
+    final params = <String, dynamic>{
+      'original_url': url,
+      'url': url,
+      'name': channelName ?? '',
+      'type': type,
+      'icono': icono,
+      'headers': headers ?? {},
+    };
+
+    if (drmType != null && drmType.toUpperCase() == 'WIDEVINE') {
+      params['drm'] = {
+        'type': 'WIDEVINE',
+        'licenseUrl': widevineLicenseUrl,
+        'licenseHeaders': widevineLicenseHeaders ?? {},
+      };
+    } else if (clearkeys != null && clearkeys.isNotEmpty) {
+      params['clearkeys'] = clearkeys;
+      params['drm'] = {
+        'type': 'CLEARKEY',
+        'clearKeys': clearkeys,
+      };
+    } else if (k1 != null && k2 != null && k1.isNotEmpty && k2.isNotEmpty) {
+      params['k1'] = k1;
+      params['k2'] = k2;
+      params['drm'] = {
+        'type': 'CLEARKEY',
+        'clearKeys': {k1: k2},
+      };
+    }
+
+    if (_methodChannel != null) {
+      try {
+        await _methodChannel!.invokeMethod('prepare', params);
+      } catch (e) {
+        debugPrint('Error invoking prepare on native player: $e');
+      }
+    } else {
+      _pendingPrepareParams = params;
     }
   }
 
@@ -157,133 +254,184 @@ class ExoPlayerController {
     if (_disposed || _methodChannel == null) return;
     try {
       await _methodChannel!.invokeMethod('play');
-    } catch (_) {}
+      isPlaying = true;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error in play: $e');
+    }
   }
 
   Future<void> pause() async {
     if (_disposed || _methodChannel == null) return;
     try {
       await _methodChannel!.invokeMethod('pause');
-    } catch (_) {}
-  }
-
-  Future<void> setVolume(double v) async {
-    if (_disposed || _methodChannel == null) return;
-    try {
-      await _methodChannel!.invokeMethod('setVolume', {'volume': v});
-      volume = v;
-      isMuted = v == 0;
-    } catch (_) {}
-  }
-
-  Future<void> setMuted(bool muted) async {
-    if (_disposed || _methodChannel == null) return;
-    try {
-      await _methodChannel!.invokeMethod('setMuted', {'muted': muted});
-      isMuted = muted;
-    } catch (_) {}
-  }
-
-  Future<void> seekTo(Duration position) async {
-    if (_disposed || _methodChannel == null) return;
-    try {
-      await _methodChannel!
-          .invokeMethod('seekTo', {'position': position.inMilliseconds});
-    } catch (_) {}
-  }
-
-  void addListener(ExoPlayerEventCallback cb) => _listeners.add(cb);
-  void removeListener(ExoPlayerEventCallback cb) => _listeners.remove(cb);
-
-  Future<void> dispose() async {
-    _disposed = true;
-    await _eventSub?.cancel();
-    _listeners.clear();
-    if (_methodChannel != null) {
-      try {
-        await _methodChannel!.invokeMethod('dispose');
-      } catch (_) {}
+      isPlaying = false;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error in pause: $e');
     }
   }
-}
 
-/// Widget that renders the native ExoPlayer via AndroidView
-class ExoPlayerWidget extends StatefulWidget {
-  final String url;
-  final String? name;
-  final String? type;
-  final String? drmLicenseUri;
-  final String? icono;
-  final String? k1;
-  final String? k2;
-  final Map<String, String>? clearkeys; // Multi-key ClearKey DRM
-  final Map<String, String>? headers;
-  final ExoPlayerController controller;
-  final VoidCallback? onReady;
-  final VoidCallback? onError;
+  Future<void> togglePlayPause() async {
+    if (isPlaying) {
+      await pause();
+    } else {
+      await play();
+    }
+  }
 
-  const ExoPlayerWidget({
-    super.key,
-    required this.url,
-    this.name,
-    this.type,
-    this.drmLicenseUri,
-    this.icono,
-    this.k1,
-    this.k2,
-    this.clearkeys,
-    this.headers,
-    required this.controller,
-    this.onReady,
-    this.onError,
-  });
+  Future<void> seekTo(Duration targetPosition) async {
+    if (_disposed || _methodChannel == null || isLive) return;
+    try {
+      position = targetPosition;
+      notifyListeners();
+      await _methodChannel!.invokeMethod('seekTo', {
+        'positionMs': targetPosition.inMilliseconds,
+      });
+    } catch (e) {
+      debugPrint('Error in seekTo: $e');
+    }
+  }
 
-  @override
-  State<ExoPlayerWidget> createState() => _ExoPlayerWidgetState();
-}
+  Future<void> setVolume(double newVolume) async {
+    if (_disposed || _methodChannel == null) return;
+    try {
+      volume = newVolume.clamp(0.0, 1.0);
+      isMuted = volume == 0.0;
+      notifyListeners();
+      await _methodChannel!.invokeMethod('setVolume', {'volume': volume});
+    } catch (e) {
+      debugPrint('Error in setVolume: $e');
+    }
+  }
 
-class _ExoPlayerWidgetState extends State<ExoPlayerWidget> {
-  bool _initialized = false;
+  Future<void> toggleMute() async {
+    if (isMuted) {
+      await setVolume(1.0);
+    } else {
+      await setVolume(0.0);
+    }
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return AndroidView(
-      viewType: 'pivote-exoplayer',
-      creationParams: <String, dynamic>{
-        'url': widget.url,
-        'original_url': widget.url,
-        if (widget.name != null && widget.name!.isNotEmpty) 'name': widget.name,
-        if (widget.type != null && widget.type!.isNotEmpty) 'type': widget.type,
-        if (widget.drmLicenseUri != null && widget.drmLicenseUri!.isNotEmpty)
-          'drm_license_uri': widget.drmLicenseUri,
-        if (widget.icono != null && widget.icono!.isNotEmpty)
-          'icono': widget.icono,
-        if (widget.k1 != null) 'k1': widget.k1,
-        if (widget.k2 != null) 'k2': widget.k2,
-        if (widget.clearkeys != null && widget.clearkeys!.isNotEmpty)
-          'clearkeys': widget.clearkeys,
-        if (widget.headers != null && widget.headers!.isNotEmpty)
-          'headers': widget.headers,
-      },
-      creationParamsCodec: const StandardMessageCodec(),
-      onPlatformViewCreated: _onPlatformViewCreated,
+  Future<void> setPlaybackSpeed(double speed) async {
+    if (_disposed || _methodChannel == null) return;
+    try {
+      playbackSpeed = speed.clamp(0.25, 2.0);
+      notifyListeners();
+      await _methodChannel!.invokeMethod('setPlaybackSpeed', {'speed': playbackSpeed});
+    } catch (e) {
+      debugPrint('Error in setPlaybackSpeed: $e');
+    }
+  }
+
+  Future<void> setTrack({
+    required String trackType,
+    required int groupIndex,
+    required int trackIndex,
+  }) async {
+    if (_disposed || _methodChannel == null) return;
+    try {
+      await _methodChannel!.invokeMethod('setTrack', {
+        'trackType': trackType,
+        'groupIndex': groupIndex,
+        'trackIndex': trackIndex,
+      });
+    } catch (e) {
+      debugPrint('Error in setTrack: $e');
+    }
+  }
+
+  Future<void> selectAudioTrack(PlayerTrack track) async {
+    selectedAudioTrack = track;
+    notifyListeners();
+    await setTrack(
+      trackType: 'audio',
+      groupIndex: track.groupIndex,
+      trackIndex: track.trackIndex,
     );
   }
 
-  void _onPlatformViewCreated(int viewId) {
-    if (_initialized) return;
-    _initialized = true;
+  Future<void> selectSubtitleTrack(PlayerTrack? track) async {
+    selectedSubtitleTrack = track;
+    notifyListeners();
+    if (track == null) {
+      await setTrack(trackType: 'text', groupIndex: -1, trackIndex: -1);
+    } else {
+      await setTrack(
+        trackType: 'text',
+        groupIndex: track.groupIndex,
+        trackIndex: track.trackIndex,
+      );
+    }
+  }
 
-    widget.controller.attach(viewId);
+  Future<void> setPreferredQuality({int maxHeight = -1, int maxBitrate = -1}) async {
+    if (_disposed || _methodChannel == null) return;
+    try {
+      await _methodChannel!.invokeMethod('setPreferredVideoQuality', {
+        'maxHeight': maxHeight,
+        'maxBitrate': maxBitrate,
+      });
+    } catch (e) {
+      debugPrint('Error in setPreferredQuality: $e');
+    }
+  }
 
-    // Listen for ready/error events
-    widget.controller.addListener((event) {
-      if (event.isReady && widget.onReady != null) {
-        widget.onReady!();
-      }
-      if (event.hasError && widget.onError != null) {
-        widget.onError!();
-      }
-    });
+  @override
+  void dispose() {
+    _disposed = true;
+    _eventSub?.cancel();
+    _methodChannel?.invokeMethod('release');
+    _methodChannel = null;
+    _eventChannel = null;
+    super.dispose();
   }
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// PLATFORM VIEW WIDGET (AndroidView)
+// ════════════════════════════════════════════════════════════════════════════
+
+class PivotePlayerView extends StatefulWidget {
+  final PivotePlayerController controller;
+
+  const PivotePlayerView({
+    super.key,
+    required this.controller,
+  });
+
+  @override
+  State<PivotePlayerView> createState() => _PivotePlayerViewState();
+}
+
+class _PivotePlayerViewState extends State<PivotePlayerView> {
+  @override
+  Widget build(BuildContext context) {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return Container(
+        color: Colors.black,
+        child: const Center(
+          child: Text(
+            'Media3 ExoPlayer es exclusivo para Android',
+            style: TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
+    return AndroidView(
+      viewType: 'pivote-exoplayer',
+      onPlatformViewCreated: (viewId) {
+        widget.controller.attach(viewId);
+      },
+      creationParamsCodec: const StandardMessageCodec(),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ALIASES PARA COMPATIBILIDAD CON CÓDIGO EXISTENTE
+// ════════════════════════════════════════════════════════════════════════════
+typedef ExoPlayerController = PivotePlayerController;
+typedef ExoPlayerWidget = PivotePlayerView;
+typedef UnifiedVideoController = PivotePlayerController;

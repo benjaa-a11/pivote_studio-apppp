@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:pivote/features/movies/presentation/widgets/movie_video_engine.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 
 /// Shared, theme-aware base for all movie playback option sheets.

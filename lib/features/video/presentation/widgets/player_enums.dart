@@ -130,6 +130,17 @@ extension AspectRatioTypeExtension on AspectRatioType {
     }
   }
 
+  double? get value {
+    switch (this) {
+      case AspectRatioType.auto:
+        return null;
+      case AspectRatioType.ratio16_9:
+        return 16 / 9;
+      case AspectRatioType.stretch:
+        return null;
+    }
+  }
+
   AspectRatioType get next {
     switch (this) {
       case AspectRatioType.auto:

@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
-import 'package:pivote/features/video/presentation/widgets/unified_video_controller.dart';
+import 'package:pivote/features/video/presentation/widgets/exo_player_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
 
 // ════════════════════════════════════════
