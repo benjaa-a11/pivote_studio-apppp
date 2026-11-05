@@ -270,7 +270,23 @@ class _StaggeredAnimationState extends State<_StaggeredAnimation>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
-    _startAnimation();
+  }
+
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) {
+      _controller.stop();
+      _controller.value = 1;
+      return;
+    }
+    if (!_started) {
+      _started = true;
+      _startAnimation();
+    }
   }
 
   void _startAnimation() async {
@@ -314,11 +330,27 @@ class _ShimmerAnimationState extends State<_ShimmerAnimation>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
+  bool? _reduceMotion;
+
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: widget.duration)
-      ..repeat();
+    _controller = AnimationController(vsync: this, duration: widget.duration);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (_reduceMotion == reduceMotion) return;
+    _reduceMotion = reduceMotion;
+    if (reduceMotion) {
+      _controller
+        ..stop()
+        ..value = 0;
+    } else {
+      _controller.repeat();
+    }
   }
 
   @override
@@ -329,6 +361,7 @@ class _ShimmerAnimationState extends State<_ShimmerAnimation>
 
   @override
   Widget build(BuildContext context) {
+    if (_reduceMotion == true) return widget.child;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AnimatedBuilder(

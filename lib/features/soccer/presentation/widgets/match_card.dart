@@ -772,6 +772,8 @@ class MatchCard extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      showDragHandle: false,
+      useSafeArea: true,
       builder: (context) => Container(
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF0F131C) : Colors.white,

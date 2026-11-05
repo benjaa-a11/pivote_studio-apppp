@@ -11,10 +11,10 @@ import 'package:pivote/core/theme/app_theme.dart';
 class AppRadius {
   AppRadius._();
 
-  static const double xs = 6; // inputs, chips
-  static const double sm = 10; // base card radius (matches CardTheme)
-  static const double md = 14; // buttons, small containers
-  static const double lg = 20; // sections, banners
+  static const double xs = 8; // compact controls, chips
+  static const double sm = 14; // standard input and card radius
+  static const double md = 18; // buttons and interactive containers
+  static const double lg = 24; // sections and banners
   static const double xl = 28; // hero containers, bottom sheets
   static const double xxl = 32; // headers (e.g. UnifiedHomeHeader)
   static const double pill = 999;

@@ -120,6 +120,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.colorScheme.surface,
+      showDragHandle: false,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -61,6 +60,7 @@ class AppDialogs {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      showDragHandle: false,
       useSafeArea: true,
       builder: (ctx) => _ModernBottomSheet(
         scrollable: scrollable,
@@ -347,35 +347,6 @@ class _ModernLoadingDialog extends StatefulWidget {
 }
 
 class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
-  Timer? _failsafe;
-  double _progress = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _failsafe = Timer(const Duration(seconds: 7), () {
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-    });
-    _animateProgress();
-  }
-
-  Future<void> _animateProgress() async {
-    const steps = 28;
-    for (var i = 1; i <= steps; i++) {
-      await Future.delayed(const Duration(milliseconds: 120));
-      if (!mounted) return;
-      setState(() => _progress = i / steps);
-    }
-  }
-
-  @override
-  void dispose() {
-    _failsafe?.cancel();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -422,7 +393,7 @@ class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(99),
                   child: LinearProgressIndicator(
-                    value: _progress,
+                    value: null,
                     minHeight: 5,
                     backgroundColor: accent.withValues(alpha: .08),
                     valueColor: AlwaysStoppedAnimation<Color>(accent),
@@ -430,7 +401,7 @@ class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
                 ),
                 const SizedBox(height: 9),
                 Text(
-                    'Podés esperar unos segundos mientras terminamos la comprobación.',
+                    'Este proceso puede tardar un momento. La ventana se cerrará cuando termine.',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.spaceGrotesk(
                         fontSize: 10.5,
