@@ -1,5 +1,6 @@
 package com.example.pivote_studio.data
 
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -14,10 +15,10 @@ interface StreamRepository {
 class DefaultStreamRepository : StreamRepository {
 
     override fun parseChannel(jsonString: String): StreamChannel {
-        // Usar el mismo parser que los mapas evita mantener dos modelos DRM
-        // distintos y garantiza compatibilidad con ClearKey y Widevine.
+        // Convertir JSONObject recursivamente a Map para reutilizar el parser
+        // único de StreamChannel, conservando bloques DRM y headers anidados.
         val json = JSONObject(jsonString)
-        return StreamChannel.fromMap(json.toMap())
+        return StreamChannel.fromMap(json.toKotlinMap())
     }
 
     override fun parseChannel(map: Map<*, *>): StreamChannel {
@@ -42,4 +43,25 @@ class DefaultStreamRepository : StreamRepository {
             sourceGroup = "samples"
         )
     }
+}
+
+/** Convierte objetos JSON anidados a mapas/listas Kotlin sin perder valores. */
+private fun JSONObject.toKotlinMap(): Map<String, Any?> {
+    val result = LinkedHashMap<String, Any?>()
+    val keys = keys()
+    while (keys.hasNext()) {
+        val key = keys.next()
+        result[key] = get(key).toKotlinValue()
+    }
+    return result
+}
+
+private fun JSONArray.toKotlinList(): List<Any?> =
+    (0 until length()).map { index -> get(index).toKotlinValue() }
+
+private fun Any?.toKotlinValue(): Any? = when (this) {
+    JSONObject.NULL -> null
+    is JSONObject -> toKotlinMap()
+    is JSONArray -> toKotlinList()
+    else -> this
 }
