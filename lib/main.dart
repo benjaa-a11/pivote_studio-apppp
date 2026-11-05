@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
@@ -38,7 +37,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   // Configurar caché de imágenes en RAM antes de todo

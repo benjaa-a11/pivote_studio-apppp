@@ -7,7 +7,6 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import com.example.pivote_studio.data.StreamChannel
-import com.example.pivote_studio.drm.ClearKeyParseException
 
 /**
  * Representa información estructurada de error para la capa superior / UI.
@@ -117,7 +116,7 @@ object PlayerErrorMapper {
      */
     fun logError(channel: StreamChannel?, errorInfo: PlayerErrorInfo) {
         val sanitizedUrl = sanitizeUrl(channel?.originalUrl ?: "")
-        val drmType = if (channel?.isClearKey() == true) "CLEARKEY" else if (channel?.hasDrm() == true) "DRM_OTHER" else "NONE"
+        val drmType = channel?.drmScheme?.name ?: "NONE"
 
         Log.e(
             TAG,

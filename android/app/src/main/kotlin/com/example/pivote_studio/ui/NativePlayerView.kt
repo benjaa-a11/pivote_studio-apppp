@@ -22,7 +22,6 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import android.view.LayoutInflater
 import com.example.pivote_studio.R
-import com.example.pivote_studio.data.StreamChannel
 import com.example.pivote_studio.player.NativeMediaPlayer
 import com.example.pivote_studio.player.NativePlayerListener
 import com.example.pivote_studio.player.PlayerErrorInfo
@@ -229,30 +228,24 @@ class NativePlayerView @JvmOverloads constructor(
 
     // ── Callbacks de NativePlayerListener ──────────────────────────────────────
 
-    override fun onReady() {
+    override fun onReady(durationMs: Long, isLive: Boolean, videoWidth: Int, videoHeight: Int) {
         showLoading(false)
         showError(null)
-        externalListener?.onReady()
+        externalListener?.onReady(durationMs, isLive, videoWidth, videoHeight)
     }
 
-    override fun onBuffering() {
-        showLoading(true)
-        externalListener?.onBuffering()
+    override fun onStateChanged(playbackState: Int, isPlaying: Boolean) {
+        if (playbackState == 2 /* BUFFERING */) showLoading(true)
+        else showLoading(false)
+        externalListener?.onStateChanged(playbackState, isPlaying)
     }
 
-    override fun onPlaying() {
-        showLoading(false)
-        showError(null)
-        externalListener?.onPlaying()
+    override fun onPosition(positionMs: Long, bufferedMs: Long) {
+        externalListener?.onPosition(positionMs, bufferedMs)
     }
 
-    override fun onPaused() {
-        externalListener?.onPaused()
-    }
-
-    override fun onEnded() {
-        showLoading(false)
-        externalListener?.onEnded()
+    override fun onTracksChanged(tracks: Tracks) {
+        externalListener?.onTracksChanged(tracks)
     }
 
     override fun onError(errorInfo: PlayerErrorInfo) {
@@ -261,8 +254,9 @@ class NativePlayerView @JvmOverloads constructor(
         externalListener?.onError(errorInfo)
     }
 
-    override fun onTracksChanged(tracks: Tracks) {
-        externalListener?.onTracksChanged(tracks)
+    override fun onEnded() {
+        showLoading(false)
+        externalListener?.onEnded()
     }
 
     private fun dpToPx(dp: Int): Int {
