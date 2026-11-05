@@ -7,19 +7,10 @@ import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/exo_player_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
-import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // Pivote VideoPlayerWidget — Native Media3 ExoPlayer Engine
-// ════════════════════════════════════════════════════════════════════════════
-//
-// Unificado con una sola instancia nativa por pantalla:
-//   • HLS (m3u8), DASH (mpd), HTTP progresivo (mp4).
-//   • DRM ClearKey (W3C JSON local) y Widevine Modular (CENC/CBCS).
-//   • Headers HTTP por canal.
-//   • Failover entre servidores y reintentos ante fallos de red.
-//   • Control de orientación y aspect ratio.
-//
 // ════════════════════════════════════════════════════════════════════════════
 
 class VideoPlayerWidget extends StatefulWidget {
@@ -53,8 +44,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   AspectRatioType _aspectRatio = AspectRatioType.ratio16_9;
   int _serverIndex = 0;
   bool _disposed = false;
-  int _retryCount = 0;
-  static const int _maxRetriesPerServer = 2;
+  bool _allServersFailed = false;
 
   Timer? _orientationTimer;
   Timer? _serverTimeout;
@@ -66,7 +56,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _controller = PivotePlayerController();
 
     _fadeCtrl = AnimationController(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
@@ -83,7 +73,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.channel.id != widget.channel.id) {
       _serverIndex = 0;
-      _retryCount = 0;
+      _allServersFailed = false;
       _playCurrentServer();
     }
   }
@@ -114,9 +104,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   void _onPlayerState() {
     if (_disposed || !mounted) return;
 
-    if (_controller.isReady && _fadeCtrl.status != AnimationStatus.completed) {
-      _fadeCtrl.forward();
+    if (_controller.isReady) {
+      _allServersFailed = false;
       _serverTimeout?.cancel();
+      if (_fadeCtrl.status != AnimationStatus.completed) {
+        _fadeCtrl.forward();
+      }
     }
 
     if (_controller.hasError) {
@@ -128,26 +121,21 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _handlePlaybackError() {
     _serverTimeout?.cancel();
-    if (_retryCount < _maxRetriesPerServer) {
-      _retryCount++;
-      debugPrint('🔄 Reintentando servidor actual (${_serverIndex + 1}) intento $_retryCount');
-      Future.delayed(Duration(milliseconds: 1000 * _retryCount), () {
-        if (!_disposed && mounted) _playCurrentServer();
-      });
-    } else {
-      _nextServer();
-    }
+    debugPrint('⚠️ Error en servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}: ${_controller.errorMessage}');
+    _nextServer();
   }
 
   void _nextServer() {
     if (_disposed || !mounted) return;
     if (_serverIndex + 1 < widget.channel.streamUrl.length) {
       _serverIndex++;
-      _retryCount = 0;
-      debugPrint('➡️ Conmutando a servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}');
+      debugPrint('➡️ Conmutando al servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}...');
       _playCurrentServer();
     } else {
-      debugPrint('❌ Todos los servidores del canal han fallado.');
+      debugPrint('❌ Se agotaron todos los servidores del canal.');
+      setState(() {
+        _allServersFailed = true;
+      });
     }
   }
 
@@ -158,22 +146,28 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _serverIndex = 0;
     }
 
+    _allServersFailed = false;
     _currentStream = widget.channel.streamUrl[_serverIndex];
     final url = _currentStream!.url.trim();
 
     _fadeCtrl.reset();
     _serverTimeout?.cancel();
-    _serverTimeout = Timer(const Duration(seconds: 15), () {
+    // Timeout rápido para zapping ágil de canales (7 segundos)
+    _serverTimeout = Timer(const Duration(seconds: 7), () {
       if (!_disposed && mounted && !_controller.isReady) {
-        debugPrint('⏱️ Timeout en servidor ${_serverIndex + 1} — conmutando...');
+        debugPrint('⏱️ Timeout en servidor ${_serverIndex + 1} — probando siguiente...');
         _nextServer();
       }
     });
 
+    // Mapeo exhaustivo de claves DRM ClearKey
+    final clearkeys = _currentStream!.effectiveClearkeys;
     final isWidevine = _currentStream!.effectiveDrmLicenseUri?.contains('widevine') == true;
     final drmType = isWidevine
         ? 'WIDEVINE'
         : (_currentStream!.hasDrm ? 'CLEARKEY' : null);
+
+    debugPrint('▶️ Preparando servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length} (DRM: $drmType): $url');
 
     await _controller.prepare(
       url: url,
@@ -181,7 +175,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       channelName: widget.channel.name,
       icono: widget.channel.logoUrl.isNotEmpty ? widget.channel.logoUrl.first : null,
       headers: _currentStream!.headers,
-      clearkeys: _currentStream!.clearkeys,
+      clearkeys: clearkeys,
       k1: _currentStream!.k1,
       k2: _currentStream!.k2,
       drmType: drmType,
@@ -266,14 +260,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             ),
           ),
 
-          // 3. Indicador de Buffering / Conectando
-          if (!_controller.isReady || _controller.isBuffering)
-            _buildLoadingIndicator(),
+          // 3. Indicador de carga con estado de servidor
+          if (!_controller.isReady && !_allServersFailed)
+            _buildConnectingOverlay(),
 
-          // 4. Pantalla de Error si todos fallaron
-          if (_controller.hasError &&
-              _retryCount >= _maxRetriesPerServer &&
-              _serverIndex >= widget.channel.streamUrl.length - 1)
+          // 4. Pantalla de Error si todos los servidores fallaron
+          if (_allServersFailed)
             _buildErrorOverlay(),
 
           // 5. Controles personalizados de Video
@@ -298,7 +290,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                     totalServers: widget.channel.streamUrl.length,
                     onServerSelect: (idx) {
                       _serverIndex = idx;
-                      _retryCount = 0;
+                      _allServersFailed = false;
                       _playCurrentServer();
                     },
                   ),
@@ -330,17 +322,43 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     );
   }
 
-  Widget _buildLoadingIndicator() {
-    return const IgnorePointer(
+  Widget _buildConnectingOverlay() {
+    final total = widget.channel.streamUrl.length;
+    return Container(
+      color: Colors.black,
       child: Center(
-        child: VideoLoadingWidget(),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const PivoteLoader(size: 44, strokeWidth: 4),
+            const SizedBox(height: 16),
+            Text(
+              widget.channel.name,
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              total > 1
+                  ? 'Conectando a servidor ${_serverIndex + 1} de $total...'
+                  : 'Sintonizando transmisión en vivo...',
+              style: GoogleFonts.outfit(
+                color: Colors.white60,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildErrorOverlay() {
     return Container(
-      color: Colors.black.withValues(alpha: 0.85),
+      color: Colors.black.withValues(alpha: 0.92),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -348,13 +366,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
-                Icons.error_outline_rounded,
+                Icons.cloud_off_rounded,
                 color: Color(0xFFFF5252),
                 size: 48,
               ),
               const SizedBox(height: 12),
               Text(
-                'No se pudo reproducir el canal',
+                'Canal temporalmente no disponible',
                 style: GoogleFonts.outfit(
                   color: Colors.white,
                   fontSize: 16,
@@ -364,7 +382,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               ),
               const SizedBox(height: 6),
               Text(
-                _controller.errorMessage ?? 'Error de conexión con el servidor',
+                'Se probaron todos los servidores (${widget.channel.streamUrl.length}) sin respuesta del proveedor.',
                 style: GoogleFonts.outfit(
                   color: Colors.white60,
                   fontSize: 13,
@@ -372,21 +390,22 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 textAlign: TextAlign.center,
                 maxLines: 2,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: () {
                   _serverIndex = 0;
-                  _retryCount = 0;
+                  _allServersFailed = false;
                   _playCurrentServer();
                 },
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Reintentar'),
+                label: const Text('Volver a intentar'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF007AFF),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
               ),
             ],

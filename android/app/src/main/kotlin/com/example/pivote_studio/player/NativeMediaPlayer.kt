@@ -291,11 +291,13 @@ class NativeMediaPlayer(private val context: Context) {
                 val info = PlayerErrorMapper.map(error)
                 PlayerErrorMapper.logError(currentChannel, info)
 
-                if (shouldRetry(info) && retryCount < MAX_RETRIES) {
+                // Ante error HTTP (403, 404, etc.) o format error, no insistir en el mismo servidor.
+                // Notificar al listener inmediatamente para que Flutter conmute al siguiente servidor.
+                val isRecoverableNetwork = info.errorCode == PlayerErrorMapper.ERROR_NETWORK
+                if (isRecoverableNetwork && retryCount < 1) {
                     retryCount++
-                    val delay = BASE_RETRY_MS * (1 shl (retryCount - 1))
-                    Log.w(TAG, "Reintentando en ${delay}ms (intento $retryCount/$MAX_RETRIES)…")
-                    mainHandler.postDelayed(retryRunnable, delay)
+                    Log.w(TAG, "Reintento rápido de red en 1000ms…")
+                    mainHandler.postDelayed(retryRunnable, 1_000L)
                 } else {
                     listener?.onError(info)
                 }

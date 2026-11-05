@@ -10,7 +10,6 @@ import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.HttpMediaDrmCallback
-import androidx.media3.exoplayer.drm.LocalMediaDrmCallback
 import com.example.pivote_studio.data.DrmScheme
 import com.example.pivote_studio.data.StreamChannel
 import com.example.pivote_studio.network.StreamHttpDataSourceFactory
@@ -19,11 +18,10 @@ import com.example.pivote_studio.network.StreamHttpDataSourceFactory
  * Gestor de DRM unificado para Media3 / ExoPlayer.
  *
  * Soporta:
- *   • ClearKey estático (W3C JSON local) — kid:key pairs, JSON array o JSON object.
- *   • Widevine Modular con servidor de licencias remoto (CENC y CBCS).
- *
- * No realiza nunca peticiones HTTP para ClearKey: todas las claves se suministran
- * localmente a través de [LocalMediaDrmCallback].
+ *   • ClearKey local (W3C JSON) — kid:k pairs o JSON. Se inyecta exclusivamente vía
+ *     [DrmSessionManagerProvider] en la factoría del MediaSource, SIN DrmConfiguration
+ *     en el MediaItem para evitar que ExoPlayer anule el LocalMediaDrmCallback.
+ *   • Widevine Modular (CENC y CBCS) con servidor de licencias remoto vía [HttpMediaDrmCallback].
  */
 @OptIn(UnstableApi::class)
 object PivoteDrmManager {
@@ -31,49 +29,44 @@ object PivoteDrmManager {
     private const val TAG = "PivoteDrmManager"
 
     /**
-     * Construye la [MediaItem.DrmConfiguration] apropiada para el canal.
-     * Retorna null si el canal no tiene DRM.
+     * Construye la [MediaItem.DrmConfiguration] sólo para esquemas remotos como Widevine.
+     * Para ClearKey local retorna null para que la factoría maneje la sesión con las claves en memoria.
      */
     fun buildDrmConfiguration(channel: StreamChannel): MediaItem.DrmConfiguration? {
         return when (channel.drmScheme) {
-            DrmScheme.CLEARKEY  -> buildClearKeyConfig()
-            DrmScheme.WIDEVINE  -> buildWidevineConfig(channel)
-            DrmScheme.NONE      -> null
+            DrmScheme.WIDEVINE -> buildWidevineConfig(channel)
+            else               -> null
         }
     }
 
     /**
      * Construye el [DrmSessionManager] para insertar en el MediaSource.
-     * Se necesita cuando la DrmConfiguration del MediaItem no es suficiente
-     * (ClearKey multi-session con claves locales).
      */
     fun buildDrmSessionManager(
         channel: StreamChannel,
         httpFactory: DataSource.Factory
-    ): DrmSessionManager {
+    ): DrmSessionManager? {
         return when (channel.drmScheme) {
 
             DrmScheme.CLEARKEY -> {
-                val keys = ClearKeyParser.parse(channel.clearKeyLicenseData)
-                val json = ClearKeyManager.buildClearKeyJson(keys)
-                Log.d(TAG, "ClearKey DRM: ${keys.size} key(s) configuradas.")
-                DefaultDrmSessionManager.Builder()
-                    .setUuidAndExoMediaDrmProvider(
-                        C.CLEARKEY_UUID,
-                        FrameworkMediaDrm.DEFAULT_PROVIDER
-                    )
-                    .setMultiSession(true)
-                    .setPlayClearSamplesWithoutKeys(true)
-                    .build(LocalMediaDrmCallback(json.toByteArray(Charsets.UTF_8)))
+                val data = channel.clearKeyLicenseData
+                if (data.isNullOrBlank()) return null
+                try {
+                    val keys = ClearKeyParser.parse(data)
+                    Log.d(TAG, "ClearKey DRM: ${keys.size} key(s) parseadas con éxito.")
+                    ClearKeyManager.createDrmSessionManager(keys)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error al crear ClearKey DrmSessionManager: ${e.message}", e)
+                    null
+                }
             }
 
             DrmScheme.WIDEVINE -> {
-                val licenseUrl = requireNotNull(channel.widevineLicenseUrl) {
-                    "Se requiere widevineLicenseUrl para DRM Widevine"
-                }
-                Log.d(TAG, "Widevine DRM: licenseUrl configurada.")
+                val licenseUrl = channel.widevineLicenseUrl ?: return null
+                Log.d(TAG, "Widevine DRM configurado con licenseUrl=$licenseUrl")
                 val drmHttpFactory = StreamHttpDataSourceFactory.create(
-                    channel.widevineLicenseHeaders.ifEmpty { channel.headers }
+                    channel.widevineLicenseHeaders.ifEmpty { channel.headers },
+                    requestUrl = licenseUrl
                 )
                 val drmCallback = HttpMediaDrmCallback(licenseUrl, drmHttpFactory)
                 channel.widevineLicenseHeaders.forEach { (k, v) ->
@@ -88,20 +81,12 @@ object PivoteDrmManager {
                     .build(drmCallback)
             }
 
-            DrmScheme.NONE -> DrmSessionManager.DRM_UNSUPPORTED
+            DrmScheme.NONE -> null
         }
     }
 
-    // ── Helpers privados ────────────────────────────────────────────────────────
-
-    private fun buildClearKeyConfig(): MediaItem.DrmConfiguration =
-        MediaItem.DrmConfiguration.Builder(C.CLEARKEY_UUID)
-            .setMultiSession(true)
-            .build()
-
-    private fun buildWidevineConfig(channel: StreamChannel): MediaItem.DrmConfiguration {
-        val licenseUrl = channel.widevineLicenseUrl
-            ?: error("Se requiere widevineLicenseUrl para DRM Widevine")
+    private fun buildWidevineConfig(channel: StreamChannel): MediaItem.DrmConfiguration? {
+        val licenseUrl = channel.widevineLicenseUrl ?: return null
 
         return MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
             .setLicenseUri(licenseUrl)
@@ -114,4 +99,3 @@ object PivoteDrmManager {
             .build()
     }
 }
-
