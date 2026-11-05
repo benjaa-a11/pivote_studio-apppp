@@ -7,6 +7,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import com.example.pivote_studio.data.StreamChannel
+import com.example.pivote_studio.drm.ClearKeyParseException
 
 /**
  * Representa información estructurada de error para la capa superior / UI.
