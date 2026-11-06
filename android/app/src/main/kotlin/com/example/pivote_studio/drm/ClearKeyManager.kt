@@ -6,15 +6,17 @@ import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManager
-import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.LocalMediaDrmCallback
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Gestor de DRM ClearKey para Media3 / ExoPlayer.
- * Construye dinámicamente la respuesta JSON temporal y el DefaultDrmSessionManager
- * utilizando C.CLEARKEY_UUID y LocalMediaDrmCallback, sin peticiones remotas HTTP.
+ * Gestor de DRM ClearKey local para Media3 / ExoPlayer.
+ *
+ * Construye la respuesta de licencia W3C (JSON) en memoria y la entrega a la CDM
+ * ClearKey de Android mediante [LocalMediaDrmCallback] — sin peticiones HTTP.
+ * Funciona con DASH (CENC/CBCS, PSSH ClearKey o Common PSSH + default_KID) y
+ * HLS fMP4 con KEYFORMAT org.w3.clearkey.
  */
 @OptIn(UnstableApi::class)
 object ClearKeyManager {
@@ -26,47 +28,38 @@ object ClearKeyManager {
      * @param keys Lista de pares ClearKeyData parseados
      */
     fun createDrmSessionManager(keys: List<ClearKeyData>): DrmSessionManager {
-        if (keys.isEmpty()) {
-            throw IllegalArgumentException("La lista de claves ClearKey no puede estar vacía")
-        }
-
-        val clearKeyJson = buildClearKeyJson(keys)
+        require(keys.isNotEmpty()) { "La lista de claves ClearKey no puede estar vacía" }
 
         // Logging sanitizado (nunca exponer claves completas en logcat)
-        for (item in keys) {
-            Log.d(TAG, "DRM: ClearKey configured -> kid=${ClearKeyParser.sanitizeKey(item.kid)}")
-        }
+        keys.forEach { Log.d(TAG, "ClearKey configurada → kid=${ClearKeyParser.sanitizeKey(it.kid)}") }
 
-        val drmCallback = LocalMediaDrmCallback(clearKeyJson.toByteArray(Charsets.UTF_8))
+        val callback = LocalMediaDrmCallback(buildClearKeyJson(keys).toByteArray(Charsets.UTF_8))
 
         return DefaultDrmSessionManager.Builder()
-            .setUuidAndExoMediaDrmProvider(
-                C.CLEARKEY_UUID,
-                FrameworkMediaDrm.DEFAULT_PROVIDER
-            )
-            .setMultiSession(true)
+            .setUuidAndExoMediaDrmProvider(C.CLEARKEY_UUID, PivoteDrmManager.mediaDrmProvider(false))
+            // Una sola sesión con todas las claves: evita renegociar por pista/periodo.
+            .setMultiSession(false)
+            // Reproducir los segmentos claros (clear lead / publicidad) sin esperar claves.
             .setPlayClearSamplesWithoutKeys(true)
-            .build(drmCallback)
+            .build(callback)
     }
 
     /**
-     * Construye la estructura JSON temporal compatible con el estándar W3C ClearKey / Media3.
+     * Construye la estructura JSON compatible con el estándar W3C ClearKey / Media3.
      */
     fun buildClearKeyJson(keys: List<ClearKeyData>): String {
-        val root = JSONObject()
         val keysArray = JSONArray()
-
-        for (item in keys) {
-            val keyObj = JSONObject()
-            keyObj.put("kty", "oct")
-            keyObj.put("kid", item.kid)
-            keyObj.put("k", item.key)
-            keysArray.put(keyObj)
+        for (item in keys.distinctBy { it.kid }) {
+            keysArray.put(
+                JSONObject()
+                    .put("kty", "oct")
+                    .put("kid", item.kid)
+                    .put("k", item.key)
+            )
         }
-
-        root.put("keys", keysArray)
-        root.put("type", "temporary")
-
-        return root.toString()
+        return JSONObject()
+            .put("keys", keysArray)
+            .put("type", "temporary")
+            .toString()
     }
 }

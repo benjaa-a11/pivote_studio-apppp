@@ -12,31 +12,39 @@ class PlayerTrack {
   final int groupIndex;
   final int trackIndex;
   final bool isSelected;
+  final bool isSupported;
   final int bitrate;
   final int width;
   final int height;
+  final double frameRate;
+  final int channels;
   final String language;
   final String label;
   final String mimeType;
+  final String codecs;
 
   const PlayerTrack({
     required this.groupIndex,
     required this.trackIndex,
     this.isSelected = false,
+    this.isSupported = true,
     this.bitrate = 0,
     this.width = 0,
     this.height = 0,
+    this.frameRate = 0.0,
+    this.channels = 0,
     this.language = '',
     this.label = '',
     this.mimeType = '',
+    this.codecs = '',
   });
 
   String get id => '$groupIndex:$trackIndex';
 
   String get title {
     if (label.isNotEmpty) return label;
+    if (height > 0) return '${height}p';
     if (language.isNotEmpty) return language.toUpperCase();
-    if (width > 0 && height > 0) return '${height}p';
     return 'Pista $trackIndex';
   }
 
@@ -45,12 +53,16 @@ class PlayerTrack {
       groupIndex: (map['groupIndex'] as num?)?.toInt() ?? 0,
       trackIndex: (map['trackIndex'] as num?)?.toInt() ?? 0,
       isSelected: map['isSelected'] as bool? ?? false,
+      isSupported: map['isSupported'] as bool? ?? true,
       bitrate: (map['bitrate'] as num?)?.toInt() ?? 0,
       width: (map['width'] as num?)?.toInt() ?? 0,
       height: (map['height'] as num?)?.toInt() ?? 0,
+      frameRate: (map['frameRate'] as num?)?.toDouble() ?? 0.0,
+      channels: (map['channels'] as num?)?.toInt() ?? 0,
       language: map['language'] as String? ?? '',
       label: map['label'] as String? ?? '',
       mimeType: map['mimeType'] as String? ?? '',
+      codecs: map['codecs'] as String? ?? '',
     );
   }
 }
@@ -64,10 +76,14 @@ class PivotePlayerController extends ChangeNotifier {
   int? get viewId => _viewId;
   bool _disposed = false;
 
+  // Sesión actual
+  int _currentSessionId = 0;
+
   // Estados
   bool isPlaying = false;
   bool isBuffering = false;
   bool isLive = false;
+  bool isSeekable = false;
   bool isMuted = false;
   double volume = 1.0;
   double playbackSpeed = 1.0;
@@ -78,15 +94,20 @@ class PivotePlayerController extends ChangeNotifier {
   int videoHeight = 0;
   bool hasError = false;
   String? errorMessage;
+  String? userMessage;
   String? errorCode;
+  int httpStatus = -1;
   bool isReady = false;
+  bool firstFrameRendered = false;
+  String? streamFormat;
+  bool videoUnsupported = false;
 
   // Tracks disponibles
   List<PlayerTrack> videoTracks = [];
   List<PlayerTrack> audioTracks = [];
   List<PlayerTrack> textTracks = [];
 
-  // Pista seleccionada actualmente
+  // Pistas seleccionadas
   PlayerTrack? selectedAudioTrack;
   PlayerTrack? selectedSubtitleTrack;
   PlayerTrack? selectedVideoTrack;
@@ -107,6 +128,7 @@ class PivotePlayerController extends ChangeNotifier {
         debugPrint('❌ PivotePlayer EventChannel error: $error');
         hasError = true;
         errorMessage = error.toString();
+        userMessage = 'Error en el canal de eventos nativo';
         notifyListeners();
       },
     );
@@ -121,6 +143,13 @@ class PivotePlayerController extends ChangeNotifier {
   void _handleNativeEvent(dynamic raw) {
     if (_disposed || raw is! Map) return;
     final map = raw;
+    final eventSession = (map['sessionId'] as num?)?.toInt() ?? 0;
+
+    // Descartar eventos de reproducciones anteriores
+    if (eventSession != 0 && eventSession != _currentSessionId) {
+      return;
+    }
+
     final event = map['event'] as String? ?? '';
 
     switch (event) {
@@ -129,9 +158,25 @@ class PivotePlayerController extends ChangeNotifier {
         isBuffering = false;
         hasError = false;
         errorMessage = null;
+        userMessage = null;
         isLive = map['isLive'] as bool? ?? false;
+        isSeekable = map['isSeekable'] as bool? ?? false;
+        streamFormat = map['format'] as String?;
         final durMs = (map['durationMs'] as num?)?.toInt() ?? -1;
         duration = durMs > 0 ? Duration(milliseconds: durMs) : Duration.zero;
+        videoWidth = (map['videoWidth'] as num?)?.toInt() ?? videoWidth;
+        videoHeight = (map['videoHeight'] as num?)?.toInt() ?? videoHeight;
+        notifyListeners();
+        break;
+
+      case 'firstFrame':
+        firstFrameRendered = true;
+        isReady = true;
+        isBuffering = false;
+        notifyListeners();
+        break;
+
+      case 'videoSize':
         videoWidth = (map['videoWidth'] as num?)?.toInt() ?? 0;
         videoHeight = (map['videoHeight'] as num?)?.toInt() ?? 0;
         notifyListeners();
@@ -151,8 +196,12 @@ class PivotePlayerController extends ChangeNotifier {
       case 'position':
         final posMs = (map['positionMs'] as num?)?.toInt() ?? 0;
         final bufMs = (map['bufferedMs'] as num?)?.toInt() ?? 0;
+        final durMs = (map['durationMs'] as num?)?.toInt() ?? -1;
         position = Duration(milliseconds: posMs);
         buffered = Duration(milliseconds: bufMs);
+        if (durMs > 0 && !isLive) {
+          duration = Duration(milliseconds: durMs);
+        }
         notifyListeners();
         break;
 
@@ -160,6 +209,7 @@ class PivotePlayerController extends ChangeNotifier {
         final rawVideos = map['videoTracks'] as List? ?? [];
         final rawAudios = map['audioTracks'] as List? ?? [];
         final rawTexts = map['textTracks'] as List? ?? [];
+        videoUnsupported = map['videoUnsupported'] as bool? ?? false;
 
         videoTracks = rawVideos.map((e) => PlayerTrack.fromMap(e as Map)).toList();
         audioTracks = rawAudios.map((e) => PlayerTrack.fromMap(e as Map)).toList();
@@ -176,6 +226,15 @@ class PivotePlayerController extends ChangeNotifier {
         isBuffering = false;
         errorCode = map['errorCode'] as String?;
         errorMessage = map['message'] as String? ?? 'Error de reproducción';
+        userMessage = map['userMessage'] as String? ?? errorMessage;
+        httpStatus = (map['httpStatus'] as num?)?.toInt() ?? -1;
+        notifyListeners();
+        break;
+
+      case 'retrying':
+        isBuffering = true;
+        final reason = map['reason'] as String?;
+        debugPrint('🔄 Reintento automático del reproductor: $reason');
         notifyListeners();
         break;
 
@@ -187,7 +246,7 @@ class PivotePlayerController extends ChangeNotifier {
     }
   }
 
-  /// Carga y reproduce una URL o canal
+  /// Carga y prepara un canal o URL en Media3 ExoPlayer
   Future<void> prepare({
     required String url,
     String? type,
@@ -198,31 +257,45 @@ class PivotePlayerController extends ChangeNotifier {
     String? k1,
     String? k2,
     String? drmType,
+    String? drmLicenseUri,
     String? widevineLicenseUrl,
     Map<String, String>? widevineLicenseHeaders,
+    bool forceL3 = false,
   }) async {
     if (_disposed) return;
 
+    _currentSessionId = DateTime.now().millisecondsSinceEpoch;
     hasError = false;
     errorMessage = null;
+    userMessage = null;
+    errorCode = null;
     isReady = false;
+    firstFrameRendered = false;
     isBuffering = true;
+    videoUnsupported = false;
     notifyListeners();
 
     final params = <String, dynamic>{
+      'sessionId': _currentSessionId,
       'original_url': url,
       'url': url,
       'name': channelName ?? '',
       'type': type,
       'icono': icono,
       'headers': headers ?? {},
+      'force_l3': forceL3,
     };
+
+    if (drmLicenseUri != null && drmLicenseUri.isNotEmpty) {
+      params['drm_license_uri'] = drmLicenseUri;
+    }
 
     if (drmType != null && drmType.toUpperCase() == 'WIDEVINE') {
       params['drm'] = {
         'type': 'WIDEVINE',
-        'licenseUrl': widevineLicenseUrl,
+        'licenseUrl': widevineLicenseUrl ?? drmLicenseUri,
         'licenseHeaders': widevineLicenseHeaders ?? {},
+        'forceL3': forceL3,
       };
     } else if (clearkeys != null && clearkeys.isNotEmpty) {
       params['clearkeys'] = clearkeys;
@@ -281,7 +354,7 @@ class PivotePlayerController extends ChangeNotifier {
   }
 
   Future<void> seekTo(Duration targetPosition) async {
-    if (_disposed || _methodChannel == null || isLive) return;
+    if (_disposed || _methodChannel == null) return;
     try {
       position = targetPosition;
       notifyListeners();
@@ -290,6 +363,15 @@ class PivotePlayerController extends ChangeNotifier {
       });
     } catch (e) {
       debugPrint('Error in seekTo: $e');
+    }
+  }
+
+  Future<void> seekToLiveEdge() async {
+    if (_disposed || _methodChannel == null) return;
+    try {
+      await _methodChannel!.invokeMethod('seekToLiveEdge');
+    } catch (e) {
+      debugPrint('Error in seekToLiveEdge: $e');
     }
   }
 
@@ -321,6 +403,15 @@ class PivotePlayerController extends ChangeNotifier {
       await _methodChannel!.invokeMethod('setPlaybackSpeed', {'speed': playbackSpeed});
     } catch (e) {
       debugPrint('Error in setPlaybackSpeed: $e');
+    }
+  }
+
+  Future<void> setResizeMode(String mode) async {
+    if (_disposed || _methodChannel == null) return;
+    try {
+      await _methodChannel!.invokeMethod('setResizeMode', {'mode': mode});
+    } catch (e) {
+      debugPrint('Error in setResizeMode: $e');
     }
   }
 
@@ -394,10 +485,12 @@ class PivotePlayerController extends ChangeNotifier {
 
 class PivotePlayerView extends StatefulWidget {
   final PivotePlayerController controller;
+  final bool useTextureView;
 
   const PivotePlayerView({
     super.key,
     required this.controller,
+    this.useTextureView = false,
   });
 
   @override
@@ -423,6 +516,9 @@ class _PivotePlayerViewState extends State<PivotePlayerView> {
       viewType: 'pivote-exoplayer',
       onPlatformViewCreated: (viewId) {
         widget.controller.attach(viewId);
+      },
+      creationParams: {
+        'useTextureView': widget.useTextureView,
       },
       creationParamsCodec: const StandardMessageCodec(),
     );

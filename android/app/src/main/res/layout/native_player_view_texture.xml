@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Variante con TextureView (creationParams surfaceType = "texture").
+  Útil para composición por textura en Flutter. NO apta para Widevine L1 con
+  decodificador seguro (el reproductor fuerza L3 automáticamente en ese caso).
+-->
+<androidx.media3.ui.PlayerView
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:id="@+id/media3_player_view"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@android:color/black"
+  app:use_controller="false"
+  app:resize_mode="fit"
+  app:surface_type="texture_view"
+  app:shutter_background_color="@android:color/black"
+  app:keep_content_on_player_reset="false"
+  app:show_buffering="never" />

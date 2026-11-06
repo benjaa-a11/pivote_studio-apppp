@@ -1,33 +1,49 @@
 package com.example.pivote_studio.data
 
+import android.net.Uri
+
 /**
  * Tipo de DRM que se va a usar para descifrar el stream.
  */
-enum class DrmScheme { NONE, CLEARKEY, WIDEVINE }
+enum class DrmScheme { NONE, CLEARKEY, WIDEVINE, PLAYREADY }
+
+/**
+ * Formato de contenedor/manifiesto detectado o forzado.
+ * [UNKNOWN] activa la detección por prueba (HLS → progresivo → DASH).
+ */
+enum class StreamFormat { HLS, DASH, SMOOTH, RTSP, PROGRESSIVE, UNKNOWN }
 
 /**
  * Modelo de datos inmutable para canales de streaming de TV, radio y VOD.
- * Compatible con HLS (m3u8), MPEG-DASH (mpd), HTTP progresivo (mp4),
- * ClearKey DRM (local W3C JSON), Widevine Modular (CENC / CBCS) y
- * headers HTTP personalizados por canal.
+ *
+ * Compatible con:
+ *   • HLS (m3u8) — TS / fMP4 / AES-128 / SAMPLE-AES / Widevine
+ *   • MPEG-DASH (mpd) — CENC (cenc) y CBCS
+ *   • Smooth Streaming (ism/manifest), RTSP, HTTP progresivo (mp4, ts, mkv, mp3, aac…)
+ *   • ClearKey local (kid:k / JSON W3C) o servidor ClearKey remoto
+ *   • Widevine / PlayReady con servidor de licencias y headers propios
+ *   • Headers HTTP personalizados por canal (User-Agent, Referer, Origin, Cookie…)
  */
 data class StreamChannel(
     val name: String,
-    val type: String? = null,         // "hls" | "dash" | "progressive" | "clearkey" | null
+    val type: String? = null,
     val icono: String? = null,
     val originalUrl: String,
 
     // ── DRM ─────────────────────────────────────────────────────────────────
     val drmScheme: DrmScheme = DrmScheme.NONE,
 
-    /** ClearKey: cadena "kid:XXX,k:YYY" o JSON W3C. No puede ser una URL HTTP. */
+    /** ClearKey local: cadena "kid:XXX,k:YYY" o JSON W3C. */
     val clearKeyLicenseData: String? = null,
 
-    /** Widevine: URL del servidor de licencias (https://…). */
-    val widevineLicenseUrl: String? = null,
+    /** URL del servidor de licencias (Widevine, PlayReady o ClearKey remoto). */
+    val licenseUrl: String? = null,
 
-    /** Headers adicionales para la solicitud de licencia Widevine. */
-    val widevineLicenseHeaders: Map<String, String> = emptyMap(),
+    /** Headers adicionales para la solicitud de licencia. */
+    val licenseHeaders: Map<String, String> = emptyMap(),
+
+    /** Fuerza Widevine L3 (decodificación no segura). Útil en dispositivos L1 problemáticos. */
+    val forceWidevineL3: Boolean = false,
 
     // ── HTTP ─────────────────────────────────────────────────────────────────
     val headers: Map<String, String> = emptyMap(),
@@ -35,99 +51,152 @@ data class StreamChannel(
     // ── Metadatos ────────────────────────────────────────────────────────────
     val globalIndex: Int? = null,
     val category: String? = null,
-    val sourceGroup: String? = null
+    val sourceGroup: String? = null,
+
+    /** Identificador de sesión enviado por Flutter para descartar eventos obsoletos. */
+    val sessionId: Int = 0
 ) {
 
-    fun isDash(): Boolean {
-        val u = originalUrl.lowercase()
-        val t = type?.trim()?.uppercase()
-        return u.contains(".mpd") ||
-               t == "DASH" || t == "MPD" || t == "CLEARKEY" ||
-               drmScheme == DrmScheme.CLEARKEY ||
-               drmScheme == DrmScheme.WIDEVINE
+    /** Compatibilidad con código previo. */
+    val widevineLicenseUrl: String? get() = if (drmScheme == DrmScheme.WIDEVINE) licenseUrl else null
+    val widevineLicenseHeaders: Map<String, String> get() = licenseHeaders
+
+    val hasDrm: Boolean get() = drmScheme != DrmScheme.NONE
+
+    /**
+     * Formato declarado explícitamente (campo `type`) o inferido de la URL.
+     * La presencia de DRM NO implica DASH: HLS también puede llevar Widevine/ClearKey.
+     */
+    fun detectFormat(): StreamFormat {
+        when (type?.trim()?.lowercase()) {
+            "hls", "m3u8", "m3u"              -> return StreamFormat.HLS
+            "dash", "mpd"                     -> return StreamFormat.DASH
+            "ss", "smooth", "ism", "mss"      -> return StreamFormat.SMOOTH
+            "rtsp"                            -> return StreamFormat.RTSP
+            "progressive", "mp4", "ts", "mkv",
+            "mp3", "aac", "webm", "flv"       -> return StreamFormat.PROGRESSIVE
+        }
+
+        val uri = runCatching { Uri.parse(originalUrl) }.getOrNull()
+        val scheme = uri?.scheme?.lowercase()
+        if (scheme == "rtsp" || scheme == "rtsps") return StreamFormat.RTSP
+
+        val path = (uri?.path ?: originalUrl).lowercase()
+        val full = originalUrl.lowercase()
+
+        return when {
+            path.endsWith(".mpd") || full.contains(".mpd?") || full.contains("format=mpd") ||
+                full.contains("/dash/") && !full.contains(".m3u8") -> StreamFormat.DASH
+            path.endsWith(".m3u8") || path.endsWith(".m3u") || full.contains(".m3u8") ||
+                full.contains("format=m3u8") || full.contains("type=m3u8") -> StreamFormat.HLS
+            path.endsWith(".ism") || path.endsWith(".isml") ||
+                path.endsWith("/manifest") && full.contains(".ism") -> StreamFormat.SMOOTH
+            PROGRESSIVE_EXTENSIONS.any { path.endsWith(it) } -> StreamFormat.PROGRESSIVE
+            // Type "clearkey" heredado de listas Flow/ESPN: siempre es DASH.
+            type?.trim()?.equals("clearkey", ignoreCase = true) == true -> StreamFormat.DASH
+            else -> StreamFormat.UNKNOWN
+        }
     }
 
-    fun isHls(): Boolean {
-        val u = originalUrl.lowercase()
-        val t = type?.trim()?.lowercase()
-        return u.contains(".m3u8") || u.contains("m3u") || t == "hls"
-    }
+    fun isDash(): Boolean = detectFormat() == StreamFormat.DASH
+    fun isHls(): Boolean = detectFormat() == StreamFormat.HLS
 
     companion object {
-        @Suppress("UNCHECKED_CAST")
+        private val PROGRESSIVE_EXTENSIONS = listOf(
+            ".mp4", ".m4v", ".mkv", ".webm", ".ts", ".mts", ".mov", ".avi", ".flv",
+            ".mp3", ".aac", ".m4a", ".ogg", ".opus", ".flac", ".wav"
+        )
+
+        private fun Any?.toStringMap(): Map<String, String> {
+            val raw = this as? Map<*, *> ?: return emptyMap()
+            return raw.entries.mapNotNull { (k, v) ->
+                val ks = k?.toString()?.trim()
+                val vs = v?.toString()?.trim()
+                if (ks.isNullOrEmpty() || vs == null) null else ks to vs
+            }.toMap()
+        }
+
+        private fun String?.isHttpUrl(): Boolean =
+            this != null && (startsWith("http://", true) || startsWith("https://", true))
+
         fun fromMap(map: Map<*, *>): StreamChannel {
-            val name       = map["name"]?.toString() ?: "Canal"
-            val type       = map["type"]?.toString()
-            val icono      = (map["icono"] ?: map["logo"] ?: map["logoUrl"])?.toString()
-            val originalUrl = (map["original_url"] ?: map["url"])?.toString() ?: ""
+            val name        = map["name"]?.toString()?.takeIf { it.isNotBlank() } ?: "Canal"
+            val type        = map["type"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+            val icono       = (map["icono"] ?: map["logo"] ?: map["logoUrl"])?.toString()
+            val originalUrl = (map["original_url"] ?: map["url"])?.toString()?.trim() ?: ""
 
-            // ── Widevine ────────────────────────────────────────────────────
-            val rawDrmBlock = map["drm"] as? Map<*, *>
-            val rawDrmType  = rawDrmBlock?.get("type")?.toString()?.uppercase()
-                ?: map["drm_type"]?.toString()?.uppercase()
+            val drmBlock   = map["drm"] as? Map<*, *>
+            val rawDrmType = (drmBlock?.get("type") ?: map["drm_type"] ?: map["drmType"])
+                ?.toString()?.trim()?.uppercase()
 
-            val widevineLicenseUrl: String?
-            val widevineLicenseHeaders: Map<String, String>
-            if (rawDrmType == "WIDEVINE") {
-                widevineLicenseUrl = (rawDrmBlock?.get("licenseUrl")
-                    ?: map["drm_license_url"])?.toString()
-                val rawLicHdrs = rawDrmBlock?.get("licenseHeaders") as? Map<*, *>
-                widevineLicenseHeaders = rawLicHdrs?.entries
-                    ?.mapNotNull { (k, v) ->
-                        if (k != null && v != null) k.toString() to v.toString() else null
-                    }?.toMap() ?: emptyMap()
-            } else {
-                widevineLicenseUrl    = null
-                widevineLicenseHeaders = emptyMap()
+            // ── URL de licencia remota ───────────────────────────────────────
+            val rawLicenseUri = map["drm_license_uri"]?.toString()?.trim()
+            val licenseUrl = (drmBlock?.get("licenseUrl") ?: map["drm_license_url"]
+                ?: map["licenseUrl"])?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+                ?: rawLicenseUri?.takeIf { it.isHttpUrl() }
+
+            val licenseHeaders = drmBlock?.get("licenseHeaders").toStringMap()
+                .ifEmpty { map["drm_license_headers"].toStringMap() }
+
+            val forceL3 = (drmBlock?.get("forceL3") ?: map["force_l3"])
+                ?.toString()?.equals("true", ignoreCase = true) == true
+
+            // ── ClearKey local ───────────────────────────────────────────────
+            var clearKeyData: String? = null
+            val rawClearkeys = (drmBlock?.get("clearKeys") ?: map["clearkeys"]).toStringMap()
+            if (rawClearkeys.isNotEmpty()) {
+                clearKeyData = rawClearkeys.entries
+                    .filter { it.key.isNotEmpty() && it.value.isNotEmpty() }
+                    .joinToString(",") { "kid:${it.key},k:${it.value}" }
+                    .takeIf { it.isNotEmpty() }
             }
-
-            // ── ClearKey ─────────────────────────────────────────────────────
-            var clearKeyData = map["drm_license_uri"]?.toString()?.trim()
-            val isHttpUri = clearKeyData?.startsWith("http", ignoreCase = true) == true
-
-            val rawClearkeys = (rawDrmBlock?.get("clearKeys") ?: map["clearkeys"]) as? Map<*, *>
-            if (rawClearkeys != null && rawClearkeys.isNotEmpty()) {
-                val pairs = rawClearkeys.entries.mapNotNull { (k, v) ->
-                    val kStr = k?.toString()?.trim()
-                    val vStr = v?.toString()?.trim()
-                    if (!kStr.isNullOrEmpty() && !vStr.isNullOrEmpty()) "kid:$kStr,k:$vStr" else null
-                }
-                if (pairs.isNotEmpty()) clearKeyData = pairs.joinToString(",")
-            } else if (isHttpUri) {
-                clearKeyData = null       // URL HTTP no válida para LocalMediaDrmCallback
-            } else if (clearKeyData.isNullOrBlank()) {
+            if (clearKeyData == null && !rawLicenseUri.isNullOrBlank() && !rawLicenseUri.isHttpUrl()) {
+                clearKeyData = rawLicenseUri
+            }
+            if (clearKeyData == null) {
                 val k1 = map["k1"]?.toString()?.trim()
                 val k2 = map["k2"]?.toString()?.trim()
                 if (!k1.isNullOrBlank() && !k2.isNullOrBlank()) clearKeyData = "kid:$k1,k:$k2"
             }
 
-            // ── Esquema DRM final ─────────────────────────────────────────────
+            // ── Esquema DRM final ────────────────────────────────────────────
             val drmScheme = when {
-                rawDrmType == "WIDEVINE"    -> DrmScheme.WIDEVINE
+                rawDrmType == "WIDEVINE" || rawDrmType == "COM.WIDEVINE.ALPHA" ->
+                    if (licenseUrl != null) DrmScheme.WIDEVINE else DrmScheme.NONE
+                rawDrmType == "PLAYREADY" || rawDrmType == "COM.MICROSOFT.PLAYREADY" ->
+                    if (licenseUrl != null) DrmScheme.PLAYREADY else DrmScheme.NONE
                 !clearKeyData.isNullOrBlank() -> DrmScheme.CLEARKEY
-                else                          -> DrmScheme.NONE
+                rawDrmType == "CLEARKEY" && licenseUrl != null -> DrmScheme.CLEARKEY
+                // URL de licencia sin tipo explícito → Widevine (el caso más común).
+                licenseUrl != null && rawDrmType == null -> DrmScheme.WIDEVINE
+                else -> DrmScheme.NONE
             }
 
-            // ── Headers HTTP ──────────────────────────────────────────────────
-            val rawHeaders = map["headers"] as? Map<*, *>
-            val headers = mutableMapOf<String, String>()
-            rawHeaders?.forEach { (k, v) ->
-                if (k != null && v != null) headers[k.toString()] = v.toString()
+            // ── Headers HTTP (acepta claves sueltas user_agent / referer) ────
+            val headers = LinkedHashMap(map["headers"].toStringMap())
+            fun addIfAbsent(key: String, value: Any?) {
+                val v = value?.toString()?.trim()
+                if (!v.isNullOrEmpty() && headers.keys.none { it.equals(key, true) }) headers[key] = v
             }
+            addIfAbsent("User-Agent", map["user_agent"] ?: map["userAgent"])
+            addIfAbsent("Referer", map["referer"] ?: map["referrer"])
+            addIfAbsent("Origin", map["origin"])
 
             return StreamChannel(
-                name                   = name,
-                type                   = type,
-                icono                  = icono,
-                originalUrl            = originalUrl,
-                drmScheme              = drmScheme,
-                clearKeyLicenseData    = clearKeyData,
-                widevineLicenseUrl     = widevineLicenseUrl,
-                widevineLicenseHeaders = widevineLicenseHeaders,
-                headers                = headers,
-                globalIndex            = (map["globalIndex"] as? Number)?.toInt(),
-                category               = map["category"]?.toString(),
-                sourceGroup            = map["source_group"]?.toString()
+                name                = name,
+                type                = type,
+                icono               = icono,
+                originalUrl         = originalUrl,
+                drmScheme           = drmScheme,
+                clearKeyLicenseData = if (drmScheme == DrmScheme.CLEARKEY) clearKeyData else null,
+                licenseUrl          = if (drmScheme == DrmScheme.CLEARKEY && clearKeyData != null) null else licenseUrl,
+                licenseHeaders      = licenseHeaders,
+                forceWidevineL3     = forceL3,
+                headers             = headers,
+                globalIndex         = (map["globalIndex"] as? Number)?.toInt(),
+                category            = map["category"]?.toString(),
+                sourceGroup         = map["source_group"]?.toString(),
+                sessionId           = (map["sessionId"] as? Number)?.toInt() ?: 0
             )
         }
     }

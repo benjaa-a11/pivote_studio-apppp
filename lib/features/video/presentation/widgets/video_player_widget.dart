@@ -10,7 +10,7 @@ import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
-// Pivote VideoPlayerWidget — Native Media3 ExoPlayer Engine
+// Pivote VideoPlayerWidget — Native Media3 ExoPlayer Engine (2026 Enhanced)
 // ════════════════════════════════════════════════════════════════════════════
 
 class VideoPlayerWidget extends StatefulWidget {
@@ -104,7 +104,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   void _onPlayerState() {
     if (_disposed || !mounted) return;
 
-    if (_controller.isReady) {
+    if (_controller.firstFrameRendered || _controller.isReady) {
       _allServersFailed = false;
       _serverTimeout?.cancel();
       if (_fadeCtrl.status != AnimationStatus.completed) {
@@ -121,7 +121,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   void _handlePlaybackError() {
     _serverTimeout?.cancel();
-    debugPrint('⚠️ Error en servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}: ${_controller.errorMessage}');
+    debugPrint(
+        '⚠️ Error en servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}: ${_controller.errorMessage} (${_controller.errorCode})');
     _nextServer();
   }
 
@@ -152,17 +153,17 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     _fadeCtrl.reset();
     _serverTimeout?.cancel();
-    // Timeout rápido para zapping ágil de canales (7 segundos)
-    _serverTimeout = Timer(const Duration(seconds: 7), () {
-      if (!_disposed && mounted && !_controller.isReady) {
+    // Timeout para failover entre servidores (10s)
+    _serverTimeout = Timer(const Duration(seconds: 10), () {
+      if (!_disposed && mounted && !_controller.isReady && !_controller.firstFrameRendered) {
         debugPrint('⏱️ Timeout en servidor ${_serverIndex + 1} — probando siguiente...');
         _nextServer();
       }
     });
 
-    // Mapeo exhaustivo de claves DRM ClearKey
     final clearkeys = _currentStream!.effectiveClearkeys;
-    final isWidevine = _currentStream!.effectiveDrmLicenseUri?.contains('widevine') == true;
+    final drmLicenseUri = _currentStream!.drmLicenseUri;
+    final isWidevine = drmLicenseUri?.contains('widevine') == true;
     final drmType = isWidevine
         ? 'WIDEVINE'
         : (_currentStream!.hasDrm ? 'CLEARKEY' : null);
@@ -179,7 +180,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       k1: _currentStream!.k1,
       k2: _currentStream!.k2,
       drmType: drmType,
-      widevineLicenseUrl: isWidevine ? _currentStream!.effectiveDrmLicenseUri : null,
+      drmLicenseUri: drmLicenseUri,
+      widevineLicenseUrl: isWidevine ? drmLicenseUri : null,
     );
   }
 
@@ -224,6 +226,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     setState(() {
       _aspectRatio = _aspectRatio.next;
     });
+
+    if (_aspectRatio == AspectRatioType.stretch) {
+      _controller.setResizeMode('stretch');
+    } else {
+      _controller.setResizeMode('fit');
+    }
   }
 
   void _toggleMute() {
@@ -241,7 +249,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Capa de Video Nativo (PlatformView Android)
+          // 1. Capa de Video Nativo (PlatformView Android con SurfaceView nativo)
           Center(
             child: ratio != null
                 ? AspectRatio(
@@ -251,24 +259,24 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 : PivotePlayerView(controller: _controller),
           ),
 
-          // 2. Transición suave de carga
+          // 2. Transición suave de carga para evitar destellos
           FadeTransition(
             opacity: Tween(begin: 1.0, end: 0.0).animate(_fadeAnim),
             child: IgnorePointer(
-              ignoring: _controller.isReady,
+              ignoring: _controller.firstFrameRendered || _controller.isReady,
               child: Container(color: Colors.black),
             ),
           ),
 
-          // 3. Indicador de carga con estado de servidor
-          if (!_controller.isReady && !_allServersFailed)
+          // 3. Indicador de carga estilizado mientras se conecta o bufferiza
+          if ((!_controller.firstFrameRendered && !_controller.isReady) && !_allServersFailed)
             _buildConnectingOverlay(),
 
           // 4. Pantalla de Error si todos los servidores fallaron
           if (_allServersFailed)
             _buildErrorOverlay(),
 
-          // 5. Controles personalizados de Video
+          // 5. Controles personalizados de Video superpuestos de Flutter
           Positioned.fill(
             child: widget.controlsBuilder != null
                 ? widget.controlsBuilder!(
@@ -382,7 +390,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               ),
               const SizedBox(height: 6),
               Text(
-                'Se probaron todos los servidores (${widget.channel.streamUrl.length}) sin respuesta del proveedor.',
+                _controller.userMessage ??
+                    'Se probaron todos los servidores (${widget.channel.streamUrl.length}) sin respuesta del proveedor.',
                 style: GoogleFonts.outfit(
                   color: Colors.white60,
                   fontSize: 13,
