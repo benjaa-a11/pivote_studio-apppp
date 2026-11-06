@@ -78,11 +78,13 @@ dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
     
     /* =========================
-       MEDIA3 EXOPLAYER (MPD/DASH + ClearKey DRM)
+       MEDIA3 EXOPLAYER (MPD/DASH + ClearKey DRM + HLS + RTSP + SmoothStreaming)
        ========================= */
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-dash:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
+    implementation("androidx.media3:media3-exoplayer-rtsp:1.11.1")
+    implementation("androidx.media3:media3-exoplayer-smoothstreaming:1.11.1")
     implementation("androidx.media3:media3-ui:1.11.1")
 
     /* =========================
