@@ -232,7 +232,7 @@ class MovieVideoEngine extends ChangeNotifier {
       newStatus = MoviePlayerStatus.error;
     } else if (_controller.isBuffering) {
       newStatus = MoviePlayerStatus.buffering;
-    } else if (_controller.isPlaying) {
+    } else if (_controller.isPlaying || _controller.firstFrameRendered) {
       newStatus = MoviePlayerStatus.playing;
     } else if (_controller.isReady && !_controller.isPlaying) {
       newStatus = MoviePlayerStatus.paused;

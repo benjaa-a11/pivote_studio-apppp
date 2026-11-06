@@ -4,10 +4,10 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DataSource
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.dash.DefaultDashChunkSource
 import androidx.media3.exoplayer.drm.DrmSessionManager
@@ -23,6 +23,7 @@ import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.extractor.ts.TsExtractor
+import com.example.pivote_studio.data.DrmScheme
 import com.example.pivote_studio.data.StreamChannel
 import com.example.pivote_studio.data.StreamFormat
 import com.example.pivote_studio.drm.PivoteDrmManager
@@ -37,19 +38,17 @@ import com.example.pivote_studio.network.StreamHttpDataSourceFactory
  *   • Smooth Streaming → SsMediaSource (PlayReady)
  *   • RTSP             → RtspMediaSource
  *   • Progresivo       → ProgressiveMediaSource (mp4, mkv, ts live, mp3, aac…)
- *
- * El DRM se inyecta siempre vía [DrmSessionManagerProvider] (ver [PivoteDrmManager]).
  */
 @OptIn(UnstableApi::class)
 object StreamMediaSourceFactory {
 
     private const val TAG = "StreamMediaSource"
 
-    /** Reintentos de carga por segmento/manifiesto antes de propagar el error. */
-    private const val LOAD_RETRIES = 6
+    /** Reintentos rápidos por segmento/manifiesto para no congelar el failover. */
+    private const val LOAD_RETRIES = 2
 
     /** Orden de prueba cuando el formato no puede inferirse de la URL/tipo. */
-    val PROBE_ORDER = listOf(StreamFormat.HLS, StreamFormat.PROGRESSIVE, StreamFormat.DASH)
+    val PROBE_ORDER = listOf(StreamFormat.HLS, StreamFormat.DASH, StreamFormat.PROGRESSIVE)
 
     fun createMediaSource(
         context: Context,
@@ -63,7 +62,6 @@ object StreamMediaSourceFactory {
 
         val dataSourceFactory = StreamHttpDataSourceFactory.create(context, channel.headers, channel.originalUrl)
 
-        // Las licencias usan los headers del canal + los específicos de licencia.
         val licenseFactory = StreamHttpDataSourceFactory.createHttp(
             channel.headers + channel.licenseHeaders,
             channel.licenseUrl ?: channel.originalUrl
@@ -77,7 +75,7 @@ object StreamMediaSourceFactory {
         Log.i(TAG, "MediaSource → format=$format drm=${channel.drmScheme} l3=$forceL3 " +
             "url=${PlayerErrorMapper.sanitizeUrl(channel.originalUrl)}")
 
-        val mediaItem = MediaItem.Builder()
+        val mediaItemBuilder = MediaItem.Builder()
             .setUri(uri)
             .setMediaId(channel.originalUrl)
             .apply {
@@ -89,14 +87,28 @@ object StreamMediaSourceFactory {
                     else                -> Unit
                 }
             }
-            // Ajuste suave de velocidad para mantenerse cerca del borde en vivo.
             .setLiveConfiguration(
                 MediaItem.LiveConfiguration.Builder()
                     .setMinPlaybackSpeed(0.97f)
                     .setMaxPlaybackSpeed(1.03f)
                     .build()
             )
-            .build()
+
+        // Si es Widevine remoto, agregamos también DrmConfiguration en el MediaItem
+        if (channel.drmScheme == DrmScheme.WIDEVINE && !channel.licenseUrl.isNullOrBlank()) {
+            val drmConfig = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+                .setLicenseUri(channel.licenseUrl)
+                .setMultiSession(true)
+                .apply {
+                    if (channel.licenseHeaders.isNotEmpty()) {
+                        setLicenseRequestHeaders(channel.licenseHeaders)
+                    }
+                }
+                .build()
+            mediaItemBuilder.setDrmConfiguration(drmConfig)
+        }
+
+        val mediaItem = mediaItemBuilder.build()
 
         return when (format) {
             StreamFormat.DASH -> DashMediaSource.Factory(

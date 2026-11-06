@@ -76,7 +76,7 @@ class PivotePlayerController extends ChangeNotifier {
   int? get viewId => _viewId;
   bool _disposed = false;
 
-  // Sesión actual
+  // Sesión actual (entero seguro para 32/64 bits en StandardMessageCodec)
   int _currentSessionId = 0;
 
   // Estados
@@ -118,10 +118,23 @@ class PivotePlayerController extends ChangeNotifier {
   /// Vincula los canales nativos cuando se crea la PlatformView
   void attach(int viewId) {
     if (_disposed) return;
+
+    // Si es la misma vista, evitar recrear innecesariamente
+    if (_viewId == viewId && _methodChannel != null) {
+      if (_pendingPrepareParams != null) {
+        final params = _pendingPrepareParams!;
+        _pendingPrepareParams = null;
+        _methodChannel?.invokeMethod('prepare', params);
+      }
+      return;
+    }
+
+    _eventSub?.cancel();
     _viewId = viewId;
     _methodChannel = MethodChannel('pivote/player_methods_$viewId');
     _eventChannel = EventChannel('pivote/player_events_$viewId');
 
+    // PRIMERO nos suscribimos al EventChannel para no perder ningún evento inicial
     _eventSub = _eventChannel!.receiveBroadcastStream().listen(
       _handleNativeEvent,
       onError: (error) {
@@ -133,6 +146,7 @@ class PivotePlayerController extends ChangeNotifier {
       },
     );
 
+    // LUEGO enviamos el prepare pendiente
     if (_pendingPrepareParams != null) {
       final params = _pendingPrepareParams!;
       _pendingPrepareParams = null;
@@ -145,8 +159,8 @@ class PivotePlayerController extends ChangeNotifier {
     final map = raw;
     final eventSession = (map['sessionId'] as num?)?.toInt() ?? 0;
 
-    // Descartar eventos de reproducciones anteriores
-    if (eventSession != 0 && eventSession != _currentSessionId) {
+    // Descartar eventos de sesiones anteriores
+    if (eventSession != 0 && _currentSessionId != 0 && eventSession != _currentSessionId) {
       return;
     }
 
@@ -173,22 +187,32 @@ class PivotePlayerController extends ChangeNotifier {
         firstFrameRendered = true;
         isReady = true;
         isBuffering = false;
+        hasError = false;
         notifyListeners();
         break;
 
       case 'videoSize':
-        videoWidth = (map['videoWidth'] as num?)?.toInt() ?? 0;
-        videoHeight = (map['videoHeight'] as num?)?.toInt() ?? 0;
-        notifyListeners();
+        final w = (map['videoWidth'] as num?)?.toInt() ?? 0;
+        final h = (map['videoHeight'] as num?)?.toInt() ?? 0;
+        if (w > 0 && h > 0) {
+          videoWidth = w;
+          videoHeight = h;
+          isReady = true;
+          isBuffering = false;
+          notifyListeners();
+        }
         break;
 
       case 'stateChanged':
         final state = map['playbackState'] as String? ?? '';
         isPlaying = map['isPlaying'] as bool? ?? false;
         isBuffering = state == 'buffering';
-        if (state == 'ready') {
+        if (state == 'ready' || isPlaying) {
           isReady = true;
           hasError = false;
+          if (isPlaying) {
+            isBuffering = false;
+          }
         }
         notifyListeners();
         break;
@@ -201,6 +225,10 @@ class PivotePlayerController extends ChangeNotifier {
         buffered = Duration(milliseconds: bufMs);
         if (durMs > 0 && !isLive) {
           duration = Duration(milliseconds: durMs);
+        }
+        if (isPlaying && !isReady) {
+          isReady = true;
+          isBuffering = false;
         }
         notifyListeners();
         break;
@@ -264,7 +292,9 @@ class PivotePlayerController extends ChangeNotifier {
   }) async {
     if (_disposed) return;
 
-    _currentSessionId = DateTime.now().millisecondsSinceEpoch;
+    _currentSessionId = (_currentSessionId + 1) & 0x3FFFFFFF;
+    if (_currentSessionId == 0) _currentSessionId = 1;
+
     hasError = false;
     errorMessage = null;
     userMessage = null;
@@ -490,7 +520,7 @@ class PivotePlayerView extends StatefulWidget {
   const PivotePlayerView({
     super.key,
     required this.controller,
-    this.useTextureView = false,
+    this.useTextureView = true,
   });
 
   @override

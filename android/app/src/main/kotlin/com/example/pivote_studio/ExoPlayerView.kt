@@ -52,9 +52,10 @@ class ExoPlayerPlatformView(
     private val eventChannel  = EventChannel(messenger, "pivote/player_events_$viewId")
 
     private var eventSink: EventChannel.EventSink? = null
-    private val mainHandler = Handler(Looper.getMainLooper())
+    private val pendingEvents = mutableListOf<Map<String, Any?>>()
+    private val mainHandler   = Handler(Looper.getMainLooper())
 
-    private val useTexture = (creationParams?.get("useTextureView") as? Boolean) == true
+    private val useTexture = (creationParams?.get("useTextureView") as? Boolean) ?: true
     private val mediaPlayer = NativeMediaPlayer(context).apply {
         usesTextureSurface = useTexture
     }
@@ -68,6 +69,16 @@ class ExoPlayerPlatformView(
         eventChannel.setStreamHandler(object : EventChannel.StreamHandler {
             override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                 eventSink = events
+                if (events != null) {
+                    // Vaciar eventos encolados antes de que Flutter terminara de suscribirse
+                    if (pendingEvents.isNotEmpty()) {
+                        val copy = ArrayList(pendingEvents)
+                        pendingEvents.clear()
+                        copy.forEach { events.success(it) }
+                    }
+                    // Sincronizar estado actual del player
+                    mediaPlayer.syncStateToFlutter()
+                }
             }
             override fun onCancel(arguments: Any?) {
                 eventSink = null
@@ -77,7 +88,7 @@ class ExoPlayerPlatformView(
         // Vinculamos el player a la vista UI
         playerView.attachPlayer(mediaPlayer)
 
-        // Escuchamos todos los eventos del mediaPlayer para retransmitirlos directamente a Flutter
+        // Escuchamos todos los eventos del mediaPlayer para retransmitirlos a Flutter
         mediaPlayer.eventListener = { eventData ->
             emit(eventData)
         }
@@ -96,6 +107,7 @@ class ExoPlayerPlatformView(
     override fun dispose() {
         if (isDisposed) return
         isDisposed = true
+        pendingEvents.clear()
         mediaPlayer.eventListener = null
         playerView.detachPlayer()
         mediaPlayer.release()
@@ -114,6 +126,7 @@ class ExoPlayerPlatformView(
             "prepare" -> {
                 val args = call.arguments as? Map<*, *> ?: emptyMap<String, Any>()
                 val ch   = StreamChannel.fromMap(args)
+                pendingEvents.clear()
                 mediaPlayer.prepare(ch)
                 result.success(null)
             }
@@ -172,6 +185,7 @@ class ExoPlayerPlatformView(
             }
 
             "release" -> {
+                pendingEvents.clear()
                 playerView.detachPlayer()
                 mediaPlayer.release()
                 result.success(null)
@@ -183,8 +197,15 @@ class ExoPlayerPlatformView(
 
     private fun emit(data: Map<String, Any?>) {
         mainHandler.post {
-            if (!isDisposed) {
-                eventSink?.success(data)
+            if (isDisposed) return@post
+            val sink = eventSink
+            if (sink != null) {
+                sink.success(data)
+            } else {
+                // Evitar crecimiento ilimitado si aún no hay suscriptor
+                if (pendingEvents.size < 30) {
+                    pendingEvents.add(data)
+                }
             }
         }
     }

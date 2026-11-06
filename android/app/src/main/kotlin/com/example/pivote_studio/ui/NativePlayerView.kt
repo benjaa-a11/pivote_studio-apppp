@@ -15,21 +15,21 @@ import com.example.pivote_studio.data.StreamChannel
 import com.example.pivote_studio.player.NativeMediaPlayer
 
 /**
- * Vista nativa limpia basada en Media3 PlayerView.
+ * Vista nativa limpia basada en Media3 PlayerView con TextureView.
  *
- * Mejoras clave:
- *   - Toda la UI (título, avatar, barra de carga, errores) la maneja Flutter.
- *     Esta vista sólo renderiza el video sin superposiciones nativas duplicadas.
- *   - Soporte para SurfaceView (por defecto para DRM L1 y rendimiento) o TextureView según configuración.
- *   - keepScreenOn activado para evitar que la pantalla se apague mientras reproduce.
- *   - Controles D-Pad para Android TV / TV boxes.
+ * Por qué TextureView + Shutter transparente:
+ *   • En Flutter AndroidView, SurfaceView perfora la ventana o queda oculto detrás de la capa
+ *     de Skia/Impeller causando pantalla negra con audio. TextureView se compone directamente
+ *     en el lienzo de la jerarquía AndroidView sin agujeros ni desincronización.
+ *   • setShutterBackgroundColor(Color.TRANSPARENT) evita que el shutter interno de Media3
+ *     tape el video si hay transiciones de pista o eventos post-frame.
  */
 @OptIn(UnstableApi::class)
 class NativePlayerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0,
-    useTextureView: Boolean = false
+    useTextureView: Boolean = true
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
     val playerView: PlayerView
@@ -50,20 +50,19 @@ class NativePlayerView @JvmOverloads constructor(
                 keepScreenOn = true
                 useController = false
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                setShutterBackgroundColor(Color.BLACK)
+                setShutterBackgroundColor(Color.TRANSPARENT)
             }
         } catch (_: Exception) {
             PlayerView(context).apply {
                 keepScreenOn = true
                 useController = false
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                setShutterBackgroundColor(Color.BLACK)
+                setShutterBackgroundColor(Color.TRANSPARENT)
             }
         }
 
         addView(playerView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
-        // Soporte para control remoto Android TV
         isFocusable = true
         isFocusableInTouchMode = true
     }
@@ -79,7 +78,7 @@ class NativePlayerView @JvmOverloads constructor(
     }
 
     fun bindChannel(channel: StreamChannel) {
-        // Reservado para futuras integraciones si fuera necesario
+        // Sin superposiciones nativas: toda la UI se dibuja en Flutter
     }
 
     fun setResizeMode(mode: String?) {

@@ -7,20 +7,21 @@ import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 /// indicator.  No blur, no transparency — the widget sits flush with
 /// the player canvas so it never leaks over the navigation header.
 class VideoLoadingWidget extends StatelessWidget {
+  final bool isBuffering;
+
   const VideoLoadingWidget({
     super.key,
-    // Maintaining these params in case they're passed, but ignoring them
     String message = '',
     String? subMessage,
     String? serverInfo,
     VoidCallback? onRetry,
-    bool isBuffering = false,
+    this.isBuffering = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black,
+      color: isBuffering ? Colors.transparent : Colors.black,
       child: const Center(
         child: PivoteLoader(
           size: 45,

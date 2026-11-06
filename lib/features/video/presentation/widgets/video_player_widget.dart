@@ -7,10 +7,11 @@ import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
 import 'package:pivote/features/video/presentation/widgets/exo_player_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/player_enums.dart';
+import 'package:pivote/features/video/presentation/widgets/stream_url_resolver.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
-// Pivote VideoPlayerWidget — Native Media3 ExoPlayer Engine (2026 Enhanced)
+// Pivote VideoPlayerWidget — Native Media3 ExoPlayer Engine (Clean & Fast)
 // ════════════════════════════════════════════════════════════════════════════
 
 class VideoPlayerWidget extends StatefulWidget {
@@ -33,10 +34,8 @@ class VideoPlayerWidget extends StatefulWidget {
 }
 
 class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
-    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+    with WidgetsBindingObserver {
   late final PivotePlayerController _controller;
-  late final AnimationController _fadeCtrl;
-  late final Animation<double> _fadeAnim;
 
   // ── State ─────────────────────────────────────────────────────────────────
   StreamSource? _currentStream;
@@ -55,12 +54,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _disposed = false;
     _controller = PivotePlayerController();
 
-    _fadeCtrl = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeInOut);
-
     WidgetsBinding.instance.addObserver(this);
     _controller.addListener(_onPlayerState);
 
@@ -71,7 +64,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   @override
   void didUpdateWidget(covariant VideoPlayerWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.channel.id != widget.channel.id) {
+    if (oldWidget.channel.id != widget.channel.id ||
+        oldWidget.channel.name != widget.channel.name) {
       _serverIndex = 0;
       _allServersFailed = false;
       _playCurrentServer();
@@ -97,19 +91,17 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _serverTimeout?.cancel();
     _controller.removeListener(_onPlayerState);
     _controller.dispose();
-    _fadeCtrl.dispose();
     super.dispose();
   }
 
   void _onPlayerState() {
     if (_disposed || !mounted) return;
 
-    if (_controller.firstFrameRendered || _controller.isReady) {
+    if (_controller.firstFrameRendered ||
+        _controller.isReady ||
+        _controller.isPlaying) {
       _allServersFailed = false;
       _serverTimeout?.cancel();
-      if (_fadeCtrl.status != AnimationStatus.completed) {
-        _fadeCtrl.forward();
-      }
     }
 
     if (_controller.hasError) {
@@ -130,7 +122,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     if (_disposed || !mounted) return;
     if (_serverIndex + 1 < widget.channel.streamUrl.length) {
       _serverIndex++;
-      debugPrint('➡️ Conmutando al servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}...');
+      debugPrint(
+          '➡️ Conmutando al servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}...');
       _playCurrentServer();
     } else {
       debugPrint('❌ Se agotaron todos los servidores del canal.');
@@ -149,40 +142,80 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
     _allServersFailed = false;
     _currentStream = widget.channel.streamUrl[_serverIndex];
-    final url = _currentStream!.url.trim();
+    String url = _currentStream!.url.trim();
+    final Map<String, String> headers = {
+      if (_currentStream!.headers != null) ..._currentStream!.headers!,
+    };
 
-    _fadeCtrl.reset();
     _serverTimeout?.cancel();
-    // Timeout para failover entre servidores (10s)
-    _serverTimeout = Timer(const Duration(seconds: 10), () {
-      if (!_disposed && mounted && !_controller.isReady && !_controller.firstFrameRendered) {
+    _serverTimeout = Timer(const Duration(seconds: 12), () {
+      if (!_disposed &&
+          mounted &&
+          !_controller.isReady &&
+          !_controller.firstFrameRendered &&
+          !_controller.isPlaying) {
         debugPrint('⏱️ Timeout en servidor ${_serverIndex + 1} — probando siguiente...');
         _nextServer();
       }
     });
 
+    // Si es una página PHP / Web sin extensión directa ni DRM, resolver a M3U8 primero
+    if (!_currentStream!.hasDrm &&
+        !url.toLowerCase().contains('.mpd') &&
+        !url.toLowerCase().contains('.m3u8')) {
+      try {
+        final resolved = await StreamUrlResolver.resolve(url);
+        if (_disposed) return;
+        if (resolved.url.isNotEmpty) {
+          url = resolved.url;
+          if (resolved.referer != null && !headers.containsKey('Referer')) {
+            headers['Referer'] = resolved.referer!;
+          }
+        }
+      } catch (_) {}
+    }
+
     final clearkeys = _currentStream!.effectiveClearkeys;
-    final drmLicenseUri = _currentStream!.drmLicenseUri;
-    final isWidevine = drmLicenseUri?.contains('widevine') == true;
+    final drmLicenseUri =
+        _currentStream!.effectiveDrmLicenseUri ?? _currentStream!.drmLicenseUri;
+    final isWidevine = _currentStream!.drmLicenseUri?.contains('widevine') == true;
     final drmType = isWidevine
         ? 'WIDEVINE'
-        : (_currentStream!.hasDrm ? 'CLEARKEY' : null);
+        : (_currentStream!.hasDrm || (drmLicenseUri != null && drmLicenseUri.isNotEmpty)
+            ? 'CLEARKEY'
+            : null);
 
-    debugPrint('▶️ Preparando servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length} (DRM: $drmType): $url');
+    debugPrint(
+        '▶️ Preparando servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length} (DRM: $drmType): $url');
 
     await _controller.prepare(
       url: url,
       type: widget.channel.type,
       channelName: widget.channel.name,
       icono: widget.channel.logoUrl.isNotEmpty ? widget.channel.logoUrl.first : null,
-      headers: _currentStream!.headers,
+      headers: headers,
       clearkeys: clearkeys,
       k1: _currentStream!.k1,
       k2: _currentStream!.k2,
       drmType: drmType,
       drmLicenseUri: drmLicenseUri,
-      widevineLicenseUrl: isWidevine ? drmLicenseUri : null,
+      widevineLicenseUrl: isWidevine ? _currentStream!.drmLicenseUri : null,
     );
+  }
+
+  List<ServerInfo> _buildServerInfoList() {
+    final list = <ServerInfo>[];
+    for (int i = 0; i < widget.channel.streamUrl.length; i++) {
+      final s = widget.channel.streamUrl[i];
+      final label = (s.label != null && s.label!.trim().isNotEmpty)
+          ? s.label!.trim()
+          : 'Servidor ${i + 1}';
+      final ServerType type = s.isDash
+          ? ServerType.dash
+          : (s.isHls ? ServerType.hls : ServerType.unknown);
+      list.add(ServerInfo(index: i, label: label, type: type));
+    }
+    return list;
   }
 
   // ── Fullscreen & Aspect Ratio ─────────────────────────────────────────────
@@ -243,13 +276,16 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   @override
   Widget build(BuildContext context) {
     final double? ratio = _aspectRatio.value;
+    final bool isVideoVisible = _controller.firstFrameRendered ||
+        _controller.isReady ||
+        _controller.isPlaying;
 
     final Widget playerContent = Container(
       color: Colors.black,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // 1. Capa de Video Nativo (PlatformView Android con SurfaceView nativo)
+          // 1. Capa de Video Nativo (PlatformView Android con TextureView limpia)
           Center(
             child: ratio != null
                 ? AspectRatio(
@@ -259,50 +295,49 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 : PivotePlayerView(controller: _controller),
           ),
 
-          // 2. Transición suave de carga para evitar destellos
-          FadeTransition(
-            opacity: Tween(begin: 1.0, end: 0.0).animate(_fadeAnim),
-            child: IgnorePointer(
-              ignoring: _controller.firstFrameRendered || _controller.isReady,
-              child: Container(color: Colors.black),
+          // 2. Loader limpio (SOLO el spinner sin textos molestos ni doble overlay)
+          if (!isVideoVisible && !_allServersFailed)
+            Container(
+              color: Colors.black,
+              child: const Center(
+                child: PivoteLoader(size: 44, strokeWidth: 4),
+              ),
             ),
-          ),
 
-          // 3. Indicador de carga estilizado mientras se conecta o bufferiza
-          if ((!_controller.firstFrameRendered && !_controller.isReady) && !_allServersFailed)
-            _buildConnectingOverlay(),
+          // 3. Pantalla de Error si todos los servidores fallaron
+          if (_allServersFailed) _buildErrorOverlay(),
 
-          // 4. Pantalla de Error si todos los servidores fallaron
-          if (_allServersFailed)
-            _buildErrorOverlay(),
-
-          // 5. Controles personalizados de Video superpuestos de Flutter
-          Positioned.fill(
-            child: widget.controlsBuilder != null
-                ? widget.controlsBuilder!(
-                    context,
-                    _controller,
-                    _isFullScreen,
-                    _toggleFullScreen,
-                  )
-                : CustomVideoControls(
-                    controller: _controller,
-                    channelName: widget.channel.name,
-                    onFullScreenToggle: _toggleFullScreen,
-                    isFullScreen: _isFullScreen,
-                    aspectRatioLabel: _aspectRatio.label,
-                    onAspectRatioChange: _changeAspectRatio,
-                    onMuteToggle: _toggleMute,
-                    isMuted: _controller.isMuted,
-                    currentServer: _serverIndex + 1,
-                    totalServers: widget.channel.streamUrl.length,
-                    onServerSelect: (idx) {
-                      _serverIndex = idx;
-                      _allServersFailed = false;
-                      _playCurrentServer();
-                    },
-                  ),
-          ),
+          // 4. Controles personalizados de Video
+          if (!_allServersFailed)
+            Positioned.fill(
+              child: widget.controlsBuilder != null
+                  ? widget.controlsBuilder!(
+                      context,
+                      _controller,
+                      _isFullScreen,
+                      _toggleFullScreen,
+                    )
+                  : CustomVideoControls(
+                      controller: _controller,
+                      channelName: widget.channel.name,
+                      onFullScreenToggle: _toggleFullScreen,
+                      isFullScreen: _isFullScreen,
+                      aspectRatioLabel: _aspectRatio.label,
+                      onAspectRatioChange: _changeAspectRatio,
+                      onMuteToggle: _toggleMute,
+                      isMuted: _controller.isMuted,
+                      currentServer: _serverIndex + 1,
+                      totalServers: widget.channel.streamUrl.length,
+                      serverList: widget.channel.streamUrl.length > 1
+                          ? _buildServerInfoList()
+                          : null,
+                      onServerSelect: (idx) {
+                        _serverIndex = idx;
+                        _allServersFailed = false;
+                        _playCurrentServer();
+                      },
+                    ),
+            ),
         ],
       ),
     );
@@ -326,40 +361,6 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       child: AspectRatio(
         aspectRatio: 16 / 9,
         child: playerContent,
-      ),
-    );
-  }
-
-  Widget _buildConnectingOverlay() {
-    final total = widget.channel.streamUrl.length;
-    return Container(
-      color: Colors.black,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const PivoteLoader(size: 44, strokeWidth: 4),
-            const SizedBox(height: 16),
-            Text(
-              widget.channel.name,
-              style: GoogleFonts.outfit(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              total > 1
-                  ? 'Conectando a servidor ${_serverIndex + 1} de $total...'
-                  : 'Sintonizando transmisión en vivo...',
-              style: GoogleFonts.outfit(
-                color: Colors.white60,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -391,7 +392,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               const SizedBox(height: 6),
               Text(
                 _controller.userMessage ??
-                    'Se probaron todos los servidores (${widget.channel.streamUrl.length}) sin respuesta del proveedor.',
+                    'No se pudo conectar con la señal del canal.',
                 style: GoogleFonts.outfit(
                   color: Colors.white60,
                   fontSize: 13,
@@ -414,7 +415,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
               ),
             ],

@@ -31,7 +31,7 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
-  Key _videoPlayerKey = GlobalKey();
+  final GlobalKey _videoPlayerKey = GlobalKey();
   late Channel _currentChannel;
   int _selectedCameraId = -1;
 
@@ -92,7 +92,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     setState(() {
       _currentChannel = channel;
       _selectedCameraId = -1;
-      _videoPlayerKey = GlobalKey();
       _guideSlots = const [];
       _guideError = null;
     });
@@ -857,7 +856,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
         setState(() {
           _selectedCameraId = id;
-          _videoPlayerKey = GlobalKey();
           _currentChannel = widget.channel.copyWith(
             name: "${widget.channel.name} - $nombre",
             streamUrl: [StreamSource(url: url)],

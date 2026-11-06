@@ -1,11 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Vista Media3 usada por el PlatformView "pivote-exoplayer".
-  • surface_view: obligatorio para contenido DRM seguro (Widevine L1) y el camino de
-    render más eficiente. Flutter la muestra con Hybrid Composition
-    (PlatformViewLink + initExpensiveAndroidView), que soporta SurfaceView de forma nativa.
-  • Sin controlador nativo: los controles se dibujan en Flutter.
--->
 <androidx.media3.ui.PlayerView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -15,7 +8,7 @@
     android:background="@android:color/black"
     app:use_controller="false"
     app:resize_mode="fit"
-    app:surface_type="surface_view"
-    app:shutter_background_color="@android:color/black"
+    app:surface_type="texture_view"
+    app:shutter_background_color="@android:color/transparent"
     app:keep_content_on_player_reset="false"
     app:show_buffering="never" />

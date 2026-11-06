@@ -9,7 +9,7 @@ enum class DrmScheme { NONE, CLEARKEY, WIDEVINE, PLAYREADY }
 
 /**
  * Formato de contenedor/manifiesto detectado o forzado.
- * [UNKNOWN] activa la detección por prueba (HLS → progresivo → DASH).
+ * [UNKNOWN] activa la detección por prueba (HLS → DASH → progresivo).
  */
 enum class StreamFormat { HLS, DASH, SMOOTH, RTSP, PROGRESSIVE, UNKNOWN }
 
@@ -42,7 +42,7 @@ data class StreamChannel(
     /** Headers adicionales para la solicitud de licencia. */
     val licenseHeaders: Map<String, String> = emptyMap(),
 
-    /** Fuerza Widevine L3 (decodificación no segura). Útil en dispositivos L1 problemáticos. */
+    /** Fuerza Widevine L3 (decodificación no segura). */
     val forceWidevineL3: Boolean = false,
 
     // ── HTTP ─────────────────────────────────────────────────────────────────
@@ -64,19 +64,9 @@ data class StreamChannel(
     val hasDrm: Boolean get() = drmScheme != DrmScheme.NONE
 
     /**
-     * Formato declarado explícitamente (campo `type`) o inferido de la URL.
-     * La presencia de DRM NO implica DASH: HLS también puede llevar Widevine/ClearKey.
+     * Formato declarado explícitamente (campo `type`) o inferido de la URL / DRM.
      */
     fun detectFormat(): StreamFormat {
-        when (type?.trim()?.lowercase()) {
-            "hls", "m3u8", "m3u"              -> return StreamFormat.HLS
-            "dash", "mpd"                     -> return StreamFormat.DASH
-            "ss", "smooth", "ism", "mss"      -> return StreamFormat.SMOOTH
-            "rtsp"                            -> return StreamFormat.RTSP
-            "progressive", "mp4", "ts", "mkv",
-            "mp3", "aac", "webm", "flv"       -> return StreamFormat.PROGRESSIVE
-        }
-
         val uri = runCatching { Uri.parse(originalUrl) }.getOrNull()
         val scheme = uri?.scheme?.lowercase()
         if (scheme == "rtsp" || scheme == "rtsps") return StreamFormat.RTSP
@@ -84,18 +74,44 @@ data class StreamChannel(
         val path = (uri?.path ?: originalUrl).lowercase()
         val full = originalUrl.lowercase()
 
-        return when {
-            path.endsWith(".mpd") || full.contains(".mpd?") || full.contains("format=mpd") ||
-                full.contains("/dash/") && !full.contains(".m3u8") -> StreamFormat.DASH
-            path.endsWith(".m3u8") || path.endsWith(".m3u") || full.contains(".m3u8") ||
-                full.contains("format=m3u8") || full.contains("type=m3u8") -> StreamFormat.HLS
-            path.endsWith(".ism") || path.endsWith(".isml") ||
-                path.endsWith("/manifest") && full.contains(".ism") -> StreamFormat.SMOOTH
-            PROGRESSIVE_EXTENSIONS.any { path.endsWith(it) } -> StreamFormat.PROGRESSIVE
-            // Type "clearkey" heredado de listas Flow/ESPN: siempre es DASH.
-            type?.trim()?.equals("clearkey", ignoreCase = true) == true -> StreamFormat.DASH
-            else -> StreamFormat.UNKNOWN
+        // 1. Prioridad máxima: extensión clara en la URL
+        if (path.endsWith(".mpd") || full.contains(".mpd?") || full.contains("format=mpd") ||
+            (full.contains("/dash/") && !full.contains(".m3u8"))
+        ) {
+            return StreamFormat.DASH
         }
+        if (path.endsWith(".m3u8") || path.endsWith(".m3u") || full.contains(".m3u8") ||
+            full.contains("format=m3u8") || full.contains("type=m3u8")
+        ) {
+            return StreamFormat.HLS
+        }
+        if (path.endsWith(".ism") || path.endsWith(".isml") ||
+            (path.endsWith("/manifest") && full.contains(".ism"))
+        ) {
+            return StreamFormat.SMOOTH
+        }
+
+        // 2. Prioridad por campo `type` explícito
+        when (type?.trim()?.lowercase()) {
+            "dash", "mpd", "clearkey"         -> return StreamFormat.DASH
+            "hls", "m3u8", "m3u"              -> return StreamFormat.HLS
+            "ss", "smooth", "ism", "mss"      -> return StreamFormat.SMOOTH
+            "rtsp"                            -> return StreamFormat.RTSP
+            "progressive", "mp4", "ts", "mkv",
+            "mp3", "aac", "webm", "flv"       -> return StreamFormat.PROGRESSIVE
+        }
+
+        // 3. Si tiene DRM (ClearKey / Widevine) y no es explícitamente HLS, es DASH
+        if (hasDrm) {
+            return StreamFormat.DASH
+        }
+
+        // 4. Extensiones progresivas conocidas
+        if (PROGRESSIVE_EXTENSIONS.any { path.endsWith(it) }) {
+            return StreamFormat.PROGRESSIVE
+        }
+
+        return StreamFormat.UNKNOWN
     }
 
     fun isDash(): Boolean = detectFormat() == StreamFormat.DASH
@@ -143,15 +159,17 @@ data class StreamChannel(
 
             // ── ClearKey local ───────────────────────────────────────────────
             var clearKeyData: String? = null
-            val rawClearkeys = (drmBlock?.get("clearKeys") ?: map["clearkeys"]).toStringMap()
-            if (rawClearkeys.isNotEmpty()) {
-                clearKeyData = rawClearkeys.entries
-                    .filter { it.key.isNotEmpty() && it.value.isNotEmpty() }
-                    .joinToString(",") { "kid:${it.key},k:${it.value}" }
-                    .takeIf { it.isNotEmpty() }
-            }
-            if (clearKeyData == null && !rawLicenseUri.isNullOrBlank() && !rawLicenseUri.isHttpUrl()) {
+            if (!rawLicenseUri.isNullOrBlank() && !rawLicenseUri.isHttpUrl()) {
                 clearKeyData = rawLicenseUri
+            }
+            if (clearKeyData == null) {
+                val rawClearkeys = (drmBlock?.get("clearKeys") ?: map["clearkeys"]).toStringMap()
+                if (rawClearkeys.isNotEmpty()) {
+                    clearKeyData = rawClearkeys.entries
+                        .filter { it.key.isNotEmpty() && it.value.isNotEmpty() }
+                        .joinToString(",") { "kid:${it.key},k:${it.value}" }
+                        .takeIf { it.isNotEmpty() }
+                }
             }
             if (clearKeyData == null) {
                 val k1 = map["k1"]?.toString()?.trim()
@@ -167,12 +185,11 @@ data class StreamChannel(
                     if (licenseUrl != null) DrmScheme.PLAYREADY else DrmScheme.NONE
                 !clearKeyData.isNullOrBlank() -> DrmScheme.CLEARKEY
                 rawDrmType == "CLEARKEY" && licenseUrl != null -> DrmScheme.CLEARKEY
-                // URL de licencia sin tipo explícito → Widevine (el caso más común).
                 licenseUrl != null && rawDrmType == null -> DrmScheme.WIDEVINE
                 else -> DrmScheme.NONE
             }
 
-            // ── Headers HTTP (acepta claves sueltas user_agent / referer) ────
+            // ── Headers HTTP ─────────────────────────────────────────────────
             val headers = LinkedHashMap(map["headers"].toStringMap())
             fun addIfAbsent(key: String, value: Any?) {
                 val v = value?.toString()?.trim()

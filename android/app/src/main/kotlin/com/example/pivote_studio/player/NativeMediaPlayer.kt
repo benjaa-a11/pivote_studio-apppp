@@ -29,28 +29,20 @@ import com.example.pivote_studio.drm.PivoteDrmManager
  * Motor central de reproducción basado en Media3 ExoPlayer.
  *
  * Garantías de diseño:
- *   • UNA sola instancia de ExoPlayer por PlatformView, creada en el constructor
- *     (la vista se vincula siempre a un player existente → nunca "audio sin video").
- *   • Cada `prepare()` abre una nueva sesión (sessionId). Los eventos llevan el id
- *     de sesión para que Flutter descarte eventos de canales/servidores anteriores.
- *
- * Recuperación automática (antes de notificar un error fatal a Flutter):
- *   • BehindLiveWindow           → salto al borde en vivo y re-prepare
- *   • Errores de red transitorios → reintento con backoff (1s, 2s, 4s)
- *   • Formato desconocido         → detección por prueba HLS → progresivo → DASH
- *   • Widevine L1 fallando        → reintento automático forzando L3
- *   • Decodificador fallando      → fallback de decoder + un reintento
- *   • Stall prolongado            → re-prepare desde el borde en vivo
+ *   • UNA sola instancia de ExoPlayer por PlatformView.
+ *   • Arranque ultrarrápido de buffer (800ms para primer frame) ideal para zapping IPTV.
+ *   • Reenvío garantizado de estado al conectar el EventChannel (evita "loading infinito").
+ *   • MultiSession DRM y fallback inteligente de formatos.
  */
 @OptIn(UnstableApi::class)
 class NativeMediaPlayer(context: Context) {
 
     companion object {
         private const val TAG = "PivoteExoPlayer"
-        private const val MAX_NETWORK_RETRIES = 3
-        private const val BASE_RETRY_MS       = 1_000L
+        private const val MAX_NETWORK_RETRIES = 2
+        private const val BASE_RETRY_MS       = 800L
         private const val POSITION_TICK_MS    = 500L
-        private const val STALL_TIMEOUT_MS    = 20_000L
+        private const val STALL_TIMEOUT_MS    = 15_000L
     }
 
     private val appContext = context.applicationContext
@@ -61,9 +53,9 @@ class NativeMediaPlayer(context: Context) {
 
     /**
      * true si la vista usa TextureView: una TextureView no puede mostrar salida de un
-     * decodificador seguro, así que Widevine se fuerza a L3 para evitar pantalla negra.
+     * decodificador seguro de hardware L1, así que Widevine se fuerza a L3 para evitar pantalla negra.
      */
-    var usesTextureSurface: Boolean = false
+    var usesTextureSurface: Boolean = true
 
     // ── Core ─────────────────────────────────────────────────────────────────
     private val trackSelector = DefaultTrackSelector(appContext).apply {
@@ -130,20 +122,18 @@ class NativeMediaPlayer(context: Context) {
 
     private fun buildPlayer(): ExoPlayer {
         val renderers = DefaultRenderersFactory(appContext)
-            // Si el decoder primario falla (muy común en Android TV / chipsets baratos)
-            // se prueba automáticamente el siguiente decoder disponible.
             .setEnableDecoderFallback(true)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs */                     15_000,
-                /* maxBufferMs */                     50_000,
-                /* bufferForPlaybackMs */              1_500,
-                /* bufferForPlaybackAfterRebufferMs */ 3_000
+                /* minBufferMs */                     10_000,
+                /* maxBufferMs */                     40_000,
+                /* bufferForPlaybackMs */                800,
+                /* bufferForPlaybackAfterRebufferMs */ 2_000
             )
             .setPrioritizeTimeOverSizeThresholds(true)
-            .setBackBuffer(15_000, true)
+            .setBackBuffer(10_000, false)
             .build()
 
         val audioAttributes = AudioAttributes.Builder()
@@ -161,8 +151,6 @@ class NativeMediaPlayer(context: Context) {
             .setSeekBackIncrementMs(10_000)
             .setSeekForwardIncrementMs(10_000)
             .build()
-        // El listener se registra en el bloque init al final de la clase
-        // (debe declararse antes de usarse por el orden de inicialización de Kotlin).
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -189,7 +177,6 @@ class NativeMediaPlayer(context: Context) {
         firstFrameRendered = false
         bufferingSince = 0L
 
-        // Reset de pistas forzadas del canal anterior.
         trackSelector.parameters = trackSelector.parameters.buildUpon()
             .clearOverrides()
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
@@ -199,10 +186,35 @@ class NativeMediaPlayer(context: Context) {
         loadSource()
     }
 
+    /**
+     * Sincroniza el estado actual con Flutter cuando el EventChannel acaba de suscribirse.
+     */
+    fun syncStateToFlutter() {
+        if (isReleased) return
+        emitState()
+        if (hasBeenReady || player.playbackState == Player.STATE_READY) {
+            val vs = player.videoSize
+            emit(
+                "ready",
+                "durationMs" to durationMs,
+                "isLive" to isLive,
+                "isSeekable" to player.isCurrentMediaItemSeekable,
+                "videoWidth" to vs.width,
+                "videoHeight" to vs.height,
+                "format" to currentFormat.name
+            )
+        }
+        if (firstFrameRendered) {
+            emit("firstFrame")
+        }
+        if (player.currentTracks.groups.isNotEmpty()) {
+            emitTracks(player.currentTracks)
+        }
+    }
+
     fun play() {
         if (isReleased) return
         if (player.playbackState == Player.STATE_IDLE && currentChannel != null) {
-            // Tras un error o stop: re-preparar en lugar de quedar en negro.
             if (isLive) player.seekToDefaultPosition()
             player.prepare()
         } else if (player.playbackState == Player.STATE_ENDED) {
@@ -233,14 +245,6 @@ class NativeMediaPlayer(context: Context) {
         if (!isReleased) player.playbackParameters = PlaybackParameters(speed.coerceIn(0.25f, 2f))
     }
 
-    /**
-     * Selecciona una pista concreta.
-     *
-     * @param trackType  C.TRACK_TYPE_VIDEO | C.TRACK_TYPE_AUDIO | C.TRACK_TYPE_TEXT
-     * @param groupIndex índice GLOBAL del grupo en `player.currentTracks.groups`
-     *                   (el mismo que se envía a Flutter). -1 = automático / desactivar texto.
-     * @param trackIndex índice del formato dentro del grupo.
-     */
     fun setTrack(trackType: Int, groupIndex: Int, trackIndex: Int) {
         if (isReleased) return
         val builder = trackSelector.parameters.buildUpon()
@@ -264,9 +268,6 @@ class NativeMediaPlayer(context: Context) {
         trackSelector.parameters = builder.build()
     }
 
-    /**
-     * Fija un límite de resolución / bitrate de video, o maxHeight <= 0 para Automático.
-     */
     fun setPreferredVideoQuality(maxHeight: Int, maxBitrate: Int) {
         if (isReleased) return
         trackSelector.parameters = trackSelector.parameters.buildUpon()
@@ -299,6 +300,8 @@ class NativeMediaPlayer(context: Context) {
         val channel = currentChannel ?: return
         try {
             val source = StreamMediaSourceFactory.createMediaSource(appContext, channel, currentFormat, forceL3)
+            player.stop()
+            player.clearMediaItems()
             player.setMediaSource(source, /* resetPosition = */ true)
             player.playWhenReady = true
             player.prepare()
@@ -310,7 +313,6 @@ class NativeMediaPlayer(context: Context) {
         }
     }
 
-    /** Reintenta sobre la misma fuente (red caída, stall, behind-live-window). */
     private fun recoverInPlace() {
         if (isReleased || currentChannel == null) return
         Log.d(TAG, "Recuperando reproducción (retry=$networkRetries)")
@@ -340,9 +342,9 @@ class NativeMediaPlayer(context: Context) {
             return
         }
 
-        // 3. Widevine L1 con problemas (o decoder seguro) → forzar L3.
+        // 3. Widevine L1 con problemas → forzar L3.
         val isWidevine = channel?.drmScheme == DrmScheme.WIDEVINE
-        if (isWidevine && !forceL3 && PivoteDrmManager.widevineSecurityLevel == "L1" &&
+        if (isWidevine && !forceL3 &&
             (PlayerErrorMapper.isDrmError(info) || info.errorCode == PlayerErrorMapper.ERROR_DECODER)
         ) {
             forceL3 = true
@@ -352,7 +354,7 @@ class NativeMediaPlayer(context: Context) {
             return
         }
 
-        // 4. Decoder: un reintento completo (el fallback de decoder ya está activo).
+        // 4. Decoder: un reintento completo.
         if (info.errorCode == PlayerErrorMapper.ERROR_DECODER && !decoderRetried) {
             decoderRetried = true
             emit("retrying", "reason" to "decoder")
@@ -360,7 +362,7 @@ class NativeMediaPlayer(context: Context) {
             return
         }
 
-        // 5. Red transitoria → backoff exponencial en el mismo servidor.
+        // 5. Red transitoria → reintento rápido.
         if (PlayerErrorMapper.isTransientNetwork(info) && networkRetries < MAX_NETWORK_RETRIES) {
             val delay = BASE_RETRY_MS shl networkRetries
             networkRetries++
@@ -371,11 +373,10 @@ class NativeMediaPlayer(context: Context) {
             return
         }
 
-        // 6. Fatal → Flutter decide (siguiente servidor / mensaje al usuario).
+        // 6. Fatal → Flutter decide.
         emitError(info)
     }
 
-    /** Detecta buffering infinito (CDN colgada sin error explícito). */
     private fun checkStall() {
         if (player.playbackState != Player.STATE_BUFFERING || !player.playWhenReady || !hasBeenReady) {
             bufferingSince = 0L
@@ -387,7 +388,7 @@ class NativeMediaPlayer(context: Context) {
             bufferingSince = 0L
             if (networkRetries < MAX_NETWORK_RETRIES) {
                 networkRetries++
-                Log.w(TAG, "Stall de ${STALL_TIMEOUT_MS}ms detectado; re-preparando")
+                Log.w(TAG, "Stall detectado; re-preparando")
                 emit("retrying", "reason" to "stall", "attempt" to networkRetries)
                 player.stop()
                 recoverInPlace()
@@ -420,26 +421,23 @@ class NativeMediaPlayer(context: Context) {
                 Player.STATE_READY -> {
                     networkRetries = 0
                     bufferingSince = 0L
-                    if (!hasBeenReady) {
-                        hasBeenReady = true
-                        val vs = player.videoSize
-                        emit(
-                            "ready",
-                            "durationMs" to durationMs,
-                            "isLive" to isLive,
-                            "isSeekable" to player.isCurrentMediaItemSeekable,
-                            "videoWidth" to vs.width,
-                            "videoHeight" to vs.height,
-                            "format" to currentFormat.name
-                        )
-                    }
+                    hasBeenReady = true
+                    val vs = player.videoSize
+                    emit(
+                        "ready",
+                        "durationMs" to durationMs,
+                        "isLive" to isLive,
+                        "isSeekable" to player.isCurrentMediaItemSeekable,
+                        "videoWidth" to vs.width,
+                        "videoHeight" to vs.height,
+                        "format" to currentFormat.name
+                    )
                     startTicker()
                 }
                 Player.STATE_BUFFERING -> startTicker()
                 Player.STATE_ENDED -> {
                     mainHandler.removeCallbacks(tickRunnable)
                     if (isLive && networkRetries < MAX_NETWORK_RETRIES) {
-                        // Algunos HLS "live" mal formados terminan: reconectar.
                         networkRetries++
                         recoverInPlace()
                     } else {
@@ -460,10 +458,9 @@ class NativeMediaPlayer(context: Context) {
 
         override fun onRenderedFirstFrame() {
             if (isReleased) return
-            if (!firstFrameRendered) {
-                firstFrameRendered = true
-                Log.i(TAG, "Primer frame renderizado (${player.videoSize.width}x${player.videoSize.height})")
-            }
+            firstFrameRendered = true
+            hasBeenReady = true
+            Log.i(TAG, "Primer frame renderizado (${player.videoSize.width}x${player.videoSize.height})")
             emit("firstFrame")
         }
 
@@ -541,10 +538,6 @@ class NativeMediaPlayer(context: Context) {
                     C.TRACK_TYPE_TEXT  -> text.add(entry)
                 }
             }
-        }
-
-        if (hasVideoGroup && !hasSupportedVideo) {
-            Log.w(TAG, "El stream tiene video pero ningún formato es decodificable en este dispositivo")
         }
 
         emit(

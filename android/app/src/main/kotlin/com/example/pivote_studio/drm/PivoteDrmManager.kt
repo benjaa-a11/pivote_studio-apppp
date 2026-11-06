@@ -19,15 +19,11 @@ import java.util.UUID
 /**
  * Gestor de DRM unificado para Media3 / ExoPlayer.
  *
- * Todos los esquemas se inyectan EXCLUSIVAMENTE vía DrmSessionManagerProvider en la
- * factoría del MediaSource (nunca vía MediaItem.DrmConfiguration), lo que da control
- * total sobre headers, nivel de seguridad y callbacks locales.
- *
  * Soporta:
- *   • ClearKey local (kid:k / JSON W3C) → [LocalMediaDrmCallback]
- *   • ClearKey remoto (servidor de licencias W3C) → [HttpMediaDrmCallback]
- *   • Widevine Modular (CENC y CBCS) con headers propios y modo L3 forzado opcional
- *   • PlayReady (dispositivos que lo soporten, p. ej. Android TV)
+ *   • ClearKey local (kid:k / JSON W3C) → [LocalMediaDrmCallback] con MultiSession=true
+ *   • ClearKey remoto (servidor de licencias W3C) → [HttpMediaDrmCallback] con MultiSession=true
+ *   • Widevine Modular (CENC y CBCS) con headers propios, MultiSession=true y L3
+ *   • PlayReady con MultiSession=true
  */
 @OptIn(UnstableApi::class)
 object PivoteDrmManager {
@@ -50,16 +46,16 @@ object PivoteDrmManager {
 
     /**
      * Provider de [ExoMediaDrm] que opcionalmente fuerza Widevine L3.
-     * L3 = descifrado por software: no requiere decodificador/superficie segura,
-     * lo que elimina la "pantalla negra con audio" en dispositivos L1 problemáticos.
+     * En TextureView dentro de Flutter, L3 evita que el decodificador exija una superficie
+     * segura de hardware (que causaría pantalla negra con audio).
      */
     fun mediaDrmProvider(forceL3: Boolean): ExoMediaDrm.Provider = ExoMediaDrm.Provider { uuid ->
         try {
             val drm = FrameworkMediaDrm.newInstance(uuid)
             if (forceL3 && uuid == C.WIDEVINE_UUID) {
                 runCatching { drm.setPropertyString("securityLevel", "L3") }
-                    .onSuccess { Log.i(TAG, "Widevine forzado a L3") }
-                    .onFailure { Log.w(TAG, "No se pudo forzar L3: ${it.message}") }
+                    .onSuccess { Log.i(TAG, "Widevine configurado en L3") }
+                    .onFailure { Log.w(TAG, "No se pudo fijar L3: ${it.message}") }
             }
             drm
         } catch (e: UnsupportedDrmException) {
@@ -70,9 +66,6 @@ object PivoteDrmManager {
 
     /**
      * Construye el [DrmSessionManager] para insertar en el MediaSource.
-     *
-     * @param licenseFactory DataSource para peticiones de licencia (con headers del canal).
-     * @param forceL3 fuerza Widevine L3 (se usa también como fallback automático).
      */
     fun buildDrmSessionManager(
         channel: StreamChannel,
@@ -85,26 +78,25 @@ object PivoteDrmManager {
         DrmScheme.CLEARKEY -> {
             val localData = channel.clearKeyLicenseData
             if (!localData.isNullOrBlank()) {
-                // ClearKeyParseException se propaga → error DRM_PARSE claro hacia Flutter.
                 val keys = ClearKeyParser.parse(localData)
                 Log.d(TAG, "ClearKey local: ${keys.size} clave(s)")
                 ClearKeyManager.createDrmSessionManager(keys)
             } else {
                 channel.licenseUrl?.let { url ->
                     Log.d(TAG, "ClearKey remoto: ${sanitize(url)}")
-                    remoteManager(C.CLEARKEY_UUID, url, channel, licenseFactory, false, secure = false)
+                    remoteManager(C.CLEARKEY_UUID, url, channel, licenseFactory, false)
                 }
             }
         }
 
         DrmScheme.WIDEVINE -> channel.licenseUrl?.let { url ->
-            Log.d(TAG, "Widevine: ${sanitize(url)} (nivel dispositivo=$widevineSecurityLevel, forceL3=$forceL3)")
-            remoteManager(C.WIDEVINE_UUID, url, channel, licenseFactory, forceL3, secure = true)
+            Log.d(TAG, "Widevine: ${sanitize(url)} (nivel=$widevineSecurityLevel, forceL3=$forceL3)")
+            remoteManager(C.WIDEVINE_UUID, url, channel, licenseFactory, forceL3)
         }
 
         DrmScheme.PLAYREADY -> channel.licenseUrl?.let { url ->
             Log.d(TAG, "PlayReady: ${sanitize(url)}")
-            remoteManager(C.PLAYREADY_UUID, url, channel, licenseFactory, false, secure = true)
+            remoteManager(C.PLAYREADY_UUID, url, channel, licenseFactory, false)
         }
     }
 
@@ -113,22 +105,16 @@ object PivoteDrmManager {
         licenseUrl: String,
         channel: StreamChannel,
         licenseFactory: DataSource.Factory,
-        forceL3: Boolean,
-        secure: Boolean
+        forceL3: Boolean
     ): DrmSessionManager {
-        // forceDefaultLicenseUrl = true → ignora LA_URL embebidas en el manifiesto.
-        val callback = HttpMediaDrmCallback(licenseUrl, /* forceDefaultLicenseUrl = */ true, licenseFactory)
+        val callback = HttpMediaDrmCallback(licenseUrl, /* forceDefaultLicenseUrl = */ false, licenseFactory)
         channel.licenseHeaders.forEach { (k, v) -> callback.setKeyRequestProperty(k, v) }
 
         return DefaultDrmSessionManager.Builder()
             .setUuidAndExoMediaDrmProvider(uuid, mediaDrmProvider(forceL3))
-            .setMultiSession(false)
+            // CRÍTICO: MultiSession=true para soportar audio y video en AdaptationSets separados
+            .setMultiSession(true)
             .setPlayClearSamplesWithoutKeys(true)
-            .apply {
-                // Mantener el decodificador seguro durante tramos claros evita
-                // reinicializaciones del codec (pantallazos negros) en clear-lead.
-                if (secure) setUseDrmSessionsForClearContent(C.TRACK_TYPE_VIDEO, C.TRACK_TYPE_AUDIO)
-            }
             .build(callback)
     }
 

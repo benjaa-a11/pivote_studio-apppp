@@ -5,7 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/video/presentation/widgets/exo_player_widget.dart';
-import 'package:pivote/features/video/presentation/widgets/video_loading_widget.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 // ════════════════════════════════════════
 // SERVER INFO MODEL
@@ -232,10 +232,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
         color: Colors.transparent,
         child: Stack(
           children: [
-            // Buffering overlay
+            // Buffering overlay (solo si ya estaba listo y entra en rebuffering)
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: widget.controller.isBuffering
+              duration: const Duration(milliseconds: 250),
+              child: (widget.controller.isBuffering && widget.controller.isReady)
                   ? _buildBufferingIndicator()
                   : const SizedBox.shrink(),
             ),
@@ -255,13 +255,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   }
 
   Widget _buildBufferingIndicator() {
-    return Center(
-      child: FadeTransition(
-        opacity: _bufferingController.drive(CurveTween(curve: Curves.easeIn)),
-        child: const VideoLoadingWidget(
-          message: 'Sintonizando señal…',
-          isBuffering: true,
-        ),
+    return const Center(
+      child: PivoteLoader(
+        size: 38,
+        strokeWidth: 3.5,
       ),
     );
   }
