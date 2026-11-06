@@ -123,72 +123,70 @@ class _PlayerScreenState extends State<PlayerScreen> {
       child: Scaffold(
         backgroundColor:
             isLandscape ? Colors.black : theme.scaffoldBackgroundColor,
-        body: isLandscape
-            ? _buildLandscapeLayout()
-            : SafeArea(
-                child: _buildPortraitLayout(context, theme, isDark),
+        body: Column(
+          children: [
+            // Top Bar (solo en vertical)
+            if (!isLandscape)
+              SafeArea(
+                bottom: false,
+                child: _buildHeader(context, theme, isDark),
               ),
+
+            // Video Player Viewport — posición FIJA en el árbol para que NUNCA se desmonte al rotar
+            if (isLandscape)
+              Expanded(
+                child: Container(
+                  color: Colors.black,
+                  child: VideoPlayerWidget(
+                    key: _videoPlayerKey,
+                    channel: _currentChannel,
+                  ),
+                ),
+              )
+            else
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Container(
+                  color: Colors.black,
+                  child: VideoPlayerWidget(
+                    key: _videoPlayerKey,
+                    channel: _currentChannel,
+                  ),
+                ),
+              ),
+
+            // Scrollable Content (solo en vertical)
+            if (!isLandscape)
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildChannelHeader(context, theme, isDark),
+                      Divider(
+                        height: 1,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.06),
+                      ),
+                      _buildChannelActions(context, theme, isDark),
+                      Divider(
+                        height: 1,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.06),
+                      ),
+                      _buildChannelInfo(context, theme, isDark),
+                      _buildRelatedChannelsGrid(context, theme, isDark),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
-    );
-  }
-
-  // Landscape Layout (Full Immersive)
-  Widget _buildLandscapeLayout() {
-    return VideoPlayerWidget(
-      key: _videoPlayerKey,
-      channel: _currentChannel,
-    );
-  }
-
-  // Portrait Layout
-  Widget _buildPortraitLayout(
-      BuildContext context, ThemeData theme, bool isDark) {
-    return Column(
-      children: [
-        // Top Bar
-        _buildHeader(context, theme, isDark),
-
-        // Video Player Viewport
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: Container(
-            color: Colors.black,
-            child: VideoPlayerWidget(
-              key: _videoPlayerKey,
-              channel: _currentChannel,
-            ),
-          ),
-        ),
-
-        // Scrollable Content
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildChannelHeader(context, theme, isDark),
-                Divider(
-                  height: 1,
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.06),
-                ),
-                _buildChannelActions(context, theme, isDark),
-                Divider(
-                  height: 1,
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.06),
-                ),
-                _buildChannelInfo(context, theme, isDark),
-                _buildRelatedChannelsGrid(context, theme, isDark),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 

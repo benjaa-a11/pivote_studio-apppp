@@ -40,19 +40,19 @@ class ServerInfo {
   Color typeColor(BuildContext context) {
     switch (type) {
       case ServerType.hls:
-        return Colors.greenAccent.shade400;
+        return const Color(0xFF10B981);
       case ServerType.dash:
-        return Colors.blueAccent.shade200;
+        return const Color(0xFF3B82F6);
       case ServerType.web:
-        return Colors.orangeAccent.shade200;
+        return const Color(0xFFF59E0B);
       case ServerType.unknown:
-        return Colors.grey.shade400;
+        return const Color(0xFF8B5CF6);
     }
   }
 }
 
 // ════════════════════════════════════════
-// CUSTOM VIDEO CONTROLS (Clean Edition)
+// CUSTOM VIDEO CONTROLS (Pro Edition)
 // ════════════════════════════════════════
 
 class CustomVideoControls extends StatefulWidget {
@@ -90,60 +90,60 @@ class CustomVideoControls extends StatefulWidget {
 }
 
 class _CustomVideoControlsState extends State<CustomVideoControls>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   bool _showControls = true;
   bool _controlsLocked = false;
+  bool _isMenuOpen = false;
+  bool _wasVideoActive = false;
 
   Timer? _hideTimer;
-  Timer? _controlsInteractionTimer;
 
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  late AnimationController _bufferingController;
+
+  static const Duration _inactivityTimeout = Duration(seconds: 3);
 
   @override
   void initState() {
     super.initState();
 
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 220),
       vsync: this,
+      value: 1.0,
     );
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
-      curve: Curves.easeInOut,
-    );
-
-    _bufferingController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
+      curve: Curves.easeOutCubic,
     );
 
     widget.controller.addListener(_videoListener);
-    _startHideTimer();
-    _fadeController.forward();
+    _scheduleAutoHide();
+  }
+
+  @override
+  void didUpdateWidget(covariant CustomVideoControls oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.channelName != widget.channelName ||
+        oldWidget.currentServer != widget.currentServer) {
+      // Al cambiar de canal o servidor, mostrar controles brevemente y programar auto-hide
+      _revealControlsAndScheduleHide();
+    }
   }
 
   void _videoListener() {
     if (!mounted) return;
 
-    if (widget.controller.isBuffering) {
-      if (!_bufferingController.isAnimating &&
-          _bufferingController.value < 1.0) {
-        _bufferingController.forward();
-      }
-    } else {
-      if (_bufferingController.value > 0.0) {
-        _bufferingController.stop();
-        _bufferingController.reset();
-      }
-    }
+    final isVideoActive = widget.controller.isPlaying ||
+        widget.controller.firstFrameRendered ||
+        widget.controller.isReady;
 
-    if (widget.controller.isPlaying &&
-        !widget.controller.isBuffering &&
-        _showControls &&
-        !_controlsLocked) {
-      _startHideTimer();
+    // Apenas el video comienza a reproducirse por primera vez, iniciar cuenta regresiva de ocultamiento
+    if (isVideoActive && !_wasVideoActive) {
+      _wasVideoActive = true;
+      _scheduleAutoHide();
+    } else if (!isVideoActive) {
+      _wasVideoActive = false;
     }
 
     setState(() {});
@@ -152,71 +152,115 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   @override
   void dispose() {
     _hideTimer?.cancel();
-    _controlsInteractionTimer?.cancel();
     _fadeController.dispose();
-    _bufferingController.dispose();
     widget.controller.removeListener(_videoListener);
     super.dispose();
   }
 
   // ═══════════════════════════════════════
-  // Visibility
+  // Visibility & Inactivity Timer
   // ═══════════════════════════════════════
 
   void _toggleControls() {
-    if (_controlsLocked) {
-      // In locked mode, tapping shows/hides the unlock button
-      setState(() {
-        _showControls = !_showControls;
-        if (_showControls) {
-          _fadeController.forward();
-          _startHideTimer();
-        } else {
-          _fadeController.reverse();
-          _hideTimer?.cancel();
-        }
-      });
-      return;
-    }
     HapticFeedback.selectionClick();
-    setState(() {
-      _showControls = !_showControls;
-      if (_showControls) {
-        _fadeController.forward();
-        _startHideTimer();
-      } else {
-        _fadeController.reverse();
-        _hideTimer?.cancel();
-      }
-    });
+    if (_showControls) {
+      _hideControlsNow();
+    } else {
+      _revealControlsAndScheduleHide();
+    }
   }
 
-  void _startHideTimer() {
+  void _revealControlsAndScheduleHide() {
     _hideTimer?.cancel();
-    if (!widget.controller.isPlaying || widget.controller.isBuffering) return;
+    if (!_showControls) {
+      setState(() {
+        _showControls = true;
+      });
+      _fadeController.forward();
+    }
+    _scheduleAutoHide();
+  }
 
-    _hideTimer = Timer(const Duration(seconds: 4), () {
-      if (mounted &&
-          widget.controller.isPlaying &&
-          !widget.controller.isBuffering &&
-          _showControls) {
+  void _hideControlsNow() {
+    _hideTimer?.cancel();
+    if (_isMenuOpen) return;
+    if (_showControls) {
+      setState(() {
+        _showControls = false;
+      });
+      _fadeController.reverse();
+    }
+  }
+
+  void _scheduleAutoHide() {
+    _hideTimer?.cancel();
+    if (_isMenuOpen) return;
+
+    _hideTimer = Timer(_inactivityTimeout, () {
+      if (!mounted || _isMenuOpen) return;
+      final isVideoActive = widget.controller.isPlaying ||
+          widget.controller.firstFrameRendered ||
+          widget.controller.isReady;
+      if (isVideoActive && _showControls) {
         setState(() {
           _showControls = false;
-          _fadeController.reverse();
         });
+        _fadeController.reverse();
       }
     });
   }
 
   void _onControlInteraction() {
-    _controlsInteractionTimer?.cancel();
-    if (!_showControls) {
-      setState(() {
-        _showControls = true;
-        _fadeController.forward();
-      });
+    _revealControlsAndScheduleHide();
+  }
+
+  // ═══════════════════════════════════════
+  // Server Selector Modal / Popover
+  // ═══════════════════════════════════════
+
+  Future<void> _openServerSelector() async {
+    final servers = widget.serverList ??
+        List.generate(
+          widget.totalServers.clamp(1, 20),
+          (i) => ServerInfo(
+            index: i,
+            label: 'Opción ${i + 1}',
+            type: ServerType.unknown,
+          ),
+        );
+
+    if (servers.isEmpty) return;
+
+    _hideTimer?.cancel();
+    setState(() {
+      _isMenuOpen = true;
+    });
+
+    HapticFeedback.mediumImpact();
+
+    final selectedIndex = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => _ServerSelectorSheet(
+        channelName: widget.channelName,
+        servers: servers,
+        currentServerIndex: (widget.currentServer - 1).clamp(0, servers.length - 1),
+      ),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _isMenuOpen = false;
+    });
+
+    if (selectedIndex != null) {
+      HapticFeedback.selectionClick();
+      widget.onServerSelect?.call(selectedIndex);
     }
-    _startHideTimer();
+
+    _scheduleAutoHide();
   }
 
   // ═══════════════════════════════════════
@@ -225,22 +269,29 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
 
   @override
   Widget build(BuildContext context) {
+    final bool showRebuffering = widget.controller.isBuffering &&
+        (widget.controller.isReady || widget.controller.firstFrameRendered);
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _toggleControls,
       child: Container(
         color: Colors.transparent,
         child: Stack(
+          fit: StackFit.expand,
           children: [
-            // Buffering overlay (solo si ya estaba listo y entra en rebuffering)
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
-              child: (widget.controller.isBuffering && widget.controller.isReady)
-                  ? _buildBufferingIndicator()
-                  : const SizedBox.shrink(),
-            ),
+            // Indicador liviano de rebuffering (sin oscurecer el video)
+            if (showRebuffering)
+              const Center(
+                child: IgnorePointer(
+                  child: PivoteLoader(
+                    size: 38,
+                    strokeWidth: 3.5,
+                  ),
+                ),
+              ),
 
-            // Controls Overlay
+            // Controles con animación suave y bloqueo de toques cuando están ocultos
             FadeTransition(
               opacity: _fadeAnimation,
               child: IgnorePointer(
@@ -250,15 +301,6 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildBufferingIndicator() {
-    return const Center(
-      child: PivoteLoader(
-        size: 38,
-        strokeWidth: 3.5,
       ),
     );
   }
@@ -294,12 +336,12 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withValues(alpha: 0.8),
+            Colors.black.withValues(alpha: 0.78),
             Colors.transparent,
             Colors.transparent,
-            Colors.black.withValues(alpha: 0.85),
+            Colors.black.withValues(alpha: 0.84),
           ],
-          stops: const [0.0, 0.22, 0.72, 1.0],
+          stops: const [0.0, 0.25, 0.72, 1.0],
         ),
       ),
       child: Column(
@@ -313,6 +355,10 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   }
 
   Widget _buildHeader() {
+    final isPlaying = widget.controller.isPlaying ||
+        widget.controller.firstFrameRendered ||
+        widget.controller.isReady;
+
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -359,15 +405,15 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                         width: 7,
                         height: 7,
                         decoration: BoxDecoration(
-                          color: widget.controller.isPlaying
+                          color: isPlaying
                               ? const Color(0xFF10B981)
-                              : Colors.red,
+                              : const Color(0xFFEF4444),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: (widget.controller.isPlaying
+                              color: (isPlaying
                                       ? const Color(0xFF10B981)
-                                      : Colors.red)
+                                      : const Color(0xFFEF4444))
                                   .withValues(alpha: 0.6),
                               blurRadius: 6,
                               spreadRadius: 1,
@@ -402,6 +448,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   setState(() {
                     _controlsLocked = true;
                   });
+                  _scheduleAutoHide();
                 },
               ),
           ],
@@ -411,6 +458,8 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
   }
 
   Widget _buildBottomControls() {
+    final hasServers = widget.totalServers > 0;
+
     return SafeArea(
       top: false,
       child: Padding(
@@ -430,7 +479,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 child: Container(
                   padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
+                    color: Colors.black.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: Colors.white.withValues(alpha: 0.18),
@@ -453,104 +502,56 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
 
             const Spacer(),
 
-            // Server Selector (if multi-server)
-            if (widget.serverList != null && widget.serverList!.isNotEmpty)
-              PopupMenuButton<int>(
-                initialValue: widget.currentServer - 1,
-                tooltip: 'Seleccionar Servidor',
-                color: const Color(0xFF1E1E24),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.12),
-                  ),
-                ),
-                onSelected: (idx) {
-                  _onControlInteraction();
-                  HapticFeedback.selectionClick();
-                  widget.onServerSelect?.call(idx);
-                },
-                itemBuilder: (context) {
-                  return widget.serverList!.map((srv) {
-                    final isCurrent = (widget.currentServer - 1) == srv.index;
-                    return PopupMenuItem<int>(
-                      value: srv.index,
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color:
-                                  srv.typeColor(context).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              srv.typeLabel,
-                              style: TextStyle(
-                                color: srv.typeColor(context),
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              srv.label,
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 12.5,
-                                fontWeight: isCurrent
-                                    ? FontWeight.w900
-                                    : FontWeight.w600,
-                                color: isCurrent
-                                    ? AppTheme.darkAccent
-                                    : Colors.white,
-                              ),
-                            ),
-                          ),
-                          if (isCurrent)
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              color: AppTheme.darkAccent,
-                              size: 16,
-                            ),
-                        ],
+            // Botón de Servidores con diseño moderno y despliegue limpio
+            if (hasServers)
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _openServerSelector,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
                       ),
-                    );
-                  }).toList();
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.dns_rounded,
-                          color: Colors.white, size: 16),
-                      const SizedBox(width: 5),
-                      Text(
-                        'S${widget.currentServer}',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.dns_rounded,
+                          color: AppTheme.darkAccent,
+                          size: 15,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Text(
+                          widget.totalServers > 1
+                              ? 'Servidor ${widget.currentServer}/${widget.totalServers}'
+                              : 'Servidor 1',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            letterSpacing: -0.1,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.keyboard_arrow_up_rounded,
+                          color: Colors.white70,
+                          size: 16,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
 
-            if (widget.serverList != null && widget.serverList!.isNotEmpty)
-              const SizedBox(width: 10),
+            if (hasServers) const SizedBox(width: 10),
 
             // Fullscreen Toggle (SVG)
             if (widget.onFullScreenToggle != null)
@@ -566,7 +567,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   child: Container(
                     padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
+                      color: Colors.black.withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.18),
@@ -630,6 +631,271 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 ],
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SERVER SELECTOR BOTTOM SHEET (Clean & Professional UI)
+// ════════════════════════════════════════════════════════════════════════════
+
+class _ServerSelectorSheet extends StatelessWidget {
+  final String channelName;
+  final List<ServerInfo> servers;
+  final int currentServerIndex;
+
+  const _ServerSelectorSheet({
+    required this.channelName,
+    required this.servers,
+    required this.currentServerIndex,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final maxSheetHeight = MediaQuery.of(context).size.height * 0.65;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 460,
+          maxHeight: maxSheetHeight,
+        ),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF14161D),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.12),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.6),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag Handle
+              const SizedBox(height: 10),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 16, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.dns_rounded,
+                        color: AppTheme.darkAccent,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Seleccionar Servidor',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Si una señal presenta cortes, prueba otra opción',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white60,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white60,
+                        size: 20,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Divider(
+                height: 1,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+
+              // Server Options List
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+                  itemCount: servers.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final srv = servers[index];
+                    final isCurrent = srv.index == currentServerIndex;
+
+                    return Material(
+                      color: isCurrent
+                          ? AppTheme.darkAccent.withValues(alpha: 0.15)
+                          : Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(14),
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).pop(srv.index),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isCurrent
+                                  ? AppTheme.darkAccent.withValues(alpha: 0.8)
+                                  : Colors.white.withValues(alpha: 0.07),
+                              width: isCurrent ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              // Server number badge
+                              Container(
+                                width: 32,
+                                height: 32,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: isCurrent
+                                      ? AppTheme.darkAccent
+                                      : Colors.white.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${srv.index + 1}',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    color: isCurrent
+                                        ? Colors.white
+                                        : Colors.white70,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              // Label & Subtitle
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Servidor ${srv.index + 1}',
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    if (srv.label.isNotEmpty &&
+                                        srv.label.toLowerCase() !=
+                                            'servidor ${srv.index + 1}' &&
+                                        srv.label.toLowerCase() !=
+                                            'opción ${srv.index + 1}')
+                                      Text(
+                                        srv.label,
+                                        style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white60,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                  ],
+                                ),
+                              ),
+
+                              // Status indicator
+                              if (isCurrent)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 9,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF10B981)
+                                        .withValues(alpha: 0.16),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF10B981),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        'ACTIVO',
+                                        style: GoogleFonts.spaceGrotesk(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w900,
+                                          color: const Color(0xFF10B981),
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                const Icon(
+                                  Icons.play_circle_outline_rounded,
+                                  color: Colors.white54,
+                                  size: 20,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ),
