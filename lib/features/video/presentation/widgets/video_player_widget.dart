@@ -161,7 +161,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     _currentStream = widget.channel.streamUrl[_serverIndex];
     String url = _currentStream!.url.trim();
     final Map<String, String> headers = {
-      if (_currentStream!.headers != null) ..._currentStream!.headers!,
+      ...?StreamSource.resolveSmartHeaders(url, _currentStream!.headers),
     };
 
     _serverTimeout?.cancel();
@@ -187,8 +187,17 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         if (_disposed) return;
         if (resolved.url.isNotEmpty) {
           url = resolved.url;
+          for (final entry in resolved.headers.entries) {
+            headers.putIfAbsent(entry.key, () => entry.value);
+          }
           if (resolved.referer != null && !headers.containsKey('Referer')) {
             headers['Referer'] = resolved.referer!;
+          }
+          final updatedSmart = StreamSource.resolveSmartHeaders(url, headers);
+          if (updatedSmart != null) {
+            headers
+              ..clear()
+              ..addAll(updatedSmart);
           }
         }
       } catch (_) {}

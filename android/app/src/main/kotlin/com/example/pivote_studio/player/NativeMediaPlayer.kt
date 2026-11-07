@@ -24,6 +24,7 @@ import com.example.pivote_studio.data.DrmScheme
 import com.example.pivote_studio.data.StreamChannel
 import com.example.pivote_studio.data.StreamFormat
 import com.example.pivote_studio.drm.PivoteDrmManager
+import com.example.pivote_studio.network.StreamHttpDataSourceFactory
 
 /**
  * Motor central de reproducción basado en Media3 ExoPlayer.
@@ -80,6 +81,7 @@ class NativeMediaPlayer(context: Context) {
     private var sessionId = 0
     private var formatCandidates: List<StreamFormat> = emptyList()
     private var formatIndex = 0
+    private var mpdHeaderPresetIndex = -1
     private var forceL3 = false
     private var networkRetries = 0
     private var decoderRetried = false
@@ -127,10 +129,10 @@ class NativeMediaPlayer(context: Context) {
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs */                     10_000,
-                /* maxBufferMs */                     40_000,
-                /* bufferForPlaybackMs */                800,
-                /* bufferForPlaybackAfterRebufferMs */ 2_000
+                /* minBufferMs */                      8_000,
+                /* maxBufferMs */                     36_000,
+                /* bufferForPlaybackMs */                600,
+                /* bufferForPlaybackAfterRebufferMs */ 1_500
             )
             .setPrioritizeTimeOverSizeThresholds(true)
             .setBackBuffer(10_000, false)
@@ -170,6 +172,7 @@ class NativeMediaPlayer(context: Context) {
             listOf(detected)
         }
         formatIndex = 0
+        mpdHeaderPresetIndex = -1
         forceL3 = channel.forceWidevineL3 || usesTextureSurface
         networkRetries = 0
         decoderRetried = false
@@ -333,7 +336,41 @@ class NativeMediaPlayer(context: Context) {
             return
         }
 
-        // 2. Formato inferido incorrecto → probar el siguiente candidato.
+        // 2. Si es DASH/MPD y falla la carga inicial (403/401/manifiesto/red), probar los presets de headers MPD (Flow AR, Flow PY, PrimeVideo)
+        if (!hasBeenReady &&
+            currentFormat == StreamFormat.DASH &&
+            (info.errorCode == PlayerErrorMapper.ERROR_HTTP ||
+                info.errorCode == PlayerErrorMapper.ERROR_MANIFEST ||
+                info.errorCode == PlayerErrorMapper.ERROR_MPD_LOAD ||
+                info.errorCode == PlayerErrorMapper.ERROR_NETWORK) &&
+            mpdHeaderPresetIndex + 1 < StreamHttpDataSourceFactory.MPD_HEADER_PRESETS.size
+        ) {
+            mpdHeaderPresetIndex++
+            var preset = StreamHttpDataSourceFactory.MPD_HEADER_PRESETS[mpdHeaderPresetIndex]
+            // Si el preset actual ya coincide con el Referer que acabamos de usar, saltar al siguiente
+            if (channel != null &&
+                channel.headers["Referer"] == preset["Referer"] &&
+                mpdHeaderPresetIndex + 1 < StreamHttpDataSourceFactory.MPD_HEADER_PRESETS.size
+            ) {
+                mpdHeaderPresetIndex++
+                preset = StreamHttpDataSourceFactory.MPD_HEADER_PRESETS[mpdHeaderPresetIndex]
+            }
+            if (channel != null) {
+                val updatedHeaders = LinkedHashMap(channel.headers).apply {
+                    remove("Origin")
+                    remove("Referer")
+                    remove("User-Agent")
+                    putAll(preset)
+                }
+                currentChannel = channel.copy(headers = updatedHeaders)
+                Log.w(TAG, "MPD falló (${info.errorCode} HTTP=${info.httpStatus}); reintentando con preset MPD #${mpdHeaderPresetIndex + 1} (${preset["Referer"]})")
+                emit("retrying", "reason" to "mpd_headers_preset", "preset" to (mpdHeaderPresetIndex + 1))
+                loadSource()
+                return
+            }
+        }
+
+        // 3. Formato inferido incorrecto → probar el siguiente candidato.
         if (!hasBeenReady && PlayerErrorMapper.isFormatMismatch(info) && formatIndex + 1 < formatCandidates.size) {
             formatIndex++
             Log.w(TAG, "Formato no válido, probando ${currentFormat.name}")

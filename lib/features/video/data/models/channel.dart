@@ -80,15 +80,9 @@ class Channel {
       logoUrls = [json['logo']];
     }
 
-    // Root headers if present
-    Map<String, String>? rootHeaders;
-    if (json['headers'] is Map) {
-      rootHeaders = Map<String, String>.from(
-        (json['headers'] as Map).map(
-          (key, value) => MapEntry(key.toString(), value.toString()),
-        ),
-      );
-    }
+    // Root headers if present (normalized key casing)
+    final Map<String, String>? rootHeaders =
+        StreamSource.extractNormalizedHeaders(json);
 
     // Parse streamUrl - supports old String format, Map format, and external CLEARKEY format
     List<StreamSource> streams = [];
@@ -96,27 +90,39 @@ class Channel {
       for (var item in json['streamUrl']) {
         if (item is String) {
           // Old format: simple string URL
-          streams.add(StreamSource(url: item, headers: rootHeaders));
+          streams.add(StreamSource(
+            url: item,
+            headers: StreamSource.resolveSmartHeaders(item, rootHeaders),
+          ));
         } else if (item is Map) {
           // New format: map with url, k1, k2, clearkeys, headers
           final s = StreamSource.fromJson(Map<String, dynamic>.from(item));
-          if (s.headers == null && rootHeaders != null) {
-            streams.add(StreamSource(
-              url: s.url,
-              k1: s.k1,
-              k2: s.k2,
-              label: s.label,
-              clearkeys: s.clearkeys,
-              headers: rootHeaders,
-              drmLicenseUri: s.drmLicenseUri,
-            ));
-          } else {
-            streams.add(s);
-          }
+          final mergedHeaders = <String, String>{
+            if (rootHeaders != null) ...rootHeaders,
+            if (s.headers != null) ...s.headers!,
+          };
+          streams.add(StreamSource(
+            url: s.url,
+            k1: s.k1,
+            k2: s.k2,
+            label: s.label,
+            clearkeys: s.clearkeys,
+            headers: StreamSource.resolveSmartHeaders(
+              s.url,
+              mergedHeaders.isEmpty ? null : mergedHeaders,
+            ),
+            drmLicenseUri: s.drmLicenseUri,
+          ));
         }
       }
     } else if (json['streamUrl'] is String) {
-      streams = [StreamSource(url: json['streamUrl'], headers: rootHeaders)];
+      final urlStr = json['streamUrl'].toString();
+      streams = [
+        StreamSource(
+          url: urlStr,
+          headers: StreamSource.resolveSmartHeaders(urlStr, rootHeaders),
+        )
+      ];
     }
 
     // Support external CLEARKEY format (e.g. ESPN / Flow format where URL and DRM are at root)
@@ -129,10 +135,11 @@ class Channel {
       if (drmLicenseUri != null && drmLicenseUri.isNotEmpty) {
         clearkeys = StreamSource.parseDrmLicenseUri(drmLicenseUri);
       }
+      final urlStr = rootStreamUrl.toString();
       streams.add(StreamSource(
-        url: rootStreamUrl.toString(),
+        url: urlStr,
         clearkeys: clearkeys,
-        headers: rootHeaders,
+        headers: StreamSource.resolveSmartHeaders(urlStr, rootHeaders),
         drmLicenseUri: drmLicenseUri,
       ));
     }
@@ -312,18 +319,13 @@ class StreamSource {
       parsedClearkeys = parseDrmLicenseUri(drmLicenseUri);
     }
 
-    // Parse custom HTTP headers
-    Map<String, String>? parsedHeaders;
-    if (json['headers'] != null && json['headers'] is Map) {
-      parsedHeaders = Map<String, String>.from(
-        (json['headers'] as Map).map(
-          (key, value) => MapEntry(key.toString(), value.toString()),
-        ),
-      );
-    }
+    // Parse custom HTTP headers (normalized + smart URL presets)
+    final urlStr = url.toString();
+    final extractedHeaders = extractNormalizedHeaders(json);
+    final parsedHeaders = resolveSmartHeaders(urlStr, extractedHeaders);
 
     return StreamSource(
-      url: url.toString(),
+      url: urlStr,
       k1: json['k1']?.toString(),
       k2: json['k2']?.toString(),
       label: json['label']?.toString() ?? json['name']?.toString(),
@@ -331,6 +333,150 @@ class StreamSource {
       headers: parsedHeaders,
       drmLicenseUri: drmLicenseUri,
     );
+  }
+
+  /// Normalizes canonical HTTP header names (`user-agent` -> `User-Agent`,
+  /// `referer` -> `Referer`, `origin` -> `Origin`) so custom JSON headers
+  /// never collide or duplicate in ExoPlayer.
+  static String normalizeHeaderKey(String rawKey) {
+    final trimmed = rawKey.trim();
+    switch (trimmed.toLowerCase()) {
+      case 'user-agent':
+      case 'user_agent':
+      case 'useragent':
+        return 'User-Agent';
+      case 'referer':
+      case 'referrer':
+        return 'Referer';
+      case 'origin':
+        return 'Origin';
+      case 'cookie':
+        return 'Cookie';
+      case 'authorization':
+        return 'Authorization';
+      default:
+        return trimmed;
+    }
+  }
+
+  /// Extracts and normalizes HTTP headers from a JSON map (supports both nested
+  /// `headers` map and flat `user-agent`/`referer`/`origin` keys).
+  static Map<String, String>? extractNormalizedHeaders(
+      Map<String, dynamic> json) {
+    final result = <String, String>{};
+
+    void putHeader(String key, dynamic val) {
+      if (val == null) return;
+      final str = val.toString().trim();
+      if (str.isEmpty) return;
+      result[normalizeHeaderKey(key)] = str;
+    }
+
+    if (json['headers'] is Map) {
+      (json['headers'] as Map).forEach((k, v) {
+        if (k != null) putHeader(k.toString(), v);
+      });
+    }
+
+    // Also support flat header keys if provided directly on the object
+    for (final entry in json.entries) {
+      final lower = entry.key.toLowerCase();
+      if (lower == 'user-agent' ||
+          lower == 'user_agent' ||
+          lower == 'useragent' ||
+          lower == 'referer' ||
+          lower == 'referrer' ||
+          lower == 'origin') {
+        final normKey = normalizeHeaderKey(entry.key);
+        if (!result.containsKey(normKey)) {
+          putHeader(normKey, entry.value);
+        }
+      }
+    }
+
+    return result.isEmpty ? null : result;
+  }
+
+  /// Injects smart preset headers based on stream URL patterns when not already
+  /// explicitly specified by the channel JSON.
+  static Map<String, String>? resolveSmartHeaders(
+    String rawUrl,
+    Map<String, String>? existing,
+  ) {
+    final merged = <String, String>{};
+    if (existing != null) {
+      existing.forEach((k, v) {
+        final norm = normalizeHeaderKey(k);
+        if (v.trim().isNotEmpty) {
+          merged[norm] = v.trim();
+        }
+      });
+    }
+
+    final lower = rawUrl.trim().toLowerCase();
+    if (lower.isEmpty) return merged.isEmpty ? null : merged;
+
+    void putIfAbsent(String key, String value) {
+      if (!merged.containsKey(key) || merged[key]!.isEmpty) {
+        merged[key] = value;
+      }
+    }
+
+    // 1. nvideo.net
+    if (lower.contains('nvideo.net') || lower.contains('nvideo')) {
+      putIfAbsent(
+        'User-Agent',
+        'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+      );
+      putIfAbsent('Referer', 'https://nvideo.net/');
+      putIfAbsent('Origin', 'https://nvideo.net');
+    }
+    // 2. Flow Paraguay (cvattv.com.ar direct edge links & .com.py)
+    // Ej: https://edge-mix01-ros.cvattv.com.ar/live/c7eds/GEN__CAM1/SA_Live_dash_enc/GEN__CAM1.mpd
+    else if (lower.contains('cvattv.com.ar') ||
+        lower.contains('flow.com.py') ||
+        lower.contains('cvattv.com.py') ||
+        lower.contains('.com.py')) {
+      putIfAbsent(
+        'User-Agent',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36',
+      );
+      putIfAbsent('Origin', 'https://portal.app.flow.com.py');
+      putIfAbsent('Referer', 'https://portal.app.flow.com.py/');
+    }
+    // 3. Prime Video / AivAndroidPlayer MPD
+    // Ej: http://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash-sd/enc/.../cenc-sd.mpd
+    else if (lower.contains('aiv-cdn.net') ||
+        lower.contains('iad-nitro') ||
+        lower.contains('cenc-sd.mpd') ||
+        lower.contains('primevideo.com') ||
+        lower.contains('aiv-delivery.net') ||
+        lower.contains('pv-cdn.net') ||
+        lower.contains('d25xi40x97liuc') ||
+        lower.contains('atv-ps')) {
+      putIfAbsent('Referer', 'https://www.primevideo.com/');
+      putIfAbsent(
+        'User-Agent',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AivAndroidPlayer/1.0 (AndroidDevice) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36',
+      );
+    }
+    // 4. Flow Argentina (cdn-token.app.flow.com.ar / cdn-flow-balancer.app.flow.com.ar / flow.com.ar)
+    // Ej: https://cdn-token.app.flow.com.ar/cdntoken/v2/generator?path=https://cdn-flow-balancer.app.flow.com.ar/...
+    else if (lower.contains('cdn-token.app.flow.com.ar') ||
+        lower.contains('cdn-flow-balancer.app.flow.com.ar') ||
+        lower.contains('app.flow.com.ar') ||
+        lower.contains('flow.com.ar') ||
+        lower.contains('cablevisionflow') ||
+        lower.contains('telecom.com.ar')) {
+      putIfAbsent('Origin', 'https://portal.app.flow.com.ar');
+      putIfAbsent('Referer', 'https://portal.app.flow.com.ar/');
+      putIfAbsent(
+        'User-Agent',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
+      );
+    }
+
+    return merged.isEmpty ? null : merged;
   }
 
   Map<String, dynamic> toJson() {

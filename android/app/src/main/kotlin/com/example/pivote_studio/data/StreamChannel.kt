@@ -74,8 +74,8 @@ data class StreamChannel(
         val path = (uri?.path ?: originalUrl).lowercase()
         val full = originalUrl.lowercase()
 
-        // 1. Prioridad máxima: extensión clara en la URL
-        if (path.endsWith(".mpd") || full.contains(".mpd?") || full.contains("format=mpd") ||
+        // 1. Prioridad máxima: extensión clara en la URL (incluyendo query params como cdntoken?path=...mpd)
+        if (path.endsWith(".mpd") || full.contains(".mpd") || full.contains("format=mpd") ||
             (full.contains("/dash/") && !full.contains(".m3u8"))
         ) {
             return StreamFormat.DASH
@@ -189,13 +189,26 @@ data class StreamChannel(
                 else -> DrmScheme.NONE
             }
 
-            // ── Headers HTTP ─────────────────────────────────────────────────
-            val headers = LinkedHashMap(map["headers"].toStringMap())
+            // ── Headers HTTP (normalizados) ──────────────────────────────────
+            val rawHeaders = map["headers"].toStringMap()
+            val headers = LinkedHashMap<String, String>()
+            fun normalizeHeaderKey(key: String): String = when (key.trim().lowercase()) {
+                "user-agent", "user_agent", "useragent" -> "User-Agent"
+                "referer", "referrer"                   -> "Referer"
+                "origin"                                -> "Origin"
+                "cookie"                                -> "Cookie"
+                "authorization"                         -> "Authorization"
+                else                                    -> key.trim()
+            }
+            rawHeaders.forEach { (k, v) ->
+                if (v.isNotEmpty()) headers[normalizeHeaderKey(k)] = v
+            }
             fun addIfAbsent(key: String, value: Any?) {
                 val v = value?.toString()?.trim()
-                if (!v.isNullOrEmpty() && headers.keys.none { it.equals(key, true) }) headers[key] = v
+                val norm = normalizeHeaderKey(key)
+                if (!v.isNullOrEmpty() && !headers.containsKey(norm)) headers[norm] = v
             }
-            addIfAbsent("User-Agent", map["user_agent"] ?: map["userAgent"])
+            addIfAbsent("User-Agent", map["user_agent"] ?: map["userAgent"] ?: map["user-agent"])
             addIfAbsent("Referer", map["referer"] ?: map["referrer"])
             addIfAbsent("Origin", map["origin"])
 

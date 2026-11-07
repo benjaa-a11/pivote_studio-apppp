@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:pivote/features/video/data/models/channel.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // StreamUrlResolver v2.0 — Universal PHP/Web → M3U8 resolver
@@ -74,12 +75,16 @@ class ResolveResult {
   /// The original PHP/web page URL (to use as Referer when loading the stream)
   final String? referer;
 
+  /// Recommended HTTP headers for the resolved stream
+  final Map<String, String> headers;
+
   /// Which strategy found the URL (for debug logging)
   final String strategy;
 
   const ResolveResult({
     required this.url,
     this.referer,
+    this.headers = const {},
     required this.strategy,
   });
 
@@ -136,23 +141,40 @@ class StreamUrlResolver {
     }
 
     final uLower = trimmed.toLowerCase();
+    final initialSmart =
+        StreamSource.resolveSmartHeaders(trimmed, null) ?? const {};
 
     // ── 1. Already a direct M3U8 / CDN URL → skip resolution ──────────
     if (_isDirectStream(uLower)) {
       debugPrint('⚡ Resolver fast-path: $trimmed');
-      return ResolveResult(url: trimmed, strategy: 'direct');
+      return ResolveResult(
+        url: trimmed,
+        referer: initialSmart['Referer'],
+        headers: initialSmart,
+        strategy: 'direct',
+      );
     }
 
     // ── 2. WebView / iframe / embed URLs → skip (handled by PivoProPlayer)
     if (_isWebViewUrl(uLower)) {
       debugPrint('🌐 Resolver skip (WebView): $trimmed');
-      return ResolveResult(url: trimmed, strategy: 'passthrough');
+      return ResolveResult(
+        url: trimmed,
+        referer: initialSmart['Referer'],
+        headers: initialSmart,
+        strategy: 'passthrough',
+      );
     }
 
     // ── 3. MPD / DRM → skip (handled by ShakaPlayer) ──────────────────
     if (uLower.contains('.mpd')) {
       debugPrint('🔒 Resolver skip (MPD): $trimmed');
-      return ResolveResult(url: trimmed, strategy: 'passthrough');
+      return ResolveResult(
+        url: trimmed,
+        referer: initialSmart['Referer'],
+        headers: initialSmart,
+        strategy: 'passthrough',
+      );
     }
 
     // ── 4. Cache hit ──────────────────────────────────────────────────
@@ -160,7 +182,17 @@ class StreamUrlResolver {
     if (cached != null) {
       debugPrint(
           '💾 Resolver cache hit: ${cached.substring(0, min(80, cached.length))}');
-      return ResolveResult(url: cached, referer: trimmed, strategy: 'cache');
+      final merged = StreamSource.resolveSmartHeaders(cached, {
+            ...initialSmart,
+            'Referer': initialSmart['Referer'] ?? trimmed,
+          }) ??
+          {'Referer': trimmed};
+      return ResolveResult(
+        url: cached,
+        referer: merged['Referer'] ?? trimmed,
+        headers: merged,
+        strategy: 'cache',
+      );
     }
 
     // ── 5. Resolve via HTTP ───────────────────────────────────────────
@@ -168,8 +200,17 @@ class StreamUrlResolver {
       final resolved = await _resolveViaHttp(trimmed);
       if (resolved != null && resolved.isNotEmpty && resolved != trimmed) {
         _putCache(trimmed, resolved);
+        final merged = StreamSource.resolveSmartHeaders(resolved, {
+              ...initialSmart,
+              'Referer': initialSmart['Referer'] ?? trimmed,
+            }) ??
+            {'Referer': trimmed};
         return ResolveResult(
-            url: resolved, referer: trimmed, strategy: 'http-resolved');
+          url: resolved,
+          referer: merged['Referer'] ?? trimmed,
+          headers: merged,
+          strategy: 'http-resolved',
+        );
       }
     } catch (e) {
       debugPrint('❌ Resolver error: $e');
@@ -177,7 +218,12 @@ class StreamUrlResolver {
 
     // ── 6. Fallback: return original URL as-is ────────────────────────
     debugPrint('⚠️ Resolver: no M3U8 found, using original URL');
-    return ResolveResult(url: trimmed, strategy: 'fallback');
+    return ResolveResult(
+      url: trimmed,
+      referer: initialSmart['Referer'],
+      headers: initialSmart,
+      strategy: 'fallback',
+    );
   }
 
   // ── HTTP Resolution Pipeline ──────────────────────────────────────────
@@ -196,17 +242,22 @@ class StreamUrlResolver {
       req.followRedirects = true;
       req.maxRedirects = _ResolverConfig.maxRedirects;
 
-      // Anti-bot headers — mimics a real Chrome browser on Windows
+      final smartHeaders =
+          StreamSource.resolveSmartHeaders(url, null) ?? const {};
+
+      // Anti-bot headers — uses domain preset (e.g. nvideo.net) or Chrome on Windows
       req.headers
-        ..set('User-Agent', _ResolverConfig.userAgent)
+        ..set('User-Agent',
+            smartHeaders['User-Agent'] ?? _ResolverConfig.userAgent)
         ..set('Accept',
             'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
         ..set('Accept-Language', 'es-AR,es;q=0.9,en;q=0.8')
         ..set('Accept-Encoding', 'gzip, deflate, br')
         ..set('Connection', 'keep-alive')
         ..set('Upgrade-Insecure-Requests', '1')
-        ..set('Referer', url)
-        ..set('Origin', '${uri.scheme}://${uri.host}');
+        ..set('Referer', smartHeaders['Referer'] ?? url)
+        ..set('Origin',
+            smartHeaders['Origin'] ?? '${uri.scheme}://${uri.host}');
 
       final res = await req.close().timeout(_ResolverConfig.pageTimeout);
 
