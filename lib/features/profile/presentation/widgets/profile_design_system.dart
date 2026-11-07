@@ -9,8 +9,8 @@ import 'package:provider/provider.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
 
-/// Unified color palette for Profile & Settings Subsections,
-/// adapting the HTML design system to Pivote's Dark and Light themes.
+/// Unified color palette for Profile, Settings Subsections, Radio, Favorites, and Diagnostics,
+/// adapting the design system to Pivote's Dark and Light themes with high contrast and visibility.
 class ProfilePalette {
   final bool isDark;
   final Color bg;
@@ -59,12 +59,8 @@ class ProfilePalette {
   factory ProfilePalette.of(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    final accent = themeProvider.accentFor(isDark);
 
     if (isDark) {
-      final isBrightAccent =
-          ThemeData.estimateBrightnessForColor(accent) == Brightness.light;
       return ProfilePalette(
         isDark: true,
         bg: AppTheme.darkBg,
@@ -76,52 +72,50 @@ class ProfilePalette {
         muted: AppTheme.darkText2,
         chevron: AppTheme.darkText3,
         switchOff: AppTheme.darkBg4,
-        switchOn: accent,
-        switchThumbOn: isBrightAccent ? AppTheme.darkBg : Colors.white,
-        accent: accent,
-        primaryBtnBg: accent,
-        primaryBtnText: isBrightAccent ? AppTheme.darkBg : Colors.white,
+        switchOn: AppTheme.darkAccent,
+        switchThumbOn: AppTheme.darkBg,
+        accent: AppTheme.darkAccent,
+        primaryBtnBg: AppTheme.darkAccent,
+        primaryBtnText: AppTheme.darkBg,
         danger: AppTheme.darkDanger,
         dangerBg: AppTheme.darkDangerDim,
         dangerBorder: const Color(0x38FF4D4F),
         avatarPlaceholderBg: AppTheme.darkBg4,
         cardShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.32),
-            blurRadius: 16,
-            spreadRadius: -10,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.34),
+            blurRadius: 18,
+            spreadRadius: -8,
+            offset: const Offset(0, 8),
           ),
         ],
       );
     } else {
-      final useDarkPrimary = themeProvider.accentIndex == 0;
-      final activeFill = useDarkPrimary ? AppTheme.lightText : accent;
       return ProfilePalette(
         isDark: false,
-        bg: AppTheme.lightBg1,
-        card: const Color(0xFFE9EFF8),
-        cardPressed: const Color(0xFFDDE6F3),
-        border: const Color(0xFFD6E0EE),
-        iconBox: Colors.white,
-        text: const Color(0xFF111111),
-        muted: const Color(0xFF6B6B6B),
-        chevron: const Color(0xFFAAB4C4),
-        switchOff: const Color(0xFFC9D3E2),
-        switchOn: activeFill,
+        bg: AppTheme.lightBg,
+        card: Colors.white,
+        cardPressed: const Color(0xFFEDF2F7),
+        border: const Color(0xFFDCE3EC),
+        iconBox: const Color(0xFFEEF3F9),
+        text: const Color(0xFF111827),
+        muted: const Color(0xFF5A6675),
+        chevron: const Color(0xFF8C9BAA),
+        switchOff: const Color(0xFFCBD5E1),
+        switchOn: const Color(0xFF111827),
         switchThumbOn: Colors.white,
-        accent: accent,
-        primaryBtnBg: activeFill,
+        accent: AppTheme.lightAccent,
+        primaryBtnBg: const Color(0xFF111827),
         primaryBtnText: Colors.white,
         danger: const Color(0xFFD93025),
         dangerBg: const Color(0xFFFDECEB),
         dangerBorder: const Color(0x2ED93025),
-        avatarPlaceholderBg: const Color(0xFFCFD6DB),
+        avatarPlaceholderBg: const Color(0xFF94A3B8),
         cardShadow: [
           BoxShadow(
-            color: const Color(0xFF142850).withValues(alpha: 0.14),
-            blurRadius: 16,
-            spreadRadius: -10,
+            color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+            blurRadius: 18,
+            spreadRadius: -6,
             offset: const Offset(0, 6),
           ),
         ],
@@ -130,7 +124,7 @@ class ProfilePalette {
   }
 }
 
-/// Exact SVG icons from the HTML specifications.
+/// Exact SVG icons from the HTML specifications + diagnostics icon.
 class ProfileSvgIcons {
   static const String crown =
       '<svg viewBox="0 0 24 24"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8z"/></svg>';
@@ -143,6 +137,9 @@ class ProfileSvgIcons {
 
   static const String storage =
       '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  static const String diagnostics =
+      '<svg viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
   static const String editProfile =
       '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -177,12 +174,14 @@ class ProfileSubsectionScaffold extends StatelessWidget {
   final String title;
   final List<Widget> children;
   final VoidCallback? onBack;
+  final Widget? trailing;
 
   const ProfileSubsectionScaffold({
     super.key,
     required this.title,
     required this.children,
     this.onBack,
+    this.trailing,
   });
 
   @override
@@ -209,7 +208,11 @@ class ProfileSubsectionScaffold extends StatelessWidget {
                 math.max(24, bottomPad + 22),
               ),
               children: [
-                ProfileSubHeader(title: title, onBack: onBack),
+                ProfileSubHeader(
+                  title: title,
+                  onBack: onBack,
+                  trailing: trailing,
+                ),
                 ...children,
               ],
             ),
@@ -220,17 +223,19 @@ class ProfileSubsectionScaffold extends StatelessWidget {
   }
 }
 
-/// Subsection Header (.hdr: back 40x40 circle #E9EFF8, centered 20px w600 title, 40px spacer).
+/// Subsection Header (.hdr: back 40x40 circle, centered 20px w600 title, 40px spacer).
 class ProfileSubHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onBack;
   final Widget? trailing;
+  final bool showBackButton;
 
   const ProfileSubHeader({
     super.key,
     required this.title,
     this.onBack,
     this.trailing,
+    this.showBackButton = true,
   });
 
   @override
@@ -242,34 +247,37 @@ class ProfileSubHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _PressableScale(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              if (onBack != null) {
-                onBack!();
-              } else {
-                Navigator.of(context).maybePop();
-              }
-            },
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: palette.card,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: palette.border,
-                  width: 1,
+          if (showBackButton)
+            _PressableScale(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                if (onBack != null) {
+                  onBack!();
+                } else {
+                  Navigator.of(context).maybePop();
+                }
+              },
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: palette.card,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: palette.border,
+                    width: 1,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: ProfileSvgIcons.svg(
+                  ProfileSvgIcons.chevronLeft,
+                  size: 18,
+                  color: palette.text,
                 ),
               ),
-              alignment: Alignment.center,
-              child: ProfileSvgIcons.svg(
-                ProfileSvgIcons.chevronLeft,
-                size: 18,
-                color: palette.text,
-              ),
-            ),
-          ),
+            )
+          else
+            const SizedBox(width: 40, height: 40),
           Expanded(
             child: Text(
               title,
@@ -483,7 +491,7 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
   }
 }
 
-/// 38x38 rounded icon container (.icon: 38x38, radius 12, white in light / elevated dark in dark).
+/// 38x38 rounded icon container (.icon: 38x38, radius 12).
 class ProfileSettingIconBox extends StatelessWidget {
   final String svgString;
 
@@ -678,22 +686,28 @@ class ProfileCoverBanner extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: palette.isDark
+              ? AppTheme.darkBorder
+              : const Color(0xFFCBD9EA),
+          width: 1,
+        ),
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: palette.isDark
               ? [
-                  const Color(0xFF172234),
-                  const Color(0xFF1E2D44),
+                  const Color(0xFF152033),
+                  const Color(0xFF1E2F4A),
                 ]
               : [
-                  const Color(0xFFB9CBE2),
-                  const Color(0xFFC4D3E6),
+                  const Color(0xFF93B5E1),
+                  const Color(0xFFBAD0EC),
                 ],
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(29),
         child: CustomPaint(
           painter: _CloudCoverPainter(
             isDark: palette.isDark,
@@ -737,7 +751,7 @@ class _CloudCoverPainter extends CustomPainter {
         center: Offset(size.width * 0.38, size.height * 0.42),
         rx: size.width * 0.48,
         ry: size.height * 0.42,
-        innerColor: Colors.white.withValues(alpha: 0.14),
+        innerColor: Colors.white.withValues(alpha: 0.15),
         midColor: Colors.white.withValues(alpha: 0.06),
       );
       _drawCloudBlob(
@@ -746,8 +760,8 @@ class _CloudCoverPainter extends CustomPainter {
         center: Offset(size.width * 0.64, size.height * 0.62),
         rx: size.width * 0.35,
         ry: size.height * 0.32,
-        innerColor: const Color(0xFF4F9BF0).withValues(alpha: 0.18),
-        midColor: const Color(0xFF4F9BF0).withValues(alpha: 0.05),
+        innerColor: const Color(0xFF4F9BF0).withValues(alpha: 0.20),
+        midColor: const Color(0xFF4F9BF0).withValues(alpha: 0.06),
       );
       _drawCloudBlob(
         canvas,
@@ -755,11 +769,11 @@ class _CloudCoverPainter extends CustomPainter {
         center: Offset(size.width * 0.22, size.height * 0.60),
         rx: size.width * 0.30,
         ry: size.height * 0.26,
-        innerColor: Colors.white.withValues(alpha: 0.11),
-        midColor: Colors.white.withValues(alpha: 0.03),
+        innerColor: Colors.white.withValues(alpha: 0.12),
+        midColor: Colors.white.withValues(alpha: 0.04),
       );
     } else {
-      // Exact radial cloud gradients from profile.html
+      // Crisp radial cloud gradients from profile.html with high visibility in light mode
       _drawCloudBlob(
         canvas,
         size,
@@ -767,7 +781,7 @@ class _CloudCoverPainter extends CustomPainter {
         rx: size.width * 0.55,
         ry: size.height * 0.45,
         innerColor: Colors.white,
-        midColor: Colors.white.withValues(alpha: 0.85),
+        midColor: Colors.white.withValues(alpha: 0.88),
       );
       _drawCloudBlob(
         canvas,
@@ -775,8 +789,8 @@ class _CloudCoverPainter extends CustomPainter {
         center: Offset(size.width * 0.62, size.height * 0.62),
         rx: size.width * 0.35,
         ry: size.height * 0.30,
-        innerColor: Colors.white.withValues(alpha: 0.90),
-        midColor: Colors.white.withValues(alpha: 0.45),
+        innerColor: Colors.white.withValues(alpha: 0.92),
+        midColor: Colors.white.withValues(alpha: 0.48),
       );
       _drawCloudBlob(
         canvas,
@@ -784,8 +798,8 @@ class _CloudCoverPainter extends CustomPainter {
         center: Offset(size.width * 0.22, size.height * 0.60),
         rx: size.width * 0.30,
         ry: size.height * 0.25,
-        innerColor: Colors.white.withValues(alpha: 0.80),
-        midColor: Colors.white.withValues(alpha: 0.35),
+        innerColor: Colors.white.withValues(alpha: 0.85),
+        midColor: Colors.white.withValues(alpha: 0.38),
       );
     }
   }
@@ -818,8 +832,9 @@ class _CloudCoverPainter extends CustomPainter {
   }
 }
 
-/// Avatar with conic/sweep gradient ring (.avatar-wrap: 156 diameter, 5dp ring, 4dp bg gap, photo/initial).
-class ProfileAvatarWithRing extends StatelessWidget {
+/// Avatar with subtle animated conic/sweep gradient ring
+/// (.avatar-wrap: 156 diameter, 5dp ring, 4dp+ bg gap, photo/initial).
+class ProfileAvatarWithRing extends StatefulWidget {
   final double size;
   final String? imagePath;
   final String? photoUrl;
@@ -836,37 +851,79 @@ class ProfileAvatarWithRing extends StatelessWidget {
   });
 
   @override
+  State<ProfileAvatarWithRing> createState() => _ProfileAvatarWithRingState();
+}
+
+class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 9),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final palette = ProfilePalette.of(context);
+    final reduceAnimations = context.select<ThemeProvider, bool>(
+      (p) => p.reduceAnimations,
+    );
 
-    ImageProvider<Object>? imageProvider;
-    if (imagePath != null && imagePath!.isNotEmpty) {
-      imageProvider = FileImage(File(imagePath!));
-    } else if (photoUrl != null && photoUrl!.isNotEmpty) {
-      imageProvider = NetworkImage(photoUrl!);
+    if (reduceAnimations && _controller.isAnimating) {
+      _controller.stop();
+    } else if (!reduceAnimations && !_controller.isAnimating) {
+      _controller.repeat();
     }
 
+    ImageProvider<Object>? imageProvider;
+    if (widget.imagePath != null && widget.imagePath!.isNotEmpty) {
+      imageProvider = FileImage(File(widget.imagePath!));
+    } else if (widget.photoUrl != null && widget.photoUrl!.isNotEmpty) {
+      imageProvider = NetworkImage(widget.photoUrl!);
+    }
+
+    final ringPad = widget.size >= 120 ? 5.0 : 4.0;
+    final gapPad = widget.size >= 120 ? 6.0 : 4.5;
+
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        padding: const EdgeInsets.all(5),
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: SweepGradient(
-            colors: [
-              Color(0xFF9B6BE6),
-              Color(0xFF4F9BF0),
-              Color(0xFF3FD1A0),
-              Color(0xFFF0C93A),
-              Color(0xFF9B6BE6),
-            ],
-            transform: GradientRotation(3.4906585),
-          ),
-        ),
+      onTap: widget.onTap,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          final angle = 3.4906585 + (_controller.value * 2 * math.pi);
+          return Container(
+            width: widget.size,
+            height: widget.size,
+            padding: EdgeInsets.all(ringPad),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: SweepGradient(
+                colors: const [
+                  Color(0xFF9B6BE6),
+                  Color(0xFF4F9BF0),
+                  Color(0xFF3FD1A0),
+                  Color(0xFFF0C93A),
+                  Color(0xFF9B6BE6),
+                ],
+                transform: GradientRotation(angle),
+              ),
+            ),
+            child: child,
+          );
+        },
         child: Container(
-          padding: const EdgeInsets.all(6),
+          padding: EdgeInsets.all(gapPad),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: palette.bg,
@@ -885,9 +942,9 @@ class ProfileAvatarWithRing extends StatelessWidget {
             alignment: Alignment.center,
             child: imageProvider == null
                 ? Text(
-                    fallbackInitial,
+                    widget.fallbackInitial,
                     style: GoogleFonts.inter(
-                      fontSize: size * 0.36,
+                      fontSize: widget.size * 0.36,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),

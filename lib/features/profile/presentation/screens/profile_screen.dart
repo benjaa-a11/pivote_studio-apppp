@@ -16,6 +16,7 @@ import 'package:pivote/features/favorites/presentation/providers/favorites_provi
 import 'package:pivote/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/about_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/appearance_settings_screen.dart';
+import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/history_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/notifications_settings_screen.dart';
@@ -267,6 +268,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           valueText: _cacheSize,
                           showChevron: true,
                           onTap: () => _open(const StorageManagerScreen()),
+                        ),
+                        ProfileGroupRow(
+                          horizontalGap: 14,
+                          leading: const ProfileSettingIconBox(
+                            svgString: ProfileSvgIcons.diagnostics,
+                          ),
+                          title: 'Diagnóstico de streaming',
+                          showChevron: true,
+                          onTap: () => _open(const DiagnosticsScreen()),
                         ),
                         ProfileGroupRow(
                           horizontalGap: 14,

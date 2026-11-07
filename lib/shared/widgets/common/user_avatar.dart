@@ -1,15 +1,15 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:pivote/core/theme/theme_provider.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 
-/// Reusable User Avatar widget. Displays:
-/// 1. Cached local image file if available.
-/// 2. Remote photoUrl if available.
-/// 3. Uppercase initials generated from user's first and last name (e.g. "BF" for Benjamin Ferrer).
-class UserAvatar extends StatelessWidget {
+/// Reusable User Avatar widget with the signature animated colorful SweepGradient ring.
+/// Preserves the exact outer [size] (e.g. 40 on Home header, 24 on bottom nav).
+class UserAvatar extends StatefulWidget {
   final double size;
   final VoidCallback? onTap;
   final bool showBorder;
@@ -23,23 +23,46 @@ class UserAvatar extends StatelessWidget {
     this.borderColor,
   });
 
+  @override
+  State<UserAvatar> createState() => _UserAvatarState();
+}
+
+class _UserAvatarState extends State<UserAvatar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 9),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   String _getInitials(String name, String lastName) {
     final cleanName = name.trim();
     final cleanLastName = lastName.trim();
 
-    String firstLetter = cleanName.isNotEmpty ? cleanName[0].toUpperCase() : '';
-    String secondLetter =
+    final firstLetter =
+        cleanName.isNotEmpty ? cleanName[0].toUpperCase() : '';
+    final secondLetter =
         cleanLastName.isNotEmpty ? cleanLastName[0].toUpperCase() : '';
 
     if (firstLetter.isEmpty && secondLetter.isEmpty) {
-      return 'P';
+      return 'U';
     }
 
     if (firstLetter.isNotEmpty && secondLetter.isNotEmpty) {
       return '$firstLetter$secondLetter';
     }
 
-    // If only name is present, try to extract second letter from space if available
     if (cleanName.contains(' ')) {
       final parts = cleanName.split(' ');
       if (parts.length > 1 && parts[1].isNotEmpty) {
@@ -47,13 +70,22 @@ class UserAvatar extends StatelessWidget {
       }
     }
 
-    return firstLetter.isNotEmpty ? firstLetter : 'P';
+    return firstLetter.isNotEmpty ? firstLetter : 'U';
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final reduceAnimations = context.select<ThemeProvider, bool>(
+      (p) => p.reduceAnimations,
+    );
+
+    if (reduceAnimations && _controller.isAnimating) {
+      _controller.stop();
+    } else if (!reduceAnimations && !_controller.isAnimating) {
+      _controller.repeat();
+    }
 
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
@@ -72,58 +104,81 @@ class UserAvatar extends StatelessWidget {
         }
 
         final initials = _getInitials(user?.name ?? '', user?.lastName ?? '');
+        final ringPadding = widget.showBorder
+            ? (widget.size >= 34 ? 2.2 : 1.6)
+            : 0.0;
+        final gapPadding = widget.showBorder
+            ? (widget.size >= 34 ? 1.8 : 1.2)
+            : 0.0;
+        final innerSize =
+            math.max(0.0, widget.size - (ringPadding + gapPadding) * 2);
 
-        final avatarWidget = Container(
-          width: size,
-          height: size,
+        final innerCircle = Container(
+          padding: EdgeInsets.all(gapPadding),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: imageProvider == null
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      theme.colorScheme.primary,
-                      theme.colorScheme.primary.withValues(alpha: 0.7),
-                    ],
-                  )
-                : null,
-            border: showBorder
-                ? Border.all(
-                    color: borderColor ??
-                        (isDark
-                            ? theme.colorScheme.primary.withValues(alpha: 0.4)
-                            : theme.colorScheme.primary
-                                .withValues(alpha: 0.25)),
-                    width: size > 30 ? 1.5 : 1.0,
-                  )
-                : null,
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.primary
-                    .withValues(alpha: isDark ? 0.2 : 0.1),
-                blurRadius: size * 0.25,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            color: theme.scaffoldBackgroundColor,
           ),
-          child: imageProvider != null
-              ? ClipOval(
-                  child: Image(
-                    image: imageProvider,
-                    width: size,
-                    height: size,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        _buildInitialsFallback(initials),
-                  ),
-                )
-              : _buildInitialsFallback(initials),
+          child: Container(
+            width: innerSize,
+            height: innerSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDark
+                  ? const Color(0xFF28282E)
+                  : const Color(0xFF94A3B8),
+            ),
+            child: imageProvider != null
+                ? ClipOval(
+                    child: Image(
+                      image: imageProvider,
+                      width: innerSize,
+                      height: innerSize,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildInitialsFallback(initials, innerSize),
+                    ),
+                  )
+                : _buildInitialsFallback(initials, innerSize),
+          ),
         );
 
-        if (onTap != null) {
+        final avatarWidget = widget.showBorder
+            ? AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  final angle = 3.4906585 + (_controller.value * 2 * math.pi);
+                  return Container(
+                    width: widget.size,
+                    height: widget.size,
+                    padding: EdgeInsets.all(ringPadding),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: SweepGradient(
+                        colors: const [
+                          Color(0xFF9B6BE6),
+                          Color(0xFF4F9BF0),
+                          Color(0xFF3FD1A0),
+                          Color(0xFFF0C93A),
+                          Color(0xFF9B6BE6),
+                        ],
+                        transform: GradientRotation(angle),
+                      ),
+                    ),
+                    child: child,
+                  );
+                },
+                child: innerCircle,
+              )
+            : SizedBox(
+                width: widget.size,
+                height: widget.size,
+                child: innerCircle,
+              );
+
+        if (widget.onTap != null) {
           return GestureDetector(
-            onTap: onTap,
+            onTap: widget.onTap,
             child: avatarWidget,
           );
         }
@@ -133,15 +188,15 @@ class UserAvatar extends StatelessWidget {
     );
   }
 
-  Widget _buildInitialsFallback(String initials) {
+  Widget _buildInitialsFallback(String initials, double innerSize) {
     return Center(
       child: Text(
         initials,
-        style: GoogleFonts.spaceGrotesk(
-          fontSize: size * 0.4,
-          fontWeight: FontWeight.w900,
+        style: GoogleFonts.inter(
+          fontSize: innerSize * 0.42,
+          fontWeight: FontWeight.w700,
           color: Colors.white,
-          letterSpacing: -0.5,
+          letterSpacing: -0.3,
         ),
       ),
     );

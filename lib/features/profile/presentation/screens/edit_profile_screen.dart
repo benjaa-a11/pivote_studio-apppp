@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -234,13 +232,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final imagePath = userProvider.profileImagePath;
     final photoUrl = user?.photoUrl;
 
-    ImageProvider<Object>? avatarImage;
-    if (imagePath != null && imagePath.isNotEmpty) {
-      avatarImage = FileImage(File(imagePath));
-    } else if (photoUrl != null && photoUrl.isNotEmpty) {
-      avatarImage = NetworkImage(photoUrl);
-    }
-
     final currentText = _usernameController.text.trim();
     final initial =
         currentText.isNotEmpty ? currentText[0].toUpperCase() : 'U';
@@ -251,67 +242,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return ProfileSubsectionScaffold(
       title: 'Editar perfil',
       children: [
-        // Avatar (.ava: 112x112, margin 6px auto 18px, 5px bg border + 3px accent ring + edit button)
+        // Avatar (.ava: 112x112 with animated colorful ring + edit button)
         AppAnimations.staggeredSlideIn(
           index: 0,
           child: Center(
             child: Padding(
               padding: const EdgeInsets.only(top: 6, bottom: 18),
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  userProvider.updateProfileImage();
-                },
-                child: SizedBox(
-                  width: 112,
-                  height: 112,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 112,
-                        height: 112,
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: palette.isDark
-                              ? palette.accent
-                              : const Color(0xFF4F9BF0),
-                        ),
-                        child: Container(
-                          padding: const EdgeInsets.all(5),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: palette.bg,
-                          ),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: palette.avatarPlaceholderBg,
-                              image: avatarImage != null
-                                  ? DecorationImage(
-                                      image: avatarImage,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : null,
-                            ),
-                            alignment: Alignment.center,
-                            child: avatarImage == null
-                                ? Text(
-                                    initial,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 44,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: -2,
-                        bottom: 2,
+              child: SizedBox(
+                width: 112,
+                height: 112,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ProfileAvatarWithRing(
+                      size: 112,
+                      imagePath: imagePath,
+                      photoUrl: photoUrl,
+                      fallbackInitial: initial,
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        userProvider.updateProfileImage();
+                      },
+                    ),
+                    Positioned(
+                      right: -2,
+                      bottom: 2,
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          userProvider.updateProfileImage();
+                        },
                         child: Container(
                           width: 36,
                           height: 36,
@@ -331,8 +291,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

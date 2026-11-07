@@ -1,491 +1,31 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
-import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
-import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
-import 'package:pivote/shared/widgets/common/app_dialogs.dart';
-import 'package:pivote/core/theme/app_theme.dart';
-import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
-import 'package:pivote/shared/widgets/common/apple_pressable.dart';
+import 'package:provider/provider.dart';
+import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
+import 'package:pivote/features/home/presentation/widgets/search_radio_tile.dart';
+import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
+import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
+import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
+import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
+import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 
 class FavoritesScreen extends StatelessWidget {
   const FavoritesScreen({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.isDark;
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Consumer2<ChannelProvider, FavoritesProvider>(
-          builder: (context, channelProvider, favoritesProvider, child) {
-            final favoriteChannels = favoritesProvider.getSortedFavorites(
-              channelProvider.allChannels,
-            );
-
-            return CustomScrollView(
-              physics: const ClampingScrollPhysics(),
-              slivers: [
-                // Header
-                SliverToBoxAdapter(
-                  child: _buildHeader(context, theme, isDark, favoritesProvider,
-                      favoriteChannels.length),
-                ),
-
-                // Content
-                if (favoriteChannels.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _buildEmptyState(context, theme, isDark),
-                  )
-                else ...[
-                  // Stats bar
-                  SliverToBoxAdapter(
-                    child: _buildStatsBar(
-                        context, theme, isDark, favoriteChannels.length),
-                  ),
-
-                  // Channel grid
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 1.05,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          return ChannelCard(
-                            channel: favoriteChannels[index],
-                          );
-                        },
-                        childCount: favoriteChannels.length,
-                      ),
-                    ),
-                  ),
-
-                  // Sync indicator
-                  if (favoritesProvider.isSyncing)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: PivoteLoader(
-                                strokeWidth: 1.5,
-                                color: theme.hintColor.withValues(alpha: 0.3),
-                                size: 12,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Sincronizando...',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: theme.hintColor.withValues(alpha: 0.4),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                  // Footer
-                  SliverToBoxAdapter(
-                    child: _buildFooter(theme),
-                  ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                ],
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, ThemeData theme, bool isDark,
-      FavoritesProvider favoritesProvider, int count) {
-    final canPop = Navigator.of(context).canPop();
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 16, 14),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark
-                ? AppTheme.darkBorder.withValues(alpha: 0.15)
-                : AppTheme.lightBorder.withValues(alpha: 0.3),
-            width: 1.2,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          if (canPop) ...[
-            ApplePressable(
-              scaleDownFactor: 0.92,
-              borderRadius: BorderRadius.circular(14),
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppTheme.darkBg2.withValues(alpha: 0.70)
-                      : AppTheme.lightBg2.withValues(alpha: 0.70),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.10)
-                        : Colors.black.withValues(alpha: 0.06),
-                    width: 1.0,
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    size: 15,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
-          // Heart Icon Container (Polished)
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  theme.colorScheme.primary
-                      .withValues(alpha: isDark ? 0.22 : 0.14),
-                  theme.colorScheme.primary
-                      .withValues(alpha: isDark ? 0.06 : 0.04),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: theme.colorScheme.primary
-                    .withValues(alpha: isDark ? 0.35 : 0.25),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: theme.colorScheme.primary
-                      .withValues(alpha: isDark ? 0.08 : 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(
-              Icons.favorite_rounded,
-              size: 18,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Title and Subtitle
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Favoritos',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.6,
-                    color: theme.colorScheme.onSurface,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  count > 0
-                      ? 'Tu colección personal'
-                      : 'Guardá tus canales preferidos',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Delete button with ApplePressable
-          if (count > 0)
-            ApplePressable(
-              scaleDownFactor: 0.90,
-              borderRadius: BorderRadius.circular(14),
-              onTap: () => _showClearDialog(context, favoritesProvider),
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.error.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: theme.colorScheme.error.withValues(alpha: 0.18),
-                    width: 1.0,
-                  ),
-                  boxShadow: AppShadows.appleDepth(context, elevation: 0.5),
-                ),
-                child: Icon(
-                  Icons.delete_outline_rounded,
-                  size: 18,
-                  color: theme.colorScheme.error,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatsBar(
-      BuildContext context, ThemeData theme, bool isDark, int count) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
-      child: Row(
-        children: [
-          // Count chip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.stars_rounded,
-                  size: 13,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '$count ${count == 1 ? 'canal' : 'canales'}',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.primary,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Spacer(),
-          // Sort indicator
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.sort_rounded,
-                  size: 14, color: theme.hintColor.withValues(alpha: 0.4)),
-              const SizedBox(width: 4),
-              Text(
-                'Recientes primero',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: theme.hintColor.withValues(alpha: 0.4),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context, ThemeData theme, bool isDark) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Decorative icon
-            Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: (isDark ? Colors.white : Colors.black)
-                    .withValues(alpha: 0.03),
-                border: Border.all(
-                  color: (isDark ? Colors.white : Colors.black)
-                      .withValues(alpha: 0.04),
-                ),
-              ),
-              child: Icon(
-                Icons.favorite_border_rounded,
-                size: 56,
-                color: theme.hintColor.withValues(alpha: 0.2),
-              ),
-            ),
-            const SizedBox(height: 28),
-            Text(
-              'Sin favoritos aún',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Mantén presionado cualquier canal o toca el ícono de corazón para agregarlo aquí.',
-              style: GoogleFonts.spaceGrotesk(
-                color: theme.hintColor,
-                fontSize: 13,
-                height: 1.5,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 28),
-            // Explore button with ApplePressable
-            ApplePressable(
-              scaleDownFactor: 0.94,
-              borderRadius: BorderRadius.circular(14),
-              onTap: () {
-                if (Navigator.of(context).canPop()) {
-                  Navigator.of(context).pop();
-                  return;
-                }
-                try {
-                  DefaultTabController.of(context).animateTo(0);
-                } catch (e) {
-                  // Fallback
-                }
-              },
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.explore_rounded,
-                      size: 18,
-                      color: isDark ? Colors.black : Colors.white,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Explorar canales',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
-                        color: isDark ? Colors.black : Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFooter(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 30,
-                height: 1,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.transparent,
-                      theme.dividerColor.withValues(alpha: 0.12),
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(Icons.favorite_rounded,
-                    size: 10, color: theme.hintColor.withValues(alpha: 0.15)),
-              ),
-              Container(
-                width: 30,
-                height: 1,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      theme.dividerColor.withValues(alpha: 0.12),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Sincronizado con tu cuenta',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
-              color: theme.hintColor.withValues(alpha: 0.2),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showClearDialog(
-      BuildContext context, FavoritesProvider favoritesProvider) async {
-    final theme = Theme.of(context);
+  Future<void> _showClearDialog(
+    BuildContext context,
+    FavoritesProvider favoritesProvider,
+  ) async {
     final confirmed = await AppDialogs.showConfirm(
       context: context,
       title: '¿Limpiar favoritos?',
       message:
-          'Esta acción eliminará todos los canales de tu lista de acceso rápido.',
+          'Esta acción eliminará todos los canales de tu lista de favoritos.',
       confirmLabel: 'Eliminar',
       cancelLabel: 'Cancelar',
       isDestructive: true,
@@ -495,27 +35,292 @@ class FavoritesScreen extends StatelessWidget {
     if (confirmed == true) {
       await favoritesProvider.clearAllFavorites();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
+        AppNotifications.showInfo(context, 'Lista de favoritos limpia');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = ProfilePalette.of(context);
+    final canPop = Navigator.of(context).canPop();
+    final topPad = MediaQuery.paddingOf(context).top;
+    final bottomPad = MediaQuery.paddingOf(context).bottom;
+
+    return Scaffold(
+      backgroundColor: palette.bg,
+      body: Consumer3<ChannelProvider, FavoritesProvider, RadioProvider>(
+        builder: (
+          context,
+          channelProvider,
+          favoritesProvider,
+          radioProvider,
+          child,
+        ) {
+          final favoriteChannels = favoritesProvider.getSortedFavorites(
+            channelProvider.allChannels,
+          );
+          final favoriteRadios =
+              radioProvider.radios.where((r) => r.isFavorite).toList();
+          final totalCount = favoriteChannels.length + favoriteRadios.length;
+
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: CustomScrollView(
+                physics: const ClampingScrollPhysics(),
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(10, topPad + 10, 10, 0),
+                    sliver: SliverToBoxAdapter(
+                      child: ProfileSubHeader(
+                        title: 'Favoritos',
+                        showBackButton: canPop,
+                        trailing: favoriteChannels.isNotEmpty
+                            ? GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  _showClearDialog(context, favoritesProvider);
+                                },
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: palette.dangerBg,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: palette.dangerBorder,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 19,
+                                    color: palette.danger,
+                                  ),
+                                ),
+                              )
+                            : const SizedBox(width: 40, height: 40),
+                      ),
+                    ),
+                  ),
+                  if (totalCount == 0)
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      sliver: SliverToBoxAdapter(
+                        child: AppAnimations.staggeredSlideIn(
+                          index: 0,
+                          child: _buildEmptyCard(context, palette, canPop),
+                        ),
+                      ),
+                    )
+                  else ...[
+                    // Summary stats card (.stats style)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
+                      sliver: SliverToBoxAdapter(
+                        child: AppAnimations.staggeredSlideIn(
+                          index: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: palette.card,
+                              borderRadius: BorderRadius.circular(26),
+                              border:
+                                  Border.all(color: palette.border, width: 1),
+                              boxShadow: palette.cardShadow,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _FavSummaryStat(
+                                    value: '${favoriteChannels.length}',
+                                    label: 'Canales TV',
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _FavSummaryStat(
+                                    value: '${favoriteRadios.length}',
+                                    label: 'Emisoras',
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _FavSummaryStat(
+                                    value: '$totalCount',
+                                    label: 'Total',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    if (favoriteChannels.isNotEmpty) ...[
+                      const SliverPadding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        sliver: SliverToBoxAdapter(
+                          child: ProfileSectionTitle('Canales guardados'),
+                        ),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        sliver: SliverGrid(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 1.05,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              return ChannelCard(
+                                channel: favoriteChannels[index],
+                              );
+                            },
+                            childCount: favoriteChannels.length,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    if (favoriteRadios.isNotEmpty) ...[
+                      const SliverPadding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        sliver: SliverToBoxAdapter(
+                          child: ProfileSectionTitle('Radios favoritas'),
+                        ),
+                      ),
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: SearchRadioTile(
+                                  radio: favoriteRadios[index],
+                                ),
+                              );
+                            },
+                            childCount: favoriteRadios.length,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: math.max(36, bottomPad + 28)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyCard(
+    BuildContext context,
+    ProfilePalette palette,
+    bool canPop,
+  ) {
+    return Column(
+      children: [
+        ProfileGroupCard(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 34),
+          children: [
+            Column(
               children: [
-                const Icon(Icons.check_circle_rounded,
-                    color: Colors.white, size: 18),
-                const SizedBox(width: 10),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: palette.iconBox,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.favorite_border_rounded,
+                    size: 26,
+                    color: palette.text,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Text(
-                  'Lista de favoritos limpia',
-                  style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w600),
+                  'Sin favoritos aún',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: palette.text,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Tocá el ícono de corazón en cualquier canal o emisora de radio para guardarlo acá.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: palette.muted,
+                    height: 1.4,
+                  ),
                 ),
               ],
             ),
-            backgroundColor: theme.colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
+          ],
+        ),
+        if (canPop)
+          ProfileActionButton(
+            label: 'Explorar canales',
+            variant: ProfileButtonVariant.soft,
+            onTap: () => Navigator.of(context).maybePop(),
           ),
-        );
-      }
-    }
+      ],
+    );
+  }
+}
+
+class _FavSummaryStat extends StatelessWidget {
+  final String value;
+  final String label;
+
+  const _FavSummaryStat({
+    required this.value,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = ProfilePalette.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
+              color: palette.text,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13.5,
+              color: palette.muted,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

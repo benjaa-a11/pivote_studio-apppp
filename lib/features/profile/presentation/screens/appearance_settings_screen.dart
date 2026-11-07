@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/services/wakelock_service.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 
@@ -13,6 +14,7 @@ class AppearanceSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = ProfilePalette.of(context);
     final themeProvider = context.watch<ThemeProvider>();
+    final wakelockService = context.watch<WakelockService>();
 
     return ProfileSubsectionScaffold(
       title: 'Apariencia',
@@ -75,40 +77,7 @@ class AppearanceSettingsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const ProfileSectionTitle('Color de acento'),
-              ProfileGroupCard(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Row(
-                    children: [
-                      for (int i = 0;
-                          i < ThemeProvider.accentSwatches.length;
-                          i++) ...[
-                        _AccentSwatchItem(
-                          color: ThemeProvider.accentSwatches[i],
-                          selected: themeProvider.accentIndex == i,
-                          palette: palette,
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            themeProvider.setAccentIndex(i);
-                          },
-                        ),
-                        if (i < ThemeProvider.accentSwatches.length - 1)
-                          const SizedBox(width: 14),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        AppAnimations.staggeredSlideIn(
-          index: 2,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const ProfileSectionTitle('Texto'),
+              const ProfileSectionTitle('Texto y pantalla'),
               ProfileGroupCard(
                 children: [
                   Padding(
@@ -172,6 +141,16 @@ class AppearanceSettingsScreen extends StatelessWidget {
                           themeProvider.setReduceAnimations(val),
                     ),
                   ),
+                  ProfileGroupRow(
+                    title: 'Pantalla siempre activa',
+                    subtitle: 'Evita que la pantalla se apague en la app',
+                    onTap: () => wakelockService.toggle(),
+                    trailing: ProfileSwitch(
+                      value: wakelockService.keepScreenOn,
+                      onChanged: (val) =>
+                          wakelockService.setKeepScreenOn(val),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -233,7 +212,6 @@ class _ThemePreviewOption extends StatelessWidget {
             ),
             child: Stack(
               children: [
-                // Top skeleton bar (::before)
                 Positioned(
                   left: 10,
                   right: 10,
@@ -248,7 +226,6 @@ class _ThemePreviewOption extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Bottom skeleton card (::after)
                 Positioned(
                   left: 10,
                   top: 30,
@@ -276,50 +253,6 @@ class _ThemePreviewOption extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _AccentSwatchItem extends StatelessWidget {
-  final Color color;
-  final bool selected;
-  final ProfilePalette palette;
-  final VoidCallback onTap;
-
-  const _AccentSwatchItem({
-    required this.color,
-    required this.selected,
-    required this.palette,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 42,
-        height: 42,
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: selected ? palette.text : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color,
-            border: Border.all(
-              color: palette.card,
-              width: 3,
-            ),
-          ),
-        ),
       ),
     );
   }

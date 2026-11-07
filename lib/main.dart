@@ -99,24 +99,13 @@ class PivoteApp extends StatelessWidget {
                   themeProvider.isDarkMode ? Brightness.dark : Brightness.light,
             ),
           );
-          final lightAccent = themeProvider.accentFor(false);
-          final darkAccent = themeProvider.accentFor(true);
-
           return ConnectivityWrapper(
             child: MaterialApp(
               title: 'Pivote',
               debugShowCheckedModeBanner: false,
               scrollBehavior: const _NoBounceScrollBehavior(),
-              theme: AppTheme.lightTheme.copyWith(
-                colorScheme: AppTheme.lightTheme.colorScheme.copyWith(
-                  primary: lightAccent,
-                ),
-              ),
-              darkTheme: AppTheme.darkTheme.copyWith(
-                colorScheme: AppTheme.darkTheme.colorScheme.copyWith(
-                  primary: darkAccent,
-                ),
-              ),
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
               themeMode: themeProvider.themeMode,
               builder: (context, child) {
                 final mediaQuery = MediaQuery.of(context);
