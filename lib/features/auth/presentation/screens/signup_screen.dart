@@ -164,7 +164,20 @@ class _SignUpScreenState extends State<SignUpScreen>
             ),
             // ─── Panel blanco (.panel) ──────────────────────────────────
             panel: AuthPanel(
+              footer: AuthFootLink(
+                prefix: '¿Ya tienes una cuenta?',
+                linkText: 'Inicia sesión aquí',
+                onTap: () {
+                  Navigator.of(context).pushReplacement(
+                    AppAnimations.createFadeRoute(
+                      const LoginScreen(),
+                    ),
+                  );
+                },
+              ),
               children: [
+                const SizedBox(height: 6),
+
                 // Botón Google
                 AuthGoogleBtn(
                   label: 'Registrarse con Google',
@@ -204,7 +217,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                           return null;
                         },
                       ),
-                      const SizedBox(height: 9),
+                      const SizedBox(height: 12),
 
                       // Correo electrónico (.field.pill)
                       AuthPillInput(
@@ -225,7 +238,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                           return null;
                         },
                       ),
-                      const SizedBox(height: 9),
+                      const SizedBox(height: 12),
 
                       // Contraseña (.row.pw)
                       AuthPasswordInput(
@@ -265,19 +278,6 @@ class _SignUpScreenState extends State<SignUpScreen>
                     'Términos de Servicio',
                     'Al utilizar Pivote aceptas disfrutar de los contenidos y transmisiones de manera responsable.',
                   ),
-                ),
-
-                // Enlace hacia Login (.foot.tight)
-                AuthFootLink(
-                  prefix: '¿Ya tienes una cuenta?',
-                  linkText: 'Inicia sesión aquí',
-                  onTap: () {
-                    Navigator.of(context).pushReplacement(
-                      AppAnimations.createFadeRoute(
-                        const LoginScreen(),
-                      ),
-                    );
-                  },
                 ),
               ],
             ),

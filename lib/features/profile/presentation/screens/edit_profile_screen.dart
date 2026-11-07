@@ -5,12 +5,16 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
+import 'package:pivote/features/profile/presentation/screens/privacy_security_screen.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
@@ -36,14 +40,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     final user = context.read<UserProvider>().user;
-    _nameController = TextEditingController(text: user?.name ?? '');
-    _lastNameController = TextEditingController(text: user?.lastName ?? '');
+    _nameController = TextEditingController(text: user?.name ?? '')
+      ..addListener(_onTextChanged);
+    _lastNameController = TextEditingController(text: user?.lastName ?? '')
+      ..addListener(_onTextChanged);
     _currentPasswordController = TextEditingController();
     _newPasswordController = TextEditingController();
   }
 
+  void _onTextChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _nameController.removeListener(_onTextChanged);
+    _lastNameController.removeListener(_onTextChanged);
     _nameController.dispose();
     _lastNameController.dispose();
     _currentPasswordController.dispose();
@@ -53,6 +65,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
     final provider = context.read<UserProvider>();
     final user = provider.user;
     if (user == null) return;
@@ -123,6 +136,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final provider = context.watch<UserProvider>();
+    final activityService = context.watch<AppActivityService>();
     final user = provider.user;
     final imagePath = provider.profileImagePath;
     final primaryColor =
@@ -138,75 +152,114 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         children: [
           ListView(
             physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 44),
             children: [
-              _buildAvatar(theme, isDark, primaryColor, provider, imagePath,
-                  user?.photoUrl),
-              const SizedBox(height: 28),
-              Text(
-                'Información personal',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: theme.colorScheme.onSurface,
+              AppAnimations.staggeredSlideIn(
+                index: 0,
+                child: _buildProfilePreviewHero(
+                  theme,
+                  isDark,
+                  primaryColor,
+                  provider,
+                  activityService,
+                  imagePath,
+                  user?.photoUrl,
+                  user?.email,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 24),
               Form(
                 key: _formKey,
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _field(
-                        _nameController,
-                        'Nombre',
-                        Icons.person_outline_rounded,
-                        theme,
-                        isDark,
-                        primaryColor),
-                    const SizedBox(height: 12),
-                    _field(_lastNameController, 'Apellido',
-                        Icons.badge_outlined, theme, isDark, primaryColor),
-                    const SizedBox(height: 24),
-                    _buildPasswordCard(theme, isDark, primaryColor),
-                    const SizedBox(height: 20),
-                    _buildSecurityCard(theme, isDark, primaryColor),
-                    const SizedBox(height: 28),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: _saving ? null : _save,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: isDark ? Colors.black : Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                    AppAnimations.staggeredSlideIn(
+                      index: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _sectionTitle(theme, 'DATOS PERSONALES'),
+                          const SizedBox(height: 10),
+                          _labeledField(
+                            controller: _nameController,
+                            label: 'Nombre',
+                            hint: 'Tu nombre',
+                            icon: Icons.person_outline_rounded,
+                            theme: theme,
+                            isDark: isDark,
+                            primaryColor: primaryColor,
                           ),
-                          elevation: 0,
-                          shadowColor: Colors.transparent,
-                        ),
-                        child: Text(
-                          'Guardar cambios',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
+                          const SizedBox(height: 12),
+                          _labeledField(
+                            controller: _lastNameController,
+                            label: 'Apellido',
+                            hint: 'Tu apellido',
+                            icon: Icons.badge_outlined,
+                            theme: theme,
+                            isDark: isDark,
+                            primaryColor: primaryColor,
                           ),
-                        ),
+                          const SizedBox(height: 12),
+                          _readOnlyEmailCard(
+                            theme,
+                            isDark,
+                            primaryColor,
+                            user?.email ?? 'Sin correo asociado',
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    TextButton.icon(
-                      onPressed: _saving ? null : _deleteAccount,
-                      icon: const Icon(Icons.delete_forever_rounded, size: 18),
-                      label: Text(
-                        'Eliminar mi cuenta definitivamente',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
+                    const SizedBox(height: 24),
+                    AppAnimations.staggeredSlideIn(
+                      index: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _sectionTitle(theme, 'CREDENCIALES Y SEGURIDAD'),
+                          const SizedBox(height: 10),
+                          _buildPasswordCard(theme, isDark, primaryColor),
+                          const SizedBox(height: 12),
+                          _buildConnectedSecurityBanner(
+                              context, theme, isDark, primaryColor),
+                        ],
                       ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.error,
+                    ),
+                    const SizedBox(height: 28),
+                    AppAnimations.staggeredSlideIn(
+                      index: 3,
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            height: 54,
+                            child: ElevatedButton.icon(
+                              onPressed: _saving ? null : _save,
+                              icon: Icon(
+                                Icons.check_circle_outline_rounded,
+                                size: 20,
+                                color: isDark ? Colors.black : Colors.white,
+                              ),
+                              label: Text(
+                                'Guardar cambios',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                foregroundColor:
+                                    isDark ? Colors.black : Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          _buildDangerZone(theme, isDark),
+                        ],
                       ),
                     ),
                   ],
@@ -226,13 +279,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildAvatar(
+  Widget _sectionTitle(ThemeData theme, String label) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        label,
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.7,
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.55),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfilePreviewHero(
     ThemeData theme,
     bool isDark,
     Color primaryColor,
     UserProvider provider,
+    AppActivityService activityService,
     String? imagePath,
     String? photoUrl,
+    String? email,
   ) {
     ImageProvider<Object>? image;
     if (imagePath != null) {
@@ -241,55 +311,254 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       image = NetworkImage(photoUrl);
     }
 
-    return Center(
-      child: Stack(
+    final liveName =
+        '${_nameController.text.trim()} ${_lastNameController.text.trim()}'
+            .trim();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131722) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+        ),
+        boxShadow: AppShadows.appleDepth(context, elevation: 0.8),
+      ),
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: primaryColor.withValues(alpha: 0.8),
-                width: 2.5,
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: primaryColor.withValues(alpha: 0.8),
+                    width: 2.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: 0.2),
+                      blurRadius: 18,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 48,
+                  backgroundColor: primaryColor.withValues(alpha: 0.12),
+                  backgroundImage: image,
+                  child: image == null
+                      ? Icon(Icons.person_rounded,
+                          size: 48, color: primaryColor)
+                      : null,
+                ),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: primaryColor.withValues(alpha: 0.2),
-                  blurRadius: 18,
-                  spreadRadius: 2,
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: ApplePressable(
+                  scaleDownFactor: 0.90,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    provider.updateProfileImage();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: primaryColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color:
+                            isDark ? const Color(0xFF131722) : Colors.white,
+                        width: 2.5,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.camera_alt_rounded,
+                      size: 16,
+                      color: isDark ? Colors.black : Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            liveName.isNotEmpty ? liveName : 'Usuario Pivote',
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.4,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            email ?? 'Cuenta activa',
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: theme.hintColor,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  activityService.getArgentineRankEmoji(),
+                  style: const TextStyle(fontSize: 13),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '${activityService.getArgentineRank()} · Miembro desde ${activityService.getFormattedStartDate()}',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    color: primaryColor,
+                  ),
                 ),
               ],
             ),
-            child: CircleAvatar(
-              radius: 58,
-              backgroundColor: primaryColor.withValues(alpha: 0.12),
-              backgroundImage: image,
-              child: image == null
-                  ? Icon(Icons.person_rounded, size: 56, color: primaryColor)
-                  : null,
-            ),
           ),
-          Positioned(
-            right: 2,
-            bottom: 2,
-            child: Material(
-              color: primaryColor,
-              shape: const CircleBorder(),
-              elevation: 4,
-              child: InkWell(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  provider.updateProfileImage();
-                },
-                customBorder: const CircleBorder(),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Icon(
-                    Icons.camera_alt_rounded,
-                    size: 18,
-                    color: isDark ? Colors.black : Colors.white,
+        ],
+      ),
+    );
+  }
+
+  Widget _labeledField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    required ThemeData theme,
+    required bool isDark,
+    required Color primaryColor,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131722) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+        ),
+      ),
+      child: TextFormField(
+        controller: controller,
+        textCapitalization: TextCapitalization.words,
+        validator: (value) => value == null || value.trim().isEmpty
+            ? 'Este campo es requerido'
+            : null,
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w700,
+          color: theme.colorScheme.onSurface,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          labelStyle: GoogleFonts.spaceGrotesk(
+            color: theme.hintColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          floatingLabelStyle: GoogleFonts.spaceGrotesk(
+            color: primaryColor,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w800,
+          ),
+          prefixIcon: Icon(icon, size: 20, color: primaryColor),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        ),
+      ),
+    );
+  }
+
+  Widget _readOnlyEmailCard(
+    ThemeData theme,
+    bool isDark,
+    Color primaryColor,
+    String email,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF131722).withValues(alpha: 0.65)
+            : Colors.white.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.alternate_email_rounded,
+                size: 18, color: primaryColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Correo electrónico vinculado',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: theme.hintColor,
                   ),
                 ),
+                const SizedBox(height: 1),
+                Text(
+                  email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              'VERIFICADO',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF10B981),
               ),
             ),
           ),
@@ -298,158 +567,142 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _field(
-    TextEditingController controller,
-    String label,
-    IconData icon,
-    ThemeData theme,
-    bool isDark,
-    Color primaryColor,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.06),
-        ),
-      ),
-      child: TextFormField(
-        controller: controller,
-        validator: (value) => value == null || value.trim().isEmpty
-            ? 'Este campo es requerido'
-            : null,
-        style: GoogleFonts.spaceGrotesk(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: theme.colorScheme.onSurface,
-        ),
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: label,
-          hintStyle: GoogleFonts.spaceGrotesk(
-            color: theme.hintColor.withValues(alpha: 0.5),
-            fontSize: 13.5,
-          ),
-          prefixIcon: Icon(icon, size: 20, color: primaryColor),
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
-        ),
-      ),
-    );
-  }
-
   Widget _buildPasswordCard(ThemeData theme, bool isDark, Color primaryColor) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.06),
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          onTap:
-              _passwordOpen ? null : () => setState(() => _passwordOpen = true),
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF131722) : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: _passwordOpen
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.lock_reset_rounded,
+          border: Border.all(
+            color: _passwordOpen
+                ? primaryColor.withValues(alpha: 0.35)
+                : (isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder),
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            onTap: _passwordOpen
+                ? null
+                : () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _passwordOpen = true);
+                  },
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: _passwordOpen
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: primaryColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                              child: Icon(Icons.lock_reset_rounded,
+                                  color: primaryColor, size: 19),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Actualizar contraseña',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => setState(() {
+                                _passwordOpen = false;
+                                _currentPasswordController.clear();
+                                _newPasswordController.clear();
+                              }),
+                              child: Text(
+                                'Cancelar',
+                                style: GoogleFonts.spaceGrotesk(
+                                  color: theme.hintColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _passwordField(
+                          _currentPasswordController,
+                          'Contraseña actual',
+                          Icons.lock_outline_rounded,
+                          _obscureCurrentPass,
+                          () => setState(
+                              () => _obscureCurrentPass = !_obscureCurrentPass),
+                          theme,
+                          isDark,
+                          primaryColor,
+                        ),
+                        const SizedBox(height: 12),
+                        _passwordField(
+                          _newPasswordController,
+                          'Nueva contraseña (mín. 6 caracteres)',
+                          Icons.lock_rounded,
+                          _obscureNewPass,
+                          () => setState(
+                              () => _obscureNewPass = !_obscureNewPass),
+                          theme,
+                          isDark,
+                          primaryColor,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(Icons.lock_reset_rounded,
                               color: primaryColor, size: 20),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Actualizar contraseña',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      _passwordField(
-                        _currentPasswordController,
-                        'Contraseña actual',
-                        Icons.lock_outline_rounded,
-                        _obscureCurrentPass,
-                        () => setState(
-                            () => _obscureCurrentPass = !_obscureCurrentPass),
-                        theme,
-                        isDark,
-                        primaryColor,
-                      ),
-                      const SizedBox(height: 12),
-                      _passwordField(
-                        _newPasswordController,
-                        'Nueva contraseña',
-                        Icons.lock_rounded,
-                        _obscureNewPass,
-                        () =>
-                            setState(() => _obscureNewPass = !_obscureNewPass),
-                        theme,
-                        isDark,
-                        primaryColor,
-                      ),
-                      const SizedBox(height: 10),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => setState(() {
-                            _passwordOpen = false;
-                            _currentPasswordController.clear();
-                            _newPasswordController.clear();
-                          }),
-                          child: Text(
-                            'Cancelar',
-                            style: GoogleFonts.spaceGrotesk(
-                              color: theme.hintColor,
-                              fontWeight: FontWeight.w700,
-                            ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Cambiar contraseña',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                'Actualizá tu clave de acceso de forma segura',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: theme.hintColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(Icons.lock_reset_rounded,
-                            color: primaryColor, size: 19),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Cambiar contraseña',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      Icon(Icons.arrow_forward_ios_rounded,
-                          size: 13, color: theme.hintColor),
-                    ],
-                  ),
+                        Icon(Icons.keyboard_arrow_down_rounded,
+                            size: 20, color: theme.hintColor),
+                      ],
+                    ),
+            ),
           ),
         ),
       ),
@@ -487,14 +740,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         prefixIcon: Icon(icon, size: 19, color: primaryColor),
         suffixIcon: IconButton(
           icon: Icon(
-            obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
             size: 19,
             color: theme.hintColor,
           ),
           onPressed: toggleObscure,
         ),
         filled: true,
-        fillColor: isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
+        fillColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
@@ -519,27 +772,113 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildSecurityCard(ThemeData theme, bool isDark, Color primaryColor) {
+  Widget _buildConnectedSecurityBanner(
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+    Color primaryColor,
+  ) {
+    return ApplePressable(
+      scaleDownFactor: 0.98,
+      borderRadius: BorderRadius.circular(18),
+      onTap: () {
+        Navigator.push(
+          context,
+          AppAnimations.createRoute(const PrivacySecurityScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: primaryColor.withValues(alpha: .06),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: primaryColor.withValues(alpha: .16)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.shield_outlined, color: primaryColor, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Centro de Privacidad y Seguridad',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Tus datos están protegidos con cifrado SSL. Toca para ver detalles.',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: theme.hintColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded,
+                size: 13, color: primaryColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDangerZone(ThemeData theme, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: primaryColor.withValues(alpha: .06),
+        color: theme.colorScheme.error.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: primaryColor.withValues(alpha: .15)),
+        border: Border.all(
+          color: theme.colorScheme.error.withValues(alpha: 0.15),
+        ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.shield_outlined, color: primaryColor, size: 20),
+          Icon(Icons.warning_amber_rounded,
+              color: theme.colorScheme.error, size: 20),
           const SizedBox(width: 12),
           Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Zona de peligro',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+                Text(
+                  'Eliminar tu cuenta y datos permanentemente',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: theme.hintColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: _saving ? null : _deleteAccount,
+            style: TextButton.styleFrom(
+              foregroundColor: theme.colorScheme.error,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
             child: Text(
-              'Tus datos personales y credenciales están cifrados. Mantené tu información al día para una experiencia segura.',
+              'Eliminar',
               style: GoogleFonts.spaceGrotesk(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: theme.hintColor,
-                height: 1.45,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ),

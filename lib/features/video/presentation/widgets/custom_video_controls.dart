@@ -236,7 +236,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
       _isMenuOpen = true;
     });
 
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
 
     final selectedIndex = await showModalBottomSheet<int>(
       context: context,
@@ -256,7 +256,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
     });
 
     if (selectedIndex != null) {
-      HapticFeedback.selectionClick();
+      unawaited(HapticFeedback.selectionClick());
       widget.onServerSelect?.call(selectedIndex);
     }
 

@@ -278,7 +278,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen>
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
+                    physics: const ClampingScrollPhysics(),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
                     child: ConstrainedBox(

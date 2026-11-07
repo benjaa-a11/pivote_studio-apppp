@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:pivote/core/theme/app_theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/notification_service.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
@@ -22,6 +26,11 @@ class _NotificationsSettingsScreenState
   bool _enabled = false;
   bool _loading = true;
 
+  bool _catSoccer = true;
+  bool _catTv = true;
+  bool _catRadio = true;
+  bool _catUpdates = true;
+
   @override
   void initState() {
     super.initState();
@@ -30,10 +39,28 @@ class _NotificationsSettingsScreenState
 
   Future<void> _refreshStatus() async {
     final enabled = await NotificationService.areNotificationsEnabled();
+    final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
       _enabled = enabled;
+      _catSoccer = prefs.getBool('notif_cat_soccer') ?? true;
+      _catTv = prefs.getBool('notif_cat_tv') ?? true;
+      _catRadio = prefs.getBool('notif_cat_radio') ?? true;
+      _catUpdates = prefs.getBool('notif_cat_updates') ?? true;
       _loading = false;
+    });
+  }
+
+  Future<void> _toggleCategory(String key, bool value) async {
+    await HapticFeedback.selectionClick();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+    if (!mounted) return;
+    setState(() {
+      if (key == 'notif_cat_soccer') _catSoccer = value;
+      if (key == 'notif_cat_tv') _catTv = value;
+      if (key == 'notif_cat_radio') _catRadio = value;
+      if (key == 'notif_cat_updates') _catUpdates = value;
     });
   }
 
@@ -113,7 +140,7 @@ class _NotificationsSettingsScreenState
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: const PivoteAppBar(
         title: 'Notificaciones',
-        subtitle: 'Controlá cómo querés recibir avisos y alertas',
+        subtitle: 'Personalizá tus alertas de partidos y transmisiones',
       ),
       body: _loading && !_enabled
           ? const Center(child: PivoteLoader(size: 40))
@@ -122,240 +149,325 @@ class _NotificationsSettingsScreenState
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
               children: [
                 // Top Master Status Banner
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: _enabled
-                          ? [
-                              primaryColor.withValues(
-                                  alpha: isDark ? .18 : .14),
-                              theme.colorScheme.surface,
-                            ]
-                          : [
-                              theme.colorScheme.surface,
-                              theme.colorScheme.surface,
+                AppAnimations.staggeredSlideIn(
+                  index: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: _enabled
+                            ? [
+                                primaryColor.withValues(
+                                    alpha: isDark ? .18 : .14),
+                                isDark ? const Color(0xFF131722) : Colors.white,
+                              ]
+                            : [
+                                isDark ? const Color(0xFF131722) : Colors.white,
+                                isDark ? const Color(0xFF131722) : Colors.white,
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: _enabled
+                            ? primaryColor.withValues(alpha: .3)
+                            : (isDark
+                                ? const Color(0xFF1E2533)
+                                : AppTheme.lightBorder),
+                      ),
+                      boxShadow: AppShadows.appleDepth(context, elevation: 0.8),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: .12),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Icon(
+                            _enabled
+                                ? Icons.notifications_active_rounded
+                                : Icons.notifications_off_rounded,
+                            color: primaryColor,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    _enabled
+                                        ? 'Alertas Activas'
+                                        : 'Alertas Pausadas',
+                                    style: GoogleFonts.spaceGrotesk(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: (_enabled
+                                              ? const Color(0xFF10B981)
+                                              : theme.hintColor)
+                                          .withValues(alpha: 0.14),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      _enabled ? 'ON' : 'OFF',
+                                      style: GoogleFonts.spaceGrotesk(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w900,
+                                        color: _enabled
+                                            ? const Color(0xFF10B981)
+                                            : theme.hintColor,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                _enabled
+                                    ? 'Recibirás avisos importantes en tiempo real.'
+                                    : 'Activalas para enterarte cuando empiece un partido.',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.hintColor,
+                                  height: 1.35,
+                                ),
+                              ),
                             ],
+                          ),
+                        ),
+                        Switch.adaptive(
+                          value: _enabled,
+                          activeThumbColor: primaryColor,
+                          activeTrackColor: primaryColor.withValues(alpha: 0.4),
+                          onChanged: _loading ? null : _toggle,
+                        ),
+                      ],
                     ),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color:
-                          primaryColor.withValues(alpha: _enabled ? .25 : .08),
-                    ),
-                    boxShadow: _enabled
-                        ? [
-                            BoxShadow(
-                              color: primaryColor.withValues(
-                                  alpha: isDark ? 0.08 : 0.04),
-                              blurRadius: 18,
-                              offset: const Offset(0, 6),
-                            ),
-                          ]
-                        : [],
                   ),
-                  child: Row(
+                ),
+
+                const SizedBox(height: 26),
+                AppAnimations.staggeredSlideIn(
+                  index: 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: .12),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(
-                          _enabled
-                              ? Icons.notifications_active_rounded
-                              : Icons.notifications_off_rounded,
-                          color: primaryColor,
-                          size: 26,
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 10),
+                        child: Text(
+                          'CATEGORÍAS DE ALERTAS',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.7,
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.55),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _enabled ? 'Alertas Activas' : 'Alertas Pausadas',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              _enabled
-                                  ? 'Recibirás avisos de transmisiones en vivo y partidos.'
-                                  : 'No recibirás avisos en tu dispositivo.',
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: theme.hintColor,
-                                height: 1.35,
-                              ),
-                            ),
-                          ],
-                        ),
+                      _categoryToggleCard(
+                        context,
+                        icon: Icons.sports_soccer_rounded,
+                        title: 'Fútbol y Partidos en Vivo',
+                        body:
+                            'Avisos cuando comiencen partidos destacados y clásicos.',
+                        color: const Color(0xFF10B981),
+                        isDark: isDark,
+                        value: _enabled && _catSoccer,
+                        onChanged: _enabled
+                            ? (v) => _toggleCategory('notif_cat_soccer', v)
+                            : null,
                       ),
-                      Switch.adaptive(
-                        value: _enabled,
-                        activeThumbColor: primaryColor,
-                        activeTrackColor: primaryColor.withValues(alpha: 0.4),
-                        onChanged: _loading ? null : _toggle,
+                      _categoryToggleCard(
+                        context,
+                        icon: Icons.live_tv_rounded,
+                        title: 'Nuevos Canales y Eventos',
+                        body:
+                            'Señales agregadas y transmisiones especiales de fin de semana.',
+                        color: const Color(0xFF5B8CFF),
+                        isDark: isDark,
+                        value: _enabled && _catTv,
+                        onChanged: _enabled
+                            ? (v) => _toggleCategory('notif_cat_tv', v)
+                            : null,
+                      ),
+                      _categoryToggleCard(
+                        context,
+                        icon: Icons.radio_rounded,
+                        title: 'Radios y Programas',
+                        body: 'Emisiones destacadas de tus emisoras favoritas.',
+                        color: const Color(0xFFF59E0B),
+                        isDark: isDark,
+                        value: _enabled && _catRadio,
+                        onChanged: _enabled
+                            ? (v) => _toggleCategory('notif_cat_radio', v)
+                            : null,
+                      ),
+                      _categoryToggleCard(
+                        context,
+                        icon: Icons.auto_awesome_rounded,
+                        title: 'Mejoras y Actualizaciones',
+                        body:
+                            'Nuevas funciones, optimizaciones y novedades de Pivote.',
+                        color: const Color(0xFF8C6CFF),
+                        isDark: isDark,
+                        value: _enabled && _catUpdates,
+                        onChanged: _enabled
+                            ? (v) => _toggleCategory('notif_cat_updates', v)
+                            : null,
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 28),
-                Text(
-                  'Categorías de alertas',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _info(
-                  context,
-                  Icons.sports_soccer_rounded,
-                  'Fútbol y Partidos en Vivo',
-                  'Avisos cuando comiencen partidos destacados y clásicos.',
-                  const Color(0xFF10B981),
-                  isDark,
-                ),
-                _info(
-                  context,
-                  Icons.live_tv_rounded,
-                  'Nuevos Canales y Eventos',
-                  'Señales agregadas y transmisiones exclusivas de fin de semana.',
-                  const Color(0xFF5B8CFF),
-                  isDark,
-                ),
-                _info(
-                  context,
-                  Icons.radio_rounded,
-                  'Radios y Programas',
-                  'Emisiones destacadas de tus emisoras favoritas.',
-                  const Color(0xFFF59E0B),
-                  isDark,
-                ),
-                _info(
-                  context,
-                  Icons.auto_awesome_rounded,
-                  'Mejoras y Actualizaciones',
-                  'Nuevas funciones, optimizaciones y avisos de la app.',
-                  const Color(0xFF8C6CFF),
-                  isDark,
-                ),
-
-                const SizedBox(height: 20),
-                if (_enabled)
-                  Material(
-                    color: theme.colorScheme.surface,
+                const SizedBox(height: 16),
+                AppAnimations.staggeredSlideIn(
+                  index: 2,
+                  child: ApplePressable(
+                    scaleDownFactor: 0.98,
                     borderRadius: BorderRadius.circular(18),
-                    child: InkWell(
-                      onTap: _sendTest,
-                      borderRadius: BorderRadius.circular(18),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 15),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: primaryColor.withValues(alpha: .15),
+                    onTap: _sendTest,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 15),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF131722) : Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: primaryColor.withValues(alpha: .20),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: primaryColor.withValues(alpha: .12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.send_rounded,
+                                size: 18, color: primaryColor),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha: .1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(Icons.send_rounded,
-                                  size: 18, color: primaryColor),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Enviar notificación de prueba',
-                                style: GoogleFonts.spaceGrotesk(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w800,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Enviar notificación de prueba',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              ),
+                                Text(
+                                  'Verificá al instante cómo suenan y se ven tus alertas',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: theme.hintColor,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Icon(Icons.arrow_forward_ios_rounded,
-                                size: 13, color: theme.hintColor),
-                          ],
-                        ),
+                          ),
+                          Icon(Icons.arrow_forward_ios_rounded,
+                              size: 13, color: theme.hintColor),
+                        ],
                       ),
                     ),
                   ),
+                ),
               ],
             ),
     );
   }
 
-  Widget _info(BuildContext context, IconData icon, String title, String body,
-      Color color, bool isDark) {
+  Widget _categoryToggleCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String body,
+    required Color color,
+    required bool isDark,
+    required bool value,
+    required ValueChanged<bool>? onChanged,
+  }) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: _enabled ? 1.0 : 0.55,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 13, 10, 13),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF131722) : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(13),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icon, color: color, size: 20),
               ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    body,
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: theme.hintColor,
-                      height: 1.35,
+                    const SizedBox(height: 2),
+                    Text(
+                      body,
+                      style: GoogleFonts.spaceGrotesk(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: theme.hintColor,
+                        height: 1.35,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+              Switch.adaptive(
+                value: value,
+                activeThumbColor: color,
+                activeTrackColor: color.withValues(alpha: 0.35),
+                onChanged: onChanged,
+              ),
+            ],
+          ),
         ),
       ),
     );

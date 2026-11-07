@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/features/profile/presentation/screens/storage_manager_screen.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 
 class DiagnosticsScreen extends StatefulWidget {
@@ -440,6 +443,44 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen>
                                         height: 1.45,
                                         fontWeight: FontWeight.w600,
                                         color: theme.hintColor),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ApplePressable(
+                                    scaleDownFactor: 0.97,
+                                    borderRadius: BorderRadius.circular(12),
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        AppAnimations.createRoute(
+                                          const StorageManagerScreen(),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            qualityColor.withValues(alpha: .14),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.cleaning_services_rounded,
+                                              size: 14, color: qualityColor),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Optimizar búfer en Almacenamiento →',
+                                            style: GoogleFonts.spaceGrotesk(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w800,
+                                              color: qualityColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),

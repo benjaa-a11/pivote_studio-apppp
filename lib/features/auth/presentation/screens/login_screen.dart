@@ -195,7 +195,20 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             // ─── Panel blanco (.panel) ──────────────────────────────────
             panel: AuthPanel(
+              footer: AuthFootLink(
+                prefix: '¿Eres nuevo?',
+                linkText: 'Crea una cuenta',
+                onTap: () {
+                  Navigator.of(context).pushReplacement(
+                    AppAnimations.createFadeRoute(
+                      const SignUpScreen(),
+                    ),
+                  );
+                },
+              ),
               children: [
+                const SizedBox(height: 10),
+
                 // Botón Google
                 AuthGoogleBtn(
                   label: 'Iniciar sesión con Google',
@@ -229,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen>
                           return null;
                         },
                       ),
-                      const SizedBox(height: 9),
+                      const SizedBox(height: 14),
 
                       // Contraseña (.row.pw)
                       AuthPasswordInput(
@@ -264,19 +277,6 @@ class _LoginScreenState extends State<LoginScreen>
                   text: '¿Olvidaste tu contraseña? ',
                   linkText: 'Recupérala',
                   onTap: _showForgotPasswordDialog,
-                ),
-
-                // Enlace hacia Registro (.foot.tight)
-                AuthFootLink(
-                  prefix: '¿Eres nuevo?',
-                  linkText: 'Crea una cuenta',
-                  onTap: () {
-                    Navigator.of(context).pushReplacement(
-                      AppAnimations.createFadeRoute(
-                        const SignUpScreen(),
-                      ),
-                    );
-                  },
                 ),
               ],
             ),

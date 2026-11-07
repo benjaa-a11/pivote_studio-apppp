@@ -1,17 +1,19 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pivote/core/animations/app_animations.dart';
-import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/favorites/data/services/viewing_history_service.dart';
+import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
@@ -24,6 +26,7 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   List<Channel> _items = [];
   bool _loading = true;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -38,7 +41,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final provider = context.read<ChannelProvider>();
     final resolved = <Channel>[];
     for (final id in ids) {
-      for (final channel in provider.channels) {
+      for (final channel in provider.allChannels) {
         if (channel.id == id) {
           resolved.add(channel);
           break;
@@ -76,13 +79,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final filtered = _searchQuery.trim().isEmpty
+        ? _items
+        : _items
+            .where((c) =>
+                c.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                c.category.toLowerCase().contains(_searchQuery.toLowerCase()))
+            .toList();
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: PivoteAppBar(
-        title: 'Historial',
+        title: 'Historial de Reproducción',
         subtitle: _items.isEmpty
-            ? 'Tus reproducciones recientes'
-            : '${_items.length} canales vistos recientemente',
+            ? 'Tus canales vistos recientemente'
+            : '${_items.length} ${_items.length == 1 ? 'canal reproducido' : 'canales reproducidos'}',
         actions: [
           if (_items.isNotEmpty)
             IconButton(
@@ -99,167 +111,246 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ? _empty(context)
               : RefreshIndicator.adaptive(
                   onRefresh: _load,
-                  child: ListView.separated(
+                  child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(
                       parent: ClampingScrollPhysics(),
                     ),
                     padding: const EdgeInsets.fromLTRB(20, 14, 20, 36),
-                    itemCount: _items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, index) => AppAnimations.staggeredSlideIn(
-                      index: index,
-                      child: _card(context, _items[index]),
-                    ),
+                    children: [
+                      if (_items.length > 3) ...[
+                        _buildSearchField(theme, isDark),
+                        const SizedBox(height: 14),
+                      ],
+                      for (int i = 0; i < filtered.length; i++) ...[
+                        AppAnimations.staggeredSlideIn(
+                          index: i,
+                          child: _card(context, filtered[i], i + 1),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                    ],
                   ),
                 ),
     );
   }
 
-  Widget _card(BuildContext context, Channel channel) {
+  Widget _buildSearchField(ThemeData theme, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF131722) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+        ),
+      ),
+      child: TextField(
+        onChanged: (val) => setState(() => _searchQuery = val),
+        style: GoogleFonts.spaceGrotesk(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Filtrar canales en tu historial...',
+          hintStyle: GoogleFonts.spaceGrotesk(
+            fontSize: 13,
+            color: theme.hintColor,
+          ),
+          prefixIcon: Icon(Icons.search_rounded,
+              size: 19, color: theme.colorScheme.primary),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _card(BuildContext context, Channel channel, int rank) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final primaryColor =
         isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final favProvider = context.watch<FavoritesProvider>();
+    final isFav = favProvider.isFavorite(channel.id);
     final logo = channel.getLogoUrl(isDark);
 
-    return Material(
-      color: theme.colorScheme.surface,
+    return ApplePressable(
+      scaleDownFactor: 0.98,
       borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          Navigator.push(
-            context,
-            AppAnimations.createFadeRoute(PlayerScreen(channel: channel)),
-          );
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.06),
-            ),
+      onTap: () {
+        HapticFeedback.lightImpact();
+        Navigator.push(
+          context,
+          AppAnimations.createFadeRoute(PlayerScreen(channel: channel)),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF131722) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 58,
-                height: 58,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.04),
+        ),
+        child: Row(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.04),
+                    ),
                   ),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: logo.isNotEmpty
-                      ? CachedNetworkImage(
-                          key: ValueKey<String>(logo),
-                          cacheManager: ImageCacheHelper.logoCacheManager,
-                          imageUrl: logo,
-                          fit: BoxFit.contain,
-                          memCacheWidth: 120,
-                          errorWidget: (_, __, ___) => Icon(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: logo.isNotEmpty
+                        ? CachedNetworkImage(
+                            key: ValueKey<String>(logo),
+                            cacheManager: ImageCacheHelper.logoCacheManager,
+                            imageUrl: logo,
+                            fit: BoxFit.contain,
+                            memCacheWidth: 120,
+                            errorWidget: (_, __, ___) => Icon(
+                              Icons.tv_rounded,
+                              color: primaryColor,
+                              size: 26,
+                            ),
+                          )
+                        : Icon(
                             Icons.tv_rounded,
                             color: primaryColor,
                             size: 26,
                           ),
-                        )
-                      : Icon(
-                          Icons.tv_rounded,
-                          color: primaryColor,
-                          size: 26,
-                        ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      channel.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                Positioned(
+                  top: -4,
+                  left: -4,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: rank == 1
+                          ? primaryColor
+                          : (isDark
+                              ? const Color(0xFF1E2533)
+                              : AppTheme.lightBg3),
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                    child: Text(
+                      '#$rank',
                       style: GoogleFonts.spaceGrotesk(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                        color: theme.colorScheme.onSurface,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w900,
+                        color: rank == 1
+                            ? (isDark ? Colors.black : Colors.white)
+                            : theme.colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    channel.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          channel.category.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            color: primaryColor,
+                            letterSpacing: .5,
+                          ),
+                        ),
+                      ),
+                      if (channel.quality != null &&
+                          channel.quality!.isNotEmpty) ...[
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                              horizontal: 6, vertical: 3),
                           decoration: BoxDecoration(
-                            color: primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            channel.category.toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            channel.quality!,
                             style: GoogleFonts.spaceGrotesk(
                               fontSize: 9.5,
-                              fontWeight: FontWeight.w900,
-                              color: primaryColor,
-                              letterSpacing: .6,
+                              fontWeight: FontWeight.w800,
+                              color: theme.hintColor,
                             ),
                           ),
                         ),
-                        if (channel.quality != null &&
-                            channel.quality!.isNotEmpty) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.06),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              channel.quality!,
-                              style: GoogleFonts.spaceGrotesk(
-                                fontSize: 9.5,
-                                fontWeight: FontWeight.w800,
-                                color: theme.hintColor,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.play_arrow_rounded,
-                  size: 22,
-                  color: primaryColor,
-                ),
+            ),
+            IconButton(
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                favProvider.toggleFavorite(channel.id as Channel);
+              },
+              icon: Icon(
+                isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                size: 20,
+                color: isFav ? const Color(0xFFEF4444) : theme.hintColor,
               ),
-            ],
-          ),
+            ),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.play_arrow_rounded,
+                size: 20,
+                color: primaryColor,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -298,7 +389,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Los canales y transmisiones que reproduzcas se guardarán acá para encontrarlos al instante.',
+              'Los canales y transmisiones que reproduzcas se guardarán acá para volver a verlos al instante.',
               textAlign: TextAlign.center,
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 12,

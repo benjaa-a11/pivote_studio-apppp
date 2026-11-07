@@ -26,7 +26,7 @@ class CategoryChipsRow extends StatelessWidget {
           height: 38,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
+            physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             itemCount: categories.length,
             separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),

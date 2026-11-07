@@ -59,17 +59,27 @@ class AuthStageLayout extends StatelessWidget {
         resizeToAvoidBottomInset: true,
         body: Stack(
           children: [
-            // Contenido con scroll continuo
+            // Contenido con distribución de altura completa y scroll sin rebote
             Positioned.fill(
-              child: SingleChildScrollView(
-                physics: const ClampingScrollPhysics(),
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 480),
-                    child: card,
-                  ),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    physics: const ClampingScrollPhysics(),
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: 480,
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: IntrinsicHeight(
+                          child: card,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
 
@@ -121,16 +131,18 @@ class AuthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        hero,
-        Transform.translate(
-          offset: const Offset(0, -20),
-          child: panel,
-        ),
-      ],
+    return ColoredBox(
+      color: kHtmlOrange,
+      child: Column(
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          hero,
+          Expanded(
+            child: panel,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -148,12 +160,17 @@ class AuthHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.paddingOf(context).top;
-    final contentHeight = single ? 126.0 : 166.0;
-    final totalHeight = topPadding + contentHeight;
+    final media = MediaQuery.of(context);
+    final topPadding = media.padding.top;
+    final screenHeight = media.size.height;
 
-    final goldTop = topPadding + (single ? 44.0 : 66.0);
-    final greenTop = topPadding + (single ? 64.0 : 92.0);
+    // Altura visible equilibrada según la pantalla para que el encabezado respire
+    // y no quede comprimido contra la barra de estado ni el panel blanco.
+    final visibleHeight = single
+        ? (screenHeight * 0.22).clamp(164.0, 204.0)
+        : (screenHeight * 0.235).clamp(176.0, 216.0);
+    const bottomCurveOverlap = 28.0;
+    final totalHeight = topPadding + visibleHeight + bottomCurveOverlap;
 
     return SizedBox(
       height: totalHeight,
@@ -166,13 +183,13 @@ class AuthHero extends StatelessWidget {
             child: Container(color: kHtmlOrange),
           ),
 
-          // Burbuja Dorada (.gold)
+          // Burbuja Dorada (.gold) posicionada armónicamente respecto a la curva inferior
           Positioned(
-            left: -65,
-            top: goldTop,
+            left: -62,
+            bottom: -42,
             child: Container(
-              width: 150,
-              height: 150,
+              width: 164,
+              height: 164,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: kHtmlGold,
@@ -180,13 +197,13 @@ class AuthHero extends StatelessWidget {
             ),
           ),
 
-          // Burbuja Verde (.green)
+          // Burbuja Verde (.green) posicionada armónicamente a la derecha
           Positioned(
-            right: -40,
-            top: greenTop,
+            right: -38,
+            bottom: -48,
             child: Container(
-              width: 130,
-              height: 130,
+              width: 142,
+              height: 142,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: kHtmlGreen,
@@ -194,20 +211,37 @@ class AuthHero extends StatelessWidget {
             ),
           ),
 
-          // Título centrado
+          // Título centrado vertical y horizontalmente en el área visible del Hero
           Positioned(
-            top: topPadding + (single ? 32 : 46),
-            left: 20,
-            right: 20,
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.figtree(
-                fontSize: 30,
-                height: 1.15,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.2,
+            top: topPadding + 8,
+            left: 24,
+            right: 24,
+            bottom: bottomCurveOverlap,
+            child: Center(
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.figtree(
+                  fontSize: 32,
+                  height: 1.14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+
+          // Curva superior del panel blanco integrada sin huecos fantasma
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: -1,
+            height: bottomCurveOverlap + 1,
+            child: Container(
+              decoration: const BoxDecoration(
                 color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
               ),
             ),
           ),
@@ -218,13 +252,14 @@ class AuthHero extends StatelessWidget {
 }
 
 // ─── Panel Blanco (.panel) con Theme claro aislado ────────────────────────────
-// .panel { background:#fff; border-radius:30px 30px 0 0; padding:50px 23px 34px; text-align:center; }
 class AuthPanel extends StatelessWidget {
   final List<Widget> children;
+  final Widget? footer;
 
   const AuthPanel({
     super.key,
     required this.children,
+    this.footer,
   });
 
   @override
@@ -257,15 +292,24 @@ class AuthPanel extends StatelessWidget {
       data: lightTheme,
       child: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        padding: EdgeInsets.fromLTRB(24, 42, 24, 34 + bottomInset),
+        color: Colors.white,
+        padding: EdgeInsets.fromLTRB(26, 12, 26, 26 + bottomInset),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: children,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: children,
+            ),
+            if (footer != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 28),
+                child: footer!,
+              ),
+          ],
         ),
       ),
     );
@@ -307,7 +351,7 @@ class _AuthGoogleBtnState extends State<AuthGoogleBtn> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: double.infinity,
-          height: 50,
+          height: 52,
           decoration: BoxDecoration(
             color: _isPressed ? const Color(0xFFFAFAFA) : Colors.white,
             borderRadius: BorderRadius.circular(999),
@@ -318,14 +362,14 @@ class _AuthGoogleBtnState extends State<AuthGoogleBtn> {
             children: [
               SvgPicture.string(
                 _kGoogleSvg,
-                width: 26,
-                height: 26,
+                width: 24,
+                height: 24,
               ),
               const SizedBox(width: 12),
               Text(
                 widget.label,
                 style: GoogleFonts.figtree(
-                  fontSize: 17,
+                  fontSize: 16.5,
                   fontWeight: FontWeight.w500,
                   color: const Color(0xFF333333),
                 ),
@@ -345,7 +389,7 @@ class AuthOrText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 20, bottom: 22),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Text(
         'o',
         style: GoogleFonts.figtree(
@@ -418,13 +462,13 @@ class _AuthPillInputState extends State<AuthPillInput> {
         AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
-          height: 50,
+          height: 52,
           width: double.infinity,
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(999),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 23),
+          padding: const EdgeInsets.symmetric(horizontal: 22),
           alignment: Alignment.center,
           child: TextFormField(
             controller: widget.controller,
@@ -567,12 +611,12 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOutCubic,
-                height: 50,
+                height: 52,
                 decoration: BoxDecoration(
                   color: firstBg,
                   borderRadius: leftRadius,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 23),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 alignment: Alignment.center,
                 child: TextFormField(
                   controller: widget.firstController,
@@ -615,18 +659,18 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                 ),
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 6),
             // Last Name
             Expanded(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOutCubic,
-                height: 50,
+                height: 52,
                 decoration: BoxDecoration(
                   color: lastBg,
                   borderRadius: rightRadius,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 23),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 alignment: Alignment.center,
                 child: TextFormField(
                   controller: widget.lastController,
@@ -759,12 +803,12 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 curve: Curves.easeOutCubic,
-                height: 50,
+                height: 52,
                 decoration: BoxDecoration(
                   color: bgColor,
                   borderRadius: leftRadius,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 23),
+                padding: const EdgeInsets.symmetric(horizontal: 22),
                 alignment: Alignment.center,
                 child: TextFormField(
                   controller: widget.controller,
@@ -814,7 +858,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
               width: 54,
-              height: 50,
+              height: 52,
               decoration: BoxDecoration(
                 color: bgColor,
                 borderRadius: rightRadius,
@@ -887,7 +931,7 @@ class _AuthMainBtnState extends State<AuthMainBtn> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 25),
+      padding: const EdgeInsets.only(top: 22),
       child: GestureDetector(
         onTapDown: (_) {
           if (!widget.isLoading) setState(() => _isPressed = true);
@@ -907,7 +951,7 @@ class _AuthMainBtnState extends State<AuthMainBtn> {
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             width: double.infinity,
-            height: 50,
+            height: 52,
             decoration: BoxDecoration(
               color: _isPressed ? kHtmlBtnMainPressed : kHtmlBtnMain,
               borderRadius: BorderRadius.circular(999),
@@ -951,13 +995,13 @@ class AuthLegalNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 22),
+      padding: const EdgeInsets.only(top: 18),
       child: Text.rich(
         TextSpan(
           text: 'Al registrarte en Pivote aceptas la\n',
           style: GoogleFonts.figtree(
-            fontSize: 15,
-            height: 1.4,
+            fontSize: 14.5,
+            height: 1.45,
             color: kHtmlMuted,
             fontWeight: FontWeight.w400,
           ),
@@ -968,8 +1012,8 @@ class AuthLegalNotice extends StatelessWidget {
                 child: Text(
                   'Política de Privacidad',
                   style: GoogleFonts.figtree(
-                    fontSize: 15,
-                    height: 1.4,
+                    fontSize: 14.5,
+                    height: 1.45,
                     color: kHtmlInk,
                     fontWeight: FontWeight.w400,
                     decoration: TextDecoration.underline,
@@ -985,8 +1029,8 @@ class AuthLegalNotice extends StatelessWidget {
                 child: Text(
                   'Términos de Servicio',
                   style: GoogleFonts.figtree(
-                    fontSize: 15,
-                    height: 1.4,
+                    fontSize: 14.5,
+                    height: 1.45,
                     color: kHtmlInk,
                     fontWeight: FontWeight.w400,
                     decoration: TextDecoration.underline,
@@ -1020,14 +1064,14 @@ class AuthSmallLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.only(top: 18),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             text,
             style: GoogleFonts.figtree(
-              fontSize: 16,
+              fontSize: 15.5,
               color: kHtmlMuted,
               fontWeight: FontWeight.w400,
             ),
@@ -1040,9 +1084,9 @@ class AuthSmallLink extends StatelessWidget {
             child: Text(
               linkText,
               style: GoogleFonts.figtree(
-                fontSize: 16,
+                fontSize: 15.5,
                 color: kHtmlInk,
-                fontWeight: FontWeight.w400,
+                fontWeight: FontWeight.w500,
                 decoration: TextDecoration.underline,
                 decorationColor: kHtmlInk,
               ),
@@ -1070,19 +1114,19 @@ class AuthFootLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.only(top: 4, bottom: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             prefix,
             style: GoogleFonts.figtree(
-              fontSize: 17,
+              fontSize: 16.5,
               color: const Color(0xFF111111),
               fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 5),
           GestureDetector(
             onTap: () {
               HapticFeedback.selectionClick();
@@ -1091,9 +1135,9 @@ class AuthFootLink extends StatelessWidget {
             child: Text(
               linkText,
               style: GoogleFonts.figtree(
-                fontSize: 17,
+                fontSize: 16.5,
                 color: kHtmlInk,
-                fontWeight: FontWeight.w400,
+                fontWeight: FontWeight.w600,
                 decoration: TextDecoration.underline,
                 decorationColor: kHtmlInk,
               ),

@@ -103,6 +103,7 @@ class PivoteApp extends StatelessWidget {
             child: MaterialApp(
               title: 'Pivote',
               debugShowCheckedModeBanner: false,
+              scrollBehavior: const _NoBounceScrollBehavior(),
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
               themeMode:
@@ -114,6 +115,15 @@ class PivoteApp extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+class _NoBounceScrollBehavior extends MaterialScrollBehavior {
+  const _NoBounceScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const ClampingScrollPhysics();
   }
 }
 

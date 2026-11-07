@@ -45,7 +45,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
           onRefresh: () => radioProvider.loadRadiosFromFirestore(),
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
+              parent: ClampingScrollPhysics(),
             ),
             slivers: [
               // ─── Header con buscador y stats ───
@@ -267,7 +267,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         itemCount: categories.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {

@@ -28,7 +28,7 @@ class FavoritesScreen extends StatelessWidget {
             );
 
             return CustomScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               slivers: [
                 // Header
                 SliverToBoxAdapter(
@@ -118,6 +118,8 @@ class FavoritesScreen extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context, ThemeData theme, bool isDark,
       FavoritesProvider favoritesProvider, int count) {
+    final canPop = Navigator.of(context).canPop();
+
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 16, 14),
       decoration: BoxDecoration(
@@ -133,6 +135,37 @@ class FavoritesScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (canPop) ...[
+            ApplePressable(
+              scaleDownFactor: 0.92,
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppTheme.darkBg2.withValues(alpha: 0.70)
+                      : AppTheme.lightBg2.withValues(alpha: 0.70),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.10)
+                        : Colors.black.withValues(alpha: 0.06),
+                    width: 1.0,
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 15,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
           // Heart Icon Container (Polished)
           Container(
             width: 40,
@@ -340,6 +373,10 @@ class FavoritesScreen extends StatelessWidget {
               scaleDownFactor: 0.94,
               borderRadius: BorderRadius.circular(14),
               onTap: () {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                  return;
+                }
                 try {
                   DefaultTabController.of(context).animateTo(0);
                 } catch (e) {
