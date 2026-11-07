@@ -35,14 +35,32 @@ class _ResolverConfig {
       'AppleWebKit/537.36 (KHTML, like Gecko) '
       'Chrome/125.0.0.0 Safari/537.36';
 
-  // Strings that immediately confirm it's already a playable direct M3U8
+  // Strings that immediately confirm it's already a playable direct M3U8 / TS stream
   static const List<String> m3u8FastPaths = [
     '.m3u8',
     '.m3u8?',
+    '.m3u',
+    'chunklist',
+    '/hls/',
+    'output=m3u8',
+    'output=hls',
+    'format=m3u8',
+    'type=m3u8',
     'akamaized.net',
     'cloudfront.net',
     'fastly.net',
     'llnw.net',
+    'mediastream.co',
+    'mdstrm.com',
+    'rudo.video',
+    'jwplatform.com',
+    'mux.com',
+    'cloudflarestream.com',
+    'livepush.io',
+    ':8080/',
+    ':8000/',
+    ':25461/',
+    ':8880/',
   ];
 
   // Content-Type values that mean the response IS the stream

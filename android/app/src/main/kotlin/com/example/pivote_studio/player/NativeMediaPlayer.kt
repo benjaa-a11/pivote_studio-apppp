@@ -23,7 +23,6 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import com.example.pivote_studio.data.DrmScheme
 import com.example.pivote_studio.data.StreamChannel
 import com.example.pivote_studio.data.StreamFormat
-import com.example.pivote_studio.drm.PivoteDrmManager
 import com.example.pivote_studio.network.StreamHttpDataSourceFactory
 
 /**
@@ -31,9 +30,9 @@ import com.example.pivote_studio.network.StreamHttpDataSourceFactory
  *
  * Garantías de diseño:
  *   • UNA sola instancia de ExoPlayer por PlatformView.
- *   • Arranque ultrarrápido de buffer (800ms para primer frame) ideal para zapping IPTV.
+ *   • Arranque ultrarrápido de buffer ideal para zapping IPTV y enlaces M3U8 claros.
  *   • Reenvío garantizado de estado al conectar el EventChannel (evita "loading infinito").
- *   • MultiSession DRM y fallback inteligente de formatos.
+ *   • MultiSession DRM, presets automáticos de headers para HLS/MPD y fallback inteligente de formatos.
  */
 @OptIn(UnstableApi::class)
 class NativeMediaPlayer(context: Context) {
@@ -41,9 +40,9 @@ class NativeMediaPlayer(context: Context) {
     companion object {
         private const val TAG = "PivoteExoPlayer"
         private const val MAX_NETWORK_RETRIES = 2
-        private const val BASE_RETRY_MS       = 800L
+        private const val BASE_RETRY_MS       = 700L
         private const val POSITION_TICK_MS    = 500L
-        private const val STALL_TIMEOUT_MS    = 15_000L
+        private const val STALL_TIMEOUT_MS    = 14_000L
     }
 
     private val appContext = context.applicationContext
@@ -64,11 +63,12 @@ class NativeMediaPlayer(context: Context) {
             .setAllowVideoMixedMimeTypeAdaptiveness(true)
             .setAllowVideoNonSeamlessAdaptiveness(true)
             .setAllowAudioMixedMimeTypeAdaptiveness(true)
+            .setAllowAudioNonSeamlessAdaptiveness(true)
             .setExceedVideoConstraintsIfNecessary(true)
             .setExceedAudioConstraintsIfNecessary(true)
             .setExceedRendererCapabilitiesIfNecessary(true)
             .setTunnelingEnabled(false)
-            .setPreferredAudioLanguages("es", "spa", "es-419", "en")
+            .setPreferredAudioLanguages("es", "spa", "es-419", "und", "en")
             .setPreferredTextLanguages("es", "spa")
             .setSelectUndeterminedTextLanguage(false)
             .build()
@@ -78,10 +78,13 @@ class NativeMediaPlayer(context: Context) {
 
     // ── Estado de sesión ────────────────────────────────────────────────────
     private var currentChannel: StreamChannel? = null
+    private var initialHeaders: Map<String, String> = emptyMap()
     private var sessionId = 0
     private var formatCandidates: List<StreamFormat> = emptyList()
     private var formatIndex = 0
     private var mpdHeaderPresetIndex = -1
+    private var hlsHeaderPresetIndex = -1
+    private var allowChunklessHls = true
     private var forceL3 = false
     private var networkRetries = 0
     private var decoderRetried = false
@@ -125,14 +128,14 @@ class NativeMediaPlayer(context: Context) {
     private fun buildPlayer(): ExoPlayer {
         val renderers = DefaultRenderersFactory(appContext)
             .setEnableDecoderFallback(true)
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
                 /* minBufferMs */                      8_000,
                 /* maxBufferMs */                     36_000,
-                /* bufferForPlaybackMs */                600,
-                /* bufferForPlaybackAfterRebufferMs */ 1_500
+                /* bufferForPlaybackMs */                550,
+                /* bufferForPlaybackAfterRebufferMs */ 1_400
             )
             .setPrioritizeTimeOverSizeThresholds(true)
             .setBackBuffer(10_000, false)
@@ -164,15 +167,23 @@ class NativeMediaPlayer(context: Context) {
         cancelScheduled()
 
         currentChannel = channel
+        initialHeaders = LinkedHashMap(channel.headers)
         sessionId = channel.sessionId
         val detected = channel.detectFormat()
-        formatCandidates = if (detected == StreamFormat.UNKNOWN) {
-            StreamMediaSourceFactory.PROBE_ORDER
-        } else {
-            listOf(detected)
+        formatCandidates = when {
+            detected == StreamFormat.UNKNOWN -> StreamMediaSourceFactory.PROBE_ORDER
+            !channel.hasDrm && detected == StreamFormat.HLS ->
+                listOf(StreamFormat.HLS, StreamFormat.PROGRESSIVE, StreamFormat.DASH)
+            !channel.hasDrm && detected == StreamFormat.DASH ->
+                listOf(StreamFormat.DASH, StreamFormat.HLS, StreamFormat.PROGRESSIVE)
+            !channel.hasDrm && detected == StreamFormat.PROGRESSIVE ->
+                listOf(StreamFormat.PROGRESSIVE, StreamFormat.HLS)
+            else -> listOf(detected)
         }
         formatIndex = 0
         mpdHeaderPresetIndex = -1
+        hlsHeaderPresetIndex = -1
+        allowChunklessHls = true
         forceL3 = channel.forceWidevineL3 || usesTextureSurface
         networkRetries = 0
         decoderRetried = false
@@ -185,7 +196,7 @@ class NativeMediaPlayer(context: Context) {
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
             .build()
 
-        Log.i(TAG, "prepare session=$sessionId '${channel.name}' format=$detected drm=${channel.drmScheme}")
+        Log.i(TAG, "prepare session=$sessionId '${channel.name}' format=$detected candidates=$formatCandidates drm=${channel.drmScheme}")
         loadSource()
     }
 
@@ -302,7 +313,13 @@ class NativeMediaPlayer(context: Context) {
     private fun loadSource() {
         val channel = currentChannel ?: return
         try {
-            val source = StreamMediaSourceFactory.createMediaSource(appContext, channel, currentFormat, forceL3)
+            val source = StreamMediaSourceFactory.createMediaSource(
+                context = appContext,
+                channel = channel,
+                format = currentFormat,
+                forceL3 = forceL3,
+                allowChunklessHls = allowChunklessHls
+            )
             player.stop()
             player.clearMediaItems()
             player.setMediaSource(source, /* resetPosition = */ true)
@@ -336,7 +353,54 @@ class NativeMediaPlayer(context: Context) {
             return
         }
 
-        // 2. Si es DASH/MPD y falla la carga inicial (403/401/manifiesto/red), probar los presets de headers MPD (Flow AR, Flow PY, PrimeVideo)
+        // 2. Si es HLS/M3U8 y falla el extractor/manifiesto/contenedor en preparación chunkless,
+        //    reintentar desactivando chunklessPreparation para que ExoPlayer inspeccione los segmentos TS reales.
+        if (!hasBeenReady &&
+            currentFormat == StreamFormat.HLS &&
+            allowChunklessHls &&
+            (info.errorCode == PlayerErrorMapper.ERROR_MANIFEST ||
+                info.errorCode == PlayerErrorMapper.ERROR_UNSUPPORTED_FORMAT ||
+                info.errorCode == PlayerErrorMapper.ERROR_DECODER ||
+                info.errorCode == PlayerErrorMapper.ERROR_SOURCE)
+        ) {
+            allowChunklessHls = false
+            Log.w(TAG, "HLS chunkless falló (${info.errorCode}); reintentando con inspección completa de TS")
+            emit("retrying", "reason" to "hls_full_extractor")
+            loadSource()
+            return
+        }
+
+        // 3. Si es HLS/M3U8 claro y falla por HTTP (403/401/400/404), manifiesto o red,
+        //    probar automáticamente los perfiles de headers HLS (Same-Origin, VLC/IPTV sin Origin, etc.)
+        if (!hasBeenReady &&
+            currentFormat == StreamFormat.HLS &&
+            channel != null &&
+            (info.errorCode == PlayerErrorMapper.ERROR_HTTP ||
+                info.errorCode == PlayerErrorMapper.ERROR_MANIFEST ||
+                info.errorCode == PlayerErrorMapper.ERROR_NETWORK ||
+                info.errorCode == PlayerErrorMapper.ERROR_UNSUPPORTED_FORMAT)
+        ) {
+            val hlsPresets = StreamHttpDataSourceFactory.buildHlsHeaderPresets(channel.originalUrl)
+            if (hlsHeaderPresetIndex + 1 < hlsPresets.size) {
+                hlsHeaderPresetIndex++
+                val preset = hlsPresets[hlsHeaderPresetIndex]
+                val updatedHeaders = LinkedHashMap(initialHeaders).apply {
+                    remove("Origin")
+                    remove("Referer")
+                    remove("User-Agent")
+                    remove("__STRIP_ORIGIN_REFERER__")
+                    remove("__STRIP_ORIGIN_ONLY__")
+                    putAll(preset)
+                }
+                currentChannel = channel.copy(headers = updatedHeaders)
+                Log.w(TAG, "HLS M3U8 falló (${info.errorCode} HTTP=${info.httpStatus}); reintentando con perfil HLS #${hlsHeaderPresetIndex + 1}")
+                emit("retrying", "reason" to "hls_headers_preset", "preset" to (hlsHeaderPresetIndex + 1))
+                loadSource()
+                return
+            }
+        }
+
+        // 4. Si es DASH/MPD y falla la carga inicial, probar los presets de headers MPD (Flow AR, Flow PY, PrimeVideo)
         if (!hasBeenReady &&
             currentFormat == StreamFormat.DASH &&
             (info.errorCode == PlayerErrorMapper.ERROR_HTTP ||
@@ -347,7 +411,6 @@ class NativeMediaPlayer(context: Context) {
         ) {
             mpdHeaderPresetIndex++
             var preset = StreamHttpDataSourceFactory.MPD_HEADER_PRESETS[mpdHeaderPresetIndex]
-            // Si el preset actual ya coincide con el Referer que acabamos de usar, saltar al siguiente
             if (channel != null &&
                 channel.headers["Referer"] == preset["Referer"] &&
                 mpdHeaderPresetIndex + 1 < StreamHttpDataSourceFactory.MPD_HEADER_PRESETS.size
@@ -356,30 +419,33 @@ class NativeMediaPlayer(context: Context) {
                 preset = StreamHttpDataSourceFactory.MPD_HEADER_PRESETS[mpdHeaderPresetIndex]
             }
             if (channel != null) {
-                val updatedHeaders = LinkedHashMap(channel.headers).apply {
+                val updatedHeaders = LinkedHashMap(initialHeaders).apply {
                     remove("Origin")
                     remove("Referer")
                     remove("User-Agent")
                     putAll(preset)
                 }
                 currentChannel = channel.copy(headers = updatedHeaders)
-                Log.w(TAG, "MPD falló (${info.errorCode} HTTP=${info.httpStatus}); reintentando con preset MPD #${mpdHeaderPresetIndex + 1} (${preset["Referer"]})")
+                Log.w(TAG, "MPD falló (${info.errorCode} HTTP=${info.httpStatus}); reintentando con preset MPD #${mpdHeaderPresetIndex + 1}")
                 emit("retrying", "reason" to "mpd_headers_preset", "preset" to (mpdHeaderPresetIndex + 1))
                 loadSource()
                 return
             }
         }
 
-        // 3. Formato inferido incorrecto → probar el siguiente candidato.
+        // 5. Formato inferido incorrecto → probar el siguiente candidato (ej. HLS -> PROGRESSIVE TS -> DASH).
         if (!hasBeenReady && PlayerErrorMapper.isFormatMismatch(info) && formatIndex + 1 < formatCandidates.size) {
             formatIndex++
+            if (channel != null) {
+                currentChannel = channel.copy(headers = LinkedHashMap(initialHeaders))
+            }
             Log.w(TAG, "Formato no válido, probando ${currentFormat.name}")
             emit("retrying", "reason" to "format", "format" to currentFormat.name)
             loadSource()
             return
         }
 
-        // 3. Widevine L1 con problemas → forzar L3.
+        // 6. Widevine L1 con problemas → forzar L3.
         val isWidevine = channel?.drmScheme == DrmScheme.WIDEVINE
         if (isWidevine && !forceL3 &&
             (PlayerErrorMapper.isDrmError(info) || info.errorCode == PlayerErrorMapper.ERROR_DECODER)
@@ -391,15 +457,16 @@ class NativeMediaPlayer(context: Context) {
             return
         }
 
-        // 4. Decoder: un reintento completo.
+        // 7. Decoder: un reintento completo.
         if (info.errorCode == PlayerErrorMapper.ERROR_DECODER && !decoderRetried) {
             decoderRetried = true
+            allowChunklessHls = false
             emit("retrying", "reason" to "decoder")
             loadSource()
             return
         }
 
-        // 5. Red transitoria → reintento rápido.
+        // 8. Red transitoria → reintento rápido.
         if (PlayerErrorMapper.isTransientNetwork(info) && networkRetries < MAX_NETWORK_RETRIES) {
             val delay = BASE_RETRY_MS shl networkRetries
             networkRetries++
@@ -410,7 +477,7 @@ class NativeMediaPlayer(context: Context) {
             return
         }
 
-        // 6. Fatal → Flutter decide.
+        // 9. Fatal → Flutter decide.
         emitError(info)
     }
 

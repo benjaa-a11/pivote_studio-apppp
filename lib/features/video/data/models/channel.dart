@@ -89,10 +89,18 @@ class Channel {
     if (json['streamUrl'] is List) {
       for (var item in json['streamUrl']) {
         if (item is String) {
-          // Old format: simple string URL
+          // Old format: simple string URL (may contain |Referer=... pipe syntax)
+          final (cleanUrl, pipeHeaders) = StreamSource.splitPipeHeaders(item);
+          final merged = <String, String>{
+            if (rootHeaders != null) ...rootHeaders,
+            ...pipeHeaders,
+          };
           streams.add(StreamSource(
-            url: item,
-            headers: StreamSource.resolveSmartHeaders(item, rootHeaders),
+            url: cleanUrl,
+            headers: StreamSource.resolveSmartHeaders(
+              cleanUrl,
+              merged.isEmpty ? null : merged,
+            ),
           ));
         } else if (item is Map) {
           // New format: map with url, k1, k2, clearkeys, headers
@@ -116,11 +124,19 @@ class Channel {
         }
       }
     } else if (json['streamUrl'] is String) {
-      final urlStr = json['streamUrl'].toString();
+      final (cleanUrl, pipeHeaders) =
+          StreamSource.splitPipeHeaders(json['streamUrl'].toString());
+      final merged = <String, String>{
+        if (rootHeaders != null) ...rootHeaders,
+        ...pipeHeaders,
+      };
       streams = [
         StreamSource(
-          url: urlStr,
-          headers: StreamSource.resolveSmartHeaders(urlStr, rootHeaders),
+          url: cleanUrl,
+          headers: StreamSource.resolveSmartHeaders(
+            cleanUrl,
+            merged.isEmpty ? null : merged,
+          ),
         )
       ];
     }
@@ -319,13 +335,20 @@ class StreamSource {
       parsedClearkeys = parseDrmLicenseUri(drmLicenseUri);
     }
 
-    // Parse custom HTTP headers (normalized + smart URL presets)
-    final urlStr = url.toString();
+    // Parse custom HTTP headers (normalized + pipe syntax + smart URL presets)
+    final (cleanUrl, pipeHeaders) = splitPipeHeaders(url.toString());
     final extractedHeaders = extractNormalizedHeaders(json);
-    final parsedHeaders = resolveSmartHeaders(urlStr, extractedHeaders);
+    final mergedRaw = <String, String>{
+      if (extractedHeaders != null) ...extractedHeaders,
+      ...pipeHeaders,
+    };
+    final parsedHeaders = resolveSmartHeaders(
+      cleanUrl,
+      mergedRaw.isEmpty ? null : mergedRaw,
+    );
 
     return StreamSource(
-      url: urlStr,
+      url: cleanUrl,
       k1: json['k1']?.toString(),
       k2: json['k2']?.toString(),
       label: json['label']?.toString() ?? json['name']?.toString(),
@@ -333,6 +356,33 @@ class StreamSource {
       headers: parsedHeaders,
       drmLicenseUri: drmLicenseUri,
     );
+  }
+
+  /// Splits M3U/IPTV pipe-annotated URLs like:
+  /// `https://host/live/canal.m3u8|Referer=https://host/&User-Agent=Mozilla/5.0`
+  static (String, Map<String, String>) splitPipeHeaders(String rawUrl) {
+    final trimmed = rawUrl.trim();
+    final pipeIdx = trimmed.indexOf('|');
+    if (pipeIdx <= 0 || pipeIdx >= trimmed.length - 1) {
+      return (trimmed, const {});
+    }
+    final cleanUrl = trimmed.substring(0, pipeIdx).trim();
+    final headerPart = trimmed.substring(pipeIdx + 1).trim();
+    final parsed = <String, String>{};
+    for (final pair in headerPart.split('&')) {
+      final eqIdx = pair.indexOf('=');
+      if (eqIdx <= 0) continue;
+      final rawKey = pair.substring(0, eqIdx).trim();
+      final rawVal = pair.substring(eqIdx + 1).trim();
+      if (rawKey.isNotEmpty && rawVal.isNotEmpty) {
+        String decoded = rawVal;
+        try {
+          decoded = Uri.decodeQueryComponent(rawVal);
+        } catch (_) {}
+        parsed[normalizeHeaderKey(rawKey)] = decoded;
+      }
+    }
+    return (cleanUrl, parsed);
   }
 
   /// Normalizes canonical HTTP header names (`user-agent` -> `User-Agent`,
@@ -619,7 +669,16 @@ class StreamSource {
   bool get isDash => url.contains('.mpd') || hasDrm;
 
   /// Returns true if this is an HLS stream
-  bool get isHls => url.contains('.m3u8') || url.contains('m3u');
+  bool get isHls {
+    final lower = url.toLowerCase();
+    return lower.contains('.m3u8') ||
+        lower.contains('.m3u') ||
+        lower.contains('chunklist') ||
+        lower.contains('/hls/') ||
+        lower.contains('output=m3u8') ||
+        lower.contains('output=hls') ||
+        lower.contains('format=m3u8');
+  }
 }
 
 enum StreamType {

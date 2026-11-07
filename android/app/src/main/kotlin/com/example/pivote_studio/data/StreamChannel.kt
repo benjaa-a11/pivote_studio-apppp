@@ -1,6 +1,7 @@
 package com.example.pivote_studio.data
 
 import android.net.Uri
+import java.net.URLDecoder
 
 /**
  * Tipo de DRM que se va a usar para descifrar el stream.
@@ -23,6 +24,7 @@ enum class StreamFormat { HLS, DASH, SMOOTH, RTSP, PROGRESSIVE, UNKNOWN }
  *   • ClearKey local (kid:k / JSON W3C) o servidor ClearKey remoto
  *   • Widevine / PlayReady con servidor de licencias y headers propios
  *   • Headers HTTP personalizados por canal (User-Agent, Referer, Origin, Cookie…)
+ *   • Sintaxis pipe de listas M3U (`https://.../live.m3u8|Referer=...&User-Agent=...`)
  */
 data class StreamChannel(
     val name: String,
@@ -74,16 +76,18 @@ data class StreamChannel(
         val path = (uri?.path ?: originalUrl).lowercase()
         val full = originalUrl.lowercase()
 
-        // 1. Prioridad máxima: extensión clara en la URL (incluyendo query params como cdntoken?path=...mpd)
+        // 1. Prioridad máxima: extensión o patrón claro en la URL
+        if (path.endsWith(".m3u8") || path.endsWith(".m3u") || full.contains(".m3u8") ||
+            full.contains("format=m3u8") || full.contains("type=m3u8") ||
+            full.contains("chunklist") || full.contains("/hls/") ||
+            full.contains("output=m3u8") || full.contains("output=hls")
+        ) {
+            return StreamFormat.HLS
+        }
         if (path.endsWith(".mpd") || full.contains(".mpd") || full.contains("format=mpd") ||
             (full.contains("/dash/") && !full.contains(".m3u8"))
         ) {
             return StreamFormat.DASH
-        }
-        if (path.endsWith(".m3u8") || path.endsWith(".m3u") || full.contains(".m3u8") ||
-            full.contains("format=m3u8") || full.contains("type=m3u8")
-        ) {
-            return StreamFormat.HLS
         }
         if (path.endsWith(".ism") || path.endsWith(".isml") ||
             (path.endsWith("/manifest") && full.contains(".ism"))
@@ -91,24 +95,24 @@ data class StreamChannel(
             return StreamFormat.SMOOTH
         }
 
-        // 2. Prioridad por campo `type` explícito
-        when (type?.trim()?.lowercase()) {
-            "dash", "mpd", "clearkey"         -> return StreamFormat.DASH
-            "hls", "m3u8", "m3u"              -> return StreamFormat.HLS
-            "ss", "smooth", "ism", "mss"      -> return StreamFormat.SMOOTH
-            "rtsp"                            -> return StreamFormat.RTSP
-            "progressive", "mp4", "ts", "mkv",
-            "mp3", "aac", "webm", "flv"       -> return StreamFormat.PROGRESSIVE
-        }
-
-        // 3. Si tiene DRM (ClearKey / Widevine) y no es explícitamente HLS, es DASH
+        // 2. Si tiene DRM (ClearKey / Widevine) y no es explícitamente HLS, es DASH
         if (hasDrm) {
             return StreamFormat.DASH
         }
 
-        // 4. Extensiones progresivas conocidas
+        // 3. Extensiones progresivas conocidas
         if (PROGRESSIVE_EXTENSIONS.any { path.endsWith(it) }) {
             return StreamFormat.PROGRESSIVE
+        }
+
+        // 4. Prioridad por campo `type` explícito
+        when (type?.trim()?.lowercase()) {
+            "hls", "m3u8", "m3u"              -> return StreamFormat.HLS
+            "dash", "mpd", "clearkey"         -> return StreamFormat.DASH
+            "ss", "smooth", "ism", "mss"      -> return StreamFormat.SMOOTH
+            "rtsp"                            -> return StreamFormat.RTSP
+            "progressive", "mp4", "ts", "mkv",
+            "mp3", "aac", "webm", "flv"       -> return StreamFormat.PROGRESSIVE
         }
 
         return StreamFormat.UNKNOWN
@@ -135,13 +139,51 @@ data class StreamChannel(
         private fun String?.isHttpUrl(): Boolean =
             this != null && (startsWith("http://", true) || startsWith("https://", true))
 
-        fun fromMap(map: Map<*, *>): StreamChannel {
-            val name        = map["name"]?.toString()?.takeIf { it.isNotBlank() } ?: "Canal"
-            val type        = map["type"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
-            val icono       = (map["icono"] ?: map["logo"] ?: map["logoUrl"])?.toString()
-            val originalUrl = (map["original_url"] ?: map["url"])?.toString()?.trim() ?: ""
+        private fun normalizeHeaderKey(key: String): String = when (key.trim().lowercase()) {
+            "user-agent", "user_agent", "useragent" -> "User-Agent"
+            "referer", "referrer"                   -> "Referer"
+            "origin"                                -> "Origin"
+            "cookie"                                -> "Cookie"
+            "authorization"                         -> "Authorization"
+            else                                    -> key.trim()
+        }
 
-            val drmBlock   = map["drm"] as? Map<*, *>
+        /**
+         * Extrae posibles cabeceras embebidas tras `|` en URLs M3U/IPTV
+         * (ej. `https://host/live.m3u8|Referer=https://host/&User-Agent=Mozilla...`).
+         */
+        private fun splitPipeHeaders(rawUrl: String): Pair<String, Map<String, String>> {
+            val trimmed = rawUrl.trim()
+            val pipeIdx = trimmed.indexOf('|')
+            if (pipeIdx <= 0) return trimmed to emptyMap()
+
+            val cleanUrl = trimmed.substring(0, pipeIdx).trim()
+            val headerPart = trimmed.substring(pipeIdx + 1).trim()
+            if (headerPart.isEmpty()) return cleanUrl to emptyMap()
+
+            val parsed = LinkedHashMap<String, String>()
+            headerPart.split('&').forEach { pair ->
+                val eq = pair.indexOf('=')
+                if (eq > 0) {
+                    val rawKey = pair.substring(0, eq).trim()
+                    val rawVal = pair.substring(eq + 1).trim()
+                    val decodedVal = runCatching { URLDecoder.decode(rawVal, "UTF-8") }.getOrDefault(rawVal)
+                    if (rawKey.isNotEmpty() && decodedVal.isNotEmpty()) {
+                        parsed[normalizeHeaderKey(rawKey)] = decodedVal
+                    }
+                }
+            }
+            return cleanUrl to parsed
+        }
+
+        fun fromMap(map: Map<*, *>): StreamChannel {
+            val name = map["name"]?.toString()?.takeIf { it.isNotBlank() } ?: "Canal"
+            val type = map["type"]?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+            val icono = (map["icono"] ?: map["logo"] ?: map["logoUrl"])?.toString()
+            val rawUrl = (map["original_url"] ?: map["url"])?.toString()?.trim() ?: ""
+            val (originalUrl, pipeHeaders) = splitPipeHeaders(rawUrl)
+
+            val drmBlock = map["drm"] as? Map<*, *>
             val rawDrmType = (drmBlock?.get("type") ?: map["drm_type"] ?: map["drmType"])
                 ?.toString()?.trim()?.uppercase()
 
@@ -192,13 +234,8 @@ data class StreamChannel(
             // ── Headers HTTP (normalizados) ──────────────────────────────────
             val rawHeaders = map["headers"].toStringMap()
             val headers = LinkedHashMap<String, String>()
-            fun normalizeHeaderKey(key: String): String = when (key.trim().lowercase()) {
-                "user-agent", "user_agent", "useragent" -> "User-Agent"
-                "referer", "referrer"                   -> "Referer"
-                "origin"                                -> "Origin"
-                "cookie"                                -> "Cookie"
-                "authorization"                         -> "Authorization"
-                else                                    -> key.trim()
+            pipeHeaders.forEach { (k, v) ->
+                if (v.isNotEmpty()) headers[normalizeHeaderKey(k)] = v
             }
             rawHeaders.forEach { (k, v) ->
                 if (v.isNotEmpty()) headers[normalizeHeaderKey(k)] = v

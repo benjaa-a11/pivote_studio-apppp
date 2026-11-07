@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:pivote/core/animations/app_animations.dart';
-import 'package:pivote/core/theme/app_theme.dart';
-import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/home/data/services/search_service.dart';
 import 'package:pivote/features/home/presentation/widgets/search_filter_chips.dart';
 import 'package:pivote/features/home/presentation/widgets/search_radio_tile.dart';
 import 'package:pivote/features/home/presentation/widgets/search_match_tile.dart';
+import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
@@ -24,8 +23,7 @@ class SearchScreen extends StatefulWidget {
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen>
-    with SingleTickerProviderStateMixin {
+class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _debounceTimer;
@@ -33,46 +31,41 @@ class _SearchScreenState extends State<SearchScreen>
   SearchFilterTab _selectedTab = SearchFilterTab.all;
   List<String> _searchHistory = [];
 
-  late final AnimationController _animController;
-  late final Animation<double> _fadeAnim;
-  late final Animation<Offset> _slideAnim;
-
-  // Quick categories metadata with 2026 vibrance
-  static final List<Map<String, dynamic>> _quickCategories = [
+  static const List<Map<String, dynamic>> _quickCategories = [
     {
       'name': 'Deportes',
+      'subtitle': 'Canales en vivo',
       'icon': Icons.sports_soccer_rounded,
-      'colors': const [Color(0xFF10B981), Color(0xFF059669)],
       'type': 'category',
     },
     {
       'name': 'Noticias',
+      'subtitle': 'Actualidad 24/7',
       'icon': Icons.newspaper_rounded,
-      'colors': const [Color(0xFF3B82F6), Color(0xFF2563EB)],
+      'type': 'category',
+    },
+    {
+      'name': 'Entretenimiento',
+      'subtitle': 'Series y cine',
+      'icon': Icons.movie_filter_rounded,
       'type': 'category',
     },
     {
       'name': 'Música',
+      'subtitle': 'TV y conciertos',
       'icon': Icons.music_note_rounded,
-      'colors': const [Color(0xFFA855F7), Color(0xFF9333EA)],
-      'type': 'category',
-    },
-    {
-      'name': 'Infantil',
-      'icon': Icons.child_care_rounded,
-      'colors': const [Color(0xFFEC4899), Color(0xFFDB2777)],
       'type': 'category',
     },
     {
       'name': 'Radios',
+      'subtitle': 'Emisoras FM/AM',
       'icon': Icons.radio_rounded,
-      'colors': const [Color(0xFF6366F1), Color(0xFF4F46E5)],
       'type': 'tab_radios',
     },
     {
       'name': 'Fútbol Hoy',
+      'subtitle': 'Agenda y canales',
       'icon': Icons.stadium_rounded,
-      'colors': const [Color(0xFFEF4444), Color(0xFFDC2626)],
       'type': 'tab_soccer',
     },
   ];
@@ -81,24 +74,6 @@ class _SearchScreenState extends State<SearchScreen>
   void initState() {
     super.initState();
     _loadHistory();
-
-    _animController = AnimationController(
-      vsync: this,
-      duration: AppAnimations.normal,
-    );
-    _fadeAnim = CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
-    );
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.02),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animController,
-      curve: Curves.easeOutCubic,
-    ));
-    _animController.forward();
-
     _searchFocusNode.addListener(() {
       if (mounted) setState(() {});
     });
@@ -118,13 +93,12 @@ class _SearchScreenState extends State<SearchScreen>
     _debounceTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
-    _animController.dispose();
     super.dispose();
   }
 
   void _onQueryChanged(String query) {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 150), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 140), () {
       if (mounted) {
         setState(() {});
       }
@@ -153,96 +127,106 @@ class _SearchScreenState extends State<SearchScreen>
     await _loadHistory();
   }
 
-  void _confirmClearAllHistory() {
-    final theme = Theme.of(context);
-    final isDark = theme.isDark;
-
-    showModalBottomSheet(
+  Future<void> _confirmClearAllHistory() async {
+    final palette = ProfilePalette.of(context);
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: ProfileGroupCard(
+              padding: const EdgeInsets.all(22),
               children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: palette.dangerBg,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.delete_sweep_rounded,
+                      size: 24,
+                      color: palette.danger,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  '¿Borrar búsquedas recientes?',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: palette.text,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Se eliminará todo tu historial de búsqueda guardado en este dispositivo.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 13.5,
+                    color: palette.muted,
+                    height: 1.4,
                   ),
                 ),
                 const SizedBox(height: 20),
-                Icon(
-                  Icons.delete_sweep_rounded,
-                  size: 40,
-                  color: theme.colorScheme.error,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '¿Borrar todo el historial?',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Se eliminarán todas tus búsquedas recientes guardadas en este dispositivo.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 13,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-                const SizedBox(height: 24),
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: Text(
-                          'Cancelar',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.w700,
+                      child: Material(
+                        color: palette.iconBox,
+                        borderRadius: BorderRadius.circular(18),
+                        child: InkWell(
+                          onTap: () => Navigator.pop(ctx, false),
+                          borderRadius: BorderRadius.circular(18),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            child: Center(
+                              child: Text(
+                                'Cancelar',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: palette.text,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          await SearchService.clearSearchHistory();
-                          await _loadHistory();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.error,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: Text(
-                          'Borrar',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.w800,
+                      child: Material(
+                        color: palette.dangerBg,
+                        borderRadius: BorderRadius.circular(18),
+                        child: InkWell(
+                          onTap: () => Navigator.pop(ctx, true),
+                          borderRadius: BorderRadius.circular(18),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: palette.dangerBorder,
+                                width: 1,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Borrar todo',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: palette.danger,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -255,12 +239,16 @@ class _SearchScreenState extends State<SearchScreen>
         );
       },
     );
+
+    if (confirmed == true && mounted) {
+      await SearchService.clearSearchHistory();
+      await _loadHistory();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.isDark;
+    final palette = ProfilePalette.of(context);
     final channelProvider = context.watch<ChannelProvider>();
     final radioProvider = context.watch<RadioProvider>();
     final soccerProvider = context.watch<SoccerProvider>();
@@ -268,7 +256,6 @@ class _SearchScreenState extends State<SearchScreen>
     final query = _searchController.text.trim();
     final isSearching = query.isNotEmpty;
 
-    // Filtered data
     final filteredChannels =
         _getFilteredChannels(channelProvider.allChannels, query);
     final filteredRadios = _getFilteredRadios(radioProvider.radios, query);
@@ -286,20 +273,19 @@ class _SearchScreenState extends State<SearchScreen>
         }
       },
       child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: palette.bg,
         body: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnim,
-            child: SlideTransition(
-              position: _slideAnim,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
               child: Column(
                 children: [
-                  // ─── Modern Sticky Header ───
-                  _buildSearchHeader(context, theme, isDark, isSearching),
+                  // ── Clean Header + Search Input ──
+                  _buildSearchHeader(context, palette, isSearching),
 
-                  // ─── Dynamic Filter Chips (when searching) ───
+                  // ── Filter Chips (when searching) ──
                   if (isSearching) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
                     SearchFilterChips(
                       selectedTab: _selectedTab,
                       totalCount: totalCount,
@@ -312,24 +298,17 @@ class _SearchScreenState extends State<SearchScreen>
                         });
                       },
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                   ],
 
-                  // ─── Body Content ───
+                  // ── Body Content ──
                   Expanded(
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      ),
+                      duration: const Duration(milliseconds: 200),
                       child: isSearching
                           ? _buildSearchResults(
                               context: context,
-                              theme: theme,
-                              isDark: isDark,
+                              palette: palette,
                               query: query,
                               channels: filteredChannels,
                               radios: filteredRadios,
@@ -340,8 +319,7 @@ class _SearchScreenState extends State<SearchScreen>
                               channelProvider: channelProvider,
                               radioProvider: radioProvider,
                               soccerProvider: soccerProvider,
-                              theme: theme,
-                              isDark: isDark,
+                              palette: palette,
                             ),
                     ),
                   ),
@@ -354,7 +332,7 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
-  // ─── Filters & Search Logic ───
+  // ── Filtering Logic ──
 
   List<Channel> _getFilteredChannels(List<Channel> channels, String query) {
     if (query.isEmpty) return channels;
@@ -367,7 +345,9 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   List<radio_model.Radio> _getFilteredRadios(
-      List<radio_model.Radio> radios, String query) {
+    List<radio_model.Radio> radios,
+    String query,
+  ) {
     if (query.isEmpty) return radios;
     final q = query.toLowerCase();
     return radios.where((r) {
@@ -401,156 +381,129 @@ class _SearchScreenState extends State<SearchScreen>
     }).toList();
   }
 
-  // ─── Search Header ───
+  // ── Header with Back Button & Search Input ──
 
   Widget _buildSearchHeader(
     BuildContext context,
-    ThemeData theme,
-    bool isDark,
+    ProfilePalette palette,
     bool isSearching,
   ) {
     final hasFocus = _searchFocusNode.hasFocus;
-    final fieldRadius = BorderRadius.circular(AppRadius.md + 2);
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.05),
-            width: 1,
-          ),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Back button
+          // Circular Back Button (42x42 matching ProfileSubsectionScaffold)
           Material(
-            color: Colors.transparent,
+            color: palette.card,
+            shape: const CircleBorder(),
             child: InkWell(
               onTap: () {
+                HapticFeedback.lightImpact();
                 context.read<ChannelProvider>().searchChannels('');
                 Navigator.pop(context);
               },
-              borderRadius: BorderRadius.circular(14),
+              customBorder: const CircleBorder(),
               child: Container(
-                width: 46,
-                height: 46,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppTheme.darkBg2
-                      : theme.colorScheme.primary.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : theme.colorScheme.primary.withValues(alpha: 0.12),
-                    width: 1,
-                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: palette.border, width: 1),
                 ),
-                child: Center(
-                  child: Icon(
-                    Icons.arrow_back_rounded,
-                    size: 20,
-                    color: theme.colorScheme.onSurface,
-                  ),
+                alignment: Alignment.center,
+                child: ProfileSvgIcons.svg(
+                  ProfileSvgIcons.chevronLeft,
+                  size: 18,
+                  color: palette.text,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
 
-          // Search field
+          // Search Bar Container
           Expanded(
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              height: 52,
+              duration: const Duration(milliseconds: 180),
+              height: 46,
               decoration: BoxDecoration(
-                color: isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
-                borderRadius: fieldRadius,
+                color: palette.card,
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: hasFocus
-                      ? theme.colorScheme.primary
-                      : (isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.08)),
-                  width: hasFocus ? 1.6 : 1,
+                      ? palette.text.withValues(alpha: 0.35)
+                      : palette.border,
+                  width: 1,
                 ),
-                boxShadow: hasFocus
-                    ? AppShadows.glow(theme.colorScheme.primary, alpha: 0.18)
-                    : [],
+                boxShadow: palette.cardShadow,
               ),
-              child: ClipRRect(
-                borderRadius: fieldRadius,
-                child: TextField(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  onChanged: _onQueryChanged,
-                  onSubmitted: _executeSearch,
-                  textInputAction: TextInputAction.search,
-                  cursorColor: theme.colorScheme.primary,
-                  cursorWidth: 2.2,
-                  cursorRadius: const Radius.circular(2),
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface,
+              child: Row(
+                children: [
+                  const SizedBox(width: 14),
+                  Icon(
+                    Icons.search_rounded,
+                    size: 19,
+                    color: hasFocus ? palette.text : palette.muted,
                   ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    filled: false,
-                    hintText: 'Buscar canal, radio o partido...',
-                    hintStyle: GoogleFonts.spaceGrotesk(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      onChanged: _onQueryChanged,
+                      onSubmitted: _executeSearch,
+                      textInputAction: TextInputAction.search,
+                      cursorColor: palette.text,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: palette.text,
+                      ),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        filled: false,
+                        hintText: 'Buscar canal, radio o partido...',
+                        hintStyle: GoogleFonts.inter(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w400,
+                          color: palette.muted,
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      size: 20,
-                      color: hasFocus
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.4),
-                    ),
-                    prefixIconConstraints:
-                        const BoxConstraints(minWidth: 44, minHeight: 44),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.only(right: 4),
-                            child: Material(
-                              color: Colors.transparent,
-                              shape: const CircleBorder(),
-                              clipBehavior: Clip.antiAlias,
-                              child: InkWell(
-                                onTap: _clearSearch,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Icon(
-                                    Icons.close_rounded,
-                                    size: 18,
-                                    color: theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.5),
-                                  ),
-                                ),
-                              ),
+                  ),
+                  if (isSearching)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Material(
+                        color: palette.iconBox,
+                        shape: const CircleBorder(),
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            _clearSearch();
+                          },
+                          customBorder: const CircleBorder(),
+                          child: SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: palette.muted,
                             ),
-                          )
-                        : null,
-                    suffixIconConstraints:
-                        const BoxConstraints(minWidth: 40, minHeight: 40),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    errorBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 12),
+                ],
               ),
             ),
           ),
@@ -559,14 +512,13 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
-  // ─── Discovery View (When search is empty) ───
+  // ── Discovery View (When search query is empty) ──
 
   Widget _buildDiscoveryView({
     required ChannelProvider channelProvider,
     required RadioProvider radioProvider,
     required SoccerProvider soccerProvider,
-    required ThemeData theme,
-    required bool isDark,
+    required ProfilePalette palette,
   }) {
     final soccerData = soccerProvider.soccerData;
     final liveOrScheduledMatches = soccerData != null
@@ -583,37 +535,20 @@ class _SearchScreenState extends State<SearchScreen>
     final topRadios = radioProvider.radios.take(4).toList();
 
     return ListView(
-      physics: const ClampingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 36),
       children: [
-        // ─── Recent Searches Section ───
+        // ── Recent Searches ──
         if (_searchHistory.isNotEmpty) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.history_rounded,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Búsquedas recientes',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                ],
-              ),
+              const ProfileSectionTitle('Búsquedas recientes', first: true),
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(8),
                   onTap: _confirmClearAllHistory,
+                  borderRadius: BorderRadius.circular(999),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -621,10 +556,10 @@ class _SearchScreenState extends State<SearchScreen>
                     ),
                     child: Text(
                       'Borrar todo',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.error,
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: palette.danger,
                       ),
                     ),
                   ),
@@ -632,208 +567,204 @@ class _SearchScreenState extends State<SearchScreen>
               ),
             ],
           ),
-          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _searchHistory.map((h) {
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _executeSearch(h),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppTheme.darkBg2
-                          : theme.colorScheme.primary.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.06),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          h,
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        GestureDetector(
-                          onTap: () => _removeHistoryItem(h),
-                          child: Icon(
-                            Icons.close_rounded,
+            children: _searchHistory.map((item) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: palette.card,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: palette.border, width: 1),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => _executeSearch(item),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 7, 8, 7),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.history_rounded,
                             size: 14,
-                            color: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.5),
+                            color: palette.muted,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          Text(
+                            item,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: palette.text,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () => _removeHistoryItem(item),
+                            child: Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: palette.iconBox,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 12,
+                                color: palette.muted,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               );
             }).toList(),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
         ],
 
-        // ─── Quick Categories ───
-        Row(
-          children: [
-            Icon(
-              Icons.grid_view_rounded,
-              size: 16,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Explorar por Categoría',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-          ],
+        // ── Quick Categories ──
+        ProfileSectionTitle(
+          'Explorar por categoría',
+          first: _searchHistory.isEmpty,
         ),
-        const SizedBox(height: 12),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
+            crossAxisCount: 2,
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
-            childAspectRatio: 1.15,
+            childAspectRatio: 2.35,
           ),
           itemCount: _quickCategories.length,
           itemBuilder: (context, index) {
             final cat = _quickCategories[index];
-            final List<Color> colors = cat['colors'] as List<Color>;
             final IconData icon = cat['icon'] as IconData;
             final String name = cat['name'] as String;
+            final String subtitle = cat['subtitle'] as String;
             final String type = cat['type'] as String;
 
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  if (type == 'tab_radios') {
-                    _executeSearch('Radio');
-                    setState(() => _selectedTab = SearchFilterTab.radios);
-                  } else if (type == 'tab_soccer') {
-                    _executeSearch('Fútbol');
-                    setState(() => _selectedTab = SearchFilterTab.soccer);
-                  } else {
-                    _executeSearch(name);
-                  }
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color:
-                        isDark ? AppTheme.darkBg2 : theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.06),
+            return Container(
+              decoration: BoxDecoration(
+                color: palette.card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: palette.border, width: 1),
+                boxShadow: palette.cardShadow,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    if (type == 'tab_radios') {
+                      _executeSearch('Radio');
+                      setState(() => _selectedTab = SearchFilterTab.radios);
+                    } else if (type == 'tab_soccer') {
+                      _executeSearch('Fútbol');
+                      setState(() => _selectedTab = SearchFilterTab.soccer);
+                    } else {
+                      _executeSearch(name);
+                    }
+                  },
+                  splashColor: Colors.transparent,
+                  highlightColor: palette.cardPressed,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              colors[0].withValues(alpha: 0.22),
-                              colors[1].withValues(alpha: 0.10),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: palette.iconBox,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            icon,
+                            size: 19,
+                            color: palette.text,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 13.8,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: -0.1,
+                                  color: palette.text,
+                                ),
+                              ),
+                              const SizedBox(height: 1),
+                              Text(
+                                subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11.5,
+                                  color: palette.muted,
+                                ),
+                              ),
                             ],
                           ),
-                          shape: BoxShape.circle,
                         ),
-                        child: Icon(icon, size: 18, color: colors[0]),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        name,
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
             );
           },
         ),
-        const SizedBox(height: 26),
 
-        // ─── Live / Featured Matches (if available) ───
+        // ── Live / Today's Matches ──
         if (liveOrScheduledMatches.isNotEmpty && soccerData != null) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.sports_soccer_rounded,
-                    size: 16,
-                    color: Color(0xFFEF4444),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Partidos de Hoy',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: theme.colorScheme.onSurface,
+              const ProfileSectionTitle('Partidos de hoy'),
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: GestureDetector(
+                  onTap: () {
+                    _executeSearch('Fútbol');
+                    setState(() => _selectedTab = SearchFilterTab.soccer);
+                  },
+                  child: Text(
+                    'Ver todos',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: palette.muted,
                     ),
-                  ),
-                ],
-              ),
-              GestureDetector(
-                onTap: () {
-                  _executeSearch('Fútbol');
-                  setState(() => _selectedTab = SearchFilterTab.soccer);
-                },
-                child: Text(
-                  'Ver todos',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: isDark
-                        ? AppTheme.darkAccent
-                        : theme.colorScheme.primary,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: liveOrScheduledMatches.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               return SearchMatchTile(
                 match: liveOrScheduledMatches[index],
@@ -841,30 +772,11 @@ class _SearchScreenState extends State<SearchScreen>
               );
             },
           ),
-          const SizedBox(height: 26),
         ],
 
-        // ─── Recommended TV Channels ───
+        // ── Recommended TV Channels ──
         if (topChannels.isNotEmpty) ...[
-          Row(
-            children: [
-              Icon(
-                Icons.live_tv_rounded,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Canales recomendados',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+          const ProfileSectionTitle('Canales recomendados'),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -879,56 +791,38 @@ class _SearchScreenState extends State<SearchScreen>
               return ChannelCard(channel: topChannels[index]);
             },
           ),
-          const SizedBox(height: 26),
         ],
 
-        // ─── Featured Radios ───
+        // ── Featured Radios ──
         if (topRadios.isNotEmpty) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.radio_rounded,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Radios destacadas',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: theme.colorScheme.onSurface,
+              const ProfileSectionTitle('Radios destacadas'),
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: GestureDetector(
+                  onTap: () {
+                    _executeSearch('Radio');
+                    setState(() => _selectedTab = SearchFilterTab.radios);
+                  },
+                  child: Text(
+                    'Ver todas',
+                    style: GoogleFonts.inter(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: palette.muted,
                     ),
-                  ),
-                ],
-              ),
-              GestureDetector(
-                onTap: () {
-                  _executeSearch('Radio');
-                  setState(() => _selectedTab = SearchFilterTab.radios);
-                },
-                child: Text(
-                  'Ver todas',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: isDark
-                        ? AppTheme.darkAccent
-                        : theme.colorScheme.primary,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: topRadios.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               return SearchRadioTile(radio: topRadios[index]);
             },
@@ -938,12 +832,11 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
-  // ─── Search Results View ───
+  // ── Search Results View ──
 
   Widget _buildSearchResults({
     required BuildContext context,
-    required ThemeData theme,
-    required bool isDark,
+    required ProfilePalette palette,
     required String query,
     required List<Channel> channels,
     required List<radio_model.Radio> radios,
@@ -953,54 +846,35 @@ class _SearchScreenState extends State<SearchScreen>
     final totalResults = channels.length + radios.length + matches.length;
 
     if (totalResults == 0) {
-      return _buildNoResults(theme, isDark, query);
+      return _buildNoResults(palette, query);
     }
 
     return CustomScrollView(
-      physics: const ClampingScrollPhysics(),
+      physics: const BouncingScrollPhysics(),
       slivers: [
-        // Results Count Header
+        // Results Summary Pill
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
             child: Row(
               children: [
-                Icon(
-                  Icons.filter_list_rounded,
-                  size: 15,
-                  color:
-                      isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 6),
                 Text(
                   '$totalResults ${totalResults == 1 ? 'resultado' : 'resultados'} para ',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: palette.muted,
                   ),
                 ),
                 Flexible(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppTheme.darkAccent.withValues(alpha: 0.12)
-                          : theme.colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      '"$query"',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: isDark
-                            ? AppTheme.darkAccent
-                            : theme.colorScheme.primary,
-                      ),
+                  child: Text(
+                    '"$query"',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: palette.text,
                     ),
                   ),
                 ),
@@ -1009,36 +883,27 @@ class _SearchScreenState extends State<SearchScreen>
           ),
         ),
 
-        // Tab: ALL (Todos)
+        // Tab: ALL
         if (_selectedTab == SearchFilterTab.all) ...[
-          // Soccer Matches Section in All
           if (matches.isNotEmpty && soccerData != null) ...[
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Fútbol & Partidos (${matches.length})',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    if (matches.length > 2)
+                    const ProfileSectionTitle('Fútbol y partidos', first: true),
+                    if (matches.length > 3)
                       GestureDetector(
                         onTap: () => setState(
-                            () => _selectedTab = SearchFilterTab.soccer),
+                          () => _selectedTab = SearchFilterTab.soccer,
+                        ),
                         child: Text(
-                          'Ver todos',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? AppTheme.darkAccent
-                                : theme.colorScheme.primary,
+                          'Ver todos (${matches.length})',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: palette.muted,
                           ),
                         ),
                       ),
@@ -1052,7 +917,7 @@ class _SearchScreenState extends State<SearchScreen>
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 10),
                       child: SearchMatchTile(
                         match: matches[index],
                         soccerData: soccerData,
@@ -1063,37 +928,28 @@ class _SearchScreenState extends State<SearchScreen>
                 ),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 14)),
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
           ],
 
-          // TV Channels Section in All
           if (channels.isNotEmpty) ...[
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Canales de TV (${channels.length})',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    if (channels.length > 4)
+                    const ProfileSectionTitle('Canales de TV', first: true),
+                    if (channels.length > 6)
                       GestureDetector(
                         onTap: () => setState(
-                            () => _selectedTab = SearchFilterTab.channels),
+                          () => _selectedTab = SearchFilterTab.channels,
+                        ),
                         child: Text(
-                          'Ver todos',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? AppTheme.darkAccent
-                                : theme.colorScheme.primary,
+                          'Ver todos (${channels.length})',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: palette.muted,
                           ),
                         ),
                       ),
@@ -1116,37 +972,28 @@ class _SearchScreenState extends State<SearchScreen>
                 ),
               ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 18)),
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
           ],
 
-          // Radios Section in All
           if (radios.isNotEmpty) ...[
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Radios Emisoras (${radios.length})',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    if (radios.length > 3)
+                    const ProfileSectionTitle('Radios emisoras', first: true),
+                    if (radios.length > 4)
                       GestureDetector(
                         onTap: () => setState(
-                            () => _selectedTab = SearchFilterTab.radios),
+                          () => _selectedTab = SearchFilterTab.radios,
+                        ),
                         child: Text(
-                          'Ver todas',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? AppTheme.darkAccent
-                                : theme.colorScheme.primary,
+                          'Ver todas (${radios.length})',
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: palette.muted,
                           ),
                         ),
                       ),
@@ -1160,7 +1007,7 @@ class _SearchScreenState extends State<SearchScreen>
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 10),
                       child: SearchRadioTile(radio: radios[index]),
                     );
                   },
@@ -1175,7 +1022,7 @@ class _SearchScreenState extends State<SearchScreen>
         else if (_selectedTab == SearchFilterTab.channels) ...[
           if (channels.isEmpty)
             _buildSectionEmptyState(
-              theme,
+              palette,
               'Sin canales encontrados',
               'No hay canales de TV que coincidan con "$query".',
             )
@@ -1201,7 +1048,7 @@ class _SearchScreenState extends State<SearchScreen>
         else if (_selectedTab == SearchFilterTab.radios) ...[
           if (radios.isEmpty)
             _buildSectionEmptyState(
-              theme,
+              palette,
               'Sin radios encontradas',
               'No hay emisoras de radio que coincidan con "$query".',
             )
@@ -1212,7 +1059,7 @@ class _SearchScreenState extends State<SearchScreen>
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 10),
                       child: SearchRadioTile(radio: radios[index]),
                     );
                   },
@@ -1226,7 +1073,7 @@ class _SearchScreenState extends State<SearchScreen>
         else if (_selectedTab == SearchFilterTab.soccer) ...[
           if (matches.isEmpty || soccerData == null)
             _buildSectionEmptyState(
-              theme,
+              palette,
               'Sin partidos encontrados',
               'No hay partidos o equipos que coincidan con "$query".',
             )
@@ -1237,7 +1084,7 @@ class _SearchScreenState extends State<SearchScreen>
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 10),
                       child: SearchMatchTile(
                         match: matches[index],
                         soccerData: soccerData,
@@ -1256,36 +1103,49 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   Widget _buildSectionEmptyState(
-      ThemeData theme, String title, String subtitle) {
+    ProfilePalette palette,
+    String title,
+    String subtitle,
+  ) {
     return SliverFillRemaining(
       hasScrollBody: false,
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          padding: const EdgeInsets.all(24),
+          child: ProfileGroupCard(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             children: [
-              Icon(
-                Icons.search_off_rounded,
-                size: 40,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: palette.iconBox,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  Icons.search_off_rounded,
+                  size: 26,
+                  color: palette.muted,
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Text(
                 title,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 16.5,
+                  fontWeight: FontWeight.w600,
+                  color: palette.text,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 subtitle,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 13,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                style: GoogleFonts.inter(
+                  fontSize: 13.5,
+                  color: palette.muted,
+                  height: 1.4,
                 ),
               ),
             ],
@@ -1295,65 +1155,79 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildNoResults(ThemeData theme, bool isDark, String query) {
+  Widget _buildNoResults(ProfilePalette palette, String query) {
     return Center(
       child: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: ProfileGroupCard(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 34),
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 60,
+              height: 60,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                  width: 1.5,
-                ),
+                color: palette.iconBox,
+                borderRadius: BorderRadius.circular(18),
               ),
               child: Icon(
                 Icons.search_off_rounded,
-                size: 38,
-                color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+                size: 30,
+                color: palette.muted,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Sin resultados para "$query"',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 17.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
+                color: palette.text,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Prueba con otra palabra clave o explora las categorías sugeridas.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 13.8,
+                color: palette.muted,
+                height: 1.45,
               ),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Sin resultados',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 19,
-                fontWeight: FontWeight.w900,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'No encontramos nada para "$query".\nPrueba con otra palabra o explora por categoría.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 13,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _clearSearch,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Limpiar búsqueda'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-                foregroundColor: isDark ? Colors.black : Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+            Material(
+              color: palette.primaryBtnBg,
+              borderRadius: BorderRadius.circular(999),
+              child: InkWell(
+                onTap: _clearSearch,
+                borderRadius: BorderRadius.circular(999),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 11,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.refresh_rounded,
+                        size: 17,
+                        color: palette.primaryBtnText,
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        'Limpiar búsqueda',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: palette.primaryBtnText,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                elevation: 0,
               ),
             ),
           ],

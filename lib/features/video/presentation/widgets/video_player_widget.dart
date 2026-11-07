@@ -52,6 +52,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   Timer? _orientationTimer;
   Timer? _serverTimeout;
+  int _lastObservedRetryCount = 0;
 
   @override
   void initState() {
@@ -114,6 +115,11 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       _allServersFailed = false;
       _isFailoverInProgress = false;
       _serverTimeout?.cancel();
+    } else if (_controller.retryCount != _lastObservedRetryCount) {
+      // Si el motor nativo está probando otro perfil de cabeceras HLS o extractor TS,
+      // extendemos la ventana del servidor para no cortar su recuperación en curso.
+      _lastObservedRetryCount = _controller.retryCount;
+      _scheduleServerTimeout(const Duration(seconds: 9));
     }
 
     if (_controller.hasError && !_isFailoverInProgress) {
@@ -149,24 +155,9 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     }
   }
 
-  Future<void> _playCurrentServer() async {
-    if (_disposed || widget.channel.streamUrl.isEmpty) return;
-
-    if (_serverIndex >= widget.channel.streamUrl.length) {
-      _serverIndex = 0;
-    }
-
-    _allServersFailed = false;
-    _isFailoverInProgress = false;
-    _currentStream = widget.channel.streamUrl[_serverIndex];
-    String url = _currentStream!.url.trim();
-    final Map<String, String> headers = {
-      ...?StreamSource.resolveSmartHeaders(url, _currentStream!.headers),
-    };
-
+  void _scheduleServerTimeout([Duration duration = const Duration(seconds: 12)]) {
     _serverTimeout?.cancel();
-    // Timeout ágil (9 segundos) para saltar automáticamente al siguiente servidor si no responde
-    _serverTimeout = Timer(const Duration(seconds: 9), () {
+    _serverTimeout = Timer(duration, () {
       if (!_disposed &&
           mounted &&
           !_controller.isReady &&
@@ -177,18 +168,47 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         _nextServer();
       }
     });
+  }
+
+  Future<void> _playCurrentServer() async {
+    if (_disposed || widget.channel.streamUrl.isEmpty) return;
+
+    if (_serverIndex >= widget.channel.streamUrl.length) {
+      _serverIndex = 0;
+    }
+
+    _allServersFailed = false;
+    _isFailoverInProgress = false;
+    _lastObservedRetryCount = 0;
+    _serverTimeout?.cancel();
+
+    _currentStream = widget.channel.streamUrl[_serverIndex];
+    final (cleanInitialUrl, pipeHeaders) =
+        StreamSource.splitPipeHeaders(_currentStream!.url);
+    String url = cleanInitialUrl;
+    final Map<String, String> headers = {
+      ...?StreamSource.resolveSmartHeaders(url, {
+        if (_currentStream!.headers != null) ..._currentStream!.headers!,
+        ...pipeHeaders,
+      }),
+    };
 
     // Si es una página PHP / Web sin extensión directa ni DRM, resolver a M3U8 primero
     if (!_currentStream!.hasDrm &&
         !url.toLowerCase().contains('.mpd') &&
-        !url.toLowerCase().contains('.m3u8')) {
+        !_currentStream!.isHls) {
       try {
         final resolved = await StreamUrlResolver.resolve(url);
         if (_disposed) return;
         if (resolved.url.isNotEmpty) {
-          url = resolved.url;
+          final (cleanResolvedUrl, resolvedPipe) =
+              StreamSource.splitPipeHeaders(resolved.url);
+          url = cleanResolvedUrl;
           for (final entry in resolved.headers.entries) {
             headers.putIfAbsent(entry.key, () => entry.value);
+          }
+          for (final entry in resolvedPipe.entries) {
+            headers[entry.key] = entry.value;
           }
           if (resolved.referer != null && !headers.containsKey('Referer')) {
             headers['Referer'] = resolved.referer!;
@@ -203,6 +223,10 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
       } catch (_) {}
     }
 
+    // Iniciamos el timeout del servidor DESPUÉS de resolver la URL para darle
+    // tiempo real a ExoPlayer y a sus presets de cabeceras M3U8.
+    _scheduleServerTimeout(const Duration(seconds: 12));
+
     final clearkeys = _currentStream!.effectiveClearkeys;
     final drmLicenseUri =
         _currentStream!.effectiveDrmLicenseUri ?? _currentStream!.drmLicenseUri;
@@ -215,12 +239,20 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
             ? 'CLEARKEY'
             : null);
 
+    // Determinar el tipo específico de este servidor (para que un servidor .m3u8
+    // de respaldo en un canal DASH se cargue inmediatamente como HLS)
+    final urlLower = url.toLowerCase();
+    final String? effectiveType =
+        (urlLower.contains('.m3u8') || _currentStream!.isHls)
+            ? 'hls'
+            : (_currentStream!.isDash ? 'dash' : widget.channel.type);
+
     debugPrint(
-        '▶️ Preparando servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length} (DRM: $drmType): $url');
+        '▶️ Preparando servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length} (type: $effectiveType, DRM: $drmType): $url');
 
     await _controller.prepare(
       url: url,
-      type: widget.channel.type,
+      type: effectiveType,
       channelName: widget.channel.name,
       icono: widget.channel.logoUrl.isNotEmpty
           ? widget.channel.logoUrl.first
@@ -393,57 +425,89 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   Widget _buildErrorOverlay() {
     return Container(
-      color: Colors.black.withValues(alpha: 0.92),
+      color: const Color(0xEB0A0C10),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.cloud_off_rounded,
-                color: Color(0xFFFF5252),
-                size: 48,
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0x26D93025),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0x4DD93025),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.wifi_tethering_error_rounded,
+                  color: Color(0xFFFF6B6B),
+                  size: 26,
+                ),
               ),
               const SizedBox(height: 12),
               Text(
-                'Canal temporalmente no disponible',
-                style: GoogleFonts.outfit(
+                'Señal temporalmente no disponible',
+                style: GoogleFonts.inter(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 15.5,
                   fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               Text(
                 _controller.userMessage ??
-                    'No se pudo conectar con la señal del canal.',
-                style: GoogleFonts.outfit(
-                  color: Colors.white60,
+                    'No se pudo conectar con los servidores de este canal.',
+                style: GoogleFonts.inter(
+                  color: Colors.white70,
                   fontSize: 13,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
               ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {
-                  _serverIndex = 0;
-                  _allServersFailed = false;
-                  _isFailoverInProgress = false;
-                  _playCurrentServer();
-                },
-                icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Volver a intentar'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF007AFF),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: 16),
+              Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(999),
+                child: InkWell(
+                  onTap: () {
+                    _serverIndex = 0;
+                    _allServersFailed = false;
+                    _isFailoverInProgress = false;
+                    _playCurrentServer();
+                  },
+                  borderRadius: BorderRadius.circular(999),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.refresh_rounded,
+                          size: 17,
+                          color: Color(0xFF111111),
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          'Reintentar conexión',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF111111),
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 ),
               ),
             ],

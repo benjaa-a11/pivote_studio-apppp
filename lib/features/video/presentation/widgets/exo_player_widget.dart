@@ -101,6 +101,7 @@ class PivotePlayerController extends ChangeNotifier {
   bool firstFrameRendered = false;
   String? streamFormat;
   bool videoUnsupported = false;
+  int retryCount = 0;
 
   // Tracks disponibles
   List<PlayerTrack> videoTracks = [];
@@ -261,8 +262,9 @@ class PivotePlayerController extends ChangeNotifier {
 
       case 'retrying':
         isBuffering = true;
+        retryCount++;
         final reason = map['reason'] as String?;
-        debugPrint('🔄 Reintento automático del reproductor: $reason');
+        debugPrint('🔄 Reintento automático del reproductor (#$retryCount): $reason');
         notifyListeners();
         break;
 
@@ -303,6 +305,7 @@ class PivotePlayerController extends ChangeNotifier {
     firstFrameRendered = false;
     isBuffering = true;
     videoUnsupported = false;
+    retryCount = 0;
     notifyListeners();
 
     final params = <String, dynamic>{

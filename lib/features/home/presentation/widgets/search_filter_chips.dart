@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pivote/core/theme/app_theme.dart';
-import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 
 enum SearchFilterTab { all, channels, radios, soccer }
 
@@ -26,14 +25,13 @@ class SearchFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.isDark;
+    final palette = ProfilePalette.of(context);
 
     final tabs = [
       (
         tab: SearchFilterTab.all,
         label: 'Todos',
-        icon: Icons.all_inclusive_rounded,
+        icon: Icons.grid_view_rounded,
         count: totalCount,
       ),
       (
@@ -57,10 +55,10 @@ class SearchFilterChips extends StatelessWidget {
     ];
 
     return SizedBox(
-      height: 40,
+      height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        physics: const ClampingScrollPhysics(),
+        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: tabs.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),
@@ -68,37 +66,33 @@ class SearchFilterChips extends StatelessWidget {
           final item = tabs[index];
           final isSelected = selectedTab == item.tab;
 
+          final Color bgColor =
+              isSelected ? palette.primaryBtnBg : palette.card;
+          final Color fgColor =
+              isSelected ? palette.primaryBtnText : palette.text;
+          final Color borderColor =
+              isSelected ? palette.primaryBtnBg : palette.border;
+
           return Material(
-            color: Colors.transparent,
+            color: bgColor,
+            borderRadius: BorderRadius.circular(999),
             child: InkWell(
               onTap: () {
                 HapticFeedback.selectionClick();
                 onTabSelected(item.tab);
               },
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
+              borderRadius: BorderRadius.circular(999),
+              splashColor: Colors.transparent,
+              highlightColor: palette.cardPressed.withValues(alpha: 0.5),
+              child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : (isDark
-                          ? AppTheme.darkBg2.withValues(alpha: 0.8)
-                          : theme.colorScheme.primary.withValues(alpha: 0.05)),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: isSelected
-                        ? theme.colorScheme.primary
-                        : (isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.06)),
+                    color: borderColor,
                     width: 1,
                   ),
-                  boxShadow: isSelected
-                      ? AppShadows.glow(theme.colorScheme.primary, alpha: 0.3)
-                      : [],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -106,48 +100,38 @@ class SearchFilterChips extends StatelessWidget {
                     Icon(
                       item.icon,
                       size: 15,
-                      color: isSelected
-                          ? Colors.white
-                          : (isDark
-                              ? AppTheme.darkAccent
-                              : theme.colorScheme.primary),
+                      color: isSelected ? fgColor : palette.muted,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       item.label,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 12.5,
+                      style: GoogleFonts.inter(
+                        fontSize: 13.2,
                         fontWeight:
-                            isSelected ? FontWeight.w800 : FontWeight.w600,
-                        color: isSelected
-                            ? Colors.white
-                            : theme.colorScheme.onSurface,
+                            isSelected ? FontWeight.w600 : FontWeight.w500,
+                        color: fgColor,
+                        letterSpacing: -0.1,
                       ),
                     ),
                     if (item.count > 0) ...[
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 1.5),
+                          horizontal: 6.5,
+                          vertical: 1.5,
+                        ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? Colors.white.withValues(alpha: 0.25)
-                              : (isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : theme.colorScheme.primary
-                                      .withValues(alpha: 0.12)),
-                          borderRadius: BorderRadius.circular(10),
+                              ? fgColor.withValues(alpha: 0.16)
+                              : palette.iconBox,
+                          borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
                           '${item.count}',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                            color: isSelected
-                                ? Colors.white
-                                : (isDark
-                                    ? AppTheme.darkAccent
-                                    : theme.colorScheme.primary),
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? fgColor : palette.muted,
                           ),
                         ),
                       ),
