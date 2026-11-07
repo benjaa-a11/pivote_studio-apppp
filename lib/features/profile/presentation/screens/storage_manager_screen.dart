@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/cache_manager_service.dart';
-import 'package:pivote/core/theme/app_theme.dart';
-import 'package:pivote/core/theme/app_tokens.dart';
-import 'package:pivote/features/profile/presentation/screens/history_screen.dart';
+import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
-import 'package:pivote/shared/widgets/common/apple_pressable.dart';
-import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class StorageManagerScreen extends StatefulWidget {
   const StorageManagerScreen({super.key});
@@ -21,564 +17,295 @@ class StorageManagerScreen extends StatefulWidget {
 
 class _StorageManagerScreenState extends State<StorageManagerScreen> {
   Map<String, dynamic> _stats = {};
-  bool _isLoading = true;
   bool _isCleaning = false;
+  bool _wifiOnly = true;
+  String _downloadQuality = 'Alta';
 
   @override
   void initState() {
     super.initState();
-    _loadStats();
+    _loadData();
   }
 
-  Future<void> _loadStats() async {
-    setState(() => _isLoading = true);
-    final stats = await CacheManagerService.getCacheStatistics();
+  Future<void> _loadData() async {
+    final results = await Future.wait([
+      CacheManagerService.getCacheStatistics(),
+      SharedPreferences.getInstance(),
+    ]);
+    if (!mounted) return;
+    final stats = results[0] as Map<String, dynamic>;
+    final prefs = results[1] as SharedPreferences;
+    setState(() {
+      _stats = stats;
+      _wifiOnly = prefs.getBool('storage_wifi_only') ?? true;
+      _downloadQuality = prefs.getString('storage_download_quality') ?? 'Alta';
+    });
+  }
+
+  Future<void> _toggleWifiOnly(bool val) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('storage_wifi_only', val);
     if (mounted) {
-      setState(() {
-        _stats = stats;
-        _isLoading = false;
-      });
+      setState(() => _wifiOnly = val);
     }
   }
 
-  Future<void> _handleClearCache(String type) async {
-    String title = '¿Limpiar caché?';
-    String message = 'Esta acción liberará espacio en tu dispositivo.';
+  Future<void> _pickDownloadQuality() async {
+    final palette = ProfilePalette.of(context);
+    final options = ['Alta', 'Media', 'Baja'];
 
-    if (type == 'all') {
-      title = '¿Liberar todo el espacio?';
-      message =
-          'Se borrarán todos los datos temporales e imágenes descargadas.';
-    } else if (type == 'images') {
-      title = '¿Borrar imágenes en caché?';
-      message = 'Se eliminarán las miniaturas y logos guardados temporalmente.';
-    } else if (type == 'app') {
-      title = '¿Limpiar datos de la app?';
-      message = 'Se restablecerán los buffers y temporales de reproducción.';
-    }
-
-    final confirmed = await AppDialogs.showConfirm(
+    final chosen = await showModalBottomSheet<String>(
       context: context,
-      title: title,
-      message: message,
-      confirmLabel: 'Liberar espacio',
-      cancelLabel: 'Cancelar',
-      isDestructive: true,
-      type: AppDialogType.error,
+      backgroundColor: palette.bg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  child: Text(
+                    'Calidad de descarga',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: palette.text,
+                    ),
+                  ),
+                ),
+                ProfileGroupCard(
+                  children: [
+                    for (final opt in options)
+                      ProfileGroupRow(
+                        title: opt,
+                        valueText:
+                            _downloadQuality == opt ? 'Seleccionada' : null,
+                        onTap: () => Navigator.pop(ctx, opt),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
 
-    if (confirmed != true) return;
+    if (chosen != null && mounted) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('storage_download_quality', chosen);
+      if (mounted) {
+        setState(() => _downloadQuality = chosen);
+      }
+    }
+  }
+
+  Future<void> _handleClearCache() async {
+    final confirmed = await AppDialogs.showConfirm(
+      context: context,
+      title: '¿Limpiar caché?',
+      message:
+          'Se liberará el espacio temporal de imágenes y búfer de reproducción.',
+      confirmLabel: 'Limpiar caché',
+      cancelLabel: 'Cancelar',
+      isDestructive: true,
+      type: AppDialogType.warning,
+    );
+
+    if (confirmed != true || !mounted) return;
 
     await HapticFeedback.mediumImpact();
     setState(() => _isCleaning = true);
+    await Future.delayed(const Duration(milliseconds: 400));
 
-    await Future.delayed(const Duration(milliseconds: 550));
+    await CacheManagerService.clearAllCache(clearHistory: false);
+    await _loadData();
 
-    if (type == 'all') {
-      await CacheManagerService.clearAllCache();
-    } else if (type == 'images') {
-      await CacheManagerService.clearImageCache();
-    } else if (type == 'app') {
-      await CacheManagerService.clearAppCache();
-    }
-
-    await _loadStats();
     if (mounted) {
       setState(() => _isCleaning = false);
-      AppNotifications.showSuccess(context, 'Espacio liberado correctamente');
+      AppNotifications.showSuccess(context, 'Caché limpiada correctamente');
     }
+  }
+
+  Widget _buildDot(Color color) {
+    return Container(
+      width: 12,
+      height: 12,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primaryColor =
-        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final palette = ProfilePalette.of(context);
 
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const PivoteAppBar(
-        title: 'Almacenamiento y Caché',
-        subtitle: 'Administrá la memoria temporal y optimizá el rendimiento',
-      ),
-      body: _isLoading
-          ? const Center(child: PivoteLoader(size: 40))
-          : SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AppAnimations.staggeredSlideIn(
-                    index: 0,
-                    child: _buildStorageOverview(context, isDark, primaryColor),
-                  ),
-                  const SizedBox(height: 26),
-                  AppAnimations.staggeredSlideIn(
-                    index: 1,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4, bottom: 10),
-                          child: Text(
-                            'DESGLOSE DE MEMORIA',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.7,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.55),
-                            ),
-                          ),
-                        ),
-                        _buildStorageItem(
-                          context,
-                          title: 'Imágenes y Logos',
-                          subtitle:
-                              'Miniaturas de canales, escudos, radios y pósters',
-                          size: _stats['formattedImageSize'] ?? '0 B',
-                          icon: Icons.image_outlined,
-                          color: const Color(0xFFE58B46),
-                          onClear: () => _handleClearCache('images'),
-                        ),
-                        _buildStorageItem(
-                          context,
-                          title: 'Búfer de Streaming y Datos',
-                          subtitle:
-                              'Fragmentos temporales de video y audio en vivo',
-                          size: _stats['formattedAppCacheSize'] ?? '0 B',
-                          icon: Icons.data_usage_outlined,
-                          color: const Color(0xFF10B981),
-                          onClear: () => _handleClearCache('app'),
-                        ),
-                        _buildStorageItem(
-                          context,
-                          title: 'Preferencias y Ajustes',
-                          subtitle:
-                              'Configuración local, tema y sesión guardada',
-                          size: _stats['formattedPrefsSize'] ?? '0 B',
-                          icon: Icons.tune_rounded,
-                          color: const Color(0xFF5B8CFF),
-                          showClear: false,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  AppAnimations.staggeredSlideIn(
-                    index: 2,
-                    child: _buildConnectedHistoryCard(context, isDark),
-                  ),
-                  const SizedBox(height: 24),
-                  AppAnimations.staggeredSlideIn(
-                    index: 3,
-                    child: _buildClearAllButton(context, isDark, primaryColor),
-                  ),
-                ],
-              ),
-            ),
-    );
-  }
+    final totalFormatted =
+        (_stats['formattedTotalSize'] as String?) ?? '0 B';
+    final imageFormatted =
+        (_stats['formattedImageSize'] as String?) ?? '0 B';
+    final appCacheFormatted =
+        (_stats['formattedAppCacheSize'] as String?) ?? '0 B';
+    final prefsFormatted =
+        (_stats['formattedPrefsSize'] as String?) ?? '0 B';
 
-  Widget _buildStorageOverview(
-      BuildContext context, bool isDark, Color primaryColor) {
-    final theme = Theme.of(context);
-    final totalSize = _stats['formattedTotalSize'] ?? '0 B';
     final imgBytes = (_stats['imageCacheSize'] as int?) ?? 0;
     final appBytes = (_stats['appCacheSize'] as int?) ?? 0;
     final prefBytes = (_stats['preferencesSize'] as int?) ?? 0;
-    final sumBytes = (imgBytes + appBytes + prefBytes).clamp(1, 1 << 30);
+    final totalBytes = imgBytes + appBytes + prefBytes;
 
-    final imgFlex = ((imgBytes / sumBytes) * 100).round().clamp(8, 84);
-    final appFlex = ((appBytes / sumBytes) * 100).round().clamp(8, 84);
-    final prefFlex = ((prefBytes / sumBytes) * 100).round().clamp(6, 40);
+    // Proportional widths relative to 8 GB (or visual minimum so segments are visible)
+    final double seg1 = totalBytes == 0
+        ? 0.02
+        : ((imgBytes / (64 * 1024 * 1024)).clamp(0.04, 0.25));
+    final double seg2 = totalBytes == 0
+        ? 0.01
+        : ((appBytes / (64 * 1024 * 1024)).clamp(0.03, 0.20));
+    final double seg3 = totalBytes == 0
+        ? 0.01
+        : ((prefBytes / (64 * 1024 * 1024)).clamp(0.015, 0.10));
 
-    return Container(
-      padding: const EdgeInsets.all(22),
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [const Color(0xFF18221D), const Color(0xFF11161C)]
-              : [
-                  primaryColor.withValues(alpha: 0.14),
-                  Colors.white,
-                ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: primaryColor.withValues(alpha: isDark ? 0.25 : 0.2),
-        ),
-        boxShadow: AppShadows.appleDepth(context, elevation: 0.9),
-      ),
-      child: Column(
-        children: [
-          Row(
+    return ProfileSubsectionScaffold(
+      title: 'Almacenamiento',
+      children: [
+        AppAnimations.staggeredSlideIn(
+          index: 0,
+          child: ProfileGroupCard(
             children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(Icons.storage_rounded,
-                    color: primaryColor, size: 25),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'ESPACIO TEMPORAL EN USO',
-                      style: GoogleFonts.spaceGrotesk(
-                        color: primaryColor,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.0,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          totalFormatted,
+                          style: GoogleFonts.inter(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.64,
+                            color: palette.text,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'de 8 GB usados',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            color: palette.muted,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 350),
-                      child: Text(
-                        totalSize,
-                        key: ValueKey(totalSize),
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 34,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -1,
-                          color: theme.colorScheme.onSurface,
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: Container(
+                        height: 14,
+                        width: double.infinity,
+                        color: palette.switchOff,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final maxW = constraints.maxWidth;
+                            return Row(
+                              children: [
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  width: maxW * seg1,
+                                  height: 14,
+                                  color: const Color(0xFF4F9BF0),
+                                ),
+                                const SizedBox(width: 2),
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  width: maxW * seg2,
+                                  height: 14,
+                                  color: const Color(0xFF3FD1A0),
+                                ),
+                                const SizedBox(width: 2),
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  width: maxW * seg3,
+                                  height: 14,
+                                  color: const Color(0xFFF0C93A),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+              ProfileGroupRow(
+                leading: _buildDot(const Color(0xFF4F9BF0)),
+                title: 'Descargas',
+                valueText: imageFormatted,
+              ),
+              ProfileGroupRow(
+                leading: _buildDot(const Color(0xFF3FD1A0)),
+                title: 'Caché',
+                valueText: appCacheFormatted,
+              ),
+              ProfileGroupRow(
+                leading: _buildDot(const Color(0xFFF0C93A)),
+                title: 'Otros',
+                valueText: prefsFormatted,
+              ),
             ],
           ),
-          const SizedBox(height: 18),
-
-          // Visual Segmented Bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: SizedBox(
-              height: 10,
-              child: Row(
+        ),
+        AppAnimations.staggeredSlideIn(
+          index: 1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const ProfileSectionTitle('Descargas'),
+              ProfileGroupCard(
                 children: [
-                  Expanded(
-                    flex: imgFlex,
-                    child: Container(color: const Color(0xFFE58B46)),
+                  ProfileGroupRow(
+                    title: 'Solo con Wi-Fi',
+                    subtitle: 'Evitá gastar datos móviles',
+                    onTap: () => _toggleWifiOnly(!_wifiOnly),
+                    trailing: ProfileSwitch(
+                      value: _wifiOnly,
+                      onChanged: _toggleWifiOnly,
+                    ),
                   ),
-                  const SizedBox(width: 2),
-                  Expanded(
-                    flex: appFlex,
-                    child: Container(color: const Color(0xFF10B981)),
-                  ),
-                  const SizedBox(width: 2),
-                  Expanded(
-                    flex: prefFlex,
-                    child: Container(color: const Color(0xFF5B8CFF)),
+                  ProfileGroupRow(
+                    title: 'Calidad de descarga',
+                    valueText: _downloadQuality,
+                    showChevron: true,
+                    onTap: _pickDownloadQuality,
                   ),
                 ],
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Legend & Last Clean Info
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _legendDot(theme, const Color(0xFFE58B46), 'Imágenes'),
-              _legendDot(theme, const Color(0xFF10B981), 'Búfer'),
-              _legendDot(theme, const Color(0xFF5B8CFF), 'Ajustes'),
-              Text(
-                'Limpiezas: ${_stats['totalClears'] ?? 0}',
-                style: GoogleFonts.spaceGrotesk(
-                  color: theme.hintColor,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.black.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.schedule_rounded,
-                    size: 13, color: theme.hintColor),
-                const SizedBox(width: 6),
-                Text(
-                  'Última limpieza: ${_formatDate(_stats['lastClearTime'])}',
-                  style: GoogleFonts.spaceGrotesk(
-                    color: theme.hintColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _legendDot(ThemeData theme, Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-            color: theme.hintColor,
+        AppAnimations.staggeredSlideIn(
+          index: 2,
+          child: ProfileActionButton(
+            label: 'Limpiar caché · $totalFormatted',
+            variant: ProfileButtonVariant.soft,
+            loading: _isCleaning,
+            onTap: _handleClearCache,
           ),
         ),
       ],
     );
-  }
-
-  Widget _buildStorageItem(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required String size,
-    required IconData icon,
-    required Color color,
-    VoidCallback? onClear,
-    bool showClear = true,
-  }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF131722) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: color, size: 21),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          size,
-                          style: GoogleFonts.spaceGrotesk(
-                            color: color,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.spaceGrotesk(
-                      color: theme.hintColor,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (showClear) ...[
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: _isCleaning ? null : onClear,
-                icon: Icon(Icons.delete_sweep_rounded,
-                    color: theme.colorScheme.error, size: 21),
-                tooltip: 'Liberar este espacio',
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConnectedHistoryCard(BuildContext context, bool isDark) {
-    final theme = Theme.of(context);
-    return ApplePressable(
-      scaleDownFactor: 0.98,
-      borderRadius: BorderRadius.circular(20),
-      onTap: () {
-        Navigator.push(
-          context,
-          AppAnimations.createRoute(const HistoryScreen()),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF131722) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(13),
-              ),
-              child: const Icon(
-                Icons.history_rounded,
-                color: Color(0xFF10B981),
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Gestionar Historial de Reproducción',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w800,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  Text(
-                    'Ver o limpiar los canales vistos recientemente',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: theme.hintColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.arrow_forward_ios_rounded,
-                size: 13, color: theme.hintColor),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildClearAllButton(
-      BuildContext context, bool isDark, Color primaryColor) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: ElevatedButton(
-        onPressed: _isCleaning ? null : () => _handleClearCache('all'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
-          foregroundColor: isDark ? Colors.black : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          elevation: 0,
-        ),
-        child: _isCleaning
-            ? SizedBox(
-                height: 22,
-                width: 22,
-                child: PivoteLoader(
-                  color: isDark ? Colors.black : Colors.white,
-                  strokeWidth: 2.5,
-                  size: 22,
-                ),
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.cleaning_services_rounded,
-                      size: 20, color: isDark ? Colors.black : Colors.white),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Limpiar todo el almacenamiento',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14.5,
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-
-  String _formatDate(dynamic date) {
-    if (date == null) return 'Sin limpiezas recientes';
-    if (date is DateTime) {
-      final d = date.day.toString().padLeft(2, '0');
-      final m = date.month.toString().padLeft(2, '0');
-      return '$d/$m/${date.year}';
-    }
-    return 'Recientemente';
   }
 }
