@@ -21,15 +21,17 @@ class FirebaseService {
       return;
     }
 
-    // Check if Firebase apps already exist
-    if (Firebase.apps.isNotEmpty) {
-      debugPrint('✅ Firebase app already exists');
-      _firestore = FirebaseFirestore.instance;
-      _isInitialized = true;
-      return;
-    }
-
     try {
+      // En Web no se debe acceder a Firebase.apps antes de Firebase.initializeApp()
+      // porque firebase_core_web inyecta el script JS recién dentro de initializeApp(),
+      // y acceder antes lanza "Null check operator used on a null value".
+      if (!kIsWeb && Firebase.apps.isNotEmpty) {
+        debugPrint('✅ Firebase app already exists');
+        _firestore = FirebaseFirestore.instance;
+        _isInitialized = true;
+        return;
+      }
+
       debugPrint('🔵 Initializing Firebase...');
 
       // Initialize Firebase with platform-specific options

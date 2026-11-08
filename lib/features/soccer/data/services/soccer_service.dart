@@ -75,16 +75,26 @@ class SoccerService {
   Future<SoccerData> _executeFetch() async {
     try {
       final apiUrl = await _getApiUrl();
-      final response = await http.get(
-        Uri.parse(apiUrl),
-        headers: kIsWeb
-            ? null
-            : {
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache',
-                'Expires': '0',
-              },
-      );
+      http.Response response;
+      if (kIsWeb) {
+        try {
+          response = await http.get(Uri.parse(apiUrl));
+        } catch (_) {
+          // Fallback a proxy CORS en web si el endpoint directo bloquea CORS
+          final proxiedUrl =
+              'https://myproxy.canalesonline24.workers.dev/?url=${Uri.encodeComponent(apiUrl)}';
+          response = await http.get(Uri.parse(proxiedUrl));
+        }
+      } else {
+        response = await http.get(
+          Uri.parse(apiUrl),
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          },
+        );
+      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
