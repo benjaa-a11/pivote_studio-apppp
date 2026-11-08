@@ -45,6 +45,31 @@ object StreamHttpDataSourceFactory {
         // Activar reutilización de conexiones HTTP keep-alive en el pool nativo
         System.setProperty("http.keepAlive", "true")
         System.setProperty("http.maxConnections", "12")
+        installPermissiveSsl()
+    }
+
+    /**
+     * Muchos servidores IPTV/HLS usan certificados vencidos, autofirmados o con cadena incompleta
+     * (el navegador muestra "continuar de todos modos"; ExoPlayer, en cambio, falla con
+     * SSLHandshakeException y el m3u8 "no carga"). Se tolera ese caso para el tráfico de video.
+     * RIESGO: sin validación de certificado, una red hostil podría interceptar el flujo de video
+     * (no credenciales: Firebase usa su propio stack TLS).
+     */
+    @android.annotation.SuppressLint("CustomX509TrustManager", "TrustAllX509TrustManager")
+    private fun installPermissiveSsl() {
+        runCatching {
+            val trustAll = arrayOf<javax.net.ssl.TrustManager>(
+                object : javax.net.ssl.X509TrustManager {
+                    override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) = Unit
+                    override fun checkServerTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) = Unit
+                    override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = emptyArray()
+                }
+            )
+            val ctx = javax.net.ssl.SSLContext.getInstance("TLS")
+            ctx.init(null, trustAll, java.security.SecureRandom())
+            javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(ctx.socketFactory)
+            javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier { _, _ -> true }
+        }
     }
 
     private fun normalizeHeaderKey(key: String): String = when (key.trim().lowercase()) {
@@ -115,9 +140,6 @@ object StreamHttpDataSourceFactory {
 
         if (!normalized.containsKey("Accept")) {
             normalized["Accept"] = "*/*"
-        }
-        if (!normalized.containsKey("Connection")) {
-            normalized["Connection"] = "keep-alive"
         }
 
         return normalized

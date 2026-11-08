@@ -534,7 +534,8 @@ class NativeMediaPlayer private constructor(context: Context) {
         if (firstFrameRendered || player.playbackState != Player.STATE_READY) return
 
         // Si el stream realmente es de solo audio (sin grupos de video y formato progresivo de audio), ignorar
-        if (!hasVideoTrackGroup && currentFormat == StreamFormat.PROGRESSIVE) return
+        // (radios HLS/TS o canales realmente solo-audio no declaran pista de video)
+        if (!hasVideoTrackGroup) return
 
         NativePlayerConfig.logW(
             SUBTAG,

@@ -85,10 +85,17 @@ object StreamMediaSourceFactory {
                 "url=${PlayerErrorMapper.sanitizeUrl(targetUrl)}"
         )
 
+        // Para HLS NO se fuerza un offset objetivo: con segmentos de 6-10 s un target de 3.5 s
+        // queda por debajo de la distancia mínima segura al borde y provoca rebuffering/saltos
+        // constantes. Se respeta el HOLD-BACK/PART-HOLD-BACK del propio playlist.
         val liveConfig = MediaItem.LiveConfiguration.Builder()
-            .setTargetOffsetMs(NativePlayerConfig.LIVE_TARGET_OFFSET_MS)
-            .setMinOffsetMs(NativePlayerConfig.LIVE_MIN_OFFSET_MS)
-            .setMaxOffsetMs(NativePlayerConfig.LIVE_MAX_OFFSET_MS)
+            .apply {
+                if (format == StreamFormat.DASH) {
+                    setTargetOffsetMs(NativePlayerConfig.LIVE_TARGET_OFFSET_MS)
+                    setMinOffsetMs(NativePlayerConfig.LIVE_MIN_OFFSET_MS)
+                    setMaxOffsetMs(NativePlayerConfig.LIVE_MAX_OFFSET_MS)
+                }
+            }
             .setMinPlaybackSpeed(NativePlayerConfig.LIVE_MIN_SPEED)
             .setMaxPlaybackSpeed(NativePlayerConfig.LIVE_MAX_SPEED)
             .build()
