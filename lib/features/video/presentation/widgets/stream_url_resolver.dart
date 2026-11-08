@@ -247,6 +247,7 @@ class StreamUrlResolver {
   // ── HTTP Resolution Pipeline ──────────────────────────────────────────
 
   static Future<String?> _resolveViaHttp(String url) async {
+    if (kIsWeb) return null;
     HttpClient? client;
     try {
       client = HttpClient()

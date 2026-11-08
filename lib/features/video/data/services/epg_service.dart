@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 /// Represents a single program slot in the channel guide.
 class ChannelProgramSlot {
@@ -33,6 +35,20 @@ class EpgService {
     final startHour = start.hour;
     final uri = Uri.parse(
         '$_baseUrl?prti=$startHour&prtf=24&chlf=0&chlt=0&wn=0&pack=D');
+
+    if (kIsWeb) {
+      try {
+        final response =
+            await http.get(uri).timeout(const Duration(seconds: 10));
+        if (response.statusCode != 200) {
+          throw Exception(
+              'Guide server responded with ${response.statusCode}');
+        }
+        return _parseGuide(utf8.decode(response.bodyBytes), guid);
+      } catch (e) {
+        throw Exception('No se pudo cargar la programación: $e');
+      }
+    }
 
     HttpClient? httpClient;
     try {

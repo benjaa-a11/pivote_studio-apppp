@@ -22,7 +22,7 @@ class PivoteAuthException implements Exception {
 /// Passwords are hashed with SHA-256 + random salt.
 /// Session is managed via SharedPreferences (no Firebase Auth).
 class AuthService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   static const String _usersCollection = 'usuarios';
   static const String _sessionKey = 'pivote_session_uid';

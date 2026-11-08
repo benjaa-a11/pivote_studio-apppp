@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -94,7 +95,7 @@ class _UserAvatarState extends State<UserAvatar>
         final photoUrl = user?.photoUrl;
 
         ImageProvider? imageProvider;
-        if (localPath != null && localPath.isNotEmpty) {
+        if (!kIsWeb && localPath != null && localPath.isNotEmpty) {
           final file = File(localPath);
           if (file.existsSync()) {
             imageProvider = FileImage(file);

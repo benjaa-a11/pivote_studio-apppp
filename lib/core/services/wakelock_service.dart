@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -50,6 +50,7 @@ class WakelockService extends ChangeNotifier {
   }
 
   Future<void> _applyWakelock() async {
+    if (kIsWeb) return;
     try {
       if (_keepScreenOn) {
         await WakelockPlus.enable();

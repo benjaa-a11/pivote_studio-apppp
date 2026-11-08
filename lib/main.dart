@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -31,35 +32,88 @@ import 'package:pivote/features/home/presentation/providers/notifications_provid
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await FirebaseService.initialize();
-  debugPrint('🔔 Background message: ${message.messageId}');
+  if (kIsWeb) return;
+  try {
+    await FirebaseService.initialize();
+    debugPrint('🔔 Background message: ${message.messageId}');
+  } catch (e) {
+    debugPrint('⚠️ Error in background message handler: $e');
+  }
 }
 
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  if (!kIsWeb) {
+    try {
+      FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+    } catch (e) {
+      debugPrint('⚠️ Error preserving native splash: $e');
+    }
+  } else {
+    try {
+      FlutterNativeSplash.remove();
+    } catch (e) {
+      debugPrint('⚠️ Error removing web splash: $e');
+    }
+  }
 
   // Configurar caché de imágenes en RAM antes de todo
   // Aumenta los límites de Flutter (default: 100 MB / 1000 imgs)
   // para evitar que logos y escudos sean expulsados de la RAM
-  ImageCacheHelper.configurePaintingCache();
+  try {
+    ImageCacheHelper.configurePaintingCache();
+  } catch (e) {
+    debugPrint('⚠️ Error configuring image cache: $e');
+  }
 
-  await FirebaseService.initialize();
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  await NotificationService.initializeWithoutPermission();
+  try {
+    await FirebaseService.initialize();
+  } catch (e) {
+    debugPrint('❌ Error initializing Firebase in main: $e');
+  }
+
+  if (!kIsWeb) {
+    try {
+      FirebaseMessaging.onBackgroundMessage(
+          _firebaseMessagingBackgroundHandler);
+      await NotificationService.initializeWithoutPermission();
+    } catch (e) {
+      debugPrint('⚠️ Error initializing notifications in main: $e');
+    }
+  }
 
   // Initialize custom auth session
-  await AuthService.initSession();
+  try {
+    await AuthService.initSession();
+  } catch (e) {
+    debugPrint('⚠️ Error initializing AuthService session: $e');
+  }
 
-  SoccerService.prefetchLiveSoccerData();
-  final audioManager = AudioManager();
+  try {
+    SoccerService.prefetchLiveSoccerData();
+  } catch (e) {
+    debugPrint('⚠️ Error prefetching soccer data: $e');
+  }
 
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]);
+  late final AudioManager audioManager;
+  try {
+    audioManager = AudioManager();
+  } catch (e) {
+    debugPrint('⚠️ Error creating AudioManager: $e');
+  }
+
+  if (!kIsWeb) {
+    try {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } catch (e) {
+      debugPrint('⚠️ Error setting preferred orientations: $e');
+    }
+  }
 
   runApp(PivoteApp(audioManager: audioManager));
 }
@@ -190,11 +244,13 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
             unawaited(favoritesProvider.refreshFromFirestore());
 
             // Trigger FCM token sync too!
-            unawaited(NotificationService.getToken().then((token) {
-              if (token != null) {
-                unawaited(AuthService.updateFcmToken(token));
-              }
-            }));
+            if (!kIsWeb) {
+              unawaited(NotificationService.getToken().then((token) {
+                if (token != null) {
+                  unawaited(AuthService.updateFcmToken(token));
+                }
+              }));
+            }
 
             setState(() {
               _isLoggedIn = true;

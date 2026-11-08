@@ -67,10 +67,12 @@ class AudioManager extends ChangeNotifier {
       notifyListeners();
     });
 
-    try {
-      await AudioServiceHelper.init();
-    } catch (e) {
-      debugPrint("AudioService error: $e");
+    if (!kIsWeb) {
+      try {
+        await AudioServiceHelper.init();
+      } catch (e) {
+        debugPrint("AudioService error: $e");
+      }
     }
 
     // Listen to playback errors
@@ -124,13 +126,13 @@ class AudioManager extends ChangeNotifier {
       }
 
       // Update AudioService
-      if (AudioServiceHelper.handler != null) {
+      if (!kIsWeb && AudioServiceHelper.handler != null) {
         AudioServiceHelper.handler!.mediaItem.add(mediaItem);
       }
 
       await _audioPlayer.setUrl(
         radio.streamUrl.first,
-        headers: headers,
+        headers: kIsWeb ? null : headers,
       );
 
       await _audioPlayer.play();
@@ -164,7 +166,7 @@ class AudioManager extends ChangeNotifier {
         // Reconectar al stream para obtener el audio en vivo
         await _audioPlayer.setUrl(
           _currentRadio!.streamUrl.first,
-          headers: headers,
+          headers: kIsWeb ? null : headers,
         );
 
         await _audioPlayer.play();

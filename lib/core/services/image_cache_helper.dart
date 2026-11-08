@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:http/http.dart' as http;
@@ -21,7 +22,9 @@ class ImageCacheHelper {
       'pivote_custom_cache_v2',
       stalePeriod: const Duration(days: 30),
       maxNrOfCacheObjects: 500,
-      repo: JsonCacheInfoRepository(databaseName: 'pivote_custom_cache_v2'),
+      repo: kIsWeb
+          ? NonStoringObjectProvider()
+          : JsonCacheInfoRepository(databaseName: 'pivote_custom_cache_v2'),
       fileService: HttpFileService(
         httpClient: _UserAgentClient(http.Client(), _userAgent),
       ),
@@ -35,7 +38,9 @@ class ImageCacheHelper {
       'pivote_logo_cache_v2',
       stalePeriod: const Duration(days: 60),
       maxNrOfCacheObjects: 1000,
-      repo: JsonCacheInfoRepository(databaseName: 'pivote_logo_cache_v2'),
+      repo: kIsWeb
+          ? NonStoringObjectProvider()
+          : JsonCacheInfoRepository(databaseName: 'pivote_logo_cache_v2'),
       fileService: HttpFileService(
         httpClient: _UserAgentClient(http.Client(), _userAgent),
       ),
@@ -61,7 +66,7 @@ class ImageCacheHelper {
   /// Usar [isLogos] = true para logos/escudos pequeños (default),
   /// false para imágenes grandes como posters de películas.
   static void warmUpCache(List<String> urls, {bool isLogos = true}) {
-    if (urls.isEmpty) return;
+    if (kIsWeb || urls.isEmpty) return;
     final manager = isLogos ? logoCacheManager : customCacheManager;
 
     // Filtrar URLs inválidas y limitar para no sobrecargar la red
@@ -95,9 +100,11 @@ class _UserAgentClient extends http.BaseClient {
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
-    request.headers['user-agent'] = _userAgent;
-    request.headers['accept'] = 'image/webp,image/apng,image/*,*/*;q=0.8';
-    request.headers['accept-language'] = 'es-AR,es;q=0.9,en;q=0.8';
+    if (!kIsWeb) {
+      request.headers['user-agent'] = _userAgent;
+      request.headers['accept'] = 'image/webp,image/apng,image/*,*/*;q=0.8';
+      request.headers['accept-language'] = 'es-AR,es;q=0.9,en;q=0.8';
+    }
     return _inner.send(request);
   }
 }

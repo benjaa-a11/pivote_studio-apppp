@@ -6,10 +6,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 
 class NotificationService {
-  static final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  static FirebaseMessaging get _messaging => FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   static const String _channelId = 'pivote_notifications';
   static const String _channelName = 'Pivote Notifications';
   static const String _channelDescription =
@@ -24,6 +24,7 @@ class NotificationService {
   }
 
   static Future<void> initializeWithoutPermission() async {
+    if (kIsWeb) return;
     try {
       final settings = await _messaging.getNotificationSettings();
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
@@ -35,6 +36,7 @@ class NotificationService {
   }
 
   static Future<void> initialize() async {
+    if (kIsWeb) return;
     try {
       final settings = await _messaging.requestPermission(
           alert: true, badge: true, sound: true, provisional: false);
@@ -47,6 +49,7 @@ class NotificationService {
   }
 
   static Future<void> _setupNotificationHandlers() async {
+    if (kIsWeb) return;
     await _initializeLocalNotifications();
     final token = await getToken();
     if (token != null) await _saveTokenToFirestore(token);
@@ -58,6 +61,7 @@ class NotificationService {
   }
 
   static Future<void> _initializeLocalNotifications() async {
+    if (kIsWeb) return;
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
@@ -80,6 +84,7 @@ class NotificationService {
   }
 
   static Future<String?> getToken() async {
+    if (kIsWeb) return null;
     try {
       return await _messaging.getToken();
     } catch (e) {
@@ -134,11 +139,18 @@ class NotificationService {
   }
 
   static Future<bool> areNotificationsEnabled() async {
-    final settings = await _messaging.getNotificationSettings();
-    return settings.authorizationStatus == AuthorizationStatus.authorized;
+    if (kIsWeb) return false;
+    try {
+      final settings = await _messaging.getNotificationSettings();
+      return settings.authorizationStatus == AuthorizationStatus.authorized;
+    } catch (e) {
+      debugPrint('❌ Error checking notifications status: $e');
+      return false;
+    }
   }
 
   static Future<bool> requestPermission() async {
+    if (kIsWeb) return false;
     try {
       if (await Permission.notification.isDenied) {
         final status = await Permission.notification.request();
@@ -156,6 +168,7 @@ class NotificationService {
   }
 
   static Future<void> disableNotifications() async {
+    if (kIsWeb) return;
     try {
       final uid = AuthService.currentUserId;
       if (uid == null) return;
@@ -168,6 +181,7 @@ class NotificationService {
   }
 
   static Future<void> sendTestNotification() async {
+    if (kIsWeb) return;
     await _localNotifications.show(
         0,
         'Notificación de prueba',

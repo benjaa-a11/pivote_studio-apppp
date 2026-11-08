@@ -533,7 +533,7 @@ class PivotePlayerView extends StatefulWidget {
 class _PivotePlayerViewState extends State<PivotePlayerView> {
   @override
   Widget build(BuildContext context) {
-    if (defaultTargetPlatform != TargetPlatform.android) {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
       return Container(
         color: Colors.black,
         child: const Center(

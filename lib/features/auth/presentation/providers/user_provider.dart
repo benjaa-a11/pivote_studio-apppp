@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -85,6 +85,7 @@ class UserProvider with ChangeNotifier {
 
   /// Load cached profile image path from SharedPreferences
   Future<void> _loadProfileImage() async {
+    if (kIsWeb) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       final cachedPath = prefs.getString('profile_image_path');
@@ -110,6 +111,7 @@ class UserProvider with ChangeNotifier {
 
   /// Update profile image - pick from gallery and save locally
   Future<void> updateProfileImage() async {
+    if (kIsWeb) return;
     final picker = ImagePicker();
 
     try {
@@ -295,22 +297,24 @@ class UserProvider with ChangeNotifier {
     _user = null;
     _profileImagePath = null;
 
-    // Clear cached data
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final cachedPath = prefs.getString('profile_image_path');
-      if (cachedPath != null) {
-        final file = File(cachedPath);
-        if (await file.exists()) {
-          await file.delete();
+      // Clear cached data
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (!kIsWeb) {
+          final cachedPath = prefs.getString('profile_image_path');
+          if (cachedPath != null) {
+            final file = File(cachedPath);
+            if (await file.exists()) {
+              await file.delete();
+            }
+          }
         }
-      }
-      await prefs.remove('profile_image_path');
+        await prefs.remove('profile_image_path');
 
-      debugPrint('✅ UserProvider: User data cleared');
-    } catch (e) {
-      debugPrint('⚠️ UserProvider: Error clearing cache: $e');
-    }
+        debugPrint('✅ UserProvider: User data cleared');
+      } catch (e) {
+        debugPrint('⚠️ UserProvider: Error clearing cache: $e');
+      }
 
     notifyListeners();
   }

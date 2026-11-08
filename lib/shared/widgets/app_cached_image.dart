@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
@@ -55,9 +56,11 @@ class AppCachedImage extends StatelessWidget {
     Widget image = CachedNetworkImage(
       // Usar ValueKey basado en URL para evitar flickering en listas
       key: ValueKey<String>(imageUrl),
-      cacheManager: useLogoManager
-          ? ImageCacheHelper.logoCacheManager
-          : ImageCacheHelper.customCacheManager,
+      cacheManager: kIsWeb
+          ? null
+          : (useLogoManager
+              ? ImageCacheHelper.logoCacheManager
+              : ImageCacheHelper.customCacheManager),
       imageUrl: imageUrl,
       fit: fit,
       width: width,

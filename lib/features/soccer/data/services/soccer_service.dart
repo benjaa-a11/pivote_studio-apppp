@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:pivote/core/services/firebase_service.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 
 class SoccerService {
@@ -11,6 +13,10 @@ class SoccerService {
 
   Future<String> _getApiUrl() async {
     if (_cachedApiUrl != null) return _cachedApiUrl!;
+
+    if (!FirebaseService.isInitialized) {
+      return _defaultApiUrl;
+    }
 
     try {
       final doc = await FirebaseFirestore.instance
@@ -39,7 +45,15 @@ class SoccerService {
 
   static void prefetchLiveSoccerData() {
     debugPrint('🚀 SoccerService: Iniciando pre-fetch en background...');
-    _prefetchFuture = SoccerService()._executeFetch();
+    final future = SoccerService()._executeFetch();
+    _prefetchFuture = future;
+    // Evitar Uncaught Error si el pre-fetch falla antes de ser consumido
+    unawaited(future.then((_) {}, onError: (Object e) {
+      debugPrint('⚠️ SoccerService: Pre-fetch en background falló: $e');
+      if (identical(_prefetchFuture, future)) {
+        _prefetchFuture = null;
+      }
+    }));
   }
 
   Future<SoccerData> fetchLiveSoccerData() async {
@@ -63,11 +77,13 @@ class SoccerService {
       final apiUrl = await _getApiUrl();
       final response = await http.get(
         Uri.parse(apiUrl),
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
+        headers: kIsWeb
+            ? null
+            : {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+              },
       );
 
       if (response.statusCode == 200) {

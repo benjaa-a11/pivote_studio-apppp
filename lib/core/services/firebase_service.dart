@@ -36,10 +36,18 @@ class FirebaseService {
       final options = DefaultFirebaseOptions.currentPlatform;
 
       if (_looksMisconfigured(options)) {
-        throw StateError(
-          'Firebase no está configurado correctamente para esta plataforma '
-          '(appId placeholder). Ejecuta "flutterfire configure" y vuelve a compilar.',
-        );
+        if (kIsWeb) {
+          debugPrint(
+            '⚠️ Firebase Web tiene un appId placeholder (${options.appId}). '
+            'Inicializando igualmente con projectId=${options.projectId}. '
+            'Se recomienda ejecutar "flutterfire configure" para registrar la app web.',
+          );
+        } else {
+          throw StateError(
+            'Firebase no está configurado correctamente para esta plataforma '
+            '(appId placeholder). Ejecuta "flutterfire configure" y vuelve a compilar.',
+          );
+        }
       }
 
       await Firebase.initializeApp(options: options);

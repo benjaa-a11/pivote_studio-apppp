@@ -231,7 +231,8 @@ class BackgroundAudioHandler extends BaseAudioHandler
 class AudioServiceHelper {
   static BackgroundAudioHandler? _handler;
 
-  static Future<BackgroundAudioHandler> init() async {
+  static Future<BackgroundAudioHandler?> init() async {
+    if (kIsWeb) return null;
     _handler = await AudioService.init(
       builder: () => BackgroundAudioHandler(),
       config: AudioServiceConfig(
@@ -244,7 +245,7 @@ class AudioServiceHelper {
         androidShowNotificationBadge: true,
       ),
     );
-    return _handler!;
+    return _handler;
   }
 
   static BackgroundAudioHandler? get handler => _handler;

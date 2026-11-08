@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,6 +33,7 @@ class CacheManagerService {
 
   /// Get image cache size in bytes
   static Future<int> getImageCacheSize() async {
+    if (kIsWeb) return 0;
     try {
       // Get cache directory
       final cacheDir = await getTemporaryDirectory();
@@ -54,6 +56,7 @@ class CacheManagerService {
 
   /// Get app cache size in bytes
   static Future<int> getAppCacheSize() async {
+    if (kIsWeb) return 0;
     try {
       final cacheDir = await getTemporaryDirectory();
       int size = 0;
@@ -99,8 +102,10 @@ class CacheManagerService {
     try {
       debugPrint('🗑️ Clearing image cache...');
 
-      final cacheManager = DefaultCacheManager();
-      await cacheManager.emptyCache();
+      if (!kIsWeb) {
+        final cacheManager = DefaultCacheManager();
+        await cacheManager.emptyCache();
+      }
 
       // Clear memory cache so UI reflects change immediately
       PaintingBinding.instance.imageCache.clear();
@@ -115,6 +120,7 @@ class CacheManagerService {
 
   /// Clear app cache directory
   static Future<bool> clearAppCache() async {
+    if (kIsWeb) return true;
     try {
       debugPrint('🗑️ Clearing app cache...');
 
@@ -332,6 +338,7 @@ class CacheManagerService {
 
   /// Optimize cache (clear old/unused items)
   static Future<bool> optimizeCache() async {
+    if (kIsWeb) return true;
     try {
       debugPrint('🔧 Optimizing cache...');
 
