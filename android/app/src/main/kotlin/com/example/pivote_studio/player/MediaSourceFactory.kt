@@ -156,7 +156,6 @@ object StreamMediaSourceFactory {
                     .setConstantBitrateSeekingAlwaysEnabled(true)
                     .setTsExtractorMode(TsExtractor.MODE_MULTI_PMT)
                     .setTsExtractorFlags(tsPayloadFlags)
-                    .setTsTimestampSearchBytes(188 * 1_200)
                 ProgressiveMediaSource.Factory(dataSourceFactory, extractors)
                     .setLoadErrorHandlingPolicy(errorPolicy)
                     .setContinueLoadingCheckIntervalBytes(512 * 1024)
