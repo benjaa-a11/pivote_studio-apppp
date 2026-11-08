@@ -78,14 +78,16 @@ dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
     
     /* =========================
-       MEDIA3 EXOPLAYER (MPD/DASH + ClearKey DRM + HLS + RTSP + SmoothStreaming)
+       MEDIA3 EXOPLAYER (Solo módulos necesarios para Live TV: DASH, HLS, TS/Progresivo, DRM y UI)
        ========================= */
-    implementation("androidx.media3:media3-exoplayer:1.11.1")
-    implementation("androidx.media3:media3-exoplayer-dash:1.11.1")
-    implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
-    implementation("androidx.media3:media3-exoplayer-rtsp:1.11.1")
-    implementation("androidx.media3:media3-exoplayer-smoothstreaming:1.11.1")
-    implementation("androidx.media3:media3-ui:1.11.1")
+    val media3Version = "1.11.1"
+    implementation("androidx.media3:media3-common:$media3Version")
+    implementation("androidx.media3:media3-datasource:$media3Version")
+    implementation("androidx.media3:media3-extractor:$media3Version")
+    implementation("androidx.media3:media3-exoplayer:$media3Version")
+    implementation("androidx.media3:media3-exoplayer-dash:$media3Version")
+    implementation("androidx.media3:media3-exoplayer-hls:$media3Version")
+    implementation("androidx.media3:media3-ui:$media3Version")
 
     /* =========================
        DESUGARING (requerido por flutter_local_notifications)

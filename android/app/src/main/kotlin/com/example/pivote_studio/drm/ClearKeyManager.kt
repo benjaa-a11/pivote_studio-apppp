@@ -1,6 +1,5 @@
 package com.example.pivote_studio.drm
 
-import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.util.UnstableApi
@@ -8,6 +7,7 @@ import androidx.media3.exoplayer.drm.DefaultDrmSessionManager
 import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.drm.LocalMediaDrmCallback
+import com.example.pivote_studio.player.NativePlayerConfig
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -19,22 +19,20 @@ import org.json.JSONObject
  *
  * IMPORTANTE:
  *   • setMultiSession(true) es OBLIGATORIO para canales DASH / MPD con KIDs separados
- *     para video y audio (ej. Flow, ESPN, Disney, etc.). Si está en false, sólo la primera
- *     pista (usualmente audio) abre sesión y el video queda en negro.
+ *     para video y audio (CENC y CBCS). Si está en false, sólo la primera pista (usualmente
+ *     audio) abre sesión y el video queda en negro.
  */
 @OptIn(UnstableApi::class)
 object ClearKeyManager {
 
-    private const val TAG = "ClearKeyManager"
+    private const val SUBTAG = "ClearKey"
 
-    /**
-     * Construye un DrmSessionManager configurado con las claves ClearKey suministradas.
-     * @param keys Lista de pares ClearKeyData parseados
-     */
     fun createDrmSessionManager(keys: List<ClearKeyData>): DrmSessionManager {
         require(keys.isNotEmpty()) { "La lista de claves ClearKey no puede estar vacía" }
 
-        keys.forEach { Log.d(TAG, "ClearKey configurada → kid=${ClearKeyParser.sanitizeKey(it.kid)}") }
+        keys.forEach {
+            NativePlayerConfig.logD(SUBTAG, "ClearKey configurada → kid=${ClearKeyParser.sanitizeKey(it.kid)}")
+        }
 
         val callback = LocalMediaDrmCallback(buildClearKeyJson(keys).toByteArray(Charsets.UTF_8))
 
@@ -43,15 +41,11 @@ object ClearKeyManager {
                 C.CLEARKEY_UUID,
                 FrameworkMediaDrm.DEFAULT_PROVIDER
             )
-            // CRÍTICO: MultiSession=true para desencriptar audio y video cuando usan KIDs distintos
             .setMultiSession(true)
             .setPlayClearSamplesWithoutKeys(true)
             .build(callback)
     }
 
-    /**
-     * Construye la estructura JSON compatible con el estándar W3C ClearKey / Media3.
-     */
     fun buildClearKeyJson(keys: List<ClearKeyData>): String {
         val keysArray = JSONArray()
         for (item in keys.distinctBy { it.kid }) {

@@ -4,27 +4,38 @@ import android.net.Uri
 import java.net.URLDecoder
 
 /**
- * Tipo de DRM que se va a usar para descifrar el stream.
+ * Esquema DRM para desencriptar el canal.
  */
 enum class DrmScheme { NONE, CLEARKEY, WIDEVINE, PLAYREADY }
 
 /**
- * Formato de contenedor/manifiesto detectado o forzado.
- * [UNKNOWN] activa la detección por prueba (HLS → DASH → progresivo).
+ * Esquema de cifrado de muestras ISO BMFF / HLS (CENC AES-CTR vs CBCS AES-CBC subsample).
  */
-enum class StreamFormat { HLS, DASH, SMOOTH, RTSP, PROGRESSIVE, UNKNOWN }
+enum class DrmEncryptionScheme { AUTO, CENC, CBCS }
 
 /**
- * Modelo de datos inmutable para canales de streaming de TV, radio y VOD.
- *
- * Compatible con:
- *   • HLS (m3u8) — TS / fMP4 / AES-128 / SAMPLE-AES / Widevine
- *   • MPEG-DASH (mpd) — CENC (cenc) y CBCS
- *   • Smooth Streaming (ism/manifest), RTSP, HTTP progresivo (mp4, ts, mkv, mp3, aac…)
- *   • ClearKey local (kid:k / JSON W3C) o servidor ClearKey remoto
- *   • Widevine / PlayReady con servidor de licencias y headers propios
- *   • Headers HTTP personalizados por canal (User-Agent, Referer, Origin, Cookie…)
- *   • Sintaxis pipe de listas M3U (`https://.../live.m3u8|Referer=...&User-Agent=...`)
+ * Formato de contenedor/manifiesto detectado o forzado.
+ * [UNKNOWN] activa la detección por contenido/MIME y cascada de prueba (DASH → HLS → PROGRESSIVE/TS).
+ */
+enum class StreamFormat { DASH, HLS, SMOOTH, PROGRESSIVE, UNKNOWN }
+
+/**
+ * Configuración tipada de DRM por fuente/canal.
+ */
+data class DrmConfig(
+    val scheme: DrmScheme = DrmScheme.NONE,
+    val encryptionScheme: DrmEncryptionScheme = DrmEncryptionScheme.AUTO,
+    val clearKeyLicenseData: String? = null,
+    val licenseUrl: String? = null,
+    val licenseHeaders: Map<String, String> = emptyMap(),
+    val forceWidevineL3: Boolean = false,
+    val multiSession: Boolean = true
+) {
+    val isEnabled: Boolean get() = scheme != DrmScheme.NONE
+}
+
+/**
+ * Modelo de datos inmutable para una fuente de canal en vivo (o VOD) en el motor nativo.
  */
 data class StreamChannel(
     val name: String,
@@ -33,50 +44,46 @@ data class StreamChannel(
     val originalUrl: String,
 
     // ── DRM ─────────────────────────────────────────────────────────────────
-    val drmScheme: DrmScheme = DrmScheme.NONE,
+    val drmConfig: DrmConfig = DrmConfig(),
 
-    /** ClearKey local: cadena "kid:XXX,k:YYY" o JSON W3C. */
-    val clearKeyLicenseData: String? = null,
-
-    /** URL del servidor de licencias (Widevine, PlayReady o ClearKey remoto). */
-    val licenseUrl: String? = null,
-
-    /** Headers adicionales para la solicitud de licencia. */
-    val licenseHeaders: Map<String, String> = emptyMap(),
-
-    /** Fuerza Widevine L3 (decodificación no segura). */
-    val forceWidevineL3: Boolean = false,
-
-    // ── HTTP ─────────────────────────────────────────────────────────────────
+    // ── HTTP & Proxy ────────────────────────────────────────────────────────
     val headers: Map<String, String> = emptyMap(),
+    val proxyUrl: String? = null,
 
     // ── Metadatos ────────────────────────────────────────────────────────────
     val globalIndex: Int? = null,
     val category: String? = null,
     val sourceGroup: String? = null,
 
-    /** Identificador de sesión enviado por Flutter para descartar eventos obsoletos. */
+    /** Identificador de sesión enviado por Flutter para descartar eventos obsoletos en zapping rápido. */
     val sessionId: Int = 0
 ) {
 
-    /** Compatibilidad con código previo. */
-    val widevineLicenseUrl: String? get() = if (drmScheme == DrmScheme.WIDEVINE) licenseUrl else null
-    val widevineLicenseHeaders: Map<String, String> get() = licenseHeaders
-
-    val hasDrm: Boolean get() = drmScheme != DrmScheme.NONE
+    // Propiedades delegadas para mantener compatibilidad total con el resto del código
+    val drmScheme: DrmScheme get() = drmConfig.scheme
+    val encryptionScheme: DrmEncryptionScheme get() = drmConfig.encryptionScheme
+    val clearKeyLicenseData: String? get() = drmConfig.clearKeyLicenseData
+    val licenseUrl: String? get() = drmConfig.licenseUrl
+    val licenseHeaders: Map<String, String> get() = drmConfig.licenseHeaders
+    val forceWidevineL3: Boolean get() = drmConfig.forceWidevineL3
+    val hasDrm: Boolean get() = drmConfig.isEnabled
 
     /**
      * Formato declarado explícitamente (campo `type`) o inferido de la URL / DRM.
+     * Si la URL no tiene extensión clara (ej. puerto :8080/live/..., endpoint PHP o MPEG-TS directo),
+     * devuelve [StreamFormat.UNKNOWN] para activar detección por MIME/contenido y fallback.
      */
     fun detectFormat(): StreamFormat {
         val uri = runCatching { Uri.parse(originalUrl) }.getOrNull()
-        val scheme = uri?.scheme?.lowercase()
-        if (scheme == "rtsp" || scheme == "rtsps") return StreamFormat.RTSP
-
         val path = (uri?.path ?: originalUrl).lowercase()
         val full = originalUrl.lowercase()
 
-        // 1. Prioridad máxima: extensión o patrón claro en la URL
+        // 1. Prioridad máxima: extensión o patrón inequívoco en la URL
+        if (path.endsWith(".mpd") || full.contains(".mpd") || full.contains("format=mpd") ||
+            (full.contains("/dash/") && !full.contains(".m3u8"))
+        ) {
+            return StreamFormat.DASH
+        }
         if (path.endsWith(".m3u8") || path.endsWith(".m3u") || full.contains(".m3u8") ||
             full.contains("format=m3u8") || full.contains("type=m3u8") ||
             full.contains("chunklist") || full.contains("/hls/") ||
@@ -84,46 +91,39 @@ data class StreamChannel(
         ) {
             return StreamFormat.HLS
         }
-        if (path.endsWith(".mpd") || full.contains(".mpd") || full.contains("format=mpd") ||
-            (full.contains("/dash/") && !full.contains(".m3u8"))
-        ) {
-            return StreamFormat.DASH
-        }
         if (path.endsWith(".ism") || path.endsWith(".isml") ||
             (path.endsWith("/manifest") && full.contains(".ism"))
         ) {
             return StreamFormat.SMOOTH
         }
 
-        // 2. Si tiene DRM (ClearKey / Widevine) y no es explícitamente HLS, es DASH
+        // 2. Extensiones de MPEG-TS directo o contenedores progresivos
+        if (PROGRESSIVE_EXTENSIONS.any { path.endsWith(it) } ||
+            full.contains("output=ts") || full.contains("output=mpegts") || full.contains("type=ts")
+        ) {
+            return StreamFormat.PROGRESSIVE
+        }
+
+        // 3. Si tiene DRM (ClearKey / Widevine) y no es explícitamente HLS, es DASH
         if (hasDrm) {
             return StreamFormat.DASH
         }
 
-        // 3. Extensiones progresivas conocidas
-        if (PROGRESSIVE_EXTENSIONS.any { path.endsWith(it) }) {
-            return StreamFormat.PROGRESSIVE
-        }
-
-        // 4. Prioridad por campo `type` explícito
+        // 4. Prioridad por campo `type` explícito cuando la URL no fue concluyente
         when (type?.trim()?.lowercase()) {
-            "hls", "m3u8", "m3u"              -> return StreamFormat.HLS
-            "dash", "mpd", "clearkey"         -> return StreamFormat.DASH
-            "ss", "smooth", "ism", "mss"      -> return StreamFormat.SMOOTH
-            "rtsp"                            -> return StreamFormat.RTSP
-            "progressive", "mp4", "ts", "mkv",
-            "mp3", "aac", "webm", "flv"       -> return StreamFormat.PROGRESSIVE
+            "dash", "mpd", "clearkey" -> return StreamFormat.DASH
+            "hls", "m3u8", "m3u" -> return StreamFormat.HLS
+            "ss", "smooth", "ism", "mss" -> return StreamFormat.SMOOTH
+            "progressive", "mp4", "ts", "mpegts", "mkv", "mp3", "aac", "webm", "flv" ->
+                return StreamFormat.PROGRESSIVE
         }
 
         return StreamFormat.UNKNOWN
     }
 
-    fun isDash(): Boolean = detectFormat() == StreamFormat.DASH
-    fun isHls(): Boolean = detectFormat() == StreamFormat.HLS
-
     companion object {
         private val PROGRESSIVE_EXTENSIONS = listOf(
-            ".mp4", ".m4v", ".mkv", ".webm", ".ts", ".mts", ".mov", ".avi", ".flv",
+            ".ts", ".mts", ".m2ts", ".mp4", ".m4v", ".mkv", ".webm", ".mov", ".avi", ".flv",
             ".mp3", ".aac", ".m4a", ".ogg", ".opus", ".flac", ".wav"
         )
 
@@ -141,15 +141,15 @@ data class StreamChannel(
 
         private fun normalizeHeaderKey(key: String): String = when (key.trim().lowercase()) {
             "user-agent", "user_agent", "useragent" -> "User-Agent"
-            "referer", "referrer"                   -> "Referer"
-            "origin"                                -> "Origin"
-            "cookie"                                -> "Cookie"
-            "authorization"                         -> "Authorization"
-            else                                    -> key.trim()
+            "referer", "referrer" -> "Referer"
+            "origin" -> "Origin"
+            "cookie", "cookies" -> "Cookie"
+            "authorization" -> "Authorization"
+            else -> key.trim()
         }
 
         /**
-         * Extrae posibles cabeceras embebidas tras `|` en URLs M3U/IPTV
+         * Extrae cabeceras embebidas tras `|` en URLs M3U/IPTV
          * (ej. `https://host/live.m3u8|Referer=https://host/&User-Agent=Mozilla...`).
          */
         private fun splitPipeHeaders(rawUrl: String): Pair<String, Map<String, String>> {
@@ -184,8 +184,16 @@ data class StreamChannel(
             val (originalUrl, pipeHeaders) = splitPipeHeaders(rawUrl)
 
             val drmBlock = map["drm"] as? Map<*, *>
-            val rawDrmType = (drmBlock?.get("type") ?: map["drm_type"] ?: map["drmType"])
-                ?.toString()?.trim()?.uppercase()
+            val rawDrmType = (drmBlock?.get("type") ?: drmBlock?.get("scheme")
+                ?: map["drm_type"] ?: map["drmType"])?.toString()?.trim()?.uppercase()
+
+            val rawEncryption = (drmBlock?.get("encryptionScheme") ?: drmBlock?.get("encryption")
+                ?: map["drm_encryption"] ?: map["encryptionScheme"])?.toString()?.trim()?.uppercase()
+            val encryptionScheme = when (rawEncryption) {
+                "CBCS", "AES-CBC" -> DrmEncryptionScheme.CBCS
+                "CENC", "AES-CTR" -> DrmEncryptionScheme.CENC
+                else -> DrmEncryptionScheme.AUTO
+            }
 
             // ── URL de licencia remota ───────────────────────────────────────
             val rawLicenseUri = map["drm_license_uri"]?.toString()?.trim()
@@ -248,22 +256,31 @@ data class StreamChannel(
             addIfAbsent("User-Agent", map["user_agent"] ?: map["userAgent"] ?: map["user-agent"])
             addIfAbsent("Referer", map["referer"] ?: map["referrer"])
             addIfAbsent("Origin", map["origin"])
+            addIfAbsent("Cookie", map["cookie"] ?: map["cookies"])
+
+            val proxyUrl = (map["proxyUrl"] ?: map["proxy_url"])?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+
+            val drmConfig = DrmConfig(
+                scheme = drmScheme,
+                encryptionScheme = encryptionScheme,
+                clearKeyLicenseData = if (drmScheme == DrmScheme.CLEARKEY) clearKeyData else null,
+                licenseUrl = if (drmScheme == DrmScheme.CLEARKEY && clearKeyData != null) null else licenseUrl,
+                licenseHeaders = licenseHeaders,
+                forceWidevineL3 = forceL3
+            )
 
             return StreamChannel(
-                name                = name,
-                type                = type,
-                icono               = icono,
-                originalUrl         = originalUrl,
-                drmScheme           = drmScheme,
-                clearKeyLicenseData = if (drmScheme == DrmScheme.CLEARKEY) clearKeyData else null,
-                licenseUrl          = if (drmScheme == DrmScheme.CLEARKEY && clearKeyData != null) null else licenseUrl,
-                licenseHeaders      = licenseHeaders,
-                forceWidevineL3     = forceL3,
-                headers             = headers,
-                globalIndex         = (map["globalIndex"] as? Number)?.toInt(),
-                category            = map["category"]?.toString(),
-                sourceGroup         = map["source_group"]?.toString(),
-                sessionId           = (map["sessionId"] as? Number)?.toInt() ?: 0
+                name = name,
+                type = type,
+                icono = icono,
+                originalUrl = originalUrl,
+                drmConfig = drmConfig,
+                headers = headers,
+                proxyUrl = proxyUrl,
+                globalIndex = (map["globalIndex"] as? Number)?.toInt(),
+                category = map["category"]?.toString(),
+                sourceGroup = map["source_group"]?.toString(),
+                sessionId = (map["sessionId"] as? Number)?.toInt() ?: 0
             )
         }
     }

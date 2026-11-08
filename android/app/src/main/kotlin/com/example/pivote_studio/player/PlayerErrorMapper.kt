@@ -1,7 +1,6 @@
 package com.example.pivote_studio.player
 
 import android.net.Uri
-import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.ParserException
 import androidx.media3.common.PlaybackException
@@ -12,28 +11,28 @@ import com.example.pivote_studio.data.StreamChannel
 import com.example.pivote_studio.drm.ClearKeyParseException
 
 /**
- * Representa información estructurada de error para la capa superior / UI.
+ * Representa información estructurada y tipada de error para la capa Dart y el motor de failover.
  */
 data class PlayerErrorInfo(
     val errorCode: String,
     val technicalMessage: String,
     val cause: Throwable? = null,
-    /** Código numérico original de Media3 (PlaybackException.errorCode) o -1. */
     val mediaErrorCode: Int = -1,
-    /** Código HTTP si aplica (403, 404…), o -1. */
     val httpStatus: Int = -1
 ) {
     val userMessage: String get() = PlayerErrorMapper.userMessage(errorCode, httpStatus)
 }
 
 /**
- * Mapper y logger seguro de errores para NativeMediaPlayer.
- * Categoriza excepciones de ExoPlayer / DRM / HTTP y sanitiza información sensible en logs.
+ * Clasificador tipado de errores de Media3 ExoPlayer (red, HTTP 401/403/404, manifiesto,
+ * decoder, DRM, ventana en vivo y pista de video sin frames).
+ *
+ * Imprime logs técnicos sanitizados únicamente en compilaciones DEBUG.
  */
 @OptIn(UnstableApi::class)
 object PlayerErrorMapper {
 
-    private const val TAG = "NativePlayerError"
+    private const val SUBTAG = "ErrorMapper"
 
     const val ERROR_INVALID_URL        = "INVALID_URL"
     const val ERROR_MPD_LOAD           = "MPD_LOAD_ERROR"
@@ -49,6 +48,7 @@ object PlayerErrorMapper {
     const val ERROR_BEHIND_LIVE_WINDOW = "BEHIND_LIVE_WINDOW"
     const val ERROR_SOURCE             = "SOURCE_ERROR"
     const val ERROR_UNSUPPORTED_FORMAT = "UNSUPPORTED_FORMAT"
+    const val ERROR_AUDIO_ONLY         = "AUDIO_ONLY_NO_VIDEO"
 
     fun map(error: Throwable): PlayerErrorInfo = when (error) {
         is ClearKeyParseException -> PlayerErrorInfo(
@@ -130,37 +130,42 @@ object PlayerErrorMapper {
         )
     }
 
-    /** Errores que justifican probar otro formato de contenedor (detección por prueba). */
+    /** Errores que justifican probar el siguiente formato de contenedor (DASH → HLS → TS). */
     fun isFormatMismatch(info: PlayerErrorInfo): Boolean =
         info.errorCode == ERROR_MANIFEST || info.errorCode == ERROR_UNSUPPORTED_FORMAT ||
             info.errorCode == ERROR_MPD_LOAD
 
-    /** Errores transitorios de red que merecen reintento en el mismo servidor. */
+    /** Errores transitorios de red o de servidor que merecen backoff exponencial en el mismo origen. */
     fun isTransientNetwork(info: PlayerErrorInfo): Boolean =
         info.errorCode == ERROR_NETWORK ||
             (info.errorCode == ERROR_HTTP && info.httpStatus in setOf(408, 429, 500, 502, 503, 504))
+
+    /** Errores HTTP que sugieren token expirado o bloqueo de IP/CORS (401, 403, 404, 410). */
+    fun isTokenOrAccessError(info: PlayerErrorInfo): Boolean =
+        info.errorCode == ERROR_HTTP && info.httpStatus in setOf(401, 403, 404, 410)
 
     fun isDrmError(info: PlayerErrorInfo): Boolean =
         info.errorCode == ERROR_DRM_SESSION || info.errorCode == ERROR_DRM_LICENSE ||
             info.errorCode == ERROR_CLEARKEY
 
     fun userMessage(code: String, httpStatus: Int): String = when (code) {
-        ERROR_NETWORK            -> "Sin conexión con el servidor"
-        ERROR_HTTP               -> when (httpStatus) {
-            401, 403 -> "Acceso denegado por el servidor ($httpStatus)"
+        ERROR_NETWORK -> "Sin conexión con el servidor"
+        ERROR_HTTP -> when (httpStatus) {
+            401, 403 -> "Acceso denegado o token vencido ($httpStatus)"
             404, 410 -> "Transmisión no encontrada ($httpStatus)"
-            -1       -> "El servidor rechazó la conexión"
-            else     -> "Error del servidor ($httpStatus)"
+            -1 -> "El servidor rechazó la conexión"
+            else -> "Error del servidor ($httpStatus)"
         }
         ERROR_MANIFEST, ERROR_MPD_LOAD -> "Manifiesto de la transmisión inválido"
         ERROR_UNSUPPORTED_FORMAT -> "Formato de transmisión no soportado"
-        ERROR_DRM_PARSE          -> "Claves de cifrado inválidas"
-        ERROR_DRM_LICENSE        -> "No se pudo obtener la licencia DRM"
+        ERROR_DRM_PARSE -> "Claves de cifrado inválidas"
+        ERROR_DRM_LICENSE -> "No se pudo obtener la licencia DRM"
         ERROR_DRM_SESSION, ERROR_CLEARKEY -> "Error de descifrado DRM"
-        ERROR_DRM_UNSUPPORTED    -> "El dispositivo no soporta este DRM"
-        ERROR_DECODER            -> "El dispositivo no puede decodificar este video"
-        ERROR_INVALID_URL        -> "Enlace de transmisión inválido"
-        else                     -> "Error de reproducción"
+        ERROR_DRM_UNSUPPORTED -> "El dispositivo no soporta este DRM"
+        ERROR_DECODER -> "El dispositivo no puede decodificar este video"
+        ERROR_AUDIO_ONLY -> "El canal envió audio sin imagen de video"
+        ERROR_INVALID_URL -> "Enlace de transmisión inválido"
+        else -> "Error de reproducción"
     }
 
     private inline fun <reified T : Throwable> findCause(e: Throwable): T? {
@@ -174,19 +179,16 @@ object PlayerErrorMapper {
         return null
     }
 
-    /**
-     * Imprime en Logcat la traza del error de forma técnica y estrictamente sanitizada.
-     */
     fun logError(channel: StreamChannel?, errorInfo: PlayerErrorInfo) {
-        Log.e(
-            TAG,
+        NativePlayerConfig.logE(
+            SUBTAG,
             """
             ┌────────────────── NATIVE PLAYER ERROR ──────────────────
             │ Channel Name: ${channel?.name ?: "N/A"}
             │ URL:          ${sanitizeUrl(channel?.originalUrl ?: "")}
             │ Type:         ${channel?.type ?: "N/A"} (format=${channel?.detectFormat() ?: "N/A"})
-            │ DrmType:      ${channel?.drmScheme?.name ?: "NONE"}
-            │ ErrorCode:    ${errorInfo.errorCode} (media3=${errorInfo.mediaErrorCode})
+            │ DrmType:      ${channel?.drmScheme?.name ?: "NONE"} (${channel?.encryptionScheme?.name ?: "AUTO"})
+            │ ErrorCode:    ${errorInfo.errorCode} (media3=${errorInfo.mediaErrorCode}, http=${errorInfo.httpStatus})
             │ Message:      ${errorInfo.technicalMessage}
             │ Exception:    ${errorInfo.cause?.javaClass?.simpleName ?: "None"}
             └─────────────────────────────────────────────────────────
@@ -195,9 +197,6 @@ object PlayerErrorMapper {
         )
     }
 
-    /**
-     * Sanitiza una URL para que los query tokens o firmas no queden expuestos en texto plano.
-     */
     fun sanitizeUrl(rawUrl: String): String {
         if (rawUrl.isBlank()) return "empty_url"
         return try {
@@ -207,7 +206,7 @@ object PlayerErrorMapper {
             if (params.isEmpty()) base else base + "?" + params.joinToString("&") { p ->
                 val v = uri.getQueryParameter(p) ?: ""
                 when {
-                    listOf("token", "key", "auth", "sig", "hash", "pass").any { p.contains(it, true) } -> "$p=***"
+                    listOf("token", "key", "auth", "sig", "hash", "pass", "hdnea").any { p.contains(it, true) } -> "$p=***"
                     v.length > 20 -> "$p=${v.take(4)}...${v.takeLast(4)}"
                     else -> "$p=$v"
                 }

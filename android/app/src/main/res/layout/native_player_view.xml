@@ -8,7 +8,7 @@
     android:background="@android:color/black"
     app:use_controller="false"
     app:resize_mode="fit"
-    app:surface_type="texture_view"
+    app:surface_type="surface_view"
     app:shutter_background_color="@android:color/transparent"
     app:keep_content_on_player_reset="false"
     app:show_buffering="never" />

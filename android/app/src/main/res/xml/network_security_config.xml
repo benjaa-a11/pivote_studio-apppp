@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Configuración de Seguridad de Red para Streaming en Vivo (Pivote).
+
+  NOTA DE SEGURIDAD (HTTP plano / Cleartext):
+  - Muchos orígenes IPTV regionales, enlaces MPEG-TS directos y balanceadores de CDN
+    (ej. aiv-cdn.net, servidores Xtream/Flussonic por puerto 8080/8000/25461) transmiten
+    únicamente por HTTP plano o redirigen de HTTPS a HTTP.
+  - Riesgo del tráfico HTTP plano: el flujo no va cifrado en tránsito (susceptible a
+    inspección DPI del ISP o modificación MITM en redes Wi-Fi públicas). Nunca debe usarse
+    para transmitir credenciales ni tokens de autenticación de usuario (Firebase Auth y
+    Firestore viajan exclusivamente por HTTPS con TLS estricto).
+  - Si conocés la lista cerrada de dominios HTTP de tus canales, podés cambiar
+    <base-config cleartextTrafficPermitted="false"> y declarar únicamente esos hosts
+    dentro de <domain-config cleartextTrafficPermitted="true">.
+-->
+<network-security-config>
+    <!-- Configuración base: permite HTTP plano para orígenes de video sin HTTPS -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Dominios de CDN de streaming conocidos que usan HTTP plano o redirecciones mixtas -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">aiv-cdn.net</domain>
+        <domain includeSubdomains="true">aiv-delivery.net</domain>
+        <domain includeSubdomains="true">pv-cdn.net</domain>
+        <domain includeSubdomains="true">cvattv.com.ar</domain>
+        <domain includeSubdomains="true">cvattv.com.py</domain>
+        <domain includeSubdomains="true">flow.com.ar</domain>
+        <domain includeSubdomains="true">flow.com.py</domain>
+        <domain includeSubdomains="true">nvideo.net</domain>
+    </domain-config>
+</network-security-config>
+

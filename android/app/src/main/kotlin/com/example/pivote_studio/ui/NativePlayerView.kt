@@ -11,18 +11,14 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.example.pivote_studio.R
-import com.example.pivote_studio.data.StreamChannel
 import com.example.pivote_studio.player.NativeMediaPlayer
 
 /**
- * Vista nativa limpia basada en Media3 PlayerView con TextureView.
+ * Contenedor visual nativo liviano para Media3 [PlayerView].
  *
- * Por qué TextureView + Shutter transparente:
- *   • En Flutter AndroidView, SurfaceView perfora la ventana o queda oculto detrás de la capa
- *     de Skia/Impeller causando pantalla negra con audio. TextureView se compone directamente
- *     en el lienzo de la jerarquía AndroidView sin agujeros ni desincronización.
- *   • setShutterBackgroundColor(Color.TRANSPARENT) evita que el shutter interno de Media3
- *     tape el video si hay transiciones de pista o eventos post-frame.
+ * No posee ni crea instancias de ExoPlayer: simplemente presta su superficie
+ * (`TextureView` o `SurfaceView`) al motor singleton [NativeMediaPlayer] mediante
+ * `PlayerView.switchTargetView`, garantizando cero reproductores superpuestos.
  */
 @OptIn(UnstableApi::class)
 class NativePlayerView @JvmOverloads constructor(
@@ -32,64 +28,96 @@ class NativePlayerView @JvmOverloads constructor(
     useTextureView: Boolean = true
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
-    val playerView: PlayerView
+    var playerView: PlayerView
+        private set
 
+    var isUsingTextureView: Boolean = useTextureView
+        private set
+
+    private var currentResizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT
     private var mediaPlayer: NativeMediaPlayer? = null
 
     init {
         setBackgroundColor(Color.BLACK)
-
-        val layoutId = if (useTextureView) {
-            R.layout.native_player_view_texture
-        } else {
-            R.layout.native_player_view
-        }
-
-        playerView = try {
-            (LayoutInflater.from(context).inflate(layoutId, this, false) as PlayerView).apply {
-                keepScreenOn = true
-                useController = false
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                setShutterBackgroundColor(Color.TRANSPARENT)
-            }
-        } catch (_: Exception) {
-            PlayerView(context).apply {
-                keepScreenOn = true
-                useController = false
-                resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                setShutterBackgroundColor(Color.TRANSPARENT)
-            }
-        }
-
+        playerView = inflateMedia3PlayerView(useTextureView)
         addView(playerView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
 
         isFocusable = true
         isFocusableInTouchMode = true
     }
 
-    fun attachPlayer(player: NativeMediaPlayer) {
-        mediaPlayer = player
-        playerView.player = player.player
+    private fun inflateMedia3PlayerView(useTexture: Boolean): PlayerView {
+        val layoutId = if (useTexture) {
+            R.layout.native_player_view_texture
+        } else {
+            R.layout.native_player_view
+        }
+
+        return try {
+            (LayoutInflater.from(context).inflate(layoutId, this, false) as PlayerView).apply {
+                keepScreenOn = true
+                useController = false
+                resizeMode = currentResizeMode
+                setShutterBackgroundColor(Color.TRANSPARENT)
+            }
+        } catch (_: Exception) {
+            PlayerView(context).apply {
+                keepScreenOn = true
+                useController = false
+                resizeMode = currentResizeMode
+                setShutterBackgroundColor(Color.TRANSPARENT)
+            }
+        }
     }
 
-    fun detachPlayer() {
-        playerView.player = null
+    /**
+     * Cambia en caliente entre `TextureView` y `SurfaceView` si un canal Widevine L1
+     * requiere superficie segura de hardware o viceversa.
+     */
+    fun ensureSurfaceType(useTexture: Boolean) {
+        if (isUsingTextureView == useTexture) return
+        val oldView = playerView
+        isUsingTextureView = useTexture
+        val newView = inflateMedia3PlayerView(useTexture)
+
+        removeView(oldView)
+        addView(newView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        playerView = newView
+
+        mediaPlayer?.let { engine ->
+            PlayerView.switchTargetView(engine.player, oldView, newView)
+        }
+    }
+
+    fun attachToEngine(engine: NativeMediaPlayer) {
+        mediaPlayer = engine
+        engine.attachView(this)
+    }
+
+    fun detachFromEngine() {
+        mediaPlayer?.detachView(this)
         mediaPlayer = null
     }
 
-    fun bindChannel(channel: StreamChannel) {
-        // Sin superposiciones nativas: toda la UI se dibuja en Flutter
+    /**
+     * Re-vincula la superficie de video actual para recuperar decoders que quedaron
+     * sin renderizar tras cambios de resolución o ciclo de vida.
+     */
+    fun refreshVideoSurface() {
+        val engine = mediaPlayer ?: return
+        playerView.player = null
+        playerView.player = engine.player
     }
 
     fun setResizeMode(mode: String?) {
-        val resizeMode = when (mode?.lowercase()) {
+        currentResizeMode = when (mode?.lowercase()) {
             "stretch", "fill" -> AspectRatioFrameLayout.RESIZE_MODE_FILL
-            "zoom", "crop" -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            "zoom", "crop", "cover" -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             "fixed_width" -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH
             "fixed_height" -> AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT
             else -> AspectRatioFrameLayout.RESIZE_MODE_FIT
         }
-        playerView.resizeMode = resizeMode
+        playerView.resizeMode = currentResizeMode
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
