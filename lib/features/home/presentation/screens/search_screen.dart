@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/home/data/services/search_service.dart';
 import 'package:pivote/features/home/presentation/widgets/search_filter_chips.dart';
 import 'package:pivote/features/home/presentation/widgets/search_radio_tile.dart';
@@ -145,7 +146,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     height: 48,
                     decoration: BoxDecoration(
                       color: palette.dangerBg,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                     child: Icon(
                       Icons.delete_sweep_rounded,
@@ -158,9 +159,9 @@ class _SearchScreenState extends State<SearchScreen> {
                 Text(
                   '¿Borrar búsquedas recientes?',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
+                  style: AppFont.primary(
                     fontSize: 17,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
                     color: palette.text,
                   ),
                 ),
@@ -168,8 +169,9 @@ class _SearchScreenState extends State<SearchScreen> {
                 Text(
                   'Se eliminará todo tu historial de búsqueda guardado en este dispositivo.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
+                  style: AppFont.primary(
                     fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
                     color: palette.muted,
                     height: 1.4,
                   ),
@@ -180,18 +182,18 @@ class _SearchScreenState extends State<SearchScreen> {
                     Expanded(
                       child: Material(
                         color: palette.iconBox,
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         child: InkWell(
                           onTap: () => Navigator.pop(ctx, false),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 13),
                             child: Center(
                               child: Text(
                                 'Cancelar',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14.5,
-                                  fontWeight: FontWeight.w600,
+                                style: AppFont.primary(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
                                   color: palette.text,
                                 ),
                               ),
@@ -204,14 +206,14 @@ class _SearchScreenState extends State<SearchScreen> {
                     Expanded(
                       child: Material(
                         color: palette.dangerBg,
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         child: InkWell(
                           onTap: () => Navigator.pop(ctx, true),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 13),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(18),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
                               border: Border.all(
                                 color: palette.dangerBorder,
                                 width: 1,
@@ -220,9 +222,9 @@ class _SearchScreenState extends State<SearchScreen> {
                             child: Center(
                               child: Text(
                                 'Borrar todo',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14.5,
-                                  fontWeight: FontWeight.w600,
+                                style: AppFont.primary(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
                                   color: palette.danger,
                                 ),
                               ),
@@ -277,13 +279,10 @@ class _SearchScreenState extends State<SearchScreen> {
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
+              constraints: const BoxConstraints(maxWidth: 820),
               child: Column(
                 children: [
-                  // ── Clean Header + Search Input ──
                   _buildSearchHeader(context, palette, isSearching),
-
-                  // ── Filter Chips (when searching) ──
                   if (isSearching) ...[
                     const SizedBox(height: 6),
                     SearchFilterChips(
@@ -300,8 +299,6 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     const SizedBox(height: 8),
                   ],
-
-                  // ── Body Content ──
                   Expanded(
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
@@ -316,6 +313,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               soccerData: soccerProvider.soccerData,
                             )
                           : _buildDiscoveryView(
+                              context: context,
                               channelProvider: channelProvider,
                               radioProvider: radioProvider,
                               soccerProvider: soccerProvider,
@@ -331,8 +329,6 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
-
-  // ── Filtering Logic ──
 
   List<Channel> _getFilteredChannels(List<Channel> channels, String query) {
     if (query.isEmpty) return channels;
@@ -381,35 +377,33 @@ class _SearchScreenState extends State<SearchScreen> {
     }).toList();
   }
 
-  // ── Header with Back Button & Search Input ──
-
   Widget _buildSearchHeader(
     BuildContext context,
     ProfilePalette palette,
     bool isSearching,
   ) {
     final hasFocus = _searchFocusNode.hasFocus;
+    final hPad = AppResponsive.screenHorizontalPadding(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      padding: hPad.add(const EdgeInsets.only(top: 10, bottom: 8)),
       child: Row(
         children: [
-          // Circular Back Button (42x42 matching ProfileSubsectionScaffold)
           Material(
             color: palette.card,
-            shape: const CircleBorder(),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
             child: InkWell(
               onTap: () {
                 HapticFeedback.lightImpact();
                 context.read<ChannelProvider>().searchChannels('');
                 Navigator.pop(context);
               },
-              customBorder: const CircleBorder(),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
               child: Container(
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                   border: Border.all(color: palette.border, width: 1),
                 ),
                 alignment: Alignment.center,
@@ -422,20 +416,16 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
           const SizedBox(width: 10),
-
-          // Search Bar Container
           Expanded(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               height: 46,
               decoration: BoxDecoration(
                 color: palette.card,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppRadius.md),
                 border: Border.all(
-                  color: hasFocus
-                      ? palette.text.withValues(alpha: 0.35)
-                      : palette.border,
-                  width: 1,
+                  color: hasFocus ? palette.accent : palette.border,
+                  width: hasFocus ? 1.4 : 1,
                 ),
                 boxShadow: palette.cardShadow,
               ),
@@ -445,7 +435,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   Icon(
                     Icons.search_rounded,
                     size: 19,
-                    color: hasFocus ? palette.text : palette.muted,
+                    color: hasFocus ? palette.accent : palette.muted,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -455,19 +445,19 @@ class _SearchScreenState extends State<SearchScreen> {
                       onChanged: _onQueryChanged,
                       onSubmitted: _executeSearch,
                       textInputAction: TextInputAction.search,
-                      cursorColor: palette.text,
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                      cursorColor: palette.accent,
+                      style: AppFont.primary(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
                         color: palette.text,
                       ),
                       decoration: InputDecoration(
                         isDense: true,
                         filled: false,
                         hintText: 'Buscar canal, radio o partido...',
-                        hintStyle: GoogleFonts.inter(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w400,
+                        hintStyle: AppFont.primary(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                           color: palette.muted,
                         ),
                         border: InputBorder.none,
@@ -512,9 +502,8 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // ── Discovery View (When search query is empty) ──
-
   Widget _buildDiscoveryView({
+    required BuildContext context,
     required ChannelProvider channelProvider,
     required RadioProvider radioProvider,
     required SoccerProvider soccerProvider,
@@ -533,12 +522,12 @@ class _SearchScreenState extends State<SearchScreen> {
 
     final topChannels = channelProvider.allChannels.take(6).toList();
     final topRadios = radioProvider.radios.take(4).toList();
+    final hPad = AppResponsive.screenHorizontalPadding(context);
 
     return ListView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 36),
+      padding: hPad.add(const EdgeInsets.only(top: 8, bottom: 36)),
       children: [
-        // ── Recent Searches ──
         if (_searchHistory.isNotEmpty) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -548,7 +537,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: _confirmClearAllHistory,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -556,9 +545,9 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     child: Text(
                       'Borrar todo',
-                      style: GoogleFonts.inter(
+                      style: AppFont.primary(
                         fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: palette.danger,
                       ),
                     ),
@@ -574,14 +563,14 @@ class _SearchScreenState extends State<SearchScreen> {
               return Container(
                 decoration: BoxDecoration(
                   color: palette.card,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   border: Border.all(color: palette.border, width: 1),
                 ),
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () => _executeSearch(item),
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(12, 7, 8, 7),
                       child: Row(
@@ -595,9 +584,9 @@ class _SearchScreenState extends State<SearchScreen> {
                           const SizedBox(width: 6),
                           Text(
                             item,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                            style: AppFont.primary(
+                              fontSize: 12.8,
+                              fontWeight: FontWeight.w600,
                               color: palette.text,
                             ),
                           ),
@@ -628,8 +617,6 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           const SizedBox(height: 8),
         ],
-
-        // ── Quick Categories ──
         ProfileSectionTitle(
           'Explorar por categoría',
           first: _searchHistory.isEmpty,
@@ -637,8 +624,8 @@ class _SearchScreenState extends State<SearchScreen> {
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: AppResponsive.channelColumns(context),
             mainAxisSpacing: 10,
             crossAxisSpacing: 10,
             childAspectRatio: 2.35,
@@ -654,7 +641,7 @@ class _SearchScreenState extends State<SearchScreen> {
             return Container(
               decoration: BoxDecoration(
                 color: palette.card,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppRadius.card),
                 border: Border.all(color: palette.border, width: 1),
                 boxShadow: palette.cardShadow,
               ),
@@ -688,7 +675,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           height: 38,
                           decoration: BoxDecoration(
                             color: palette.iconBox,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
                           ),
                           child: Icon(
                             icon,
@@ -706,10 +693,10 @@ class _SearchScreenState extends State<SearchScreen> {
                                 name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  fontSize: 13.8,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: -0.1,
+                                style: AppFont.primary(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.15,
                                   color: palette.text,
                                 ),
                               ),
@@ -718,8 +705,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                 subtitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.5,
+                                style: AppFont.primary(
+                                  fontSize: 11.2,
+                                  fontWeight: FontWeight.w500,
                                   color: palette.muted,
                                 ),
                               ),
@@ -734,8 +722,6 @@ class _SearchScreenState extends State<SearchScreen> {
             );
           },
         ),
-
-        // ── Live / Today's Matches ──
         if (liveOrScheduledMatches.isNotEmpty && soccerData != null) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -750,9 +736,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   },
                   child: Text(
                     'Ver todos',
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: palette.muted,
                     ),
                   ),
@@ -773,18 +759,15 @@ class _SearchScreenState extends State<SearchScreen> {
             },
           ),
         ],
-
-        // ── Recommended TV Channels ──
         if (topChannels.isNotEmpty) ...[
           const ProfileSectionTitle('Canales recomendados'),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 1.05,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
+            gridDelegate: AppResponsive.channelGridDelegate(
+              context,
+              aspectRatio: 1.12,
+              spacing: 12,
             ),
             itemCount: topChannels.length,
             itemBuilder: (context, index) {
@@ -792,8 +775,6 @@ class _SearchScreenState extends State<SearchScreen> {
             },
           ),
         ],
-
-        // ── Featured Radios ──
         if (topRadios.isNotEmpty) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -808,9 +789,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   },
                   child: Text(
                     'Ver todas',
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: palette.muted,
                     ),
                   ),
@@ -832,8 +813,6 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // ── Search Results View ──
-
   Widget _buildSearchResults({
     required BuildContext context,
     required ProfilePalette palette,
@@ -849,18 +828,19 @@ class _SearchScreenState extends State<SearchScreen> {
       return _buildNoResults(palette, query);
     }
 
+    final hPad = AppResponsive.screenHorizontalPadding(context);
+
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
-        // Results Summary Pill
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+            padding: hPad.add(const EdgeInsets.only(top: 4, bottom: 10)),
             child: Row(
               children: [
                 Text(
                   '$totalResults ${totalResults == 1 ? 'resultado' : 'resultados'} para ',
-                  style: GoogleFonts.inter(
+                  style: AppFont.primary(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: palette.muted,
@@ -871,9 +851,9 @@ class _SearchScreenState extends State<SearchScreen> {
                     '"$query"',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       color: palette.text,
                     ),
                   ),
@@ -882,13 +862,11 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
         ),
-
-        // Tab: ALL
         if (_selectedTab == SearchFilterTab.all) ...[
           if (matches.isNotEmpty && soccerData != null) ...[
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                padding: hPad.add(const EdgeInsets.only(top: 6, bottom: 8)),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -900,9 +878,9 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                         child: Text(
                           'Ver todos (${matches.length})',
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: palette.muted,
                           ),
                         ),
@@ -912,7 +890,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: hPad,
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -930,11 +908,10 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 12)),
           ],
-
           if (channels.isNotEmpty) ...[
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                padding: hPad.add(const EdgeInsets.only(top: 6, bottom: 8)),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -946,9 +923,9 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                         child: Text(
                           'Ver todos (${channels.length})',
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: palette.muted,
                           ),
                         ),
@@ -958,13 +935,12 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: hPad,
               sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 1.05,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
+                gridDelegate: AppResponsive.channelGridDelegate(
+                  context,
+                  aspectRatio: 1.12,
+                  spacing: 12,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => ChannelCard(channel: channels[index]),
@@ -974,11 +950,10 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 16)),
           ],
-
           if (radios.isNotEmpty) ...[
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+                padding: hPad.add(const EdgeInsets.only(top: 6, bottom: 8)),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -990,9 +965,9 @@ class _SearchScreenState extends State<SearchScreen> {
                         ),
                         child: Text(
                           'Ver todas (${radios.length})',
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: palette.muted,
                           ),
                         ),
@@ -1002,7 +977,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: hPad,
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -1016,10 +991,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           ],
-        ]
-
-        // Tab: ONLY CHANNELS
-        else if (_selectedTab == SearchFilterTab.channels) ...[
+        ] else if (_selectedTab == SearchFilterTab.channels) ...[
           if (channels.isEmpty)
             _buildSectionEmptyState(
               palette,
@@ -1028,13 +1000,12 @@ class _SearchScreenState extends State<SearchScreen> {
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              padding: hPad.add(const EdgeInsets.only(top: 4, bottom: 24)),
               sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 1.05,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
+                gridDelegate: AppResponsive.channelGridDelegate(
+                  context,
+                  aspectRatio: 1.12,
+                  spacing: 12,
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => ChannelCard(channel: channels[index]),
@@ -1042,10 +1013,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
             ),
-        ]
-
-        // Tab: ONLY RADIOS
-        else if (_selectedTab == SearchFilterTab.radios) ...[
+        ] else if (_selectedTab == SearchFilterTab.radios) ...[
           if (radios.isEmpty)
             _buildSectionEmptyState(
               palette,
@@ -1054,7 +1022,7 @@ class _SearchScreenState extends State<SearchScreen> {
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              padding: hPad.add(const EdgeInsets.only(top: 4, bottom: 24)),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -1067,10 +1035,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
             ),
-        ]
-
-        // Tab: ONLY SOCCER
-        else if (_selectedTab == SearchFilterTab.soccer) ...[
+        ] else if (_selectedTab == SearchFilterTab.soccer) ...[
           if (matches.isEmpty || soccerData == null)
             _buildSectionEmptyState(
               palette,
@@ -1079,7 +1044,7 @@ class _SearchScreenState extends State<SearchScreen> {
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              padding: hPad.add(const EdgeInsets.only(top: 4, bottom: 24)),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
@@ -1096,7 +1061,6 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
         ],
-
         const SliverToBoxAdapter(child: SizedBox(height: 32)),
       ],
     );
@@ -1120,7 +1084,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 height: 52,
                 decoration: BoxDecoration(
                   color: palette.iconBox,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Icon(
                   Icons.search_off_rounded,
@@ -1132,9 +1096,9 @@ class _SearchScreenState extends State<SearchScreen> {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
+                style: AppFont.primary(
                   fontSize: 16.5,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   color: palette.text,
                 ),
               ),
@@ -1142,8 +1106,9 @@ class _SearchScreenState extends State<SearchScreen> {
               Text(
                 subtitle,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
+                style: AppFont.primary(
                   fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
                   color: palette.muted,
                   height: 1.4,
                 ),
@@ -1167,7 +1132,7 @@ class _SearchScreenState extends State<SearchScreen> {
               height: 60,
               decoration: BoxDecoration(
                 color: palette.iconBox,
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(AppRadius.card),
               ),
               child: Icon(
                 Icons.search_off_rounded,
@@ -1179,10 +1144,10 @@ class _SearchScreenState extends State<SearchScreen> {
             Text(
               'Sin resultados para "$query"',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
+              style: AppFont.primary(
                 fontSize: 17.5,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.2,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.25,
                 color: palette.text,
               ),
             ),
@@ -1190,8 +1155,9 @@ class _SearchScreenState extends State<SearchScreen> {
             Text(
               'Prueba con otra palabra clave o explora las categorías sugeridas.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 13.8,
+              style: AppFont.primary(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
                 color: palette.muted,
                 height: 1.45,
               ),
@@ -1199,10 +1165,10 @@ class _SearchScreenState extends State<SearchScreen> {
             const SizedBox(height: 20),
             Material(
               color: palette.primaryBtnBg,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
               child: InkWell(
                 onTap: _clearSearch,
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
@@ -1219,9 +1185,9 @@ class _SearchScreenState extends State<SearchScreen> {
                       const SizedBox(width: 7),
                       Text(
                         'Limpiar búsqueda',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                        style: AppFont.primary(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
                           color: palette.primaryBtnText,
                         ),
                       ),

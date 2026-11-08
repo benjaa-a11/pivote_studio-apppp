@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_colors.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 
-// ─── Colores del HTML adaptados a la App Pivote ──────────────────────────────
-// Fondo general de la app (dark mode de Pivote)
-const Color kAuthScreenBg = Color(0xFF090B0F); // darkBg de Pivote
+// ─── Colores del módulo Auth alineados al Design System de Pivote ─────────────
+const Color kAuthScreenBg = AppColors.darkBg;
 
-// Colores de la tarjeta y burbujas (del HTML original)
+// Colores del Hero y burbujas decorativas
 const Color kHtmlOrange = Color(0xFFE9744D);
 const Color kHtmlGold = Color(0xFFD8B968);
 const Color kHtmlGreen = Color(0xFF4DBB88);
 
 // Colores del panel blanco y sus inputs
-const Color kHtmlInk = Color(0xFF111111);
-const Color kHtmlMuted = Color(0xFF6B6B6B);
+const Color kHtmlInk = AppColors.lightText;
+const Color kHtmlMuted = AppColors.lightText2;
 const Color kHtmlField = Color(0xFFF4F4F4);
 const Color kHtmlFieldFocus = Color(0xFFECECEC);
-const Color kHtmlLine = Color(0xFFDCDCDC);
-const Color kHtmlBtnMain = Color(0xFF0C0C0C);
-const Color kHtmlBtnMainPressed = Color(0xFF222222);
+const Color kHtmlLine = AppColors.lightBorder;
+const Color kHtmlBtnMain = AppColors.darkBg;
+const Color kHtmlBtnMainPressed = AppColors.darkBg3;
 
 // ─── SVG Oficial de Google ───────────────────────────────────────────────────
 const String _kGoogleSvg = '''
@@ -221,7 +221,7 @@ class AuthHero extends StatelessWidget {
               child: Text(
                 title,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.figtree(
+                style: AppFont.primary(
                   fontSize: 32,
                   height: 1.14,
                   fontWeight: FontWeight.w700,
@@ -368,7 +368,7 @@ class _AuthGoogleBtnState extends State<AuthGoogleBtn> {
               const SizedBox(width: 12),
               Text(
                 widget.label,
-                style: GoogleFonts.figtree(
+                style: AppFont.primary(
                   fontSize: 16.5,
                   fontWeight: FontWeight.w500,
                   color: const Color(0xFF333333),
@@ -392,7 +392,7 @@ class AuthOrText extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Text(
         'o',
-        style: GoogleFonts.figtree(
+        style: AppFont.primary(
           fontSize: 15,
           color: const Color(0xFF555555),
           fontWeight: FontWeight.w400,
@@ -478,7 +478,7 @@ class _AuthPillInputState extends State<AuthPillInput> {
             onFieldSubmitted: widget.onSubmitted,
             cursorColor: kHtmlInk,
             cursorWidth: 1.5,
-            style: GoogleFonts.figtree(
+            style: AppFont.primary(
               fontSize: 17,
               fontWeight: FontWeight.w400,
               color: kHtmlInk, // Texto negro visible
@@ -493,7 +493,7 @@ class _AuthPillInputState extends State<AuthPillInput> {
               errorBorder: InputBorder.none,
               focusedErrorBorder: InputBorder.none,
               hintText: widget.placeholder,
-              hintStyle: GoogleFonts.figtree(
+              hintStyle: AppFont.primary(
                 fontSize: 17,
                 fontWeight: FontWeight.w400,
                 color: const Color(0xFF8A8A8A),
@@ -515,7 +515,7 @@ class _AuthPillInputState extends State<AuthPillInput> {
             padding: const EdgeInsets.only(left: 20, top: 4),
             child: Text(
               _errorText!,
-              style: GoogleFonts.figtree(
+              style: AppFont.primary(
                 fontSize: 12,
                 color: const Color(0xFFD32F2F),
                 fontWeight: FontWeight.w500,
@@ -626,7 +626,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                   onFieldSubmitted: widget.onFirstSubmitted,
                   cursorColor: kHtmlInk,
                   cursorWidth: 1.5,
-                  style: GoogleFonts.figtree(
+                  style: AppFont.primary(
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
                     color: kHtmlInk, // Texto negro visible
@@ -641,7 +641,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                     errorBorder: InputBorder.none,
                     focusedErrorBorder: InputBorder.none,
                     hintText: widget.firstPlaceholder,
-                    hintStyle: GoogleFonts.figtree(
+                    hintStyle: AppFont.primary(
                       fontSize: 17,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF8A8A8A),
@@ -680,7 +680,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                   onFieldSubmitted: widget.onLastSubmitted,
                   cursorColor: kHtmlInk,
                   cursorWidth: 1.5,
-                  style: GoogleFonts.figtree(
+                  style: AppFont.primary(
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
                     color: kHtmlInk, // Texto negro visible
@@ -695,7 +695,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                     errorBorder: InputBorder.none,
                     focusedErrorBorder: InputBorder.none,
                     hintText: widget.lastPlaceholder,
-                    hintStyle: GoogleFonts.figtree(
+                    hintStyle: AppFont.primary(
                       fontSize: 17,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF8A8A8A),
@@ -720,7 +720,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
             padding: const EdgeInsets.only(left: 20, top: 4),
             child: Text(
               _firstError ?? _lastError!,
-              style: GoogleFonts.figtree(
+              style: AppFont.primary(
                 fontSize: 12,
                 color: const Color(0xFFD32F2F),
                 fontWeight: FontWeight.w500,
@@ -818,7 +818,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                   onFieldSubmitted: widget.onSubmitted,
                   cursorColor: kHtmlInk,
                   cursorWidth: 1.5,
-                  style: GoogleFonts.figtree(
+                  style: AppFont.primary(
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
                     color: kHtmlInk, // Texto negro visible
@@ -833,7 +833,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                     errorBorder: InputBorder.none,
                     focusedErrorBorder: InputBorder.none,
                     hintText: widget.placeholder,
-                    hintStyle: GoogleFonts.figtree(
+                    hintStyle: AppFont.primary(
                       fontSize: 17,
                       fontWeight: FontWeight.w400,
                       color: const Color(0xFF8A8A8A),
@@ -896,7 +896,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
             padding: const EdgeInsets.only(left: 20, top: 4),
             child: Text(
               _errorText!,
-              style: GoogleFonts.figtree(
+              style: AppFont.primary(
                 fontSize: 12,
                 color: const Color(0xFFD32F2F),
                 fontWeight: FontWeight.w500,
@@ -968,7 +968,7 @@ class _AuthMainBtnState extends State<AuthMainBtn> {
                   )
                 : Text(
                     widget.label,
-                    style: GoogleFonts.figtree(
+                    style: AppFont.primary(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
@@ -999,7 +999,7 @@ class AuthLegalNotice extends StatelessWidget {
       child: Text.rich(
         TextSpan(
           text: 'Al registrarte en Pivote aceptas la\n',
-          style: GoogleFonts.figtree(
+          style: AppFont.primary(
             fontSize: 14.5,
             height: 1.45,
             color: kHtmlMuted,
@@ -1011,7 +1011,7 @@ class AuthLegalNotice extends StatelessWidget {
                 onTap: onPrivacyTap,
                 child: Text(
                   'Política de Privacidad',
-                  style: GoogleFonts.figtree(
+                  style: AppFont.primary(
                     fontSize: 14.5,
                     height: 1.45,
                     color: kHtmlInk,
@@ -1028,7 +1028,7 @@ class AuthLegalNotice extends StatelessWidget {
                 onTap: onTermsTap,
                 child: Text(
                   'Términos de Servicio',
-                  style: GoogleFonts.figtree(
+                  style: AppFont.primary(
                     fontSize: 14.5,
                     height: 1.45,
                     color: kHtmlInk,
@@ -1070,7 +1070,7 @@ class AuthSmallLink extends StatelessWidget {
         children: [
           Text(
             text,
-            style: GoogleFonts.figtree(
+            style: AppFont.primary(
               fontSize: 15.5,
               color: kHtmlMuted,
               fontWeight: FontWeight.w400,
@@ -1083,7 +1083,7 @@ class AuthSmallLink extends StatelessWidget {
             },
             child: Text(
               linkText,
-              style: GoogleFonts.figtree(
+              style: AppFont.primary(
                 fontSize: 15.5,
                 color: kHtmlInk,
                 fontWeight: FontWeight.w500,
@@ -1120,7 +1120,7 @@ class AuthFootLink extends StatelessWidget {
         children: [
           Text(
             prefix,
-            style: GoogleFonts.figtree(
+            style: AppFont.primary(
               fontSize: 16.5,
               color: const Color(0xFF111111),
               fontWeight: FontWeight.w400,
@@ -1134,7 +1134,7 @@ class AuthFootLink extends StatelessWidget {
             },
             child: Text(
               linkText,
-              style: GoogleFonts.figtree(
+              style: AppFont.primary(
                 fontSize: 16.5,
                 color: kHtmlInk,
                 fontWeight: FontWeight.w600,

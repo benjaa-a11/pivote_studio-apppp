@@ -1,10 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/favorites/data/services/viewing_history_service.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
@@ -102,7 +102,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     Text(
                       'Historial vacío',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
+                      style: AppFont.primary(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: palette.text,
@@ -112,7 +112,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     Text(
                       'Los canales que reproduzcas aparecerán acá para volver a verlos rápido.',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
+                      style: AppFont.primary(
                         fontSize: 13.5,
                         color: palette.muted,
                         height: 1.4,

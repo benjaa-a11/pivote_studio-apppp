@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'dart:math' as math;
 
 class WorldCupCountdown extends StatefulWidget {
@@ -381,7 +381,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             children: [
               Text(
                 hasStarted ? 'EN CURSO' : 'CUENTA REGRESIVA',
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: isCompact ? 8 : 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: isCompact ? 1.5 : 2.5,
@@ -390,7 +390,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
               ),
               Text(
                 'WORLD CUP 26™',
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: isCompact ? 18 : 22,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
@@ -416,7 +416,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
               SizedBox(width: isCompact ? 2 : 4),
               Text(
                 'ARG',
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: isCompact ? 8 : 10,
                   fontWeight: FontWeight.bold,
                   color: _argBlue,
@@ -446,7 +446,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         padding: const EdgeInsets.symmetric(vertical: 20),
         child: Text(
           '¡EL MUNDIAL HA EMPEZADO!',
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: isCompact ? 18 : 24,
             fontWeight: FontWeight.w900,
             color: _fwcLime,
@@ -546,7 +546,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
                 child: Center(
                   child: Text(
                     value,
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: valueSize,
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
@@ -561,7 +561,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
         const SizedBox(height: 8),
         Text(
           label,
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: labelSize,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
@@ -617,7 +617,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
               child: Text(
                 _hostCities[_currentCityIndex].toUpperCase(),
                 key: ValueKey(_currentCityIndex),
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: isCompact ? 8.5 : 10,
                   fontWeight: FontWeight.w800,
                   color: Colors.white70,
@@ -636,7 +636,7 @@ class _WorldCupCountdownState extends State<WorldCupCountdown>
             ),
             child: Text(
               '16 SEDES',
-              style: GoogleFonts.spaceGrotesk(
+              style: AppFont.primary(
                 fontSize: isCompact ? 7.5 : 8,
                 fontWeight: FontWeight.w900,
                 color: _fwcCyan,

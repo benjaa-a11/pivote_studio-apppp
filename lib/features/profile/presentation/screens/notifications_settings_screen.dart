@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/notification_service.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 
 class NotificationsSettingsScreen extends StatefulWidget {
@@ -87,7 +87,7 @@ class _NotificationsSettingsScreenState
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                   child: Text(
                     'Horario silencioso',
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: palette.text,

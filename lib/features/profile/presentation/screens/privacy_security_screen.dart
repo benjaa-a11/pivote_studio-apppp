@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
@@ -72,7 +72,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   child: Text(
                     'Verificación en dos pasos',
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: palette.text,
@@ -131,7 +131,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   child: Text(
                     'Dispositivos conectados',
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: palette.text,

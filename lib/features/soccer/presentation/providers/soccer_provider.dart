@@ -14,8 +14,26 @@ class SoccerProvider extends ChangeNotifier {
   DateTime? _lastFetchedAt;
 
   SoccerData? get soccerData => _soccerData;
+  SoccerData? get data => _soccerData;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  bool get hasMatchesForToday {
+    final matches = _soccerData?.matches ?? [];
+    return matches.any((m) => m.isToday);
+  }
+
+  List<SoccerMatch> get heroMatches {
+    final matches = _soccerData?.matches ?? [];
+    return matches.where((m) => !m.shouldRemoveFromHero).toList();
+  }
+
+  int get liveMatchesCount {
+    final matches = _soccerData?.matches ?? [];
+    return matches.where((m) => m.isLive).length;
+  }
+
+  Future<void> refresh() => fetchData();
 
   SoccerProvider() {
     fetchData();

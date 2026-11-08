@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/theme/dialog_styles.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/shared/widgets/common/apple_pressable.dart';
@@ -110,15 +110,19 @@ class _ModernDialog extends StatelessWidget {
     final iconData = DialogStyles.getIcon(type);
 
     return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
       child: Dialog(
         backgroundColor: isDark
-            ? theme.colorScheme.surface.withValues(alpha: 0.8)
-            : Colors.white.withValues(alpha: 0.9),
+            ? AppTheme.darkBg2.withValues(alpha: 0.94)
+            : AppTheme.lightBg1.withValues(alpha: 0.96),
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DialogStyles.borderRadius),
-          side: BorderSide(color: theme.dividerColor.withAlpha(20)),
+          side: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.09)
+                : AppTheme.lightBorder,
+          ),
         ),
         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
         child: Padding(
@@ -127,8 +131,8 @@ class _ModernDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 72,
-                height: 72,
+                width: 68,
+                height: 68,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [iconBgColor, iconBgColor.withValues(alpha: 0.5)],
@@ -136,38 +140,44 @@ class _ModernDialog extends StatelessWidget {
                     end: Alignment.bottomRight,
                   ),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: iconColor.withValues(alpha: 0.24),
+                    width: 1.2,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: iconColor.withValues(alpha: 0.2),
-                      blurRadius: 15,
+                      color: iconColor.withValues(alpha: 0.18),
+                      blurRadius: 16,
                       offset: const Offset(0, 5),
                     ),
                   ],
                 ),
                 child:
-                    Center(child: Icon(iconData, color: iconColor, size: 34)),
+                    Center(child: Icon(iconData, color: iconColor, size: 32)),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 22),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                style: AppFont.primary(
+                  fontSize: 19.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.35,
                   color: theme.colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 15,
-                  height: 1.5,
-                  color: theme.colorScheme.onSurface.withAlpha(170),
+                style: AppFont.primary(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.48,
+                  color: AppTheme.textSecondary(context),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
               if (isConfirm)
                 Row(
                   children: [
@@ -228,9 +238,7 @@ class _DialogButton extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final bg = !isPrimary
-        ? (isDark
-            ? Colors.white.withValues(alpha: 0.08)
-            : Colors.black.withValues(alpha: 0.05))
+        ? (isDark ? AppTheme.darkBg3 : AppTheme.lightBg2)
         : isDestructive
             ? theme.colorScheme.error
             : accentColor ?? theme.colorScheme.primary;
@@ -238,31 +246,31 @@ class _DialogButton extends StatelessWidget {
         ? theme.colorScheme.onSurface
         : isDestructive
             ? Colors.white
-            : isDark
-                ? const Color(0xFF090B0F)
-                : Colors.white;
+            : (bg.computeLuminance() > 0.45
+                ? AppColors.onDarkAccent
+                : Colors.white);
 
     return ApplePressable(
       scaleDownFactor: 0.96,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 15),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: !isPrimary
               ? Border.all(
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.08)
-                      : Colors.black.withValues(alpha: 0.06),
+                      : AppTheme.lightBorder,
                 )
               : null,
           boxShadow: isPrimary
               ? [
                   BoxShadow(
-                    color: bg.withValues(alpha: 0.28),
+                    color: bg.withValues(alpha: 0.26),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -271,11 +279,11 @@ class _DialogButton extends StatelessWidget {
         ),
         child: Text(
           label,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 15,
+          style: AppFont.primary(
+            fontSize: 14.5,
             fontWeight: FontWeight.w700,
             color: fg,
-            letterSpacing: -0.2,
+            letterSpacing: -0.15,
           ),
         ),
       ),
@@ -295,20 +303,24 @@ class _ModernBottomSheet extends StatelessWidget {
     final dark = theme.brightness == Brightness.dark;
 
     return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(AppRadius.xl),
+      ),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           constraints: BoxConstraints(maxHeight: mq.size.height * 0.92),
           decoration: BoxDecoration(
-            color: (dark ? AppTheme.darkBg1 : Colors.white)
-                .withValues(alpha: dark ? 0.85 : 0.92),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            color: (dark ? AppTheme.darkBg1 : AppTheme.lightBg1)
+                .withValues(alpha: dark ? 0.94 : 0.96),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppRadius.xl),
+            ),
             border: Border(
               top: BorderSide(
                 color: dark
-                    ? Colors.white.withValues(alpha: 0.12)
-                    : Colors.white.withValues(alpha: 0.80),
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : AppTheme.lightBorder,
                 width: 1.0,
               ),
             ),
@@ -320,10 +332,10 @@ class _ModernBottomSheet extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 10, bottom: 8),
                 child: Container(
                   width: 36,
-                  height: 4.5,
+                  height: 4,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.20),
-                    borderRadius: BorderRadius.circular(999),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                 ),
               ),
@@ -356,21 +368,25 @@ class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
     return PopScope(
       canPop: false,
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
         child: Center(
           child: Container(
             width: 292,
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(26),
-              border:
-                  Border.all(color: theme.dividerColor.withValues(alpha: .08)),
+              color: dark ? AppTheme.darkBg2 : AppTheme.lightBg1,
+              borderRadius: BorderRadius.circular(AppRadius.hero),
+              border: Border.all(
+                color: dark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : AppTheme.lightBorder,
+              ),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withValues(alpha: dark ? .25 : .10),
-                    blurRadius: 34,
-                    offset: const Offset(0, 16))
+                  color: Colors.black.withValues(alpha: dark ? 0.35 : 0.10),
+                  blurRadius: 32,
+                  offset: const Offset(0, 14),
+                ),
               ],
             ),
             child: Column(
@@ -380,34 +396,42 @@ class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
                   width: 58,
                   height: 58,
                   decoration: BoxDecoration(
-                      color: accent.withValues(alpha: .10),
-                      borderRadius: BorderRadius.circular(18)),
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                  ),
                   child: PivoteLoader(color: accent, strokeWidth: 3, size: 30),
                 ),
                 const SizedBox(height: 18),
-                Text(widget.message,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.spaceGrotesk(
-                        fontWeight: FontWeight.w800, fontSize: 14.5)),
-                const SizedBox(height: 13),
+                Text(
+                  widget.message,
+                  textAlign: TextAlign.center,
+                  style: AppFont.primary(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 14),
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   child: LinearProgressIndicator(
                     value: null,
                     minHeight: 5,
-                    backgroundColor: accent.withValues(alpha: .08),
+                    backgroundColor: accent.withValues(alpha: 0.10),
                     valueColor: AlwaysStoppedAnimation<Color>(accent),
                   ),
                 ),
-                const SizedBox(height: 9),
+                const SizedBox(height: 10),
                 Text(
-                    'Este proceso puede tardar un momento. La ventana se cerrará cuando termine.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.spaceGrotesk(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w500,
-                        color: theme.hintColor,
-                        height: 1.35)),
+                  'Este proceso puede tardar un momento. La ventana se cerrará cuando termine.',
+                  textAlign: TextAlign.center,
+                  style: AppFont.primary(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textTertiary(context),
+                    height: 1.38,
+                  ),
+                ),
               ],
             ),
           ),

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
 import 'package:pivote/features/movies/presentation/widgets/movie_video_engine.dart';
@@ -420,7 +419,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                         const SizedBox(height: 6),
                         Text(
                           '-10s',
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -452,7 +451,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                         const SizedBox(height: 6),
                         Text(
                           '+10s',
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -494,7 +493,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                       const SizedBox(width: 12),
                       Text(
                         '${(_brightnessLevel * 100).toInt()}%',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           color: Colors.white,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -544,7 +543,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                         state.isMuted
                             ? 'Muted'
                             : '${(state.volume * 100).toInt()}%',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           color: Colors.white,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -573,7 +572,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                       const SizedBox(width: 12),
                       Text(
                         _fitLabel,
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           color: Colors.white,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -609,7 +608,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                     children: [
                       Text(
                         _formatDuration(_scrubPosition),
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           color: Colors.white,
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
@@ -621,7 +620,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                         children: [
                           Text(
                             _formatDuration(duration),
-                            style: GoogleFonts.spaceGrotesk(
+                            style: AppFont.primary(
                               color: Colors.white38,
                               fontSize: 12,
                             ),
@@ -640,7 +639,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                               (_scrubPosition >= _scrubStartPos)
                                   ? '+${_formatDuration(_scrubPosition - _scrubStartPos)}'
                                   : '-${_formatDuration(_scrubStartPos - _scrubPosition)}',
-                              style: GoogleFonts.spaceGrotesk(
+                              style: AppFont.primary(
                                 color: (_scrubPosition >= _scrubStartPos)
                                     ? Colors.greenAccent
                                     : Colors.redAccent,
@@ -741,7 +740,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
               const SizedBox(height: 12),
               Text(
                 'Controles Bloqueados',
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
@@ -749,7 +748,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
               ),
               Text(
                 'Toca el candado para desbloquear',
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   color: Colors.white38,
                   fontSize: 11,
                 ),
@@ -807,7 +806,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                         widget.movie.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
@@ -819,7 +818,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                         children: [
                           Text(
                             '${widget.movie.year}',
-                            style: GoogleFonts.spaceGrotesk(
+                            style: AppFont.primary(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: Colors.white70,
@@ -835,7 +834,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                           const SizedBox(width: 8),
                           Text(
                             widget.movie.duration,
-                            style: GoogleFonts.spaceGrotesk(
+                            style: AppFont.primary(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                               color: Colors.white70,
@@ -856,7 +855,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                             ),
                             child: Text(
                               '⭐ ${widget.movie.rating.toStringAsFixed(1)}',
-                              style: GoogleFonts.spaceGrotesk(
+                              style: AppFont.primary(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,
                                 color: AppTheme.darkAccent,
@@ -883,7 +882,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                       ? const Icon(Icons.speed_rounded, size: 20)
                       : Text(
                           '${widget.engine.state.playbackSpeed}x',
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
                             color: AppTheme.darkAccent,
@@ -1034,7 +1033,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                   children: [
                     Text(
                       _formatDuration(position),
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         color: Colors.white70,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -1079,7 +1078,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                       remaining > Duration.zero
                           ? '-${_formatDuration(remaining)}'
                           : '00:00',
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         color: Colors.white70,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -1148,7 +1147,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
                         duration > const Duration(minutes: 5))
                       Text(
                         'La película terminará pronto',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: AppTheme.darkAccent,

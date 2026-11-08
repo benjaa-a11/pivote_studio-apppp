@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/home/data/models/app_notification.dart';
 import 'package:pivote/features/home/presentation/providers/notifications_provider.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
@@ -36,27 +37,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       trailing: dynamicItems.any((e) => !e.isRead)
           ? Material(
               color: palette.card,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
               child: InkWell(
                 onTap: () {
                   HapticFeedback.lightImpact();
                   notificationsProvider.markAllAsRead();
                 },
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                     border: Border.all(color: palette.border, width: 1),
                   ),
                   child: Text(
                     'Leídas',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
+                    style: AppFont.primary(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                       color: palette.text,
                     ),
                   ),
@@ -65,7 +66,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             )
           : null,
       children: [
-        // ── Banner Principal de Estado Oficial ──
         const SizedBox(height: 6),
         ProfileGroupCard(
           padding: const EdgeInsets.all(18),
@@ -78,12 +78,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   height: 44,
                   decoration: BoxDecoration(
                     color: palette.iconBox,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: const Icon(
                     Icons.rocket_launch_rounded,
                     size: 22,
-                    color: Color(0xFF4F9BF0),
+                    color: AppColors.info,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -99,17 +99,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               vertical: 2.5,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3FD1A0)
-                                  .withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(999),
+                              color: AppColors.positive.withValues(alpha: 0.16),
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.pill),
                             ),
                             child: Text(
                               'COMUNICADO OFICIAL',
-                              style: GoogleFonts.inter(
+                              style: AppFont.primary(
                                 fontSize: 10,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 letterSpacing: 0.5,
-                                color: const Color(0xFF239B73),
+                                color: AppTheme.success(context),
                               ),
                             ),
                           ),
@@ -118,18 +118,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       const SizedBox(height: 8),
                       Text(
                         'Estamos trabajando para mejorar esta app',
-                        style: GoogleFonts.inter(
-                          fontSize: 16.5,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.2,
+                        style: AppFont.primary(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.25,
                           color: palette.text,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Nuestro equipo está optimizando cada sección, mejorando la velocidad de carga y preparando nuevas funciones para vos.',
-                        style: GoogleFonts.inter(
-                          fontSize: 13.5,
+                        style: AppFont.primary(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                           height: 1.45,
                           color: palette.muted,
                         ),
@@ -141,15 +142,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           ],
         ),
-
-        // ── Novedades y Próximas Mejoras (Mensajes Oficiales) ──
         const ProfileSectionTitle('Novedades y mejoras en camino'),
         ProfileGroupCard(
           children: [
             _AnnouncementTile(
               palette: palette,
               icon: Icons.live_tv_rounded,
-              iconColor: const Color(0xFF3FD1A0),
+              iconColor: AppColors.positive,
               badgeText: 'PRIORIDAD #1',
               title: 'Los canales serán arreglados al 100%',
               body:
@@ -160,7 +159,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             _AnnouncementTile(
               palette: palette,
               icon: Icons.sports_soccer_rounded,
-              iconColor: const Color(0xFFF0C93A),
+              iconColor: AppColors.warning,
               badgeText: 'DEPORTES',
               title:
                   'El fútbol será algo muy importante en esta app y podrás verlo todo',
@@ -172,7 +171,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             _AnnouncementTile(
               palette: palette,
               icon: Icons.auto_awesome_rounded,
-              iconColor: const Color(0xFF9B6BE6),
+              iconColor: AppColors.violet,
               badgeText: 'ACTUALIZACIÓN',
               title: 'Pronto se desarrollarán muchas mejoras',
               body:
@@ -182,8 +181,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           ],
         ),
-
-        // ── Actividad y Alertas en Vivo (si existen en NotificationsProvider) ──
         if (dynamicItems.isNotEmpty) ...[
           const ProfileSectionTitle('Avisos recientes'),
           ProfileGroupCard(
@@ -245,7 +242,7 @@ class _AnnouncementTile extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               color: palette.iconBox,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
             child: Icon(icon, size: 20, color: iconColor),
           ),
@@ -259,18 +256,18 @@ class _AnnouncementTile extends StatelessWidget {
                   children: [
                     Text(
                       badgeText,
-                      style: GoogleFonts.inter(
+                      style: AppFont.primary(
                         fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         letterSpacing: 0.4,
                         color: iconColor,
                       ),
                     ),
                     Text(
                       timeLabel,
-                      style: GoogleFonts.inter(
+                      style: AppFont.primary(
                         fontSize: 11.5,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                         color: palette.muted,
                       ),
                     ),
@@ -279,18 +276,19 @@ class _AnnouncementTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   title,
-                  style: GoogleFonts.inter(
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.15,
+                  style: AppFont.primary(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                     color: palette.text,
                   ),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   body,
-                  style: GoogleFonts.inter(
-                    fontSize: 13.5,
+                  style: AppFont.primary(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                     height: 1.42,
                     color: palette.muted,
                   ),
@@ -354,7 +352,7 @@ class _DynamicNotificationRow extends StatelessWidget {
                 height: 38,
                 decoration: BoxDecoration(
                   color: palette.iconBox,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
                 child: Icon(
                   _iconForType(item.type),
@@ -372,11 +370,11 @@ class _DynamicNotificationRow extends StatelessWidget {
                         Expanded(
                           child: Text(
                             item.title,
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
+                            style: AppFont.primary(
+                              fontSize: 14.5,
                               fontWeight: item.isRead
-                                  ? FontWeight.w500
-                                  : FontWeight.w600,
+                                  ? FontWeight.w600
+                                  : FontWeight.w700,
                               color: palette.text,
                             ),
                           ),
@@ -387,7 +385,7 @@ class _DynamicNotificationRow extends StatelessWidget {
                             height: 8,
                             margin: const EdgeInsets.only(left: 8),
                             decoration: const BoxDecoration(
-                              color: Color(0xFF4F9BF0),
+                              color: AppColors.info,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -396,8 +394,9 @@ class _DynamicNotificationRow extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       item.body,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
+                      style: AppFont.primary(
+                        fontSize: 12.8,
+                        fontWeight: FontWeight.w500,
                         height: 1.4,
                         color: palette.muted,
                       ),

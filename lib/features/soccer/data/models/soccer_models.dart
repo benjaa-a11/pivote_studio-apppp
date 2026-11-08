@@ -208,6 +208,17 @@ class SoccerMatch {
     }
   }
 
+  DateTime? get kickoff => startDateTime;
+
+  bool get isToday {
+    final start = startDateTime;
+    if (start == null) return true;
+    final now = DateTime.now();
+    return start.year == now.year &&
+        start.month == now.month &&
+        start.day == now.day;
+  }
+
   bool get isAutoFinished {
     final start = startDateTime;
     if (start == null) return false;

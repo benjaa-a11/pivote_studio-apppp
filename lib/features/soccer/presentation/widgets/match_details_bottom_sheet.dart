@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/widgets/soccer_pitch_painter.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
@@ -45,18 +45,18 @@ class MatchDetailsBottomSheet extends StatelessWidget {
     final goals = List<SoccerGoal>.from(match.goals)
       ..sort((a, b) => a.time.compareTo(b.time));
 
-    final homeColor = homeTeam.primaryColor ?? AppTheme.darkAccent;
-    final awayColor = awayTeam.primaryColor ?? const Color(0xFF3B82F6);
+    final homeColor = homeTeam.primaryColor ?? AppColors.accent;
+    final awayColor = awayTeam.primaryColor ?? AppColors.secondary;
 
     final watchableChannels =
         match.tvChannels.where((c) => c.name.isNotEmpty).toList();
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0D1017) : theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        color: isDark ? AppColors.ink1 : theme.scaffoldBackgroundColor,
+        borderRadius: AppRadius.sheetAll,
         border: Border.all(
-          color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+          color: AppTheme.border(context),
           width: 1,
         ),
       ),
@@ -83,10 +83,10 @@ class MatchDetailsBottomSheet extends StatelessWidget {
             margin: const EdgeInsets.symmetric(horizontal: 16),
             height: 160,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: isDark ? const Color(0xFF131722) : theme.cardColor,
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              color: isDark ? AppColors.ink2 : theme.cardColor,
               border: Border.all(
-                color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+                color: AppTheme.border(context),
               ),
             ),
             child: Stack(
@@ -95,7 +95,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppRadius.xl),
                       gradient: RadialGradient(
                         center: const Alignment(-1.1, 0.0),
                         radius: 1.2,
@@ -111,7 +111,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 Positioned.fill(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(AppRadius.xl),
                       gradient: RadialGradient(
                         center: const Alignment(1.1, 0.0),
                         radius: 1.2,
@@ -126,7 +126,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 // Pitch outline
                 Positioned.fill(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
                     child: CustomPaint(
                       painter: SoccerPitchPainter(
                         lineColor: (isDark ? Colors.white : Colors.black)
@@ -146,12 +146,10 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                         '${league.name}${match.stage.isNotEmpty ? ' · ${match.stage}' : ''}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? const Color(0xFFAAB3C5)
-                              : theme.hintColor,
+                          color: AppTheme.textSecondary(context),
                         ),
                       ),
                       const Spacer(),
@@ -171,7 +169,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                           // Marcador / Hora central
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
-                            child: _buildScoreCenter(theme, isDark),
+                            child: _buildScoreCenter(context, theme, isDark),
                           ),
                           // Visitante
                           Expanded(
@@ -205,10 +203,10 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 if (watchableChannels.isNotEmpty) ...[
                   Text(
                     'SEÑALES DISPONIBLES',
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                      color: AppTheme.textSecondary(context),
                       letterSpacing: 0.8,
                     ),
                   ),
@@ -226,10 +224,10 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 // Goles del partido
                 Text(
                   'GOLES Y EVENTOS',
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
-                    color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                    color: AppTheme.textSecondary(context),
                     letterSpacing: 0.8,
                   ),
                 ),
@@ -241,12 +239,10 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                     child: Center(
                       child: Text(
                         'Aún no hay goles registrados en este partido',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? const Color(0xFF7C879B)
-                              : theme.hintColor,
+                          color: AppTheme.textSecondary(context),
                         ),
                       ),
                     ),
@@ -259,13 +255,10 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color:
-                            isDark ? const Color(0xFF131722) : theme.cardColor,
-                        borderRadius: BorderRadius.circular(12),
+                        color: isDark ? AppColors.ink2 : theme.cardColor,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF1E2533)
-                              : AppTheme.lightBorder,
+                          color: AppTheme.border(context),
                         ),
                       ),
                       child: Row(
@@ -275,7 +268,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                                 ? Text(
                                     g.playerShortName,
                                     textAlign: TextAlign.right,
-                                    style: GoogleFonts.spaceGrotesk(
+                                    style: AppFont.primary(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
                                       color: theme.colorScheme.onSurface,
@@ -289,18 +282,18 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color:
-                                    AppTheme.darkAccent.withValues(alpha: 0.15),
+                                color: AppTheme.accent(context)
+                                    .withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 g.timeToDisplay.isNotEmpty
                                     ? g.timeToDisplay
                                     : "${g.time}'",
-                                style: GoogleFonts.spaceGrotesk(
+                                style: AppFont.primary(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w900,
-                                  color: AppTheme.darkAccent,
+                                  color: AppTheme.accent(context),
                                 ),
                               ),
                             ),
@@ -310,7 +303,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                                 ? Text(
                                     g.playerShortName,
                                     textAlign: TextAlign.left,
-                                    style: GoogleFonts.spaceGrotesk(
+                                    style: AppFont.primary(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
                                       color: theme.colorScheme.onSurface,
@@ -347,7 +340,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
           height: 44,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isDark ? const Color(0xFF0F131C) : Colors.white,
+            color: isDark ? AppColors.ink1 : Colors.white,
             border: Border.all(
               color: teamColor.withValues(alpha: 0.3),
               width: 1.2,
@@ -377,7 +370,7 @@ class MatchDetailsBottomSheet extends StatelessWidget {
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: 12.5,
             fontWeight: FontWeight.w800,
             color: theme.colorScheme.onSurface,
@@ -387,7 +380,11 @@ class MatchDetailsBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildScoreCenter(ThemeData theme, bool isDark) {
+  Widget _buildScoreCenter(
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+  ) {
     final isLive = match.isLive;
     final isFinished = match.isFinished;
 
@@ -403,11 +400,11 @@ class MatchDetailsBottomSheet extends StatelessWidget {
             children: [
               Text(
                 '$h',
-                style: GoogleFonts.bigShouldersDisplay(
+                style: AppFont.score(
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
                   color: isLive
-                      ? AppTheme.darkAccent
+                      ? AppTheme.accent(context)
                       : theme.colorScheme.onSurface,
                 ),
               ),
@@ -415,20 +412,20 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Text(
                   ':',
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
-                    color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                    color: AppTheme.textSecondary(context),
                   ),
                 ),
               ),
               Text(
                 '$a',
-                style: GoogleFonts.bigShouldersDisplay(
+                style: AppFont.score(
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
                   color: isLive
-                      ? AppTheme.darkAccent
+                      ? AppTheme.accent(context)
                       : theme.colorScheme.onSurface,
                 ),
               ),
@@ -438,9 +435,9 @@ class MatchDetailsBottomSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: isLive
-                  ? const Color(0xFFFF5468).withValues(alpha: 0.15)
+                  ? AppColors.live.withValues(alpha: 0.15)
                   : (isDark
-                      ? const Color(0xFF161B27)
+                      ? AppColors.ink3
                       : Colors.black.withValues(alpha: 0.05)),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -448,12 +445,12 @@ class MatchDetailsBottomSheet extends StatelessWidget {
               isLive
                   ? (match.timeStatus.isNotEmpty ? match.timeStatus : 'EN VIVO')
                   : 'FINAL',
-              style: GoogleFonts.spaceGrotesk(
+              style: AppFont.primary(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 color: isLive
-                    ? const Color(0xFFFF5468)
-                    : (isDark ? const Color(0xFF7C879B) : theme.hintColor),
+                    ? AppColors.live
+                    : AppTheme.textSecondary(context),
               ),
             ),
           ),
@@ -467,18 +464,18 @@ class MatchDetailsBottomSheet extends StatelessWidget {
       children: [
         Text(
           match.formattedTime,
-          style: GoogleFonts.bigShouldersDisplay(
+          style: AppFont.score(
             fontSize: 32,
             fontWeight: FontWeight.w900,
-            color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+            color: AppTheme.accent(context),
           ),
         ),
         Text(
           match.dayLabel.toUpperCase(),
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: 10,
             fontWeight: FontWeight.w800,
-            color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+            color: AppTheme.textSecondary(context),
           ),
         ),
       ],
@@ -511,18 +508,16 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                 );
               }
             : null,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF131722) : theme.cardColor,
-            borderRadius: BorderRadius.circular(10),
+            color: isDark ? AppColors.ink2 : theme.cardColor,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
             border: Border.all(
               color: mappedChannel != null
-                  ? (isDark
-                      ? AppTheme.darkAccent.withValues(alpha: 0.3)
-                      : theme.colorScheme.primary.withValues(alpha: 0.3))
-                  : (isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder),
+                  ? AppTheme.accent(context).withValues(alpha: 0.3)
+                  : AppTheme.border(context),
             ),
           ),
           child: Row(
@@ -534,18 +529,18 @@ class MatchDetailsBottomSheet extends StatelessWidget {
                     : Icons.tv_rounded,
                 size: 14,
                 color: mappedChannel != null
-                    ? (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
-                    : (isDark ? const Color(0xFF7C879B) : theme.hintColor),
+                    ? AppTheme.accent(context)
+                    : AppTheme.textSecondary(context),
               ),
               const SizedBox(width: 6),
               Text(
                 soccerChannel.name,
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: mappedChannel != null
                       ? theme.colorScheme.onSurface
-                      : (isDark ? const Color(0xFF7C879B) : theme.hintColor),
+                      : AppTheme.textSecondary(context),
                 ),
               ),
             ],

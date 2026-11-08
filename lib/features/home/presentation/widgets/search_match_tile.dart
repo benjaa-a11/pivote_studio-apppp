@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/widgets/match_details_bottom_sheet.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
@@ -53,10 +54,10 @@ class SearchMatchTile extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: palette.card,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppRadius.card),
         border: Border.all(
           color: isLive
-              ? const Color(0xFFD93025).withValues(alpha: 0.45)
+              ? AppColors.live.withValues(alpha: 0.45)
               : palette.border,
           width: 1,
         ),
@@ -75,7 +76,7 @@ class SearchMatchTile extends StatelessWidget {
               builder: (context) {
                 return ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.58,
+                    maxHeight: MediaQuery.of(context).size.height * 0.64,
                   ),
                   child: MatchDetailsBottomSheet(
                     match: match,
@@ -94,7 +95,6 @@ class SearchMatchTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── League & Status Pill ──
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -112,9 +112,9 @@ class SearchMatchTile extends StatelessWidget {
                               league.name.toUpperCase(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w600,
+                              style: AppFont.primary(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
                                 letterSpacing: 0.4,
                                 color: palette.muted,
                               ),
@@ -131,11 +131,10 @@ class SearchMatchTile extends StatelessWidget {
                           vertical: 3.5,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFD93025).withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(999),
+                          color: AppColors.live.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                           border: Border.all(
-                            color:
-                                const Color(0xFFD93025).withValues(alpha: 0.35),
+                            color: AppColors.live.withValues(alpha: 0.35),
                             width: 1,
                           ),
                         ),
@@ -146,17 +145,17 @@ class SearchMatchTile extends StatelessWidget {
                               width: 6,
                               height: 6,
                               decoration: const BoxDecoration(
-                                color: Color(0xFFD93025),
+                                color: AppColors.live,
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 5),
                             Text(
                               match.time.isNotEmpty ? match.time : 'EN VIVO',
-                              style: GoogleFonts.inter(
+                              style: AppFont.primary(
                                 fontSize: 10.5,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFD93025),
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.live,
                               ),
                             ),
                           ],
@@ -170,16 +169,16 @@ class SearchMatchTile extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: palette.iconBox,
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                           border: Border.all(color: palette.border, width: 1),
                         ),
                         child: Text(
                           match.startTime.isNotEmpty
                               ? match.startTime
                               : 'PROGRAMADO',
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: palette.muted,
                           ),
                         ),
@@ -192,13 +191,13 @@ class SearchMatchTile extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: palette.iconBox,
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
                         child: Text(
                           'FINAL',
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: palette.muted,
                           ),
                         ),
@@ -206,11 +205,8 @@ class SearchMatchTile extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-
-                // ── Teams & Score ──
                 Row(
                   children: [
-                    // Home Team
                     Expanded(
                       child: Row(
                         children: [
@@ -221,10 +217,10 @@ class SearchMatchTile extends StatelessWidget {
                               homeTeam.name,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: -0.1,
+                              style: AppFont.primary(
+                                fontSize: 13.8,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.2,
                                 color: palette.text,
                               ),
                             ),
@@ -232,8 +228,6 @@ class SearchMatchTile extends StatelessWidget {
                         ],
                       ),
                     ),
-
-                    // Score or VS
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: match.score.isNotEmpty
@@ -244,7 +238,8 @@ class SearchMatchTile extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: palette.iconBox,
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.xs),
                                 border: Border.all(
                                   color: palette.border,
                                   width: 1,
@@ -252,9 +247,9 @@ class SearchMatchTile extends StatelessWidget {
                               ),
                               child: Text(
                                 '${match.score[0]} - ${match.score.length > 1 ? match.score[1] : 0}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
+                                style: AppFont.score(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
                                   color: palette.text,
                                 ),
                               ),
@@ -266,20 +261,19 @@ class SearchMatchTile extends StatelessWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: palette.iconBox,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.xs),
                               ),
                               child: Text(
                                 'VS',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
+                                style: AppFont.primary(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
                                   color: palette.muted,
                                 ),
                               ),
                             ),
                     ),
-
-                    // Away Team
                     Expanded(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -290,10 +284,10 @@ class SearchMatchTile extends StatelessWidget {
                               textAlign: TextAlign.end,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: -0.1,
+                              style: AppFont.primary(
+                                fontSize: 13.8,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.2,
                                 color: palette.text,
                               ),
                             ),
@@ -305,8 +299,6 @@ class SearchMatchTile extends StatelessWidget {
                     ),
                   ],
                 ),
-
-                // ── Broadcast Channels Footer ──
                 if (match.tvChannels.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Divider(height: 1, thickness: 1, color: palette.border),
@@ -324,9 +316,9 @@ class SearchMatchTile extends StatelessWidget {
                           match.tvChannels.map((c) => c.name).join(' • '),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                             color: palette.muted,
                           ),
                         ),
@@ -354,7 +346,7 @@ class SearchMatchTile extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: palette.iconBox,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.xs),
       ),
       child: (team.logoUrl != null && team.logoUrl!.isNotEmpty)
           ? CachedNetworkImage(

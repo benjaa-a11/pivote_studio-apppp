@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/theme/app_colors.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/profile/presentation/screens/support_screen.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 
@@ -30,7 +31,7 @@ class AboutScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.inter(
+                  style: AppFont.primary(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                     color: palette.text,
@@ -39,7 +40,7 @@ class AboutScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   body,
-                  style: GoogleFonts.inter(
+                  style: AppFont.primary(
                     fontSize: 14,
                     color: palette.muted,
                     height: 1.5,
@@ -76,39 +77,37 @@ class AboutScreen extends StatelessWidget {
                   height: 88,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(26),
-                    gradient: const SweepGradient(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                       colors: [
-                        Color(0xFF9B6BE6),
-                        Color(0xFF4F9BF0),
-                        Color(0xFF3FD1A0),
-                        Color(0xFFF0C93A),
-                        Color(0xFF9B6BE6),
+                        AppColors.accent,
+                        AppColors.accentStrong,
                       ],
-                      transform: GradientRotation(3.4906585),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF4F9BF0).withValues(alpha: 0.45),
+                        color: AppColors.accent.withValues(alpha: 0.35),
                         blurRadius: 24,
-                        spreadRadius: -12,
-                        offset: const Offset(0, 12),
+                        spreadRadius: -8,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     'P',
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 40,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink0,
                     ),
                   ),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   'Pivote',
-                  style: GoogleFonts.inter(
+                  style: AppFont.primary(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
                     color: palette.text,
@@ -117,7 +116,7 @@ class AboutScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Versión 1.0.0 (build 1)',
-                  style: GoogleFonts.inter(
+                  style: AppFont.primary(
                     fontSize: 14.5,
                     color: palette.muted,
                   ),
@@ -182,7 +181,7 @@ class AboutScreen extends StatelessWidget {
             child: Text(
               '© 2026 Pivote Studio',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
+              style: AppFont.primary(
                 fontSize: 13,
                 color: palette.muted,
               ),

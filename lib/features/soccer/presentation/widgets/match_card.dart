@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
@@ -31,15 +30,13 @@ class MatchCard extends StatelessWidget {
   Color _effectiveTeamColor(SoccerTeam team, bool isHome) {
     final c = team.primaryColor;
     if (c == null) {
-      return isHome ? AppTheme.darkAccent : const Color(0xFF3B82F6);
+      return isHome ? AppTheme.darkAccent : AppColors.info;
     }
-    // Si es demasiado oscuro en modo oscuro, levantamos luminosidad
     if (c.computeLuminance() < 0.05) {
-      return isHome ? const Color(0xFF22C55E) : const Color(0xFF3B82F6);
+      return isHome ? AppColors.positive : AppColors.info;
     }
-    // Si es blanco puro en modo oscuro, dar un sutil tinte
     if (c.computeLuminance() > 0.95) {
-      return isHome ? const Color(0xFFE2E8F0) : const Color(0xFFCBD5E1);
+      return isHome ? AppColors.slate200 : AppColors.slate400;
     }
     return c;
   }
@@ -48,8 +45,7 @@ class MatchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (soccerData == null) return const SizedBox.shrink();
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = (screenWidth * 0.88).clamp(310.0, 420.0);
+    final cardWidth = AppResponsive.heroCardWidth(context);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -92,7 +88,7 @@ class MatchCard extends StatelessWidget {
       margin: const EdgeInsets.only(right: 14),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppRadius.hero),
         child: InkWell(
           onTap: canWatch
               ? () {
@@ -103,28 +99,26 @@ class MatchCard extends StatelessWidget {
                   }
                 }
               : null,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AppRadius.hero),
           child: Stack(
             children: [
               // ─── 1. Fondo base ───
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F131C) : theme.cardColor,
-                    borderRadius: BorderRadius.circular(24),
+                    color: isDark ? AppColors.ink1 : theme.cardColor,
+                    borderRadius: BorderRadius.circular(AppRadius.hero),
                     border: Border.all(
                       color: isLive
-                          ? const Color(0xFFFF5468)
-                              .withValues(alpha: isDark ? 0.45 : 0.3)
-                          : (isDark
-                              ? const Color(0xFF1E2533)
-                              : AppTheme.lightBorder),
+                          ? AppColors.live
+                              .withValues(alpha: isDark ? 0.45 : 0.30)
+                          : (isDark ? AppColors.ink3 : AppTheme.lightBorder),
                       width: isLive ? 1.4 : 1,
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: isLive
-                            ? const Color(0xFFFF5468)
+                            ? AppColors.live
                                 .withValues(alpha: isDark ? 0.22 : 0.12)
                             : Colors.black
                                 .withValues(alpha: isDark ? 0.35 : 0.08),
@@ -140,7 +134,7 @@ class MatchCard extends StatelessWidget {
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(AppRadius.hero),
                     gradient: RadialGradient(
                       center: const Alignment(-0.85, -0.05),
                       radius: 1.0,
@@ -158,7 +152,7 @@ class MatchCard extends StatelessWidget {
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(AppRadius.hero),
                     gradient: RadialGradient(
                       center: const Alignment(0.85, -0.05),
                       radius: 1.0,
@@ -178,12 +172,8 @@ class MatchCard extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   child: Column(
                     children: [
-                      // Header con liga y pill de estado
                       _buildHeader(league, tournamentLogoUrl, theme, isDark),
-
                       const SizedBox(height: 8),
-
-                      // Línea divisoria horizontal superior
                       Divider(
                         height: 1,
                         thickness: 1,
@@ -191,10 +181,7 @@ class MatchCard extends StatelessWidget {
                             ? Colors.white.withValues(alpha: 0.08)
                             : Colors.black.withValues(alpha: 0.06),
                       ),
-
                       const Spacer(),
-
-                      // Match Center: Equipos y Marcador / Hora
                       _buildTeamsMatchCenter(
                         context,
                         teamA,
@@ -204,10 +191,7 @@ class MatchCard extends StatelessWidget {
                         theme,
                         isDark,
                       ),
-
                       const Spacer(),
-
-                      // Línea divisoria horizontal inferior
                       Divider(
                         height: 1,
                         thickness: 1,
@@ -215,10 +199,7 @@ class MatchCard extends StatelessWidget {
                             ? Colors.white.withValues(alpha: 0.08)
                             : Colors.black.withValues(alpha: 0.06),
                       ),
-
                       const SizedBox(height: 8),
-
-                      // Footer con botón de acción (Próximo, Ver partido, En vivo)
                       _buildFooter(
                         context,
                         hasMultipleChannels,
@@ -236,7 +217,6 @@ class MatchCard extends StatelessWidget {
     );
   }
 
-  // ─── Top Header: Liga, Etapa y Pill de Estado ───
   Widget _buildHeader(
     SoccerLeague league,
     String tournamentLogoUrl,
@@ -247,10 +227,9 @@ class MatchCard extends StatelessWidget {
 
     return Row(
       children: [
-        // Logo de la liga
         if (tournamentLogoUrl.isNotEmpty)
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppRadius.xxs),
             child: CachedNetworkImage(
               cacheManager: ImageCacheHelper.logoCacheManager,
               imageUrl: tournamentLogoUrl,
@@ -260,7 +239,7 @@ class MatchCard extends StatelessWidget {
               errorWidget: (_, __, ___) => const Icon(
                 Icons.emoji_events_outlined,
                 size: 18,
-                color: Colors.amber,
+                color: AppColors.warning,
               ),
             ),
           )
@@ -268,21 +247,19 @@ class MatchCard extends StatelessWidget {
           const Icon(
             Icons.emoji_events_outlined,
             size: 18,
-            color: Colors.amber,
+            color: AppColors.warning,
           ),
         const SizedBox(width: 8),
-
-        // Nombre de la liga y fecha
         Expanded(
           child: Text(
             '${league.name}${match.stage.isNotEmpty ? ' · ${match.stage}' : ''}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.spaceGrotesk(
+            style: AppFont.primary(
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.1,
-              color: isDark ? const Color(0xFFC7CFDD) : const Color(0xFF334155),
+              color: isDark ? AppColors.slate200 : AppTheme.lightText2,
             ),
           ),
         ),
@@ -306,31 +283,29 @@ class MatchCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
         decoration: BoxDecoration(
           color: isDark
-              ? const Color(0xFF161B27)
+              ? AppColors.ink2
               : Colors.black.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(
             color: isDark
-                ? const Color(0xFF1E2533)
+                ? AppColors.ink3
                 : Colors.black.withValues(alpha: 0.06),
           ),
         ),
         child: Text(
           'Final',
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: 11,
             fontWeight: FontWeight.w800,
-            color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+            color: isDark ? AppColors.slate : theme.hintColor,
           ),
         ),
       );
     }
 
-    // Para partidos programados, el horario ya se muestra de forma destacada en el centro
     return const SizedBox.shrink();
   }
 
-  // ─── Match Center: Equipo Local, Marcador y Equipo Visitante ───
   Widget _buildTeamsMatchCenter(
     BuildContext context,
     SoccerTeam teamA,
@@ -343,7 +318,6 @@ class MatchCard extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Columna Equipo Local
         Expanded(
           child: _buildTeamColumn(
             teamA,
@@ -352,14 +326,10 @@ class MatchCard extends StatelessWidget {
             isDark,
           ),
         ),
-
-        // Centro: Marcador / Hora y barra de progreso
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: _buildCenterDisplay(theme, isDark),
         ),
-
-        // Columna Equipo Visitante
         Expanded(
           child: _buildTeamColumn(
             teamB,
@@ -384,7 +354,6 @@ class MatchCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Escudo del equipo sin recuadro ni fondo cuadrado, flotando sobre el degradado del hero
         SizedBox(
           width: 54,
           height: 54,
@@ -421,14 +390,12 @@ class MatchCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-
-        // Nombre del equipo
         Text(
           team.shortName.isNotEmpty ? team.shortName : team.name,
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: 13,
             fontWeight: FontWeight.w800,
             color: theme.colorScheme.onSurface,
@@ -442,7 +409,6 @@ class MatchCard extends StatelessWidget {
   Widget _buildCenterDisplay(ThemeData theme, bool isDark) {
     final isFinished = match.isFinished;
 
-    // Partido en Vivo o Finalizado con marcador disponible (sin barra de progreso y perfectamente centrado)
     if ((isLive || isFinished) && match.score.isNotEmpty) {
       final homeScore =
           match.score.isNotEmpty ? match.score[0].toString() : '0';
@@ -461,7 +427,7 @@ class MatchCard extends StatelessWidget {
                 child: Text(
                   homeScore,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.bigShouldersDisplay(
+                  style: AppFont.score(
                     fontSize: 42,
                     fontWeight: FontWeight.w900,
                     height: 1.0,
@@ -488,7 +454,7 @@ class MatchCard extends StatelessWidget {
                 child: Text(
                   awayScore,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.bigShouldersDisplay(
+                  style: AppFont.score(
                     fontSize: 42,
                     fontWeight: FontWeight.w900,
                     height: 1.0,
@@ -504,7 +470,6 @@ class MatchCard extends StatelessWidget {
       );
     }
 
-    // Partido Programado
     return SizedBox(
       height: 54,
       child: Center(
@@ -514,7 +479,7 @@ class MatchCard extends StatelessWidget {
           children: [
             Text(
               match.formattedTime,
-              style: GoogleFonts.bigShouldersDisplay(
+              style: AppFont.score(
                 fontSize: 36,
                 fontWeight: FontWeight.w900,
                 height: 1.0,
@@ -524,10 +489,10 @@ class MatchCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               match.dayLabel.toUpperCase(),
-              style: GoogleFonts.spaceGrotesk(
+              style: AppFont.primary(
                 fontSize: 9.5,
                 fontWeight: FontWeight.w800,
-                color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                color: isDark ? AppColors.slate : theme.hintColor,
                 letterSpacing: 0.8,
               ),
             ),
@@ -537,7 +502,6 @@ class MatchCard extends StatelessWidget {
     );
   }
 
-  // ─── Footer: Botón de Acción Adaptado al Ancho de la Tarjeta ───
   Widget _buildFooter(
     BuildContext context,
     bool hasMultipleChannels,
@@ -575,21 +539,21 @@ class MatchCard extends StatelessWidget {
         icon: const Icon(Icons.play_arrow_rounded, size: 20),
         label: Text(
           'En vivo',
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: 13,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
           ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFF5468),
+          backgroundColor: AppColors.live,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
           ),
           elevation: 0,
-          shadowColor: const Color(0xFFFF5468).withValues(alpha: 0.4),
+          shadowColor: AppColors.live.withValues(alpha: 0.4),
         ),
       ),
     );
@@ -607,7 +571,7 @@ class MatchCard extends StatelessWidget {
         icon: const Icon(Icons.play_arrow_rounded, size: 20),
         label: Text(
           'Ver partido',
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: 13,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
@@ -616,10 +580,11 @@ class MatchCard extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor:
               isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-          foregroundColor: isDark ? Colors.black : Colors.white,
+          foregroundColor:
+              isDark ? AppColors.onDarkAccent : AppColors.onLightAccent,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
           ),
           elevation: 0,
         ),
@@ -638,12 +603,12 @@ class MatchCard extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isDark
-              ? const Color(0xFF161B27)
+              ? AppColors.ink2
               : Colors.black.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
             color: isDark
-                ? const Color(0xFF1E2533)
+                ? AppColors.ink3
                 : Colors.black.withValues(alpha: 0.06),
           ),
         ),
@@ -653,15 +618,15 @@ class MatchCard extends StatelessWidget {
             Icon(
               Icons.schedule_rounded,
               size: 15,
-              color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+              color: isDark ? AppColors.slate : theme.hintColor,
             ),
             const SizedBox(width: 6),
             Text(
               'Próximamente',
-              style: GoogleFonts.spaceGrotesk(
+              style: AppFont.primary(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
-                color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                color: isDark ? AppColors.slate : theme.hintColor,
               ),
             ),
           ],
@@ -681,12 +646,12 @@ class MatchCard extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isDark
-              ? const Color(0xFF161B27)
+              ? AppColors.ink2
               : Colors.black.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
             color: isDark
-                ? const Color(0xFF1E2533)
+                ? AppColors.ink3
                 : Colors.black.withValues(alpha: 0.06),
           ),
         ),
@@ -696,15 +661,15 @@ class MatchCard extends StatelessWidget {
             Icon(
               Icons.check_circle_outline_rounded,
               size: 15,
-              color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+              color: isDark ? AppColors.slate : theme.hintColor,
             ),
             const SizedBox(width: 6),
             Text(
               'Finalizado',
-              style: GoogleFonts.spaceGrotesk(
+              style: AppFont.primary(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
-                color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                color: isDark ? AppColors.slate : theme.hintColor,
               ),
             ),
           ],
@@ -723,23 +688,23 @@ class MatchCard extends StatelessWidget {
       width: 42,
       height: 38,
       child: Material(
-        color: isDark ? const Color(0xFF161B27) : AppTheme.lightBg2,
-        borderRadius: BorderRadius.circular(12),
+        color: isDark ? AppColors.ink2 : AppTheme.lightBg2,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         child: InkWell(
           onTap: isEnabled ? () => _showChannelOptions(context) : null,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
               border: Border.all(
-                color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+                color: isDark ? AppColors.ink3 : AppTheme.lightBorder,
               ),
             ),
             child: Icon(
               Icons.more_horiz_rounded,
               color: isEnabled
-                  ? (isDark ? const Color(0xFFAAB3C5) : theme.hintColor)
-                  : (isDark ? const Color(0xFF384252) : const Color(0xFFCBD5E1)),
+                  ? (isDark ? AppColors.slate400 : theme.hintColor)
+                  : (isDark ? AppTheme.darkText3 : AppTheme.lightBorder2),
               size: 20,
             ),
           ),
@@ -756,7 +721,6 @@ class MatchCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // Filtramos y deduplicamos canales con señal
     final availableChannels = <String, dynamic>{};
     for (var soccerChannel in match.tvChannels) {
       if (soccerChannel.id != null) {
@@ -776,13 +740,13 @@ class MatchCard extends StatelessWidget {
       useSafeArea: true,
       builder: (context) => Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F131C) : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          color: isDark ? AppColors.ink1 : AppTheme.lightBg1,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
           border: Border(
             top: BorderSide(
-              color: isDark
-                  ? const Color(0xFF1E2533)
-                  : AppTheme.lightBorder,
+              color: isDark ? AppColors.ink3 : AppTheme.lightBorder,
               width: 1,
             ),
           ),
@@ -805,12 +769,12 @@ class MatchCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Center(
                   child: Container(
-                    width: 42,
-                    height: 4.5,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
                       color: (isDark ? Colors.white : Colors.black)
                           .withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
                     ),
                   ),
                 ),
@@ -824,18 +788,18 @@ class MatchCard extends StatelessWidget {
                         height: 38,
                         decoration: BoxDecoration(
                           color: (isLive
-                                  ? const Color(0xFFFF5468)
+                                  ? AppColors.live
                                   : (isDark
                                       ? AppTheme.darkAccent
                                       : theme.colorScheme.primary))
                               .withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                         child: Icon(
                           Icons.live_tv_rounded,
                           size: 20,
                           color: isLive
-                              ? const Color(0xFFFF5468)
+                              ? AppColors.live
                               : (isDark
                                   ? AppTheme.darkAccent
                                   : theme.colorScheme.primary),
@@ -848,7 +812,7 @@ class MatchCard extends StatelessWidget {
                           children: [
                             Text(
                               'Señales disponibles',
-                              style: GoogleFonts.spaceGrotesk(
+                              style: AppFont.primary(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
                                 color: theme.colorScheme.onSurface,
@@ -858,7 +822,7 @@ class MatchCard extends StatelessWidget {
                               '${match.homeTeam} vs ${match.awayTeam}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.spaceGrotesk(
+                              style: AppFont.primary(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: theme.hintColor,
@@ -874,23 +838,21 @@ class MatchCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? const Color(0xFF161B27)
+                              ? AppColors.ink2
                               : Colors.black.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(AppRadius.pill),
                           border: Border.all(
                             color: isDark
-                                ? const Color(0xFF1E2533)
+                                ? AppColors.ink3
                                 : Colors.black.withValues(alpha: 0.06),
                           ),
                         ),
                         child: Text(
                           '${channelList.length} opciones',
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isDark
-                                ? const Color(0xFF9EABB9)
-                                : theme.hintColor,
+                            color: isDark ? AppColors.slate400 : theme.hintColor,
                           ),
                         ),
                       ),
@@ -902,8 +864,8 @@ class MatchCard extends StatelessWidget {
                   height: 1,
                   thickness: 1,
                   color: isDark
-                      ? const Color(0xFF1E2533)
-                      : AppTheme.lightBorder.withValues(alpha: 0.5),
+                      ? AppColors.ink3
+                      : AppTheme.lightBorder.withValues(alpha: 0.6),
                 ),
                 const SizedBox(height: 8),
                 if (channelList.isEmpty)
@@ -912,7 +874,7 @@ class MatchCard extends StatelessWidget {
                     child: Center(
                       child: Text(
                         'No hay señales activas en este momento',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 13,
                           color: theme.hintColor,
                         ),
@@ -940,10 +902,8 @@ class MatchCard extends StatelessWidget {
                             : '';
 
                         return Material(
-                          color: isDark
-                              ? const Color(0xFF141924)
-                              : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(16),
+                          color: isDark ? AppColors.ink2 : AppTheme.lightBg2,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                           child: InkWell(
                             onTap: () {
                               Navigator.pop(context);
@@ -954,15 +914,15 @@ class MatchCard extends StatelessWidget {
                                 ),
                               );
                             },
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(AppRadius.md),
                                 border: Border.all(
                                   color: isDark
-                                      ? const Color(0xFF1E2535)
-                                      : const Color(0xFFE2E8F0),
+                                      ? AppColors.ink3
+                                      : AppTheme.lightBorder,
                                   width: 1,
                                 ),
                               ),
@@ -974,13 +934,14 @@ class MatchCard extends StatelessWidget {
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
                                       color: isDark
-                                          ? const Color(0xFF0F131C)
-                                          : Colors.white,
-                                      borderRadius: BorderRadius.circular(12),
+                                          ? AppColors.ink1
+                                          : AppTheme.lightBg1,
+                                      borderRadius:
+                                          BorderRadius.circular(AppRadius.sm),
                                       border: Border.all(
                                         color: isDark
-                                            ? const Color(0xFF1E2533)
-                                            : const Color(0xFFE2E8F0),
+                                            ? AppColors.ink3
+                                            : AppTheme.lightBorder,
                                       ),
                                     ),
                                     child: logo.isNotEmpty
@@ -1017,7 +978,7 @@ class MatchCard extends StatelessWidget {
                                           channel.name,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.spaceGrotesk(
+                                          style: AppFont.primary(
                                             color: theme.colorScheme.onSurface,
                                             fontWeight: FontWeight.w700,
                                             fontSize: 14.5,
@@ -1031,15 +992,15 @@ class MatchCard extends StatelessWidget {
                                                 width: 6,
                                                 height: 6,
                                                 decoration: const BoxDecoration(
-                                                  color: Color(0xFFFF5468),
+                                                  color: AppColors.live,
                                                   shape: BoxShape.circle,
                                                 ),
                                               ),
                                               const SizedBox(width: 5),
                                               Text(
                                                 'En vivo',
-                                                style: GoogleFonts.spaceGrotesk(
-                                                  color: const Color(0xFFFF5468),
+                                                style: AppFont.primary(
+                                                  color: AppColors.live,
                                                   fontWeight: FontWeight.w700,
                                                   fontSize: 11,
                                                 ),
@@ -1057,9 +1018,9 @@ class MatchCard extends StatelessWidget {
                                               channel.category.isNotEmpty
                                                   ? channel.category
                                                   : 'Señal deportiva',
-                                              style: GoogleFonts.spaceGrotesk(
+                                              style: AppFont.primary(
                                                 color: isDark
-                                                    ? const Color(0xFF7C879B)
+                                                    ? AppColors.slate
                                                     : theme.hintColor,
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 11,
@@ -1076,17 +1037,18 @@ class MatchCard extends StatelessWidget {
                                     height: 36,
                                     decoration: BoxDecoration(
                                       color: (isLive
-                                              ? const Color(0xFFFF5468)
+                                              ? AppColors.live
                                               : (isDark
                                                   ? AppTheme.darkAccent
                                                   : theme.colorScheme.primary))
                                           .withValues(alpha: isDark ? 0.18 : 0.12),
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius:
+                                          BorderRadius.circular(AppRadius.sm),
                                     ),
                                     child: Icon(
                                       Icons.play_arrow_rounded,
                                       color: isLive
-                                          ? const Color(0xFFFF5468)
+                                          ? AppColors.live
                                           : (isDark
                                               ? AppTheme.darkAccent
                                               : theme.colorScheme.primary),
@@ -1110,7 +1072,6 @@ class MatchCard extends StatelessWidget {
   }
 }
 
-/// Pulsing live indicator pill with animated glowing dot
 class _PulsingLivePill extends StatefulWidget {
   final String timeStatus;
 
@@ -1151,10 +1112,10 @@ class _PulsingLivePillState extends State<_PulsingLivePill>
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFFFF5468).withValues(alpha: 0.16),
+            color: AppColors.live.withValues(alpha: 0.16),
             borderRadius: BorderRadius.circular(AppRadius.pill),
             border: Border.all(
-              color: const Color(0xFFFF5468).withValues(alpha: 0.35),
+              color: AppColors.live.withValues(alpha: 0.35),
             ),
           ),
           child: Row(
@@ -1164,12 +1125,11 @@ class _PulsingLivePillState extends State<_PulsingLivePill>
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF5468)
-                      .withValues(alpha: _pulseAnimation.value),
+                  color: AppColors.live.withValues(alpha: _pulseAnimation.value),
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFF5468)
+                      color: AppColors.live
                           .withValues(alpha: _pulseAnimation.value * 0.6),
                       blurRadius: 5,
                     ),
@@ -1179,10 +1139,10 @@ class _PulsingLivePillState extends State<_PulsingLivePill>
               const SizedBox(width: 6),
               Text(
                 widget.timeStatus,
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
-                  color: const Color(0xFFFF5468),
+                  color: AppColors.live,
                 ),
               ),
             ],

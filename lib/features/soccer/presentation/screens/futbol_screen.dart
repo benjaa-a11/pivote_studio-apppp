@@ -1,18 +1,20 @@
-import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
-
-import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:pivote/features/soccer/presentation/widgets/soccer_match_card.dart';
+import 'package:pivote/features/soccer/presentation/widgets/match_details_bottom_sheet.dart';
+import 'package:pivote/features/soccer/presentation/widgets/soccer_pitch_painter.dart';
+import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
-
-enum SoccerStatusFilter { all, live, scheduled, finished }
+import 'package:pivote/shared/widgets/common/pivote_app_bar.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
+import 'package:pivote/shared/widgets/common/app_state_views.dart';
 
 class FutbolScreen extends StatefulWidget {
   const FutbolScreen({super.key});
@@ -21,777 +23,1026 @@ class FutbolScreen extends StatefulWidget {
   State<FutbolScreen> createState() => _FutbolScreenState();
 }
 
-class _FutbolScreenState extends State<FutbolScreen> {
-  String _selectedLeagueId = 'all';
-  SoccerStatusFilter _selectedStatus = SoccerStatusFilter.all;
+enum _MatchFilter { all, live, today, finished }
 
-  String _getFormattedSpanishDate() {
-    final now = DateTime.now();
-    const weekdays = [
-      'Lunes',
-      'Martes',
-      'Miércoles',
-      'Jueves',
-      'Viernes',
-      'Sábado',
-      'Domingo'
-    ];
-    const months = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre'
-    ];
-    final weekday = weekdays[(now.weekday - 1) % 7];
-    final month = months[(now.month - 1) % 12];
-    return '$weekday, ${now.day} de $month';
+class _FutbolScreenState extends State<FutbolScreen> {
+  final Set<String> _collapsedLeagues = {};
+  final TextEditingController _searchCtrl = TextEditingController();
+  Timer? _searchDebounce;
+  String _searchQuery = '';
+  bool _isSearching = false;
+  _MatchFilter _selectedFilter = _MatchFilter.all;
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _toggleLeague(String leagueId) {
+    setState(() {
+      if (_collapsedLeagues.contains(leagueId)) {
+        _collapsedLeagues.remove(leagueId);
+      } else {
+        _collapsedLeagues.add(leagueId);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final soccerProvider = context.watch<SoccerProvider>();
+    final horizontalPad = AppResponsive.horizontalPadding(context);
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF080B11) : theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        bottom: false,
-        child: _buildContent(soccerProvider, theme, isDark),
-      ),
-    );
-  }
-
-  Widget _buildContent(
-    SoccerProvider provider,
-    ThemeData theme,
-    bool isDark,
-  ) {
-    if (provider.isLoading && provider.soccerData == null) {
-      return _buildLoadingState(theme, isDark);
-    }
-
-    if (provider.error != null && provider.soccerData == null) {
-      return _buildErrorState(provider, theme, isDark);
-    }
-
-    final soccerData = provider.soccerData;
-    if (soccerData == null || soccerData.matches.isEmpty) {
-      return _buildEmptyState(theme, isDark);
-    }
-
-    final allMatches = soccerData.matches;
-    final liveMatches = allMatches.where((m) => m.isLive).toList();
-    final scheduledMatches = allMatches.where((m) => m.isScheduled).toList();
-    final finishedMatches = allMatches.where((m) => m.isFinished).toList();
-
-    return RefreshIndicator(
-      color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
-      backgroundColor:
-          isDark ? const Color(0xFF131722) : theme.colorScheme.surface,
-      strokeWidth: 2.5,
-      onRefresh: () => provider.fetchData(),
-      child: CustomScrollView(
-        key: const ValueKey('soccer_scroll_view'),
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: ClampingScrollPhysics(),
-        ),
-        slivers: [
-          // ─── Header estilo Pivote Live con fecha ───
-          _buildSliverHeader(
-              theme, isDark, liveMatches.length, allMatches.length),
-
-          // ─── Pestañas de Estado (Todos, En Vivo, Próximos, Finalizados) ───
-          SliverToBoxAdapter(
-            child: _buildStatusFilterTabs(
-              theme,
-              isDark,
-              allMatches.length,
-              liveMatches.length,
-              scheduledMatches.length,
-              finishedMatches.length,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          const SliverToBoxAdapter(
+            child: PivoteAppBar(
+              title: 'Agenda Deportiva',
+              showBackButton: false,
             ),
           ),
-
-          // ─── Rail de Ligas (Horizontal scroll) ───
-          SliverToBoxAdapter(
-            child: _buildLeagueRail(soccerData, theme, isDark),
-          ),
-
-          // ─── Separador sutil antes de la lista ───
-          const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
-          // ─── Lista de Partidos agrupada por Liga ───
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: _buildMatchesList(soccerData, theme, isDark),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 90)),
         ],
-      ),
-    );
-  }
+        body: Consumer<SoccerProvider>(
+          builder: (context, soccerProvider, child) {
+            if (soccerProvider.isLoading && soccerProvider.data == null) {
+              return _buildSkeletonState(theme, isDark, horizontalPad);
+            }
 
-  // ─── Sliver Header: Logo PIVOTE LIVE + Fecha ───
-  Widget _buildSliverHeader(
-    ThemeData theme,
-    bool isDark,
-    int liveCount,
-    int totalCount,
-  ) {
-    return SliverAppBar(
-      floating: true,
-      snap: true,
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      automaticallyImplyLeading: false,
-      toolbarHeight: 58,
-      flexibleSpace: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: (isDark
-                      ? const Color(0xFF080B11)
-                      : theme.scaffoldBackgroundColor)
-                  .withValues(alpha: isDark ? 0.90 : 0.94),
-              border: Border(
-                bottom: BorderSide(
-                  color: isDark
-                      ? const Color(0xFF1E2533)
-                      : Colors.black.withValues(alpha: 0.06),
-                  width: 1,
+            if (soccerProvider.data == null) {
+              return _buildErrorState(soccerProvider, theme, isDark);
+            }
+
+            final data = soccerProvider.data!;
+            if (data.matches.isEmpty) {
+              return _buildEmptyState(theme, isDark);
+            }
+
+            final allMatches = List<SoccerMatch>.from(data.matches);
+            final liveCount = allMatches.where((m) => m.isLive).length;
+            final todayCount = allMatches.where((m) => m.isToday).length;
+            final finishedCount = allMatches.where((m) => m.isFinished).length;
+
+            // Partido destacado (Hero Match): Priorizar en vivo, sino próximo hoy con canales
+            final heroCandidates = allMatches.where((m) => !m.isFinished).toList()
+              ..sort((a, b) {
+                if (a.isLive && !b.isLive) return -1;
+                if (!a.isLive && b.isLive) return 1;
+                final aHasCh = a.tvChannels.any((c) => c.name.isNotEmpty);
+                final bHasCh = b.tvChannels.any((c) => c.name.isNotEmpty);
+                if (aHasCh && !bHasCh) return -1;
+                if (!aHasCh && bHasCh) return 1;
+                final aTime =
+                    a.kickoff ?? DateTime.fromMillisecondsSinceEpoch(0);
+                final bTime =
+                    b.kickoff ?? DateTime.fromMillisecondsSinceEpoch(0);
+                return aTime.compareTo(bTime);
+              });
+            final SoccerMatch? heroMatch =
+                heroCandidates.isNotEmpty ? heroCandidates.first : null;
+
+            // Filtrar partidos según pestaña y búsqueda
+            final q = _searchQuery.trim().toLowerCase();
+            final filteredMatches = allMatches.where((m) {
+              if (_selectedFilter == _MatchFilter.live && !m.isLive) {
+                return false;
+              }
+              if (_selectedFilter == _MatchFilter.today && !m.isToday) {
+                return false;
+              }
+              if (_selectedFilter == _MatchFilter.finished && !m.isFinished) {
+                return false;
+              }
+              if (q.isNotEmpty) {
+                final league = data.leagues.firstWhere(
+                  (l) => l.id == m.leagueId,
+                  orElse: () => SoccerLeague(
+                      id: '', name: '', country: '', shortName: ''),
+                );
+                return m.homeTeam.toLowerCase().contains(q) ||
+                    m.awayTeam.toLowerCase().contains(q) ||
+                    league.name.toLowerCase().contains(q) ||
+                    league.country.toLowerCase().contains(q);
+              }
+              return true;
+            }).toList();
+
+            // Agrupar por liga
+            final Map<String, List<SoccerMatch>> matchesByLeague = {};
+            for (final match in filteredMatches) {
+              matchesByLeague.putIfAbsent(match.leagueId, () => []).add(match);
+            }
+
+            final sortedLeagueIds = matchesByLeague.keys.toList();
+            sortedLeagueIds.sort((a, b) {
+              final matchesA = matchesByLeague[a]!;
+              final matchesB = matchesByLeague[b]!;
+              final hasLiveA = matchesA.any((m) => m.isLive);
+              final hasLiveB = matchesB.any((m) => m.isLive);
+              if (hasLiveA && !hasLiveB) return -1;
+              if (!hasLiveA && hasLiveB) return 1;
+              return 0;
+            });
+
+            return RefreshIndicator(
+              onRefresh: () => soccerProvider.refresh(),
+              color: AppTheme.accent(context),
+              backgroundColor: AppTheme.cardSurface(context),
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
                 ),
+                slivers: [
+                  // ─── HEADER SECCIÓN + BUSCADOR ───
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                          horizontalPad, 12, horizontalPad, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'AGENDA DEPORTIVA',
+                                      style: AppFont.primary(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: -0.4,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      liveCount > 0
+                                          ? '$liveCount ${liveCount == 1 ? 'partido' : 'partidos'} en juego ahora mismo'
+                                          : '${allMatches.length} partidos programados en la fecha',
+                                      style: AppFont.primary(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.textSecondary(context),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Botón búsqueda rápida de partido / equipo
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _isSearching = !_isSearching;
+                                    if (!_isSearching) {
+                                      _searchCtrl.clear();
+                                      _searchQuery = '';
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: _isSearching
+                                        ? AppTheme.accent(context)
+                                            .withValues(alpha: 0.16)
+                                        : AppTheme.surface1(context),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: _isSearching
+                                          ? AppTheme.accent(context)
+                                          : AppTheme.border(context),
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    _isSearching
+                                        ? Icons.close_rounded
+                                        : Icons.search_rounded,
+                                    size: 18,
+                                    color: _isSearching
+                                        ? AppTheme.accent(context)
+                                        : theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          // Barra de búsqueda colapsable
+                          AnimatedCrossFade(
+                            duration: const Duration(milliseconds: 220),
+                            crossFadeState: _isSearching
+                                ? CrossFadeState.showSecond
+                                : CrossFadeState.showFirst,
+                            firstChild: const SizedBox.shrink(),
+                            secondChild: Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Container(
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surface1(context),
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.md),
+                                  border: Border.all(
+                                    color: AppTheme.border(context),
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _searchCtrl,
+                                  onChanged: (val) {
+                                    _searchDebounce?.cancel();
+                                    _searchDebounce = Timer(
+                                      const Duration(milliseconds: 140),
+                                      () {
+                                        if (mounted) {
+                                          setState(() => _searchQuery = val);
+                                        }
+                                      },
+                                    );
+                                  },
+                                  style: AppFont.primary(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: 'Buscar equipo, torneo o país...',
+                                    hintStyle: AppFont.primary(
+                                      fontSize: 13,
+                                      color: AppTheme.textSecondary(context),
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.search_rounded,
+                                      size: 18,
+                                      color: AppTheme.textSecondary(context),
+                                    ),
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          // ─── PILLS DE FILTRO RÁPIDO ───
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            physics: const BouncingScrollPhysics(),
+                            child: Row(
+                              children: [
+                                _buildFilterChip(
+                                  label: 'Todos (${allMatches.length})',
+                                  filter: _MatchFilter.all,
+                                  theme: theme,
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label: 'En vivo ($liveCount)',
+                                  filter: _MatchFilter.live,
+                                  isLiveBadge: liveCount > 0,
+                                  theme: theme,
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label: 'Hoy ($todayCount)',
+                                  filter: _MatchFilter.today,
+                                  theme: theme,
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(width: 8),
+                                _buildFilterChip(
+                                  label: 'Finalizados ($finishedCount)',
+                                  filter: _MatchFilter.finished,
+                                  theme: theme,
+                                  isDark: isDark,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // ─── HERO MATCH DESTACADO (Si estamos en Todos y sin búsqueda) ───
+                  if (heroMatch != null &&
+                      _selectedFilter == _MatchFilter.all &&
+                      _searchQuery.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                            horizontalPad, 4, horizontalPad, 20),
+                        child: _buildFeaturedHeroCard(
+                            context, heroMatch, data, theme, isDark),
+                      ),
+                    ),
+
+                  // ─── ESTADO SIN RESULTADOS DE FILTRO ───
+                  if (sortedLeagueIds.isEmpty)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: AppStateView.empty(
+                        icon: Icons.sports_soccer_rounded,
+                        title: 'No encontramos partidos',
+                        subtitle:
+                            'Probá cambiando el filtro o buscando otro equipo.',
+                      ),
+                    )
+                  else
+                    // ─── LISTA DE LIGAS Y PARTIDOS ───
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                          horizontalPad, 0, horizontalPad, 110),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final leagueId = sortedLeagueIds[index];
+                            final league = data.leagues.firstWhere(
+                              (l) => l.id == leagueId,
+                              orElse: () => SoccerLeague(
+                                id: leagueId,
+                                name: 'Torneo Internacional',
+                                country: '',
+                                shortName: '',
+                              ),
+                            );
+                            final matches = matchesByLeague[leagueId]!;
+                            final isCollapsed =
+                                _collapsedLeagues.contains(leagueId);
+                            final liveInLeague =
+                                matches.where((m) => m.isLive).length;
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: AppTheme.cardSurface(context),
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.xl),
+                                  border: Border.all(
+                                    color: AppTheme.border(context),
+                                    width: 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                          alpha: isDark ? 0.28 : 0.04),
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    // Cabecera del Torneo
+                                    InkWell(
+                                      onTap: () => _toggleLeague(leagueId),
+                                      borderRadius: BorderRadius.vertical(
+                                        top: const Radius.circular(
+                                            AppRadius.xl),
+                                        bottom: isCollapsed
+                                            ? const Radius.circular(
+                                                AppRadius.xl)
+                                            : Radius.zero,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 11,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? AppColors.ink2
+                                                  .withValues(alpha: 0.72)
+                                              : AppColors.lightSurface2
+                                                  .withValues(alpha: 0.65),
+                                          borderRadius: BorderRadius.vertical(
+                                            top: const Radius.circular(
+                                                AppRadius.xl),
+                                            bottom: isCollapsed
+                                                ? const Radius.circular(
+                                                    AppRadius.xl)
+                                                : Radius.zero,
+                                          ),
+                                          border: isCollapsed
+                                              ? null
+                                              : Border(
+                                                  bottom: BorderSide(
+                                                    color: AppTheme.border(
+                                                        context),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            _buildLeagueBadge(league, isDark),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  if (league.country.isNotEmpty)
+                                                    Text(
+                                                      league.country
+                                                          .toUpperCase(),
+                                                      style: AppFont.primary(
+                                                        fontSize: 9.5,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        letterSpacing: 0.8,
+                                                        color: AppTheme
+                                                            .textSecondary(
+                                                                context),
+                                                      ),
+                                                    ),
+                                                  Text(
+                                                    league.name,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: AppFont.primary(
+                                                      fontSize: 13.5,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: theme.colorScheme
+                                                          .onSurface,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            if (liveInLeague > 0) ...[
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 7,
+                                                  vertical: 3,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.live
+                                                      .withValues(alpha: 0.15),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Container(
+                                                      width: 5,
+                                                      height: 5,
+                                                      decoration:
+                                                          const BoxDecoration(
+                                                        color: AppColors.live,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      '$liveInLeague VIVO',
+                                                      style: AppFont.primary(
+                                                        fontSize: 9.5,
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        color: AppColors.live,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                            ],
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 7,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: (isDark
+                                                        ? Colors.white
+                                                        : Colors.black)
+                                                    .withValues(alpha: 0.06),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                '${matches.length}',
+                                                style: AppFont.primary(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: AppTheme.textSecondary(
+                                                      context),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            AnimatedRotation(
+                                              turns: isCollapsed ? -0.25 : 0,
+                                              duration: const Duration(
+                                                  milliseconds: 220),
+                                              child: Icon(
+                                                Icons
+                                                    .keyboard_arrow_down_rounded,
+                                                size: 20,
+                                                color: AppTheme.textSecondary(
+                                                    context),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Partidos de la Liga
+                                    if (!isCollapsed)
+                                      Column(
+                                        children: List.generate(
+                                          matches.length,
+                                          (mIndex) => SoccerMatchCard(
+                                            match: matches[mIndex],
+                                            data: data,
+                                            isLast:
+                                                mIndex == matches.length - 1,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                          childCount: sortedLeagueIds.length,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Logo PIVOTE LIVE (con 'LIVE' en verde lima brillante)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Text(
-                      'PIVOTE',
-                      style: GoogleFonts.bigShouldersDisplay(
-                        fontSize: 27,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5,
-                        color: isDark
-                            ? const Color(0xFFEEF1F6)
-                            : theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: AppTheme.darkAccent,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'LIVE',
-                        style: GoogleFonts.bigShouldersDisplay(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: const Color(0xFF080B11),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // Fecha en español estilizada en píldora moderna
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? const Color(0xFF131722)
-                        : Colors.black.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isDark
-                          ? const Color(0xFF1E2533)
-                          : AppTheme.lightBorder,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.calendar_today_rounded,
-                        size: 13,
-                        color: isDark
-                            ? AppTheme.darkAccent
-                            : theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _getFormattedSpanishDate(),
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? const Color(0xFFC7CFDD)
-                              : const Color(0xFF334155),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
 
-  // ─── Status Filter Tabs: Todos, En Vivo, Próximos, Finalizados ───
-  Widget _buildStatusFilterTabs(
-    ThemeData theme,
-    bool isDark,
-    int totalCount,
-    int liveCount,
-    int scheduledCount,
-    int finishedCount,
-  ) {
-    final tabs = [
-      (
-        filter: SoccerStatusFilter.all,
-        label: 'Todos',
-        count: totalCount,
-        hasDot: false,
-      ),
-      (
-        filter: SoccerStatusFilter.live,
-        label: 'En vivo',
-        count: liveCount,
-        hasDot: liveCount > 0,
-      ),
-      (
-        filter: SoccerStatusFilter.scheduled,
-        label: 'Próximos',
-        count: scheduledCount,
-        hasDot: false,
-      ),
-      (
-        filter: SoccerStatusFilter.finished,
-        label: 'Finalizados',
-        count: finishedCount,
-        hasDot: false,
-      ),
-    ];
-
-    return Container(
-      height: 44,
-      margin: const EdgeInsets.only(top: 8, bottom: 4),
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        physics: const ClampingScrollPhysics(),
-        itemCount: tabs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final item = tabs[index];
-          final isSelected = _selectedStatus == item.filter;
-
-          return Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedStatus = item.filter);
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? (isDark
-                          ? const Color(0xFF161B27)
-                          : theme.colorScheme.surface)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected
-                        ? (isDark
-                            ? const Color(0xFF1E2533)
-                            : AppTheme.lightBorder)
-                        : Colors.transparent,
-                  ),
-                  boxShadow: isSelected && isDark
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : [],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (item.hasDot) ...[
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFFF5468),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                    ],
-                    Text(
-                      item.label,
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 13,
-                        fontWeight:
-                            isSelected ? FontWeight.w800 : FontWeight.w600,
-                        color: isSelected
-                            ? (isDark
-                                ? const Color(0xFFEEF1F6)
-                                : theme.colorScheme.onSurface)
-                            : (isDark
-                                ? const Color(0xFF7C879B)
-                                : theme.hintColor),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${item.count}',
-                      style: GoogleFonts.bigShouldersDisplay(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            isSelected && item.filter == SoccerStatusFilter.live
-                                ? const Color(0xFFFF5468)
-                                : isSelected
-                                    ? (isDark
-                                        ? AppTheme.darkAccent
-                                        : theme.colorScheme.primary)
-                                    : (isDark
-                                        ? const Color(0xFF7C879B)
-                                        : theme.hintColor),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ─── Rail de Ligas (Horizontal Pills con Escudos y Contadores) ───
-  Widget _buildLeagueRail(
-    SoccerData data,
-    ThemeData theme,
-    bool isDark,
-  ) {
-    // Calcular conteo por liga
-    final Map<String, int> leagueCounts = {};
-    for (final m in data.matches) {
-      leagueCounts[m.leagueId] = (leagueCounts[m.leagueId] ?? 0) + 1;
-    }
-
-    // Filtrar solo ligas con al menos 1 partido
-    final activeLeagues =
-        data.leagues.where((l) => (leagueCounts[l.id] ?? 0) > 0).toList();
-
-    return Container(
-      height: 42,
-      margin: const EdgeInsets.only(top: 4, bottom: 8),
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        physics: const ClampingScrollPhysics(),
-        itemCount: activeLeagues.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            final isSelected = _selectedLeagueId == 'all';
-            return _buildLeagueChip(
-              id: 'all',
-              label: 'Todas las ligas',
-              logoUrl: null,
-              count: data.matches.length,
-              isSelected: isSelected,
-              theme: theme,
-              isDark: isDark,
-            );
-          }
-
-          final league = activeLeagues[index - 1];
-          final isSelected = _selectedLeagueId == league.id;
-          final count = leagueCounts[league.id] ?? 0;
-
-          return _buildLeagueChip(
-            id: league.id,
-            label: league.shortName.isNotEmpty ? league.shortName : league.name,
-            logoUrl: league.logoUrl,
-            count: count,
-            isSelected: isSelected,
-            theme: theme,
-            isDark: isDark,
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildLeagueChip({
-    required String id,
+  Widget _buildFilterChip({
     required String label,
-    required String? logoUrl,
-    required int count,
-    required bool isSelected,
+    required _MatchFilter filter,
     required ThemeData theme,
     required bool isDark,
+    bool isLiveBadge = false,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          setState(() => _selectedLeagueId = id);
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-          decoration: BoxDecoration(
+    final isSelected = _selectedFilter == filter;
+    final activeColor = isLiveBadge
+        ? AppColors.live
+        : AppTheme.accent(context);
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedFilter = filter),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7.5),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? activeColor
+              : AppTheme.surface1(context),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
             color: isSelected
-                ? (isDark ? const Color(0xFF161B27) : theme.colorScheme.surface)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected
-                  ? (isDark
-                      ? AppTheme.darkAccent.withValues(alpha: 0.6)
-                      : theme.colorScheme.primary)
-                  : (isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder),
-              width: isSelected ? 1.4 : 1,
-            ),
+                ? activeColor
+                : AppTheme.border(context),
+            width: 1,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (logoUrl != null && logoUrl.isNotEmpty) ...[
-                ClipOval(
-                  child: CachedNetworkImage(
-                    cacheManager: ImageCacheHelper.logoCacheManager,
-                    imageUrl: logoUrl,
-                    width: 17,
-                    height: 17,
-                    fit: BoxFit.contain,
-                    errorWidget: (_, __, ___) => const Icon(
-                      Icons.sports_soccer,
-                      size: 15,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 7),
-              ],
-              Text(
-                label,
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected
-                      ? (isDark
-                          ? const Color(0xFFEEF1F6)
-                          : theme.colorScheme.onSurface)
-                      : (isDark ? const Color(0xFF7C879B) : theme.hintColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLiveBadge) ...[
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : AppColors.live,
+                  shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 6),
-              Text(
-                '$count',
-                style: GoogleFonts.bigShouldersDisplay(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: isSelected
-                      ? AppTheme.darkAccent
-                      : (isDark ? const Color(0xFF7C879B) : theme.hintColor),
+            ],
+            Text(
+              label,
+              style: AppFont.primary(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: isSelected
+                    ? (isLiveBadge
+                        ? Colors.white
+                        : AppTheme.onAccent(context))
+                    : AppTheme.textSecondary(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeaturedHeroCard(
+    BuildContext context,
+    SoccerMatch match,
+    SoccerData data,
+    ThemeData theme,
+    bool isDark,
+  ) {
+    final homeTeam = data.teams.firstWhere(
+      (t) => t.id == match.homeTeamId,
+      orElse: () => SoccerTeam(
+          id: match.homeTeamId,
+          name: match.homeTeam,
+          shortName: match.homeTeam),
+    );
+    final awayTeam = data.teams.firstWhere(
+      (t) => t.id == match.awayTeamId,
+      orElse: () => SoccerTeam(
+          id: match.awayTeamId,
+          name: match.awayTeam,
+          shortName: match.awayTeam),
+    );
+    final league = data.leagues.firstWhere(
+      (l) => l.id == match.leagueId,
+      orElse: () => SoccerLeague(
+          id: match.leagueId, name: 'Destacado', country: '', shortName: ''),
+    );
+
+    final homeColor = homeTeam.primaryColor ?? AppColors.accent;
+    final awayColor = awayTeam.primaryColor ?? AppColors.secondary;
+
+    return ApplePressable(
+      scaleDownFactor: 0.97,
+      borderRadius: BorderRadius.circular(AppRadius.xxl),
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          showDragHandle: false,
+          useSafeArea: true,
+          builder: (context) => ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
+            ),
+            child: MatchDetailsBottomSheet(
+              match: match,
+              homeTeam: homeTeam,
+              awayTeam: awayTeam,
+              league: league,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        height: 146,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.xxl),
+          color: isDark ? AppColors.ink2 : theme.cardColor,
+          border: Border.all(
+            color: match.isLive
+                ? AppColors.live.withValues(alpha: 0.45)
+                : AppTheme.border(context),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Aura local
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadius.xxl),
+                  gradient: RadialGradient(
+                    center: const Alignment(-1.05, -0.2),
+                    radius: 1.2,
+                    colors: [
+                      homeColor.withValues(alpha: isDark ? 0.35 : 0.16),
+                      Colors.transparent,
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Lista de Partidos Agrupada por Liga ───
-  Widget _buildMatchesList(
-    SoccerData data,
-    ThemeData theme,
-    bool isDark,
-  ) {
-    var filteredMatches = data.matches;
-
-    // Filtro por liga
-    if (_selectedLeagueId != 'all') {
-      filteredMatches = filteredMatches
-          .where((m) => m.leagueId == _selectedLeagueId)
-          .toList();
-    }
-
-    // Filtro por estado
-    if (_selectedStatus == SoccerStatusFilter.live) {
-      filteredMatches = filteredMatches.where((m) => m.isLive).toList();
-    } else if (_selectedStatus == SoccerStatusFilter.scheduled) {
-      filteredMatches = filteredMatches.where((m) => m.isScheduled).toList();
-    } else if (_selectedStatus == SoccerStatusFilter.finished) {
-      filteredMatches = filteredMatches.where((m) => m.isFinished).toList();
-    }
-
-    if (filteredMatches.isEmpty) {
-      return SliverFillRemaining(
-        hasScrollBody: false,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: _buildEmptyFilterState(theme, isDark),
-          ),
-        ),
-      );
-    }
-
-    // Agrupar por Liga
-    final Map<String, List<SoccerMatch>> grouped = {};
-    for (final match in filteredMatches) {
-      grouped.putIfAbsent(match.leagueId, () => []).add(match);
-    }
-
-    final leagueIds = grouped.keys.toList();
-
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final leagueId = leagueIds[index];
-          final league = data.leagues.firstWhere(
-            (l) => l.id == leagueId,
-            orElse: () => SoccerLeague(
-              id: leagueId,
-              name: 'Torneo',
-              shortName: 'Torneo',
-              country: '',
             ),
-          );
-          final matches = grouped[leagueId]!;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 18),
-            child: _buildLeagueCardSection(
-              league,
-              matches,
-              data,
-              theme,
-              isDark,
-            ),
-          );
-        },
-        childCount: leagueIds.length,
-      ),
-    );
-  }
-
-  Widget _buildLeagueCardSection(
-    SoccerLeague league,
-    List<SoccerMatch> matches,
-    SoccerData data,
-    ThemeData theme,
-    bool isDark,
-  ) {
-    final liveInLeague = matches.where((m) => m.isLive).length;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Encabezado de la liga (Estilo HTML .sh)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-          child: Row(
-            children: [
-              if (league.logoUrl != null && league.logoUrl!.isNotEmpty)
-                ClipOval(
-                  child: CachedNetworkImage(
-                    cacheManager: ImageCacheHelper.logoCacheManager,
-                    imageUrl: league.logoUrl!,
-                    width: 26,
-                    height: 26,
-                    fit: BoxFit.contain,
-                    errorWidget: (_, __, ___) => const Icon(
-                      Icons.emoji_events_outlined,
-                      size: 22,
-                    ),
+            // Aura visitante
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppRadius.xxl),
+                  gradient: RadialGradient(
+                    center: const Alignment(1.05, 0.2),
+                    radius: 1.2,
+                    colors: [
+                      awayColor.withValues(alpha: isDark ? 0.35 : 0.16),
+                      Colors.transparent,
+                    ],
                   ),
-                )
-              else
-                const Icon(Icons.emoji_events_outlined, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      league.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.bigShouldersDisplay(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.3,
-                        color: isDark
-                            ? const Color(0xFFEEF1F6)
-                            : theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    if (league.country.isNotEmpty)
-                      Text(
-                        league.country,
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? const Color(0xFF7C879B)
-                              : theme.hintColor,
+                ),
+              ),
+            ),
+            // Cancha dibujada sutil
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.xxl),
+                child: CustomPaint(
+                  painter: SoccerPitchPainter(
+                    lineColor: (isDark ? Colors.white : Colors.black)
+                        .withValues(alpha: isDark ? 0.08 : 0.05),
+                  ),
+                ),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                children: [
+                  // Header del Hero
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: match.isLive
+                              ? AppColors.live
+                              : AppTheme.accent(context).withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          match.isLive
+                              ? 'DESTACADO EN VIVO'
+                              : 'PARTIDO DESTACADO',
+                          style: AppFont.primary(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.6,
+                            color: match.isLive
+                                ? Colors.white
+                                : AppTheme.accent(context),
+                          ),
                         ),
                       ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          league.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppFont.primary(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textSecondary(context),
+                          ),
+                        ),
+                      ),
+                      if (match.tvChannels.isNotEmpty)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.tv_rounded,
+                              size: 13,
+                              color: AppTheme.accent(context),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              match.tvChannels.first.name,
+                              style: AppFont.primary(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.accent(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                  const Spacer(),
+                  // Equipos + Marcador
+                  Row(
+                    children: [
+                      // Local
+                      Expanded(
+                        child: Row(
+                          children: [
+                            _buildTeamCircle(homeTeam, homeColor, isDark),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                homeTeam.shortName.isNotEmpty
+                                    ? homeTeam.shortName
+                                    : homeTeam.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppFont.primary(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.15,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-              // Contador de partidos
-              Text(
-                liveInLeague > 0
-                    ? '$liveInLeague en vivo · ${matches.length} partidos'
-                    : '${matches.length} partidos',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: liveInLeague > 0
-                      ? const Color(0xFFFF5468)
-                      : (isDark ? const Color(0xFF7C879B) : theme.hintColor),
-                ),
-              ),
-            ],
-          ),
-        ),
+                      // Centro (Marcador u Hora)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: match.isLive && match.score.length >= 2
+                            ? Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '${match.score[0]} - ${match.score[1]}',
+                                    style: AppFont.score(
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.w900,
+                                      height: 1.0,
+                                      color: AppTheme.accent(context),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    match.timeStatus.isNotEmpty
+                                        ? match.timeStatus
+                                        : 'EN JUEGO',
+                                    style: AppFont.primary(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.live,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    match.formattedTime,
+                                    style: AppFont.score(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w900,
+                                      height: 1.0,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    match.dayLabel.toUpperCase(),
+                                    style: AppFont.primary(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.textSecondary(context),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
 
-        // Contenedor de filas de partidos (Estilo HTML .rows)
-        Container(
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF0F131C) : theme.cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
-              width: 1,
+                      // Visitante
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                awayTeam.shortName.isNotEmpty
+                                    ? awayTeam.shortName
+                                    : awayTeam.name,
+                                textAlign: TextAlign.right,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppFont.primary(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.15,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            _buildTeamCircle(awayTeam, awayColor, isDark),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                ],
+              ),
             ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: List.generate(matches.length, (i) {
-              return SoccerMatchCard(
-                match: matches[i],
-                data: data,
-                isLast: i == matches.length - 1,
-              );
-            }),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildEmptyFilterState(ThemeData theme, bool isDark) {
-    String title;
-    String subtitle;
+  Widget _buildTeamCircle(SoccerTeam team, Color color, bool isDark) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isDark ? AppColors.ink1 : Colors.white,
+        border: Border.all(
+          color: color.withValues(alpha: 0.4),
+          width: 1.2,
+        ),
+      ),
+      padding: const EdgeInsets.all(5),
+      child: (team.logoUrl != null && team.logoUrl!.isNotEmpty)
+          ? CachedNetworkImage(
+              cacheManager: ImageCacheHelper.logoCacheManager,
+              imageUrl: team.logoUrl!,
+              fit: BoxFit.contain,
+              errorWidget: (_, __, ___) => FaIcon(
+                FontAwesomeIcons.shield,
+                size: 16,
+                color: color,
+              ),
+            )
+          : FaIcon(
+              FontAwesomeIcons.shield,
+              size: 16,
+              color: color,
+            ),
+    );
+  }
 
-    switch (_selectedStatus) {
-      case SoccerStatusFilter.live:
-        title = 'No hay partidos en juego';
-        subtitle = 'Cuando arranque uno, aparece acá.';
-        break;
-      case SoccerStatusFilter.scheduled:
-        title = 'No quedan partidos por jugar';
-        subtitle = 'Mirá los finalizados para ver los resultados.';
-        break;
-      case SoccerStatusFilter.finished:
-        title = 'Todavía no terminó ninguno';
-        subtitle = 'Los resultados aparecen apenas finalizan.';
-        break;
-      case SoccerStatusFilter.all:
-        title = 'Sin partidos encontrados';
-        subtitle = 'No hay partidos para los filtros seleccionados.';
-        break;
-    }
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          Icons.sports_soccer_outlined,
-          size: 46,
+  Widget _buildLeagueBadge(SoccerLeague league, bool isDark) {
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.ink1 : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
           color: isDark
-              ? const Color(0xFF7C879B)
-              : theme.hintColor.withValues(alpha: 0.5),
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.06),
         ),
-        const SizedBox(height: 14),
-        Text(
-          title,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: theme.colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          subtitle,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 13,
-            color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-          ),
-        ),
-      ],
+      ),
+      padding: const EdgeInsets.all(4),
+      child: (league.logoUrl != null && league.logoUrl!.isNotEmpty)
+          ? CachedNetworkImage(
+              cacheManager: ImageCacheHelper.logoCacheManager,
+              imageUrl: league.logoUrl!,
+              fit: BoxFit.contain,
+              errorWidget: (_, __, ___) => Icon(
+                Icons.emoji_events_rounded,
+                size: 15,
+                color: isDark ? AppColors.accent : AppColors.lightAccent,
+              ),
+            )
+          : Icon(
+              Icons.emoji_events_rounded,
+              size: 15,
+              color: isDark ? AppColors.accent : AppColors.lightAccent,
+            ),
     );
   }
 
-  Widget _buildLoadingState(ThemeData theme, bool isDark) {
-    final baseColor = isDark ? const Color(0xFF131824) : Colors.grey.shade300;
-    final highlightColor =
-        isDark ? const Color(0xFF222B3D) : Colors.grey.shade100;
-    final cardColor = isDark ? const Color(0xFF0F131C) : theme.cardColor;
+  Widget _buildSkeletonState(
+    ThemeData theme,
+    bool isDark,
+    double horizontalPad,
+  ) {
+    final baseColor = isDark ? AppColors.ink2 : AppColors.lightSurface2;
+    final highlightColor = isDark ? AppColors.ink3 : Colors.white;
+    final cardColor = isDark ? AppColors.ink1 : theme.cardColor;
 
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPad, vertical: 12),
       child: Shimmer.fromColors(
         baseColor: baseColor,
         highlightColor: highlightColor,
@@ -859,10 +1110,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: cardColor,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppRadius.xl),
                 border: Border.all(
-                  color:
-                      isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+                  color: AppTheme.border(context),
                   width: 1,
                 ),
               ),
@@ -971,10 +1221,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
             Container(
               decoration: BoxDecoration(
                 color: cardColor,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppRadius.xl),
                 border: Border.all(
-                  color:
-                      isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+                  color: AppTheme.border(context),
                   width: 1,
                 ),
               ),
@@ -987,9 +1236,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
                       border: i < 2
                           ? Border(
                               bottom: BorderSide(
-                                color: isDark
-                                    ? const Color(0xFF1E2533)
-                                    : AppTheme.lightBorder,
+                                color: AppTheme.border(context),
                                 width: 0.8,
                               ),
                             )
@@ -1065,90 +1312,19 @@ class _FutbolScreenState extends State<FutbolScreen> {
     ThemeData theme,
     bool isDark,
   ) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 48,
-              color: Color(0xFFFF5468),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No pudimos cargar los partidos',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'La fuente tarda en responder. Seguimos intentando.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 13,
-                color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => provider.retry(),
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Reintentar ahora'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.darkAccent,
-                foregroundColor: const Color(0xFF080B11),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 0,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AppStateView.error(
+      title: 'No pudimos cargar los partidos',
+      subtitle: 'La fuente tarda en responder. Seguimos intentando.',
+      onAction: () => provider.retry(),
+      actionLabel: 'Reintentar ahora',
     );
   }
 
   Widget _buildEmptyState(ThemeData theme, bool isDark) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.sports_soccer_outlined,
-              size: 48,
-              color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Sin partidos cargados',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Todavía no hay partidos cargados para la fecha.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 13,
-                color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return const AppStateView.empty(
+      icon: Icons.sports_soccer_outlined,
+      title: 'Sin partidos cargados',
+      subtitle: 'Todavía no hay partidos cargados para la fecha.',
     );
   }
 }

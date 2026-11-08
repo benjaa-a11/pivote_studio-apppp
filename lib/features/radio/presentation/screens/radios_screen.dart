@@ -2,8 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/home/presentation/widgets/search_radio_tile.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
@@ -32,6 +33,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
     final radioProvider = context.watch<RadioProvider>();
     final topPad = MediaQuery.paddingOf(context).top;
     final bottomPad = MediaQuery.paddingOf(context).bottom;
+    final hPad = AppResponsive.screenHorizontalPadding(context);
 
     return Scaffold(
       backgroundColor: palette.bg,
@@ -43,23 +45,23 @@ class _RadiosScreenState extends State<RadiosScreen> {
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
+            constraints: const BoxConstraints(maxWidth: 820),
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(
                 parent: ClampingScrollPhysics(),
               ),
               slivers: [
                 SliverPadding(
-                  padding: EdgeInsets.fromLTRB(10, topPad + 10, 10, 0),
+                  padding: hPad.add(EdgeInsets.only(top: topPad + 10)),
                   sliver: SliverToBoxAdapter(
                     child: _buildHeader(palette, radioProvider.radios.length),
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: _buildCategoryPills(radioProvider, palette),
+                  child: _buildCategoryPills(context, radioProvider, palette),
                 ),
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+                  padding: hPad.add(const EdgeInsets.only(top: 6)),
                   sliver: _buildRadiosList(radioProvider, palette),
                 ),
                 SliverToBoxAdapter(
@@ -75,7 +77,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
 
   Widget _buildHeader(ProfilePalette palette, int totalCount) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 8, 6, 10),
+      padding: const EdgeInsets.fromLTRB(2, 8, 2, 10),
       child: Column(
         children: [
           Row(
@@ -85,14 +87,14 @@ class _RadiosScreenState extends State<RadiosScreen> {
                 height: 40,
                 decoration: BoxDecoration(
                   color: palette.card,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                   border: Border.all(color: palette.border, width: 1),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
                   Icons.radio_rounded,
                   size: 19,
-                  color: palette.text,
+                  color: palette.accent,
                 ),
               ),
               Expanded(
@@ -101,10 +103,10 @@ class _RadiosScreenState extends State<RadiosScreen> {
                     Text(
                       'Radio en vivo',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.2,
+                      style: AppFont.primary(
+                        fontSize: 19.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.4,
                         color: palette.text,
                       ),
                     ),
@@ -112,8 +114,9 @@ class _RadiosScreenState extends State<RadiosScreen> {
                     Text(
                       '$totalCount emisoras disponibles',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
+                      style: AppFont.primary(
+                        fontSize: 12.2,
+                        fontWeight: FontWeight.w600,
                         color: palette.muted,
                       ),
                     ),
@@ -137,7 +140,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
                   decoration: BoxDecoration(
                     color:
                         _isSearchVisible ? palette.primaryBtnBg : palette.card,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                     border: Border.all(
                       color: _isSearchVisible
                           ? palette.primaryBtnBg
@@ -165,7 +168,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
               decoration: BoxDecoration(
                 color: palette.card,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(AppRadius.md),
                 border: Border.all(color: palette.border, width: 1),
                 boxShadow: palette.cardShadow,
               ),
@@ -182,15 +185,16 @@ class _RadiosScreenState extends State<RadiosScreen> {
                       controller: _searchController,
                       autofocus: true,
                       onChanged: (_) => setState(() {}),
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                      style: AppFont.primary(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
                         color: palette.text,
                       ),
                       decoration: InputDecoration(
                         hintText: 'Buscar por nombre o frecuencia...',
-                        hintStyle: GoogleFonts.inter(
-                          fontSize: 14.5,
+                        hintStyle: AppFont.primary(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                           color: palette.muted,
                         ),
                         border: InputBorder.none,
@@ -223,7 +227,11 @@ class _RadiosScreenState extends State<RadiosScreen> {
     );
   }
 
-  Widget _buildCategoryPills(RadioProvider provider, ProfilePalette palette) {
+  Widget _buildCategoryPills(
+    BuildContext context,
+    RadioProvider provider,
+    ProfilePalette palette,
+  ) {
     final categories = [
       'Todas',
       'Favoritas',
@@ -232,10 +240,10 @@ class _RadiosScreenState extends State<RadiosScreen> {
     final favCount = provider.radios.where((r) => r.isFavorite).length;
 
     return Container(
-      height: 40,
+      height: 38,
       margin: const EdgeInsets.only(top: 4, bottom: 10),
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: AppResponsive.screenHorizontalPadding(context),
         scrollDirection: Axis.horizontal,
         physics: const ClampingScrollPhysics(),
         itemCount: categories.length,
@@ -255,7 +263,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected ? palette.primaryBtnBg : palette.card,
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
                 border: Border.all(
                   color: isSelected ? palette.primaryBtnBg : palette.border,
                   width: 1,
@@ -270,15 +278,17 @@ class _RadiosScreenState extends State<RadiosScreen> {
                       size: 14,
                       color: isSelected
                           ? palette.primaryBtnText
-                          : const Color(0xFFEF4444),
+                          : AppColors.live,
                     ),
                     const SizedBox(width: 6),
                   ],
                   Text(
                     cat,
-                    style: GoogleFonts.inter(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
+                    style: AppFont.primary(
+                      fontSize: 12.8,
+                      fontWeight:
+                          isSelected ? FontWeight.w800 : FontWeight.w600,
+                      letterSpacing: -0.15,
                       color: isSelected ? palette.primaryBtnText : palette.text,
                     ),
                   ),
@@ -286,9 +296,9 @@ class _RadiosScreenState extends State<RadiosScreen> {
                     const SizedBox(width: 6),
                     Text(
                       '$favCount',
-                      style: GoogleFonts.inter(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
+                      style: AppFont.primary(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
                         color: isSelected
                             ? palette.primaryBtnText.withValues(alpha: 0.85)
                             : palette.muted,
@@ -348,7 +358,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
                     height: 52,
                     decoration: BoxDecoration(
                       color: palette.iconBox,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     alignment: Alignment.center,
                     child: Icon(
@@ -356,7 +366,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
                           ? Icons.favorite_border_rounded
                           : Icons.radio_rounded,
                       size: 24,
-                      color: palette.text,
+                      color: palette.accent,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -364,9 +374,9 @@ class _RadiosScreenState extends State<RadiosScreen> {
                     _selectedCategory == 'Favoritas'
                         ? 'Sin emisoras favoritas'
                         : 'No se encontraron radios',
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: palette.text,
                     ),
                   ),
@@ -376,8 +386,9 @@ class _RadiosScreenState extends State<RadiosScreen> {
                         ? 'Tocá el corazón en cualquier emisora para guardarla acá.'
                         : 'Probá con otra categoría o término de búsqueda.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
                       color: palette.muted,
                     ),
                   ),

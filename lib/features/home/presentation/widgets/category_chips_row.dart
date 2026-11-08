@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
-/// Horizontal pill-chip filter for channel categories.
-///
-/// The filtering logic (`ChannelProvider.filterByCategory`) already existed
-/// in the codebase but had no UI anywhere in the app — categories were only
-/// reachable through search. This surfaces them directly on Inicio.
 class CategoryChipsRow extends StatelessWidget {
   const CategoryChipsRow({super.key});
 
@@ -27,7 +21,7 @@ class CategoryChipsRow extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            padding: AppResponsive.screenHorizontalPadding(context),
             itemCount: categories.length,
             separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
             itemBuilder: (context, index) {
@@ -61,55 +55,41 @@ class _CategoryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.isDark;
+    final accent = theme.colorScheme.primary;
+    final onAccent = AppTheme.onAccent(context);
 
     return ApplePressable(
       scaleDownFactor: 0.94,
       borderRadius: BorderRadius.circular(AppRadius.pill),
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 200),
         curve: AppAnimations.appleSpringEase,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.primary
-              : (isDark
-                  ? AppTheme.darkBg2.withValues(alpha: 0.85)
-                  : Colors.white),
+              ? accent
+              : (isDark ? AppTheme.darkBg2 : AppTheme.lightBg1),
           borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(
             color: isSelected
-                ? Colors.transparent
+                ? accent
                 : (isDark
-                    ? Colors.white.withValues(alpha: 0.10)
+                    ? Colors.white.withValues(alpha: 0.08)
                     : AppTheme.lightBorder),
             width: 1.0,
           ),
           boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.22),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+              ? AppShadows.glow(accent, alpha: isDark ? 0.22 : 0.14)
+              : null,
         ),
         child: Text(
           label,
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: 12.5,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            letterSpacing: -0.2,
-            color: isSelected
-                ? AppTheme.darkBg
-                : theme.colorScheme.onSurface.withValues(alpha: 0.80),
+            letterSpacing: -0.15,
+            color: isSelected ? onAccent : AppTheme.textSecondary(context),
           ),
         ),
       ),

@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/shared/widgets/common/apple_pressable.dart';
@@ -45,30 +44,26 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
           padding: EdgeInsets.fromLTRB(16, topPadding, 16, 0),
           decoration: BoxDecoration(
             color: isDark
-                ? AppTheme.darkBg.withValues(alpha: 0.78)
-                : AppTheme.lightBg.withValues(alpha: 0.82),
+                ? AppTheme.darkBg.withValues(alpha: 0.82)
+                : AppTheme.lightBg1.withValues(alpha: 0.88),
             border: Border(
               bottom: BorderSide(
                 color: isDark
                     ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.06),
+                    : AppTheme.lightBorder,
                 width: 1.0,
               ),
             ),
           ),
           child: Row(
             children: [
-              // Leading section (Default back button or custom leading)
               if (leading != null)
                 leading!
               else if (showBackButton)
                 _buildDefaultBackButton(context, isDark, theme)
               else
-                const SizedBox(width: 8),
-
+                const SizedBox(width: 4),
               const SizedBox(width: 14),
-
-              // Title and Subtitle section
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -76,12 +71,12 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.5,
                         color: theme.colorScheme.onSurface,
-                        height: 1.1,
+                        height: 1.12,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -90,11 +85,10 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
                       const SizedBox(height: 2),
                       Text(
                         subtitle!,
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 11,
+                        style: AppFont.primary(
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w600,
-                          color:
-                              isDark ? AppTheme.darkText3 : AppTheme.lightText3,
+                          color: AppTheme.textTertiary(context),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -103,8 +97,6 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ],
                 ),
               ),
-
-              // Actions section
               if (actions != null) ...[
                 const SizedBox(width: 8),
                 Row(
@@ -120,23 +112,24 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Widget _buildDefaultBackButton(
-      BuildContext context, bool isDark, ThemeData theme) {
+    BuildContext context,
+    bool isDark,
+    ThemeData theme,
+  ) {
     return ApplePressable(
       scaleDownFactor: 0.92,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
       onTap: onBackPressed ?? () => Navigator.pop(context),
       child: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: isDark
-              ? AppTheme.darkBg2.withValues(alpha: 0.70)
-              : AppTheme.lightBg2.withValues(alpha: 0.70),
-          borderRadius: BorderRadius.circular(14),
+          color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.10)
-                : Colors.black.withValues(alpha: 0.06),
+                ? Colors.white.withValues(alpha: 0.09)
+                : AppTheme.lightBorder,
             width: 1.0,
           ),
         ),

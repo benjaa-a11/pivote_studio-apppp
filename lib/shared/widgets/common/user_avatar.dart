@@ -3,8 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:pivote/core/theme/app_colors.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 
@@ -157,11 +158,11 @@ class _UserAvatarState extends State<UserAvatar>
                       shape: BoxShape.circle,
                       gradient: SweepGradient(
                         colors: const [
-                          Color(0xFF9B6BE6),
-                          Color(0xFF4F9BF0),
-                          Color(0xFF3FD1A0),
-                          Color(0xFFF0C93A),
-                          Color(0xFF9B6BE6),
+                          AppColors.violet,
+                          AppColors.info,
+                          AppColors.positive,
+                          AppColors.warning,
+                          AppColors.violet,
                         ],
                         transform: GradientRotation(angle),
                       ),
@@ -193,7 +194,7 @@ class _UserAvatarState extends State<UserAvatar>
     return Center(
       child: Text(
         initials,
-        style: GoogleFonts.inter(
+        style: AppFont.primary(
           fontSize: innerSize * 0.42,
           fontWeight: FontWeight.w700,
           color: Colors.white,

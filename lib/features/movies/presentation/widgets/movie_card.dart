@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
 import 'package:pivote/features/movies/presentation/screens/movie_detail_screen.dart';
 import 'package:pivote/core/theme/app_theme.dart';
@@ -113,7 +112,7 @@ class MovieCard extends StatelessWidget {
                       movie.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.2,
@@ -125,7 +124,7 @@ class MovieCard extends StatelessWidget {
                       children: [
                         Text(
                           '${movie.year}',
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w600,
                             color: Colors.white.withValues(alpha: 0.75),
@@ -146,7 +145,7 @@ class MovieCard extends StatelessWidget {
                             movie.duration,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.spaceGrotesk(
+                            style: AppFont.primary(
                               fontSize: 10.5,
                               fontWeight: FontWeight.w600,
                               color: Colors.white.withValues(alpha: 0.75),
@@ -187,7 +186,7 @@ class MovieCard extends StatelessWidget {
                         const SizedBox(width: 3),
                         Text(
                           movie.rating.toStringAsFixed(1),
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             color: Colors.white,
                             fontSize: 9.5,
                             fontWeight: FontWeight.w800,

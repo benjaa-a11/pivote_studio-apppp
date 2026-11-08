@@ -7,6 +7,7 @@ import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/widgets/matches_hero.dart';
 import 'package:pivote/shared/widgets/common/user_avatar.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/home/presentation/widgets/category_chips_row.dart';
 import 'package:pivote/features/home/presentation/providers/notifications_provider.dart';
@@ -26,7 +27,7 @@ class UnifiedHomeHeader extends StatelessWidget {
       children: [
         _buildTopBar(context, theme, isDark),
         const Padding(
-          padding: EdgeInsets.only(top: 6, bottom: 2),
+          padding: EdgeInsets.only(top: 4, bottom: 4),
           child: CategoryChipsRow(),
         ),
         _buildMatchesSection(),
@@ -35,8 +36,9 @@ class UnifiedHomeHeader extends StatelessWidget {
   }
 
   Widget _buildTopBar(BuildContext context, ThemeData theme, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+    final hPad = AppResponsive.screenHorizontalPadding(context);
+    return Padding(
+      padding: hPad.add(const EdgeInsets.symmetric(vertical: 10)),
       child: Row(
         children: [
           UserAvatar(
@@ -46,7 +48,33 @@ class UnifiedHomeHeader extends StatelessWidget {
               onNavigateToTab?.call(3);
             },
           ),
-          const Expanded(child: SizedBox.shrink()),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Pivote',
+                  style: AppFont.primary(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    height: 1.1,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  'TV & Deportes en vivo',
+                  style: AppFont.primary(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textTertiary(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -93,14 +121,17 @@ class UnifiedHomeHeader extends StatelessWidget {
                           top: -4,
                           child: Container(
                             constraints: const BoxConstraints(
-                                minWidth: 17, minHeight: 17),
+                              minWidth: 17,
+                              minHeight: 17,
+                            ),
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.error,
-                              borderRadius: BorderRadius.circular(10),
+                              color: AppColors.live,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.pill),
                               border: Border.all(
                                 color: isDark
-                                    ? AppTheme.darkBg2
+                                    ? AppTheme.darkBg
                                     : theme.scaffoldBackgroundColor,
                                 width: 2,
                               ),
@@ -108,9 +139,9 @@ class UnifiedHomeHeader extends StatelessWidget {
                             alignment: Alignment.center,
                             child: Text(
                               unread > 99 ? '99+' : '$unread',
-                              style: const TextStyle(
-                                fontSize: 8,
-                                fontWeight: FontWeight.w900,
+                              style: AppFont.primary(
+                                fontSize: 8.5,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
                             ),
@@ -137,31 +168,21 @@ class UnifiedHomeHeader extends StatelessWidget {
   }) {
     return ApplePressable(
       scaleDownFactor: 0.92,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
       onTap: onTap,
       child: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: isDark
-              ? AppTheme.darkBg2.withValues(alpha: 0.85)
-              : theme.colorScheme.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
+          color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg1,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.10)
-                : theme.colorScheme.primary.withValues(alpha: 0.14),
+                ? Colors.white.withValues(alpha: 0.08)
+                : AppTheme.lightBorder,
             width: 1.0,
           ),
-          boxShadow: isDark
-              ? null
-              : [
-                  BoxShadow(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+          boxShadow: AppShadows.appleDepth(context, elevation: 0.4),
         ),
         alignment: Alignment.center,
         child: Hero(
@@ -196,9 +217,13 @@ class UnifiedHomeHeader extends StatelessWidget {
         }
         final hasMatches = isLoading || featuredMatches.isNotEmpty;
         if (!hasMatches) return const SizedBox.shrink();
-        return const Padding(
-          padding: EdgeInsets.only(top: 4),
-          child: MatchesHero(),
+        return Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: MatchesHero(
+            onSeeAll: onNavigateToTab != null
+                ? () => onNavigateToTab!(0)
+                : null,
+          ),
         );
       },
     );

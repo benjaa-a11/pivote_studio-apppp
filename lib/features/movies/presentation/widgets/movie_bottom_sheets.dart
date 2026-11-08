@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/movies/presentation/widgets/movie_video_engine.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 
@@ -56,7 +55,7 @@ Widget _buildSheetWrapper({
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.35,
@@ -128,7 +127,7 @@ Widget _selectorOption({
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
+                      style: AppFont.primary(
                         fontSize: 14,
                         fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                         color: selected ? accent : theme.colorScheme.onSurface,
@@ -140,7 +139,7 @@ Widget _selectorOption({
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
+                        style: AppFont.primary(
                           fontSize: 12,
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -192,7 +191,7 @@ class SpeedSelectorSheet extends StatelessWidget {
           return ChoiceChip(
             label: Text(
               speed == 1.0 ? 'Normal' : '${speed}x',
-              style: GoogleFonts.inter(
+              style: AppFont.primary(
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
                 color: isSelected
@@ -310,7 +309,7 @@ class AudioTrackSelectorSheet extends StatelessWidget {
                   Text(
                     'No hay pistas de audio alternativas.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: Theme.of(context).hintColor,

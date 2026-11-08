@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
@@ -125,7 +124,7 @@ class MovieLoadingOverlay extends StatelessWidget {
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.syne(
+                    style: AppFont.primary(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -144,7 +143,7 @@ class MovieLoadingOverlay extends StatelessWidget {
                         if (bufferPercent != null && retryAttempt == 0)
                           Text(
                             '${bufferPercent!.toInt()}%',
-                            style: GoogleFonts.spaceGrotesk(
+                            style: AppFont.primary(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
@@ -160,7 +159,7 @@ class MovieLoadingOverlay extends StatelessWidget {
                     retryAttempt > 0
                         ? 'Reintentando conexión ($retryAttempt)…'
                         : 'Preparando la reproducción…',
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                       color: retryAttempt > 0

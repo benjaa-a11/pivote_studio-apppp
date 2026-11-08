@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_colors.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/widgets/custom_video_controls.dart';
@@ -425,7 +427,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
 
   Widget _buildErrorOverlay() {
     return Container(
-      color: const Color(0xEB0A0C10),
+      color: AppColors.ink0.withValues(alpha: 0.94),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -436,26 +438,26 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0x26D93025),
-                  borderRadius: BorderRadius.circular(16),
+                  color: AppColors.error.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(
-                    color: const Color(0x4DD93025),
+                    color: AppColors.error.withValues(alpha: 0.32),
                     width: 1,
                   ),
                 ),
                 child: const Icon(
                   Icons.wifi_tethering_error_rounded,
-                  color: Color(0xFFFF6B6B),
+                  color: AppColors.error,
                   size: 26,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 'Señal temporalmente no disponible',
-                style: GoogleFonts.inter(
-                  color: Colors.white,
+                style: AppFont.primary(
+                  color: AppColors.darkText,
                   fontSize: 15.5,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w800,
                   letterSpacing: -0.2,
                 ),
                 textAlign: TextAlign.center,
@@ -464,17 +466,18 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
               Text(
                 _controller.userMessage ??
                     'No se pudo conectar con los servidores de este canal.',
-                style: GoogleFonts.inter(
-                  color: Colors.white70,
+                style: AppFont.primary(
+                  color: AppColors.slate,
                   fontSize: 13,
+                  fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
               ),
               const SizedBox(height: 16),
               Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(999),
+                color: AppColors.accent,
+                borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: InkWell(
                   onTap: () {
                     _serverIndex = 0;
@@ -482,7 +485,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                     _isFailoverInProgress = false;
                     _playCurrentServer();
                   },
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 18,
@@ -494,15 +497,15 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
                         const Icon(
                           Icons.refresh_rounded,
                           size: 17,
-                          color: Color(0xFF111111),
+                          color: AppColors.ink0,
                         ),
                         const SizedBox(width: 7),
                         Text(
                           'Reintentar conexión',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF111111),
+                          style: AppFont.primary(
+                            color: AppColors.ink0,
                             fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],

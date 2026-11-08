@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/soccer/presentation/widgets/match_details_bottom_sheet.dart';
 import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
@@ -70,7 +70,7 @@ class SoccerMatchCard extends StatelessWidget {
     return ApplePressable(
       scaleDownFactor: 0.985,
       borderRadius: isLast
-          ? const BorderRadius.vertical(bottom: Radius.circular(20))
+          ? const BorderRadius.vertical(bottom: Radius.circular(AppRadius.xl))
           : BorderRadius.zero,
       onTap: () {
         showModalBottomSheet(
@@ -96,21 +96,23 @@ class SoccerMatchCard extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F131C) : theme.cardColor,
+          color: AppTheme.cardSurface(context),
+          borderRadius: isLast
+              ? const BorderRadius.vertical(
+                  bottom: Radius.circular(AppRadius.xl))
+              : BorderRadius.zero,
           border: isLast
               ? null
               : Border(
                   bottom: BorderSide(
-                    color: isDark
-                        ? const Color(0xFF1E2533)
-                        : AppTheme.lightBorder.withValues(alpha: 0.5),
+                    color: AppTheme.border(context),
                     width: 1,
                   ),
                 ),
         ),
         child: Stack(
           children: [
-            // Barra vertical izquierda si está en vivo (estilo Pivote Live HTML)
+            // Barra vertical izquierda si está en vivo
             if (isLive)
               Positioned(
                 left: 0,
@@ -119,13 +121,13 @@ class SoccerMatchCard extends StatelessWidget {
                 width: 3.5,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF5468),
+                    color: AppColors.live,
                     borderRadius: const BorderRadius.horizontal(
                       right: Radius.circular(3),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFFF5468).withValues(alpha: 0.5),
+                        color: AppColors.live.withValues(alpha: 0.5),
                         blurRadius: 6,
                       ),
                     ],
@@ -141,7 +143,7 @@ class SoccerMatchCard extends StatelessWidget {
                   // Columna 1: Estado / Tiempo
                   SizedBox(
                     width: 60,
-                    child: _buildStatusColumn(theme, isDark),
+                    child: _buildStatusColumn(context, theme, isDark),
                   ),
 
                   const SizedBox(width: 10),
@@ -152,6 +154,7 @@ class SoccerMatchCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildTeamLine(
+                          context: context,
                           team: homeTeam,
                           score: match.score.isNotEmpty ? match.score[0] : null,
                           scorers: homeScorers,
@@ -162,6 +165,7 @@ class SoccerMatchCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 7),
                         _buildTeamLine(
+                          context: context,
                           team: awayTeam,
                           score: match.score.length > 1 ? match.score[1] : null,
                           scorers: awayScorers,
@@ -177,7 +181,7 @@ class SoccerMatchCard extends StatelessWidget {
                   const SizedBox(width: 10),
 
                   // Columna 3: Icono de señal o chevron
-                  _buildTrailingAction(hasChannels, theme, isDark),
+                  _buildTrailingAction(context, hasChannels, theme, isDark),
                 ],
               ),
             ),
@@ -187,7 +191,11 @@ class SoccerMatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusColumn(ThemeData theme, bool isDark) {
+  Widget _buildStatusColumn(
+    BuildContext context,
+    ThemeData theme,
+    bool isDark,
+  ) {
     if (isLive) {
       return Column(
         mainAxisSize: MainAxisSize.min,
@@ -200,7 +208,7 @@ class SoccerMatchCard extends StatelessWidget {
                 width: 6,
                 height: 6,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFFF5468),
+                  color: AppColors.live,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -209,10 +217,10 @@ class SoccerMatchCard extends StatelessWidget {
                 child: Text(
                   match.timeStatus.isNotEmpty ? match.timeStatus : 'VIVO',
                   maxLines: 1,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
-                    color: const Color(0xFFFF5468),
+                    color: AppColors.live,
                   ),
                 ),
               ),
@@ -221,10 +229,10 @@ class SoccerMatchCard extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             'En vivo',
-            style: GoogleFonts.spaceGrotesk(
+            style: AppFont.primary(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFFFF5468).withValues(alpha: 0.8),
+              color: AppColors.live.withValues(alpha: 0.8),
             ),
           ),
         ],
@@ -238,21 +246,19 @@ class SoccerMatchCard extends StatelessWidget {
         children: [
           Text(
             'Final',
-            style: GoogleFonts.spaceGrotesk(
+            style: AppFont.primary(
               fontSize: 12.5,
               fontWeight: FontWeight.w800,
-              color: isDark
-                  ? const Color(0xFFEEF1F6)
-                  : theme.colorScheme.onSurface,
+              color: AppTheme.textPrimary(context),
             ),
           ),
           const SizedBox(height: 2),
           Text(
             match.dayLabel,
-            style: GoogleFonts.spaceGrotesk(
+            style: AppFont.primary(
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
-              color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+              color: AppTheme.textSecondary(context),
             ),
           ),
         ],
@@ -266,19 +272,19 @@ class SoccerMatchCard extends StatelessWidget {
       children: [
         Text(
           match.formattedTime,
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: 13,
             fontWeight: FontWeight.w900,
-            color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+            color: AppTheme.accent(context),
           ),
         ),
         const SizedBox(height: 2),
         Text(
           match.dayLabel,
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: 10.5,
             fontWeight: FontWeight.w600,
-            color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+            color: AppTheme.textSecondary(context),
           ),
         ),
       ],
@@ -286,6 +292,7 @@ class SoccerMatchCard extends StatelessWidget {
   }
 
   Widget _buildTeamLine({
+    required BuildContext context,
     required SoccerTeam team,
     required dynamic score,
     required String scorers,
@@ -294,19 +301,18 @@ class SoccerMatchCard extends StatelessWidget {
     required ThemeData theme,
     required bool isDark,
   }) {
-    final teamColor = team.primaryColor ??
-        (isDark ? const Color(0xFF262C36) : AppTheme.lightBorder);
+    final teamColor = team.primaryColor ?? AppTheme.border(context);
     final scoreStr = score != null ? score.toString() : '';
 
     final nameColor = isLoser
-        ? (isDark ? const Color(0xFF7C879B) : theme.hintColor)
-        : (isDark ? const Color(0xFFEEF1F6) : theme.colorScheme.onSurface);
+        ? AppTheme.textSecondary(context)
+        : AppTheme.textPrimary(context);
 
     final scoreColor = isLive
-        ? AppTheme.darkAccent
+        ? AppTheme.accent(context)
         : isWinner
-            ? (isDark ? const Color(0xFFEEF1F6) : theme.colorScheme.onSurface)
-            : (isDark ? const Color(0xFF7C879B) : theme.hintColor);
+            ? AppTheme.textPrimary(context)
+            : AppTheme.textSecondary(context);
 
     return Row(
       children: [
@@ -316,7 +322,7 @@ class SoccerMatchCard extends StatelessWidget {
           height: 24,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isDark ? const Color(0xFF161B27) : Colors.white,
+            color: isDark ? AppColors.ink2 : Colors.white,
             border: Border.all(
               color: teamColor.withValues(alpha: isDark ? 0.35 : 0.2),
               width: 1,
@@ -354,7 +360,7 @@ class SoccerMatchCard extends StatelessWidget {
                 team.shortName.isNotEmpty ? team.shortName : team.name,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: 13,
                   fontWeight:
                       isWinner || isLive ? FontWeight.w800 : FontWeight.w600,
@@ -366,10 +372,10 @@ class SoccerMatchCard extends StatelessWidget {
                   scorers,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: isDark ? const Color(0xFF7C879B) : theme.hintColor,
+                    color: AppTheme.textSecondary(context),
                   ),
                 ),
             ],
@@ -381,7 +387,7 @@ class SoccerMatchCard extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             scoreStr,
-            style: GoogleFonts.bigShouldersDisplay(
+            style: AppFont.score(
               fontSize: 22,
               fontWeight: FontWeight.w900,
               height: 1.0,
@@ -393,19 +399,24 @@ class SoccerMatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTrailingAction(bool hasChannels, ThemeData theme, bool isDark) {
+  Widget _buildTrailingAction(
+    BuildContext context,
+    bool hasChannels,
+    ThemeData theme,
+    bool isDark,
+  ) {
     if (isLive && hasChannels) {
       return Container(
         width: 28,
         height: 28,
         decoration: BoxDecoration(
-          color: const Color(0xFFFF5468).withValues(alpha: 0.15),
+          color: AppColors.live.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Icon(
           Icons.play_arrow_rounded,
           size: 16,
-          color: Color(0xFFFF5468),
+          color: AppColors.live,
         ),
       );
     }
@@ -415,14 +426,13 @@ class SoccerMatchCard extends StatelessWidget {
         width: 28,
         height: 28,
         decoration: BoxDecoration(
-          color: (isDark ? AppTheme.darkAccent : theme.colorScheme.primary)
-              .withValues(alpha: 0.1),
+          color: AppTheme.accent(context).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
           Icons.tv_rounded,
           size: 14,
-          color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+          color: AppTheme.accent(context),
         ),
       );
     }
@@ -430,9 +440,7 @@ class SoccerMatchCard extends StatelessWidget {
     return Icon(
       Icons.chevron_right_rounded,
       size: 18,
-      color: isDark
-          ? const Color(0xFF7C879B)
-          : theme.hintColor.withValues(alpha: 0.5),
+      color: AppTheme.textSecondary(context),
     );
   }
 }

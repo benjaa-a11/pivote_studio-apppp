@@ -2,11 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/cache_manager_service.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
@@ -131,12 +132,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
+            constraints: const BoxConstraints(maxWidth: 720),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(
                 parent: ClampingScrollPhysics(),
               ),
-              padding: EdgeInsets.fromLTRB(10, topPadding + 10, 10, 112),
+              padding: EdgeInsets.fromLTRB(
+                AppResponsive.horizontalPadding(context),
+                topPadding + 10,
+                AppResponsive.horizontalPadding(context),
+                112,
+              ),
               children: [
                 // ---------- Portada + Avatar con anillo ----------
                 AppAnimations.staggeredSlideIn(
@@ -175,7 +181,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           textAlign: TextAlign.center,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 26,
                             fontWeight: FontWeight.w600,
                             letterSpacing: -0.52,
@@ -386,7 +392,7 @@ class _ProfileStatItemState extends State<_ProfileStatItem> {
               widget.value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
+              style: AppFont.primary(
                 fontSize: 21,
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.21,
@@ -398,7 +404,7 @@ class _ProfileStatItemState extends State<_ProfileStatItem> {
               widget.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
+              style: AppFont.primary(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
                 color: palette.muted,

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/features/movies/presentation/providers/movies_provider.dart';
 import 'package:pivote/features/movies/presentation/widgets/movie_card.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/shared/widgets/common/app_state_views.dart';
 
 class MoviesSearchScreen extends StatefulWidget {
   const MoviesSearchScreen({super.key});
@@ -222,7 +223,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                   children: [
                     Text(
                       'Buscar Películas',
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.6,
@@ -232,7 +233,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                     if (_searchController.text.isNotEmpty)
                       Text(
                         '${context.watch<MoviesProvider>().movies.length} resultados encontrados',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
@@ -283,14 +284,14 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
               cursorColor: theme.colorScheme.primary,
               cursorWidth: 2.2,
               cursorRadius: const Radius.circular(2),
-              style: GoogleFonts.spaceGrotesk(
+              style: AppFont.primary(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.onSurface,
               ),
               decoration: InputDecoration(
                 hintText: 'Título, género, director...',
-                hintStyle: GoogleFonts.spaceGrotesk(
+                hintStyle: AppFont.primary(
                   fontSize: 14,
                   color: theme.hintColor.withValues(alpha: 0.45),
                   fontWeight: FontWeight.w500,
@@ -360,7 +361,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                         const SizedBox(width: 8),
                         Text(
                           'Búsquedas Recientes',
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: theme.colorScheme.onSurface,
@@ -372,7 +373,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                       onTap: _clearAllHistory,
                       child: Text(
                         'Limpiar todo',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
@@ -399,7 +400,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                         child: InputChip(
                           label: Text(
                             item,
-                            style: GoogleFonts.spaceGrotesk(
+                            style: AppFont.primary(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: theme.colorScheme.onSurface,
@@ -448,7 +449,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                   const SizedBox(width: 8),
                   Text(
                     'Explorar por Género',
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: theme.colorScheme.onSurface,
@@ -490,7 +491,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                   const SizedBox(width: 8),
                   Text(
                     'Películas Populares',
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: theme.colorScheme.onSurface,
@@ -567,7 +568,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                   alignment: Alignment.centerLeft,
                   child: Text(
                     genre,
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -613,7 +614,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                 const SizedBox(width: 8),
                 Text(
                   '${results.length} ${results.length == 1 ? 'película' : 'películas'} encontradas',
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -629,7 +630,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                   ),
                   child: Text(
                     '"${_searchController.text}"',
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.primary,
@@ -653,7 +654,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                   const SizedBox(width: 6),
                   Text(
                     'Quizás quisiste decir:',
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
@@ -691,7 +692,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
                               child: Center(
                                 child: Text(
                                   suggestion,
-                                  style: GoogleFonts.spaceGrotesk(
+                                  style: AppFont.primary(
                                     fontSize: 10,
                                     color: theme.colorScheme.primary,
                                     fontWeight: FontWeight.bold,
@@ -712,12 +713,7 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.70,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
+            gridDelegate: AppResponsive.posterGridDelegate(context),
             delegate: SliverChildBuilderDelegate(
               (context, index) => AppAnimations.smoothFadeIn(
                 child: MovieCard(movie: results[index]),
@@ -737,90 +733,13 @@ class _MoviesSearchScreenState extends State<MoviesSearchScreen>
       slivers: [
         SliverFillRemaining(
           hasScrollBody: false,
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          theme.colorScheme.primary.withValues(alpha: 0.15),
-                          Colors.transparent,
-                        ],
-                      ),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.movie_filter_outlined,
-                      size: 42,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Sin resultados',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'No encontramos ninguna película que coincida con "${_searchController.text}".',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 13,
-                      height: 1.5,
-                      color:
-                          theme.colorScheme.onSurface.withValues(alpha: 0.55),
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 28),
-                  GestureDetector(
-                    onTap: _clearSearch,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color:
-                              theme.colorScheme.primary.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.refresh_rounded,
-                              size: 16, color: theme.colorScheme.primary),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Limpiar búsqueda',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          child: AppStateView.empty(
+            icon: Icons.movie_filter_outlined,
+            title: 'Sin resultados',
+            subtitle:
+                'No encontramos ninguna película que coincida con "${_searchController.text}".',
+            onAction: _clearSearch,
+            actionLabel: 'Limpiar búsqueda',
           ),
         ),
       ],

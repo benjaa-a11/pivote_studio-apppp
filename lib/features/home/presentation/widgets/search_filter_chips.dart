@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 
 enum SearchFilterTab { all, channels, radios, soccer }
@@ -59,7 +60,7 @@ class SearchFilterChips extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: AppResponsive.screenHorizontalPadding(context),
         itemCount: tabs.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
@@ -75,20 +76,20 @@ class SearchFilterChips extends StatelessWidget {
 
           return Material(
             color: bgColor,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
             child: InkWell(
               onTap: () {
                 HapticFeedback.selectionClick();
                 onTabSelected(item.tab);
               },
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
               splashColor: Colors.transparent,
               highlightColor: palette.cardPressed.withValues(alpha: 0.5),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   border: Border.all(
                     color: borderColor,
                     width: 1,
@@ -105,12 +106,12 @@ class SearchFilterChips extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       item.label,
-                      style: GoogleFonts.inter(
-                        fontSize: 13.2,
+                      style: AppFont.primary(
+                        fontSize: 12.8,
                         fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.w500,
+                            isSelected ? FontWeight.w800 : FontWeight.w600,
                         color: fgColor,
-                        letterSpacing: -0.1,
+                        letterSpacing: -0.15,
                       ),
                     ),
                     if (item.count > 0) ...[
@@ -124,13 +125,13 @@ class SearchFilterChips extends StatelessWidget {
                           color: isSelected
                               ? fgColor.withValues(alpha: 0.16)
                               : palette.iconBox,
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
                         child: Text(
                           '${item.count}',
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: isSelected ? fgColor : palette.muted,
                           ),
                         ),

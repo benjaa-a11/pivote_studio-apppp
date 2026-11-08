@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pivote/features/movies/presentation/providers/movies_provider.dart';
 import 'package:pivote/features/movies/presentation/widgets/movie_card.dart';
@@ -10,7 +9,9 @@ import 'package:pivote/features/movies/data/models/movie.dart';
 import 'package:pivote/features/movies/presentation/screens/movie_detail_screen.dart';
 import 'package:pivote/features/movies/presentation/screens/movies_search_screen.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/shared/widgets/common/app_state_views.dart';
 
 class MoviesScreen extends StatefulWidget {
   const MoviesScreen({super.key});
@@ -166,14 +167,14 @@ class _MoviesScreenState extends State<MoviesScreen> {
             height: 44,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [AppTheme.darkAccent, Color(0xFFFF9F43)],
+                colors: [AppColors.accent, AppColors.accentStrong],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.darkAccent.withValues(alpha: 0.35),
+                  color: AppColors.accent.withValues(alpha: 0.35),
                   blurRadius: 12,
                   offset: const Offset(0, 3),
                 ),
@@ -182,7 +183,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
             child: const Icon(
               Icons.movie_creation_rounded,
               size: 24,
-              color: Colors.black,
+              color: AppColors.ink0,
             ),
           ),
           const SizedBox(width: 14),
@@ -196,7 +197,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                   children: [
                     Text(
                       'Películas',
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
                         color: theme.colorScheme.onSurface,
@@ -218,7 +219,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                       ),
                       child: Text(
                         'CATÁLOGO 4K',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 9,
                           fontWeight: FontWeight.w800,
                           color: isDark
@@ -233,7 +234,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                 const SizedBox(height: 3),
                 Text(
                   'Estrenos, Cine Premium & Colecciones',
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
@@ -400,7 +401,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                       ),
                       child: Text(
                         'DESTACADA',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 8,
                           color: AppTheme.darkBg,
                           fontWeight: FontWeight.w900,
@@ -411,7 +412,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                     const SizedBox(height: 8),
                     Text(
                       movie.title,
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
@@ -423,7 +424,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                       movie.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         fontSize: 11,
                         color: Colors.white70,
                         height: 1.4,
@@ -490,7 +491,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
               child: Center(
                 child: Text(
                   genre,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 12,
                     fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                     color: isSelected
@@ -522,7 +523,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
           const SizedBox(width: 8),
           Text(
             title,
-            style: GoogleFonts.spaceGrotesk(
+            style: AppFont.primary(
               fontSize: 15,
               fontWeight: FontWeight.w800,
               color: theme.colorScheme.onSurface,
@@ -646,7 +647,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
                             movie.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.spaceGrotesk(
+                            style: AppFont.primary(
                               fontSize: 11,
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
@@ -727,12 +728,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
     final dummyCount = isLoading ? 6 : list.length;
 
     return SliverGrid(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.70,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
+      gridDelegate: AppResponsive.posterGridDelegate(context),
       delegate: SliverChildBuilderDelegate(
         (context, index) {
           final card = isLoading
@@ -765,68 +761,12 @@ class _MoviesScreenState extends State<MoviesScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context, MoviesProvider provider) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.15),
-                    Theme.of(context)
-                        .colorScheme
-                        .secondary
-                        .withValues(alpha: 0.15),
-                  ],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.movie_filter_outlined,
-                size: 64,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No hay películas en este género',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Intentá seleccionar otro género o\nlimpiar el filtro activo.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: isDark ? Colors.grey[500] : Colors.grey[600],
-                    height: 1.5,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: provider.clearFilters,
-              icon: const Icon(Icons.refresh_rounded, size: 20),
-              label: const Text('Limpiar filtros'),
-              style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                elevation: 0,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AppStateView.empty(
+      icon: Icons.movie_filter_outlined,
+      title: 'No hay películas en este género',
+      subtitle: 'Intentá seleccionar otro género o limpiar el filtro activo.',
+      onAction: provider.clearFilters,
+      actionLabel: 'Limpiar filtros',
     );
   }
 }

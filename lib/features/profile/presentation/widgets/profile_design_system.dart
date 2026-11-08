@@ -5,13 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
 
-/// Unified color palette for Profile, Settings Subsections, Radio, Favorites, and Diagnostics,
-/// adapting the design system to Pivote's Dark and Light themes with high contrast and visibility.
+/// Paleta unificada conectada directamente al Design System (`AppTheme` / `AppColors`).
+/// Comparte exactamente la misma identidad visual en modo oscuro y modo claro.
 class ProfilePalette {
   final bool isDark;
   final Color bg;
@@ -74,58 +74,44 @@ class ProfilePalette {
         chevron: AppTheme.darkText3,
         switchOff: AppTheme.darkBg4,
         switchOn: AppTheme.darkAccent,
-        switchThumbOn: AppTheme.darkBg,
+        switchThumbOn: AppColors.onDarkAccent,
         accent: AppTheme.darkAccent,
         primaryBtnBg: AppTheme.darkAccent,
-        primaryBtnText: AppTheme.darkBg,
+        primaryBtnText: AppColors.onDarkAccent,
         danger: AppTheme.darkDanger,
         dangerBg: AppTheme.darkDangerDim,
-        dangerBorder: const Color(0x38FF4D4F),
+        dangerBorder: AppTheme.darkDanger.withValues(alpha: 0.28),
         avatarPlaceholderBg: AppTheme.darkBg4,
-        cardShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.34),
-            blurRadius: 18,
-            spreadRadius: -8,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        cardShadow: AppShadows.appleDepth(context, elevation: 0.7),
       );
     } else {
       return ProfilePalette(
         isDark: false,
         bg: AppTheme.lightBg,
-        card: Colors.white,
-        cardPressed: const Color(0xFFEDF2F7),
-        border: const Color(0xFFDCE3EC),
-        iconBox: const Color(0xFFEEF3F9),
-        text: const Color(0xFF111827),
-        muted: const Color(0xFF5A6675),
-        chevron: const Color(0xFF8C9BAA),
-        switchOff: const Color(0xFFCBD5E1),
-        switchOn: const Color(0xFF111827),
-        switchThumbOn: Colors.white,
+        card: AppTheme.lightBg1,
+        cardPressed: AppTheme.lightBg2,
+        border: AppTheme.lightBorder,
+        iconBox: AppTheme.lightBg2,
+        text: AppTheme.lightText,
+        muted: AppTheme.lightText2,
+        chevron: AppTheme.lightText3,
+        switchOff: AppTheme.lightBg4,
+        switchOn: AppTheme.lightAccent,
+        switchThumbOn: AppColors.onLightAccent,
         accent: AppTheme.lightAccent,
-        primaryBtnBg: const Color(0xFF111827),
-        primaryBtnText: Colors.white,
-        danger: const Color(0xFFD93025),
-        dangerBg: const Color(0xFFFDECEB),
-        dangerBorder: const Color(0x2ED93025),
-        avatarPlaceholderBg: const Color(0xFF94A3B8),
-        cardShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.08),
-            blurRadius: 18,
-            spreadRadius: -6,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        primaryBtnBg: AppTheme.lightAccent,
+        primaryBtnText: AppColors.onLightAccent,
+        danger: AppTheme.lightDanger,
+        dangerBg: AppTheme.lightDangerDim,
+        dangerBorder: AppTheme.lightDanger.withValues(alpha: 0.25),
+        avatarPlaceholderBg: AppTheme.lightText3,
+        cardShadow: AppShadows.appleDepth(context, elevation: 0.7),
       );
     }
   }
 }
 
-/// Exact SVG icons from the HTML specifications + diagnostics icon.
+/// Iconos vectoriales del sistema de perfil y ajustes.
 class ProfileSvgIcons {
   static const String crown =
       '<svg viewBox="0 0 24 24"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8z"/></svg>';
@@ -170,7 +156,7 @@ class ProfileSvgIcons {
   }
 }
 
-/// Standard screen wrapper for subsections (.screen in HTML: padding 10, max-width 430).
+/// Contenedor estándar de subsecciones con ancho adaptable.
 class ProfileSubsectionScaffold extends StatelessWidget {
   final String title;
   final List<Widget> children;
@@ -190,6 +176,7 @@ class ProfileSubsectionScaffold extends StatelessWidget {
     final palette = ProfilePalette.of(context);
     final topPad = MediaQuery.paddingOf(context).top;
     final bottomPad = MediaQuery.paddingOf(context).bottom;
+    final hPad = AppResponsive.screenHorizontalPadding(context).horizontal / 2;
 
     return Scaffold(
       backgroundColor: palette.bg,
@@ -199,13 +186,13 @@ class ProfileSubsectionScaffold extends StatelessWidget {
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
+            constraints: const BoxConstraints(maxWidth: 720),
             child: ListView(
               physics: const ClampingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
-                10,
+                hPad,
                 topPad + 10,
-                10,
+                hPad,
                 math.max(24, bottomPad + 22),
               ),
               children: [
@@ -224,7 +211,7 @@ class ProfileSubsectionScaffold extends StatelessWidget {
   }
 }
 
-/// Subsection Header (.hdr: back 40x40 circle, centered 20px w600 title, 40px spacer).
+/// Encabezado de subsección unificado.
 class ProfileSubHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onBack;
@@ -244,7 +231,7 @@ class ProfileSubHeader extends StatelessWidget {
     final palette = ProfilePalette.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 8, 6, 18),
+      padding: const EdgeInsets.fromLTRB(2, 8, 2, 18),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -263,7 +250,7 @@ class ProfileSubHeader extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: palette.card,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                   border: Border.all(
                     color: palette.border,
                     width: 1,
@@ -285,10 +272,10 @@ class ProfileSubHeader extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.2,
+              style: AppFont.primary(
+                fontSize: 19.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
                 color: palette.text,
               ),
             ),
@@ -300,7 +287,7 @@ class ProfileSubHeader extends StatelessWidget {
   }
 }
 
-/// Section title (.title: padding 18px 12px 8px, font-size 14px, weight 600, muted).
+/// Título de sección con jerarquía tipográfica unificada.
 class ProfileSectionTitle extends StatelessWidget {
   final String text;
   final bool first;
@@ -315,12 +302,13 @@ class ProfileSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = ProfilePalette.of(context);
     return Padding(
-      padding: EdgeInsets.fromLTRB(12, first ? 0 : 18, 12, 8),
+      padding: EdgeInsets.fromLTRB(8, first ? 0 : 18, 8, 8),
       child: Text(
         text,
-        style: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
+        style: AppFont.primary(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.1,
           color: palette.muted,
         ),
       ),
@@ -328,7 +316,7 @@ class ProfileSectionTitle extends StatelessWidget {
   }
 }
 
-/// Group card (.group: background card, border 1px line, border-radius 26px, 1px dividers).
+/// Tarjeta de grupo con bordes y radios unificados (`AppRadius.lg`).
 class ProfileGroupCard extends StatelessWidget {
   final List<Widget> children;
   final EdgeInsetsGeometry? padding;
@@ -346,12 +334,12 @@ class ProfileGroupCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: palette.card,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: palette.border, width: 1),
         boxShadow: palette.cardShadow,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(AppRadius.lg - 1),
         child: Padding(
           padding: padding ?? EdgeInsets.zero,
           child: Column(
@@ -375,7 +363,7 @@ class ProfileGroupCard extends StatelessWidget {
   }
 }
 
-/// Row inside a group (.row: padding 15x16, gap 12/14, title 16.5 w500, subtitle 13.5 muted).
+/// Fila interactiva dentro de un grupo.
 class ProfileGroupRow extends StatefulWidget {
   final Widget? leading;
   final String title;
@@ -426,7 +414,7 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         color: _pressed ? palette.cardPressed : Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
             if (widget.leading != null) ...[
@@ -440,9 +428,10 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
                 children: [
                   Text(
                     widget.title,
-                    style: GoogleFonts.inter(
-                      fontSize: 16.5,
-                      fontWeight: FontWeight.w500,
+                    style: AppFont.primary(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
                       color: widget.isDanger ? palette.danger : palette.text,
                     ),
                   ),
@@ -451,9 +440,9 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
                     const SizedBox(height: 2),
                     Text(
                       widget.subtitle!,
-                      style: GoogleFonts.inter(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w400,
+                      style: AppFont.primary(
+                        fontSize: 12.8,
+                        fontWeight: FontWeight.w500,
                         color: palette.muted,
                         height: 1.35,
                       ),
@@ -466,9 +455,9 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
               const SizedBox(width: 8),
               Text(
                 widget.valueText!,
-                style: GoogleFonts.inter(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w400,
+                style: AppFont.primary(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
                   color: palette.muted,
                 ),
               ),
@@ -492,7 +481,7 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
   }
 }
 
-/// 38x38 rounded icon container (.icon: 38x38, radius 12).
+/// Caja de icono de 38x38 con radio `AppRadius.sm`.
 class ProfileSettingIconBox extends StatelessWidget {
   final String svgString;
 
@@ -509,7 +498,7 @@ class ProfileSettingIconBox extends StatelessWidget {
       height: 38,
       decoration: BoxDecoration(
         color: palette.iconBox,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       alignment: Alignment.center,
       child: ProfileSvgIcons.svg(
@@ -521,7 +510,7 @@ class ProfileSettingIconBox extends StatelessWidget {
   }
 }
 
-/// Custom 50x30 pill switch (.sw: 50x30, radius 999, thumb 24x24, 3px inset).
+/// Interruptor tipo píldora 50x30 sincronizado con el acento del tema.
 class ProfileSwitch extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
@@ -554,7 +543,7 @@ class ProfileSwitch extends StatelessWidget {
           height: 30,
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
             color: value ? palette.switchOn : palette.switchOff,
           ),
           child: AnimatedAlign(
@@ -585,7 +574,7 @@ class ProfileSwitch extends StatelessWidget {
 
 enum ProfileButtonVariant { primary, soft, danger }
 
-/// Full-width 54dp button (.btn, .btn.soft, .btn.bad: height 54, radius 26, font 16.5 w600).
+/// Botón de acción de ancho completo unificado con el sistema de diseño.
 class ProfileActionButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -634,10 +623,10 @@ class ProfileActionButton extends StatelessWidget {
         onTap: loading ? null : onTap,
         child: Container(
           width: double.infinity,
-          height: 54,
+          height: 52,
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             border: border,
           ),
           alignment: Alignment.center,
@@ -660,9 +649,10 @@ class ProfileActionButton extends StatelessWidget {
                     ],
                     Text(
                       label,
-                      style: GoogleFonts.inter(
-                        fontSize: 16.5,
-                        fontWeight: FontWeight.w600,
+                      style: AppFont.primary(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.15,
                         color: textColor,
                       ),
                     ),
@@ -674,7 +664,7 @@ class ProfileActionButton extends StatelessWidget {
   }
 }
 
-/// Cover banner (.cover: height 210, radius 30, cloud/sky atmospheric artwork).
+/// Banner de portada de perfil unificado con la estética de Pivote.
 class ProfileCoverBanner extends StatelessWidget {
   const ProfileCoverBanner({super.key});
 
@@ -683,32 +673,30 @@ class ProfileCoverBanner extends StatelessWidget {
     final palette = ProfilePalette.of(context);
 
     return Container(
-      height: 210,
+      height: 200,
       width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(
-          color: palette.isDark
-              ? AppTheme.darkBorder
-              : const Color(0xFFCBD9EA),
+          color: palette.border,
           width: 1,
         ),
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: palette.isDark
-              ? [
-                  const Color(0xFF152033),
-                  const Color(0xFF1E2F4A),
+              ? const [
+                  AppColors.ink1,
+                  AppColors.ink2,
                 ]
-              : [
-                  const Color(0xFF93B5E1),
-                  const Color(0xFFBAD0EC),
+              : const [
+                  AppColors.lightBg2,
+                  AppColors.lightBg3,
                 ],
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(29),
+        borderRadius: BorderRadius.circular(AppRadius.xl - 1),
         child: CustomPaint(
           painter: _CloudCoverPainter(
             isDark: palette.isDark,
@@ -732,14 +720,13 @@ class _CloudCoverPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (isDark) {
-      // Subtle studio glow + soft night clouds for dark mode
       final accentGlow = Paint()
         ..shader = RadialGradient(
-          center: const Alignment(-0.25, -0.2),
-          radius: 0.75,
+          center: const Alignment(-0.35, -0.25),
+          radius: 0.85,
           colors: [
             accentColor.withValues(alpha: 0.22),
-            accentColor.withValues(alpha: 0.06),
+            accentColor.withValues(alpha: 0.05),
             Colors.transparent,
           ],
           stops: const [0.0, 0.55, 1.0],
@@ -749,58 +736,30 @@ class _CloudCoverPainter extends CustomPainter {
       _drawCloudBlob(
         canvas,
         size,
-        center: Offset(size.width * 0.38, size.height * 0.42),
-        rx: size.width * 0.48,
-        ry: size.height * 0.42,
-        innerColor: Colors.white.withValues(alpha: 0.15),
-        midColor: Colors.white.withValues(alpha: 0.06),
-      );
-      _drawCloudBlob(
-        canvas,
-        size,
-        center: Offset(size.width * 0.64, size.height * 0.62),
-        rx: size.width * 0.35,
-        ry: size.height * 0.32,
-        innerColor: const Color(0xFF4F9BF0).withValues(alpha: 0.20),
-        midColor: const Color(0xFF4F9BF0).withValues(alpha: 0.06),
-      );
-      _drawCloudBlob(
-        canvas,
-        size,
-        center: Offset(size.width * 0.22, size.height * 0.60),
-        rx: size.width * 0.30,
-        ry: size.height * 0.26,
-        innerColor: Colors.white.withValues(alpha: 0.12),
-        midColor: Colors.white.withValues(alpha: 0.04),
+        center: Offset(size.width * 0.72, size.height * 0.45),
+        rx: size.width * 0.42,
+        ry: size.height * 0.40,
+        innerColor: AppColors.info.withValues(alpha: 0.16),
+        midColor: AppColors.info.withValues(alpha: 0.04),
       );
     } else {
-      // Crisp radial cloud gradients from profile.html with high visibility in light mode
       _drawCloudBlob(
         canvas,
         size,
-        center: Offset(size.width * 0.38, size.height * 0.42),
-        rx: size.width * 0.55,
+        center: Offset(size.width * 0.30, size.height * 0.38),
+        rx: size.width * 0.52,
         ry: size.height * 0.45,
-        innerColor: Colors.white,
-        midColor: Colors.white.withValues(alpha: 0.88),
+        innerColor: accentColor.withValues(alpha: 0.12),
+        midColor: accentColor.withValues(alpha: 0.03),
       );
       _drawCloudBlob(
         canvas,
         size,
-        center: Offset(size.width * 0.62, size.height * 0.62),
-        rx: size.width * 0.35,
-        ry: size.height * 0.30,
-        innerColor: Colors.white.withValues(alpha: 0.92),
-        midColor: Colors.white.withValues(alpha: 0.48),
-      );
-      _drawCloudBlob(
-        canvas,
-        size,
-        center: Offset(size.width * 0.22, size.height * 0.60),
-        rx: size.width * 0.30,
-        ry: size.height * 0.25,
-        innerColor: Colors.white.withValues(alpha: 0.85),
-        midColor: Colors.white.withValues(alpha: 0.38),
+        center: Offset(size.width * 0.72, size.height * 0.58),
+        rx: size.width * 0.38,
+        ry: size.height * 0.32,
+        innerColor: AppColors.info.withValues(alpha: 0.10),
+        midColor: Colors.white.withValues(alpha: 0.45),
       );
     }
   }
@@ -833,8 +792,7 @@ class _CloudCoverPainter extends CustomPainter {
   }
 }
 
-/// Avatar with subtle animated conic/sweep gradient ring
-/// (.avatar-wrap: 156 diameter, 5dp ring, 4dp+ bg gap, photo/initial).
+/// Avatar circular con anillo degradado animado.
 class ProfileAvatarWithRing extends StatefulWidget {
   final double size;
   final String? imagePath;
@@ -911,11 +869,11 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
               shape: BoxShape.circle,
               gradient: SweepGradient(
                 colors: const [
-                  Color(0xFF9B6BE6),
-                  Color(0xFF4F9BF0),
-                  Color(0xFF3FD1A0),
-                  Color(0xFFF0C93A),
-                  Color(0xFF9B6BE6),
+                  AppColors.darkAccent,
+                  AppColors.info,
+                  AppColors.positive,
+                  AppColors.violet,
+                  AppColors.darkAccent,
                 ],
                 transform: GradientRotation(angle),
               ),
@@ -944,9 +902,9 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
             child: imageProvider == null
                 ? Text(
                     widget.fallbackInitial,
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: widget.size * 0.36,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                     ),
                   )
@@ -958,7 +916,7 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
   }
 }
 
-/// Plan Pill (.plan: VIP gold gradient with crown SVG or normal pill).
+/// Píldora de estado de cuenta (VIP o Normal).
 class ProfilePlanBadge extends StatelessWidget {
   final bool isVip;
   final bool compact;
@@ -980,20 +938,20 @@ class ProfilePlanBadge extends StatelessWidget {
           vertical: compact ? 4 : 6,
         ),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: BorderRadius.circular(AppRadius.pill),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
               Color(0xFFF7E08A),
-              Color(0xFFE3B341),
+              AppColors.gold,
             ],
           ),
           boxShadow: compact
               ? null
               : [
                   BoxShadow(
-                    color: const Color(0xFFE3B341).withValues(alpha: 0.45),
+                    color: AppColors.gold.withValues(alpha: 0.38),
                     blurRadius: 12,
                     spreadRadius: -4,
                     offset: const Offset(0, 4),
@@ -1007,16 +965,16 @@ class ProfilePlanBadge extends StatelessWidget {
               ProfileSvgIcons.svg(
                 ProfileSvgIcons.crown,
                 size: 15,
-                color: const Color(0xFF5B4100),
+                color: const Color(0xFF422F00),
               ),
               const SizedBox(width: 6),
             ],
             Text(
               compact ? 'VIP' : 'Usuario VIP',
-              style: GoogleFonts.inter(
-                fontSize: compact ? 13 : 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF5B4100),
+              style: AppFont.primary(
+                fontSize: compact ? 12.5 : 13.5,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF422F00),
               ),
             ),
           ],
@@ -1031,14 +989,14 @@ class ProfilePlanBadge extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: palette.card,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
         border: Border.all(color: palette.border, width: 1),
       ),
       child: Text(
         compact ? 'Normal' : 'Usuario normal',
-        style: GoogleFonts.inter(
-          fontSize: compact ? 13 : 14,
-          fontWeight: FontWeight.w600,
+        style: AppFont.primary(
+          fontSize: compact ? 12.5 : 13.5,
+          fontWeight: FontWeight.w700,
           color: palette.muted,
         ),
       ),

@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 
 class NoInternetScreen extends StatelessWidget {
@@ -95,7 +94,7 @@ class NoInternetScreen extends StatelessWidget {
                   // Title
                   Text(
                     'Sin Conexión',
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 32,
                       fontWeight: FontWeight.w900,
                       color: theme.colorScheme.onSurface,
@@ -108,7 +107,7 @@ class NoInternetScreen extends StatelessWidget {
                   Text(
                     'No detectamos una conexión a internet activa. Comprueba tu red WiFi o datos móviles e inténtalo de nuevo.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 15,
                       height: 1.6,
                       color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -122,17 +121,12 @@ class NoInternetScreen extends StatelessWidget {
                     width: double.infinity,
                     height: 60,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          theme.colorScheme.primary,
-                          theme.colorScheme.primary.withValues(alpha: 0.8),
-                        ],
-                      ),
+                      color: AppTheme.accent(context),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
                           color:
-                              theme.colorScheme.primary.withValues(alpha: 0.3),
+                              theme.colorScheme.primary.withValues(alpha: 0.25),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -150,15 +144,17 @@ class NoInternetScreen extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.refresh_rounded,
-                              color: Colors.white),
+                          Icon(
+                            Icons.refresh_rounded,
+                            color: AppTheme.onAccent(context),
+                          ),
                           const SizedBox(width: 12),
                           Text(
                             'REINTENTAR',
-                            style: GoogleFonts.spaceGrotesk(
+                            style: AppFont.primary(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: Colors.white,
+                              color: AppTheme.onAccent(context),
                               letterSpacing: 1,
                             ),
                           ),

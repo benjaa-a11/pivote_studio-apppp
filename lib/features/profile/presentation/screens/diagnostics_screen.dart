@@ -3,9 +3,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/profile/presentation/screens/storage_manager_screen.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 
@@ -148,7 +148,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                           currentSpeed > 0
                               ? currentSpeed.toStringAsFixed(1)
                               : '0.0',
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 36,
                             fontWeight: FontWeight.w600,
                             letterSpacing: -0.9,
@@ -158,7 +158,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                         const SizedBox(width: 6),
                         Text(
                           'Mbps',
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: palette.muted,
@@ -184,7 +184,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                                 : _isTesting
                                     ? 'Analizando'
                                     : 'En espera',
-                            style: GoogleFonts.inter(
+                            style: AppFont.primary(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w600,
                               color: palette.text,
@@ -196,7 +196,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                     const SizedBox(height: 6),
                     Text(
                       _status,
-                      style: GoogleFonts.inter(
+                      style: AppFont.primary(
                         fontSize: 13.5,
                         color: palette.muted,
                       ),

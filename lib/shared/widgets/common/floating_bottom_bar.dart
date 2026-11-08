@@ -1,182 +1,197 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:pivote/core/animations/app_animations.dart';
+import 'package:flutter/services.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
-class FloatingBottomBarItem {
-  final Widget icon;
-  final Widget activeIcon;
-  final String label;
-
-  const FloatingBottomBarItem({
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-  });
-}
-
 class FloatingBottomBar extends StatelessWidget {
-  final int selectedIndex;
-  final ValueChanged<int> onDestinationSelected;
-  final List<FloatingBottomBarItem> destinations;
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final List<FloatingBottomBarItem> items;
 
-  const FloatingBottomBar({
+  FloatingBottomBar({
     super.key,
-    required this.selectedIndex,
-    required this.onDestinationSelected,
-    required this.destinations,
-  });
+    int? currentIndex,
+    int? selectedIndex,
+    ValueChanged<int>? onTap,
+    ValueChanged<int>? onDestinationSelected,
+    List<FloatingBottomBarItem>? items,
+    List<FloatingBottomBarItem>? destinations,
+  })  : currentIndex = selectedIndex ?? currentIndex ?? 0,
+        onTap = onDestinationSelected ?? onTap ?? ((_) {}),
+        items = destinations ?? items ?? const [];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.isDark;
-
-    final backgroundColor =
-        theme.cardColor.withValues(alpha: isDark ? 0.82 : 0.88);
-    final specularBorderColor = isDark
-        ? Colors.white.withValues(alpha: 0.12)
-        : Colors.white.withValues(alpha: 0.70);
+    final bottomInset = MediaQuery.of(context).padding.bottom;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+      margin: EdgeInsets.fromLTRB(
+        18,
+        0,
+        18,
+        bottomInset > 0 ? bottomInset + 8 : 16,
+      ),
+      height: 68,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: specularBorderColor, width: 1.0),
-        boxShadow: AppShadows.appleDepth(context, elevation: 1.4),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.50 : 0.12),
+            blurRadius: 28,
+            spreadRadius: 0,
+            offset: const Offset(0, 12),
+          ),
+          if (isDark)
+            BoxShadow(
+              color: theme.colorScheme.primary.withValues(alpha: 0.04),
+              blurRadius: 16,
+              spreadRadius: -2,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         child: BackdropFilter(
           filter: ImageFilter.blur(
             sigmaX: AppMaterials.blurRegular,
             sigmaY: AppMaterials.blurRegular,
           ),
           child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
             decoration: BoxDecoration(
-              color: backgroundColor,
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  (isDark ? Colors.white : Colors.black)
-                      .withValues(alpha: isDark ? 0.06 : 0.02),
-                  Colors.transparent,
-                ],
+              color: isDark
+                  ? AppTheme.darkBg1.withValues(alpha: 0.88)
+                  : AppTheme.lightBg1.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : AppTheme.lightBorder,
+                width: 1.0,
               ),
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final usableWidth = constraints.maxWidth;
-                final itemWidth = usableWidth / destinations.length;
+            child: Row(
+              children: List.generate(items.length, (index) {
+                final item = items[index];
+                final isSelected = index == currentIndex;
 
-                return Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Apple-style sliding pill indicator with spring curve
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 340),
-                      curve: AppAnimations.appleSpringEase,
-                      left: selectedIndex * itemWidth + 4,
-                      width: itemWidth - 8,
-                      top: 3,
-                      bottom: 3,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(
-                            alpha: isDark ? 0.16 : 0.12,
-                          ),
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                          border: Border.all(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: isDark ? 0.28 : 0.22,
-                            ),
-                            width: 1.0,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: theme.colorScheme.primary.withValues(
-                                alpha: isDark ? 0.12 : 0.06,
-                              ),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: List.generate(destinations.length, (index) {
-                        final item = destinations[index];
-                        final isSelected = index == selectedIndex;
-
-                        return Expanded(
-                          child: ApplePressable(
-                            scaleDownFactor: 0.94,
-                            enableHaptics: true,
-                            onTap: () {
-                              onDestinationSelected(index);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              color: Colors.transparent,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  AnimatedScale(
-                                    scale: isSelected ? 1.08 : 1.0,
-                                    duration: const Duration(milliseconds: 220),
-                                    curve: AppAnimations.appleSpringEase,
-                                    child: AnimatedSwitcher(
-                                      duration:
-                                          const Duration(milliseconds: 180),
-                                      switchInCurve: Curves.easeOut,
-                                      switchOutCurve: Curves.easeIn,
-                                      child: isSelected
-                                          ? SizedBox(
-                                              key: ValueKey('active_$index'),
-                                              child: item.activeIcon,
-                                            )
-                                          : SizedBox(
-                                              key: ValueKey('inactive_$index'),
-                                              child: item.icon,
-                                            ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    item.label,
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      letterSpacing: -0.2,
-                                      fontWeight: isSelected
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
-                                      color: isSelected
-                                          ? theme.colorScheme.primary
-                                          : theme.colorScheme.onSurface
-                                              .withValues(alpha: 0.52),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ],
+                return Expanded(
+                  child: _BarTab(
+                    item: item,
+                    isSelected: isSelected,
+                    isDark: isDark,
+                    theme: theme,
+                    onTap: () {
+                      if (!isSelected) {
+                        HapticFeedback.selectionClick();
+                        onTap(index);
+                      }
+                    },
+                  ),
                 );
-              },
+              }),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class _BarTab extends StatelessWidget {
+  final FloatingBottomBarItem item;
+  final bool isSelected;
+  final bool isDark;
+  final ThemeData theme;
+  final VoidCallback onTap;
+
+  const _BarTab({
+    required this.item,
+    required this.isSelected,
+    required this.isDark,
+    required this.theme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accentColor = theme.colorScheme.primary;
+    final inactiveColor = isDark ? AppTheme.darkText3 : AppTheme.lightText3;
+
+    return ApplePressable(
+      scaleDownFactor: 0.92,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      enableHaptics: false,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: AppMotion.normal,
+        curve: AppMotion.springSnappy,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? accentColor.withValues(alpha: isDark ? 0.14 : 0.10)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(
+            color: isSelected
+                ? accentColor.withValues(alpha: isDark ? 0.28 : 0.22)
+                : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedScale(
+              scale: isSelected ? 1.08 : 1.0,
+              duration: AppMotion.fast,
+              curve: AppMotion.springBouncy,
+              child: isSelected && item.activeIcon != null
+                  ? item.activeIcon!
+                  : item.icon,
+            ),
+            const SizedBox(height: 3),
+            AnimatedDefaultTextStyle(
+              duration: AppMotion.fast,
+              curve: AppMotion.curveOut,
+              style: AppFont.primary(
+                fontSize: 10.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                letterSpacing: isSelected ? -0.1 : 0,
+                color: isSelected ? accentColor : inactiveColor,
+                height: 1.1,
+              ),
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class FloatingBottomBarItem {
+  final Widget icon;
+  final Widget? activeIcon;
+  final String label;
+
+  FloatingBottomBarItem({
+    required dynamic icon,
+    dynamic activeIcon,
+    required this.label,
+  })  : icon = icon is IconData ? Icon(icon) : (icon as Widget),
+        activeIcon = activeIcon == null
+            ? null
+            : (activeIcon is IconData
+                ? Icon(activeIcon)
+                : (activeIcon as Widget));
 }

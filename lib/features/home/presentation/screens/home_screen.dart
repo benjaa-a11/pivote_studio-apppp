@@ -7,9 +7,9 @@ import 'package:pivote/features/home/presentation/widgets/unified_home_header.da
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/shared/widgets/common/app_state_views.dart';
 
 class HomeScreen extends StatefulWidget {
-  /// Callback para navegar a un tab del bottom nav (ej: tab 4 = Perfil).
   final void Function(int tabIndex)? onNavigateToTab;
 
   const HomeScreen({super.key, this.onNavigateToTab});
@@ -27,9 +27,6 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    // Animación de entrada única al montar la pantalla (no se repite en
-    // rebuilds posteriores, ya que el pull-to-refresh fue removido y el
-    // controller no vuelve a dispararse).
     _entranceController = AnimationController(
       vsync: this,
       duration: AppAnimations.slow,
@@ -39,12 +36,14 @@ class _HomeScreenState extends State<HomeScreen>
       curve: Curves.easeOut,
     );
     _slide = Tween<Offset>(
-      begin: const Offset(0, 0.035),
+      begin: const Offset(0, 0.03),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _entranceController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
     _entranceController.forward();
   }
 
@@ -57,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hPad = AppResponsive.screenHorizontalPadding(context);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -66,22 +66,43 @@ class _HomeScreenState extends State<HomeScreen>
           child: SlideTransition(
             position: _slide,
             child: CustomScrollView(
-              // Pull-to-refresh deshabilitado a propósito: interrumpía la
-              // fluidez del scroll. Los providers (canales, fútbol) ya se
-              // mantienen frescos por su propia lógica interna.
               physics: const ClampingScrollPhysics(),
               slivers: [
-                // Header plano (no flotante) + hero de partidos separado
                 SliverToBoxAdapter(
                   child: UnifiedHomeHeader(
                     onNavigateToTab: widget.onNavigateToTab,
                   ),
                 ),
 
-                // Grid de canales (sin título de sección)
+                // Encabezado de sección de canales
+                SliverToBoxAdapter(
+                  child: Consumer<ChannelProvider>(
+                    builder: (context, channelProvider, _) {
+                      final category = channelProvider.selectedCategory;
+                      final count = channelProvider.channels.length;
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 10, bottom: 4),
+                        child: AppSectionTitle(
+                          title: category == 'Todos'
+                              ? 'Canales en vivo'
+                              : category,
+                          badgeText:
+                              channelProvider.isLoading ? null : '$count',
+                          padding: hPad,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Grilla adaptativa de canales
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg,
-                      AppSpacing.md, AppSpacing.lg, AppSpacing.md),
+                  padding: hPad.add(
+                    const EdgeInsets.only(
+                      top: AppSpacing.sm,
+                      bottom: AppSpacing.md,
+                    ),
+                  ),
                   sliver: Consumer<ChannelProvider>(
                     builder: (context, channelProvider, child) {
                       final isLoading = channelProvider.isLoading;
@@ -89,28 +110,35 @@ class _HomeScreenState extends State<HomeScreen>
                           ? List.generate(
                               8,
                               (index) => Channel(
-                                    id: 'dummy',
-                                    name: 'Channel Name',
-                                    logoUrl: [''],
-                                    streamUrl: [StreamSource(url: '')],
-                                    category: 'General',
-                                    description: 'Description',
-                                  ))
+                                id: 'dummy_$index',
+                                name: 'Canal en vivo',
+                                logoUrl: const [''],
+                                streamUrl: [StreamSource(url: '')],
+                                category: 'Deportes',
+                                description: 'Transmisión en vivo',
+                              ),
+                            )
                           : channelProvider.channels;
 
                       if (!isLoading && channels.isEmpty) {
                         return SliverToBoxAdapter(
-                          child: _buildEmptyState(context, channelProvider),
+                          child: AppStateView.empty(
+                            icon: Icons.tv_off_rounded,
+                            title: 'No se encontraron canales',
+                            subtitle:
+                                'Ajusta los filtros de categoría o realiza una nueva búsqueda.',
+                            actionLabel: 'Mostrar todos',
+                            actionIcon: Icons.refresh_rounded,
+                            onAction: channelProvider.clearFilters,
+                          ),
                         );
                       }
 
                       return SliverGrid(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 1.05,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
+                        gridDelegate: AppResponsive.channelGridDelegate(
+                          context,
+                          aspectRatio: 1.12,
+                          spacing: 12,
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
@@ -126,79 +154,10 @@ class _HomeScreenState extends State<HomeScreen>
                     },
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                const SliverToBoxAdapter(child: SizedBox(height: 104)),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(
-      BuildContext context, ChannelProvider channelProvider) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.15),
-                    Theme.of(context)
-                        .colorScheme
-                        .secondary
-                        .withValues(alpha: 0.15),
-                  ],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.tv_off_rounded,
-                size: 72,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'No se encontraron canales',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Intenta ajustar tus filtros o realiza\nuna nueva búsqueda',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: isDark ? Colors.grey[500] : Colors.grey[600],
-                    height: 1.5,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () {
-                channelProvider.clearFilters();
-              },
-              icon: const Icon(Icons.refresh_rounded, size: 22),
-              label: const Text('Limpiar filtros'),
-              style: ElevatedButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                elevation: 0,
-              ),
-            ),
-          ],
         ),
       ),
     );

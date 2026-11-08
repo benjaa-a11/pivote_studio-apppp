@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
@@ -102,7 +101,7 @@ class _SuspendedScreenState extends State<SuspendedScreen> {
                 child: Text(
                   'Cuenta Suspendida',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppTheme.darkText : AppTheme.lightText,
@@ -118,7 +117,7 @@ class _SuspendedScreenState extends State<SuspendedScreen> {
                 child: Text(
                   'Tu cuenta ha sido suspendida temporalmente por no cumplir con nuestras pautas comunitarias o términos de servicio.\n\nSi crees que esto es un error o tu cuenta ya fue reactivada, haz clic en el botón de abajo para verificar el estado de tu cuenta.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 15,
                     height: 1.5,
                     color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
@@ -139,10 +138,8 @@ class _SuspendedScreenState extends State<SuspendedScreen> {
                       child: ElevatedButton(
                         onPressed: _isChecking ? null : _checkStatus,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark
-                              ? AppTheme.darkAccent
-                              : theme.colorScheme.primary,
-                          foregroundColor: isDark ? Colors.black : Colors.white,
+                          backgroundColor: AppTheme.accent(context),
+                          foregroundColor: AppTheme.onAccent(context),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -153,14 +150,14 @@ class _SuspendedScreenState extends State<SuspendedScreen> {
                                 width: 24,
                                 height: 24,
                                 child: PivoteLoader(
-                                  color: isDark ? Colors.black : Colors.white,
+                                  color: AppTheme.onAccent(context),
                                   strokeWidth: 2.5,
                                   size: 24,
                                 ),
                               )
                             : Text(
                                 'Verificar Estado',
-                                style: GoogleFonts.spaceGrotesk(
+                                style: AppFont.primary(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),

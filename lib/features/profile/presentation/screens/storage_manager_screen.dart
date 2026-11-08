@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/cache_manager_service.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
@@ -73,7 +73,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                   child: Text(
                     'Calidad de descarga',
-                    style: GoogleFonts.inter(
+                    style: AppFont.primary(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: palette.text,
@@ -192,7 +192,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                       children: [
                         Text(
                           totalFormatted,
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 32,
                             fontWeight: FontWeight.w600,
                             letterSpacing: -0.64,
@@ -202,7 +202,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                         const SizedBox(width: 6),
                         Text(
                           'de 8 GB usados',
-                          style: GoogleFonts.inter(
+                          style: AppFont.primary(
                             fontSize: 15,
                             color: palette.muted,
                           ),

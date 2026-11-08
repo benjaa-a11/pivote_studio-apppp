@@ -2,9 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/home/presentation/widgets/search_radio_tile.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
@@ -46,6 +47,7 @@ class FavoritesScreen extends StatelessWidget {
     final canPop = Navigator.of(context).canPop();
     final topPad = MediaQuery.paddingOf(context).top;
     final bottomPad = MediaQuery.paddingOf(context).bottom;
+    final hPad = AppResponsive.screenHorizontalPadding(context);
 
     return Scaffold(
       backgroundColor: palette.bg,
@@ -67,12 +69,12 @@ class FavoritesScreen extends StatelessWidget {
           return Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
+              constraints: const BoxConstraints(maxWidth: 960),
               child: CustomScrollView(
                 physics: const ClampingScrollPhysics(),
                 slivers: [
                   SliverPadding(
-                    padding: EdgeInsets.fromLTRB(10, topPad + 10, 10, 0),
+                    padding: hPad.add(EdgeInsets.only(top: topPad + 10)),
                     sliver: SliverToBoxAdapter(
                       child: ProfileSubHeader(
                         title: 'Favoritos',
@@ -88,7 +90,8 @@ class FavoritesScreen extends StatelessWidget {
                                   height: 40,
                                   decoration: BoxDecoration(
                                     color: palette.dangerBg,
-                                    shape: BoxShape.circle,
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.sm),
                                     border: Border.all(
                                       color: palette.dangerBorder,
                                       width: 1,
@@ -108,7 +111,7 @@ class FavoritesScreen extends StatelessWidget {
                   ),
                   if (totalCount == 0)
                     SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      padding: hPad,
                       sliver: SliverToBoxAdapter(
                         child: AppAnimations.staggeredSlideIn(
                           index: 0,
@@ -117,9 +120,8 @@ class FavoritesScreen extends StatelessWidget {
                       ),
                     )
                   else ...[
-                    // Summary stats card (.stats style)
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
+                      padding: hPad.add(const EdgeInsets.only(bottom: 4)),
                       sliver: SliverToBoxAdapter(
                         child: AppAnimations.staggeredSlideIn(
                           index: 0,
@@ -127,7 +129,7 @@ class FavoritesScreen extends StatelessWidget {
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: palette.card,
-                              borderRadius: BorderRadius.circular(26),
+                              borderRadius: BorderRadius.circular(AppRadius.lg),
                               border:
                                   Border.all(color: palette.border, width: 1),
                               boxShadow: palette.cardShadow,
@@ -158,23 +160,20 @@ class FavoritesScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-
                     if (favoriteChannels.isNotEmpty) ...[
-                      const SliverPadding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        sliver: SliverToBoxAdapter(
+                      SliverPadding(
+                        padding: hPad,
+                        sliver: const SliverToBoxAdapter(
                           child: ProfileSectionTitle('Canales guardados'),
                         ),
                       ),
                       SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        padding: hPad,
                         sliver: SliverGrid(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 1.05,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
+                          gridDelegate: AppResponsive.channelGridDelegate(
+                            context,
+                            aspectRatio: 1.12,
+                            spacing: 12,
                           ),
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
@@ -187,16 +186,15 @@ class FavoritesScreen extends StatelessWidget {
                         ),
                       ),
                     ],
-
                     if (favoriteRadios.isNotEmpty) ...[
-                      const SliverPadding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        sliver: SliverToBoxAdapter(
+                      SliverPadding(
+                        padding: hPad,
+                        sliver: const SliverToBoxAdapter(
                           child: ProfileSectionTitle('Radios favoritas'),
                         ),
                       ),
                       SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        padding: hPad,
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
@@ -214,7 +212,7 @@ class FavoritesScreen extends StatelessWidget {
                     ],
                   ],
                   SliverToBoxAdapter(
-                    child: SizedBox(height: math.max(36, bottomPad + 28)),
+                    child: SizedBox(height: math.max(96, bottomPad + 88)),
                   ),
                 ],
               ),
@@ -242,21 +240,22 @@ class FavoritesScreen extends StatelessWidget {
                   height: 56,
                   decoration: BoxDecoration(
                     color: palette.iconBox,
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                   ),
                   alignment: Alignment.center,
                   child: Icon(
                     Icons.favorite_border_rounded,
                     size: 26,
-                    color: palette.text,
+                    color: palette.accent,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'Sin favoritos aún',
-                  style: GoogleFonts.inter(
+                  style: AppFont.primary(
                     fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
                     color: palette.text,
                   ),
                 ),
@@ -264,10 +263,11 @@ class FavoritesScreen extends StatelessWidget {
                 Text(
                   'Tocá el ícono de corazón en cualquier canal o emisora de radio para guardarlo acá.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
+                  style: AppFont.primary(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
                     color: palette.muted,
-                    height: 1.4,
+                    height: 1.45,
                   ),
                 ),
               ],
@@ -304,18 +304,19 @@ class _FavSummaryStat extends StatelessWidget {
         children: [
           Text(
             value,
-            style: GoogleFonts.inter(
+            style: AppFont.primary(
               fontSize: 20,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.2,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
               color: palette.text,
             ),
           ),
           const SizedBox(height: 3),
           Text(
             label,
-            style: GoogleFonts.inter(
-              fontSize: 13.5,
+            style: AppFont.primary(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
               color: palette.muted,
             ),
           ),

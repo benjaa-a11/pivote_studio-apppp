@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
@@ -110,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
           'Recuperar Contraseña',
-          style: GoogleFonts.figtree(
+          style: AppFont.primary(
             fontWeight: FontWeight.w700,
             color: kHtmlInk,
           ),
@@ -121,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen>
           children: [
             Text(
               'Ingresa tu correo para recibir las instrucciones de recuperación.',
-              style: GoogleFonts.figtree(
+              style: AppFont.primary(
                 color: kHtmlMuted,
                 fontSize: 14,
               ),
@@ -130,10 +130,10 @@ class _LoginScreenState extends State<LoginScreen>
             TextField(
               controller: resetEmailController,
               keyboardType: TextInputType.emailAddress,
-              style: GoogleFonts.figtree(color: kHtmlInk),
+              style: AppFont.primary(color: kHtmlInk),
               decoration: InputDecoration(
                 hintText: 'ejemplo@correo.com',
-                hintStyle: GoogleFonts.figtree(color: const Color(0xFF8A8A8A)),
+                hintStyle: AppFont.primary(color: const Color(0xFF8A8A8A)),
                 filled: true,
                 fillColor: kHtmlField,
                 contentPadding:
@@ -151,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen>
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancelar',
-              style: GoogleFonts.figtree(color: kHtmlMuted),
+              style: AppFont.primary(color: kHtmlMuted),
             ),
           ),
           ElevatedButton(
@@ -169,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen>
             },
             child: Text(
               'Enviar enlace',
-              style: GoogleFonts.figtree(fontWeight: FontWeight.w600),
+              style: AppFont.primary(fontWeight: FontWeight.w600),
             ),
           ),
         ],

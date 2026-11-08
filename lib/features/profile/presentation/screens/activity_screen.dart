@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
@@ -156,7 +155,7 @@ class ActivityScreen extends StatelessWidget {
                                 const SizedBox(width: 6),
                                 Text(
                                   'TIEMPO DE USO TOTAL',
-                                  style: GoogleFonts.spaceGrotesk(
+                                  style: AppFont.primary(
                                     fontSize: 10.5,
                                     fontWeight: FontWeight.w900,
                                     color: primaryColor,
@@ -168,7 +167,7 @@ class ActivityScreen extends StatelessWidget {
                             const SizedBox(height: 10),
                             Text(
                               activityService.getFormattedActiveTime(),
-                              style: GoogleFonts.spaceGrotesk(
+                              style: AppFont.primary(
                                 fontSize: 44,
                                 fontWeight: FontWeight.w900,
                                 color: theme.colorScheme.onSurface,
@@ -202,7 +201,7 @@ class ActivityScreen extends StatelessWidget {
                                   const SizedBox(width: 7),
                                   Text(
                                     'Sincronizando actividad en vivo',
-                                    style: GoogleFonts.spaceGrotesk(
+                                    style: AppFont.primary(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w800,
                                       color: const Color(0xFF10B981),
@@ -275,7 +274,7 @@ class ActivityScreen extends StatelessWidget {
                                             ),
                                             child: Text(
                                               'RANGO ACTUAL',
-                                              style: GoogleFonts.spaceGrotesk(
+                                              style: AppFont.primary(
                                                 fontSize: 8.5,
                                                 fontWeight: FontWeight.w900,
                                                 color: primaryColor,
@@ -286,7 +285,7 @@ class ActivityScreen extends StatelessWidget {
                                           const SizedBox(height: 5),
                                           Text(
                                             activityService.getArgentineRank(),
-                                            style: GoogleFonts.spaceGrotesk(
+                                            style: AppFont.primary(
                                               fontSize: 17.5,
                                               fontWeight: FontWeight.w900,
                                               color:
@@ -304,7 +303,7 @@ class ActivityScreen extends StatelessWidget {
                                   child: Text(
                                     activityService
                                         .getArgentineRankDescription(),
-                                    style: GoogleFonts.spaceGrotesk(
+                                    style: AppFont.primary(
                                       fontSize: 12,
                                       color: theme.hintColor,
                                       fontWeight: FontWeight.w600,
@@ -320,7 +319,7 @@ class ActivityScreen extends StatelessWidget {
                                     children: [
                                       Text(
                                         'Siguiente: $nextRankEmoji $nextRank',
-                                        style: GoogleFonts.spaceGrotesk(
+                                        style: AppFont.primary(
                                           fontSize: 11.5,
                                           fontWeight: FontWeight.w800,
                                           color: primaryColor,
@@ -328,7 +327,7 @@ class ActivityScreen extends StatelessWidget {
                                       ),
                                       Text(
                                         'Faltan $remainingMinutes min',
-                                        style: GoogleFonts.spaceGrotesk(
+                                        style: AppFont.primary(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w700,
                                           color: theme.hintColor,
@@ -519,7 +518,7 @@ class ActivityScreen extends StatelessWidget {
                                   children: [
                                     Text(
                                       'Comprobar estado de Streaming',
-                                      style: GoogleFonts.spaceGrotesk(
+                                      style: AppFont.primary(
                                         fontSize: 13.5,
                                         fontWeight: FontWeight.w800,
                                         color: theme.colorScheme.onSurface,
@@ -527,7 +526,7 @@ class ActivityScreen extends StatelessWidget {
                                     ),
                                     Text(
                                       'Medí velocidad, ping y estabilidad de tu red.',
-                                      style: GoogleFonts.spaceGrotesk(
+                                      style: AppFont.primary(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
                                         color: theme.hintColor,
@@ -548,7 +547,7 @@ class ActivityScreen extends StatelessWidget {
                     Center(
                       child: Text(
                         'Miembro de Pivote Studio desde el ${activityService.getFormattedStartDate()}',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 11,
                           color: theme.hintColor,
                           fontWeight: FontWeight.w600,
@@ -570,7 +569,7 @@ class ActivityScreen extends StatelessWidget {
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         label,
-        style: GoogleFonts.spaceGrotesk(
+        style: AppFont.primary(
           fontSize: 11.5,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.7,
@@ -623,7 +622,7 @@ class ActivityScreen extends StatelessWidget {
               children: [
                 Text(
                   tier.title,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w800,
                     color: isUnlocked
@@ -633,7 +632,7 @@ class ActivityScreen extends StatelessWidget {
                 ),
                 Text(
                   tier.subtitle,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     color: theme.hintColor,
@@ -651,7 +650,7 @@ class ActivityScreen extends StatelessWidget {
               ),
               child: Text(
                 'ACTUAL',
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: 9,
                   fontWeight: FontWeight.w900,
                   color: primaryColor,
@@ -718,7 +717,7 @@ class ActivityScreen extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: theme.hintColor,
@@ -735,7 +734,7 @@ class ActivityScreen extends StatelessWidget {
               children: [
                 Text(
                   value,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: theme.colorScheme.onSurface,
@@ -743,7 +742,7 @@ class ActivityScreen extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: onTap != null ? color : theme.hintColor,

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/features/video/presentation/widgets/exo_player_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -371,7 +370,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
               const SizedBox(height: 16),
               Text(
                 'Ups! Algo salió mal',
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -382,7 +381,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 40),
                 child: Text(
                   message,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 14,
                     color: Colors.white60,
                   ),

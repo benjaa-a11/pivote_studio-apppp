@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
@@ -17,6 +16,7 @@ import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 
 class PlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -167,16 +167,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       _buildChannelHeader(context, theme, isDark),
                       Divider(
                         height: 1,
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.06),
+                        color: AppTheme.border(context),
                       ),
                       _buildChannelActions(context, theme, isDark),
                       Divider(
                         height: 1,
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.06),
+                        color: AppTheme.border(context),
                       ),
                       _buildChannelInfo(context, theme, isDark),
                       _buildRelatedChannelsGrid(context, theme, isDark),
@@ -191,15 +187,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _buildHeader(BuildContext context, ThemeData theme, bool isDark) {
+    final horizontalPad = AppResponsive.horizontalPadding(context);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPad, vertical: 8),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.04),
+            color: AppTheme.border(context),
             width: 1,
           ),
         ),
@@ -212,19 +208,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
             color: Colors.transparent,
             child: InkWell(
               onTap: () => Navigator.pop(context),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.md),
               child: Container(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppTheme.darkBg2
-                      : theme.colorScheme.primary.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(14),
+                  color: AppTheme.surface1(context),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                   border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : theme.colorScheme.primary.withValues(alpha: 0.12),
+                    color: AppTheme.border(context),
                   ),
                 ),
                 child: Icon(
@@ -248,19 +240,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     HapticFeedback.lightImpact();
                     favoritesProvider.toggleFavorite(_currentChannel);
                   },
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                   child: Container(
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? AppTheme.darkBg2
-                          : theme.colorScheme.primary.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(14),
+                      color: AppTheme.surface1(context),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : theme.colorScheme.primary.withValues(alpha: 0.12),
+                        color: isFavorite
+                            ? AppColors.live.withValues(alpha: 0.4)
+                            : AppTheme.border(context),
                       ),
                     ),
                     child: Icon(
@@ -268,7 +258,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           ? Icons.favorite_rounded
                           : Icons.favorite_border_rounded,
                       color: isFavorite
-                          ? const Color(0xFFEF4444)
+                          ? AppColors.live
                           : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       size: 20,
                     ),
@@ -284,12 +274,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Widget _buildChannelHeader(
       BuildContext context, ThemeData theme, bool isDark) {
-    final primaryColor =
-        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor = AppTheme.accent(context);
     final logoUrl = _currentChannel.getLogoUrl(isDark);
+    final horizontalPad = AppResponsive.horizontalPadding(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+      padding: EdgeInsets.fromLTRB(horizontalPad, 20, horizontalPad, 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -298,12 +288,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
             width: 68,
             height: 68,
             decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkBg2 : Colors.white,
-              borderRadius: BorderRadius.circular(18),
+              color: isDark ? AppColors.ink2 : Colors.white,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.12)
-                    : primaryColor.withValues(alpha: 0.18),
+                color: AppTheme.border(context),
                 width: 1.5,
               ),
               boxShadow: [
@@ -315,7 +303,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadius.md),
               child: Padding(
                 padding: const EdgeInsets.all(6),
                 child: Hero(
@@ -350,14 +338,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
               children: [
                 Text(
                   _currentChannel.name,
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                     letterSpacing: -0.6,
                     height: 1.2,
                     color: (_currentChannel.type == 'evento' ||
                             _currentChannel.evento != null)
-                        ? const Color(0xFFF59E0B)
+                        ? AppColors.warning
                         : theme.colorScheme.onSurface,
                   ),
                   maxLines: 2,
@@ -374,12 +362,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: primaryColor.withValues(alpha: 0.12),
+                        color: primaryColor.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         _currentChannel.category.toUpperCase(),
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w900,
                           color: primaryColor,
@@ -395,17 +383,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.black.withValues(alpha: 0.05),
+                          color: AppTheme.surface1(context),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppTheme.border(context),
+                          ),
                         ),
                         child: Text(
                           _currentChannel.quality!,
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             fontSize: 9.5,
                             fontWeight: FontWeight.w800,
-                            color: theme.hintColor,
+                            color: AppTheme.textSecondary(context),
                           ),
                         ),
                       ),
@@ -422,15 +411,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // Channel Action Buttons Bar (Clean 2-button layout: Diagnóstico & Reportar)
   Widget _buildChannelActions(
       BuildContext context, ThemeData theme, bool isDark) {
+    final horizontalPad = AppResponsive.horizontalPadding(context);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPad, vertical: 12),
       child: Row(
         children: [
           Expanded(
             child: _actionButton(
               icon: Icons.speed_rounded,
               label: 'Diagnóstico',
-              accent: const Color(0xFF5B8CFF),
+              accent: AppColors.secondary,
               isDark: isDark,
               onTap: () {
                 HapticFeedback.lightImpact();
@@ -446,7 +437,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             child: _actionButton(
               icon: Icons.report_problem_outlined,
               label: 'Reportar Canal',
-              accent: const Color(0xFFE58B46),
+              accent: AppColors.warning,
               isDark: isDark,
               onTap: () {
                 HapticFeedback.lightImpact();
@@ -467,19 +458,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
     required VoidCallback onTap,
   }) {
     return Material(
-      color: isDark ? AppTheme.darkBg2 : Colors.black.withValues(alpha: 0.03),
-      borderRadius: BorderRadius.circular(14),
+      color: AppTheme.surface1(context),
+      borderRadius: BorderRadius.circular(AppRadius.md),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : Colors.black.withValues(alpha: 0.04),
+              color: AppTheme.border(context),
             ),
           ),
           child: Row(
@@ -489,7 +478,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               const SizedBox(width: 8),
               Text(
                 label,
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: Theme.of(context).colorScheme.onSurface,
@@ -529,18 +518,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
       return _buildEventCameras(context);
     }
 
+    final horizontalPad = AppResponsive.horizontalPadding(context);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPad, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_currentChannel.description.isNotEmpty) ...[
             Text(
               _currentChannel.description,
-              style: GoogleFonts.spaceGrotesk(
+              style: AppFont.primary(
                 height: 1.5,
                 fontSize: 13.5,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                color: AppTheme.textSecondary(context),
               ),
             ),
             const SizedBox(height: 20),
@@ -554,21 +545,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Widget _buildProgramGuideSection(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final primaryColor =
-        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor = AppTheme.accent(context);
 
     if (_isLoadingGuide) {
       return Container(
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
+          color: AppTheme.cardSurface(context),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
           border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.06),
+            color: AppTheme.border(context),
           ),
         ),
         child: Row(
@@ -586,9 +573,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
             Expanded(
               child: Text(
                 'Cargando guía de programación...',
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: 13,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: AppTheme.textSecondary(context),
                 ),
               ),
             ),
@@ -602,24 +589,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: theme.colorScheme.error.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(20),
+          color: AppColors.error.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
           border: Border.all(
-            color: theme.colorScheme.error.withValues(alpha: 0.3),
+            color: AppColors.error.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
           children: [
-            Icon(
+            const Icon(
               Icons.error_outline_rounded,
               size: 20,
-              color: theme.colorScheme.error,
+              color: AppColors.error,
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'No se pudo obtener la programación.',
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                   color: theme.colorScheme.onSurface,
@@ -644,12 +631,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(22),
+        color: AppTheme.cardSurface(context),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.black.withValues(alpha: 0.06),
+          color: AppTheme.border(context),
         ),
       ),
       child: Column(
@@ -668,7 +653,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   const SizedBox(width: 8),
                   Text(
                     'Programación del Canal',
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       color: theme.colorScheme.onSurface,
@@ -679,7 +664,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
               IconButton(
                 onPressed: _loadGuide,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                color: theme.hintColor,
+                color: AppTheme.textSecondary(context),
                 tooltip: 'Actualizar',
               ),
             ],
@@ -694,12 +679,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.1),
+                          color: primaryColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           slot.time,
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
                             color: primaryColor,
@@ -710,7 +695,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       Expanded(
                         child: Text(
                           slot.title,
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: theme.colorScheme.onSurface,
@@ -760,32 +745,39 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget _buildEventCameras(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final camaras = widget.channel.camaras ?? [];
+    final horizontalPad = AppResponsive.horizontalPadding(context);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPad, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: const Color(0xFFD4AF37).withAlpha(30),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFD4AF37), width: 1),
+              color: AppColors.warning.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(
+                color: AppColors.warning.withValues(alpha: 0.5),
+                width: 1,
+              ),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.videocam_rounded,
-                    color: Color(0xFFD4AF37), size: 16),
-                SizedBox(width: 8),
+                const Icon(
+                  Icons.videocam_rounded,
+                  color: AppColors.warning,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
                 Text(
                   'TRANSMISIÓN MULTICÁMARA',
-                  style: TextStyle(
+                  style: AppFont.primary(
                     fontSize: 10.5,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFD4AF37),
-                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.warning,
+                    letterSpacing: 1.0,
                   ),
                 ),
               ],
@@ -795,8 +787,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 240,
               childAspectRatio: 2.5,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
@@ -826,10 +818,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
           if (_currentChannel.description.isNotEmpty)
             Text(
               _currentChannel.description,
-              style: GoogleFonts.spaceGrotesk(
+              style: AppFont.primary(
                 height: 1.5,
                 fontSize: 13.5,
-                color: isDark ? Colors.white70 : Colors.black87,
+                color: AppTheme.textSecondary(context),
               ),
             ),
         ],
@@ -865,21 +857,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? dominantColor.withAlpha(40)
-              : (isDark ? AppTheme.darkBg2 : Colors.white),
-          borderRadius: BorderRadius.circular(14),
+              ? dominantColor.withValues(alpha: 0.16)
+              : AppTheme.cardSurface(context),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
             color: isSelected
                 ? dominantColor
-                : (isDark
-                    ? Colors.white.withAlpha(25)
-                    : Colors.black.withAlpha(20)),
-            width: isSelected ? 2 : 1,
+                : AppTheme.border(context),
+            width: isSelected ? 1.6 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: dominantColor.withAlpha(80),
+                    color: dominantColor.withValues(alpha: 0.28),
                     blurRadius: 10,
                     offset: const Offset(0, 0),
                   )
@@ -896,7 +886,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   width: 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.red : Colors.grey,
+                    color: isSelected
+                        ? AppColors.live
+                        : AppTheme.textSecondary(context),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -904,11 +896,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 Expanded(
                   child: Text(
                     nombre,
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 12.5,
                       fontWeight:
                           isSelected ? FontWeight.w800 : FontWeight.w600,
-                      color: isDark ? Colors.white : Colors.black87,
+                      color: AppTheme.textPrimary(context),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -922,7 +914,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 padding: const EdgeInsets.only(left: 14),
                 child: Text(
                   tipo.toUpperCase(),
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 8.5,
                     color: dominantColor,
                     fontWeight: FontWeight.w800,
@@ -939,21 +931,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Color _getAmbientColor(String tipo) {
     if (tipo.toLowerCase().contains("principal") ||
         tipo.toLowerCase().contains("gala")) {
-      return const Color(0xFFD4AF37);
+      return AppColors.warning;
     } else if (tipo.toLowerCase().contains("exclusiva") ||
         tipo.toLowerCase().contains("dormitorio")) {
-      return const Color(0xFF8A2BE2);
+      return const Color(0xFF8B5CF6);
     } else if (tipo.toLowerCase().contains("jardin") ||
         tipo.toLowerCase().contains("playa")) {
-      return const Color(0xFFF5DEB3);
+      return AppColors.success;
     } else if (tipo.toLowerCase().contains("confesionario")) {
-      return Colors.redAccent;
+      return AppColors.live;
     }
-    return const Color(0xFF1E90FF);
+    return AppColors.secondary;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // RELATED CHANNELS (2x2 Grid with Home Screen ChannelCard design)
+  // RELATED CHANNELS (Adaptive Grid with Home Screen ChannelCard design)
   // ══════════════════════════════════════════════════════════════════════════
   Widget _buildRelatedChannelsGrid(
       BuildContext context, ThemeData theme, bool isDark) {
@@ -984,8 +976,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     if (fourChannels.isEmpty) return const SizedBox.shrink();
 
-    final primaryColor =
-        isDark ? AppTheme.darkAccent : theme.colorScheme.primary;
+    final primaryColor = AppTheme.accent(context);
+    final horizontalPad = AppResponsive.horizontalPadding(context);
 
     return Padding(
       padding: const EdgeInsets.only(top: 20, bottom: 20),
@@ -993,13 +985,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: EdgeInsets.symmetric(horizontal: horizontalPad),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Cambio Rápido de Canal',
-                  style: GoogleFonts.spaceGrotesk(
+                  style: AppFont.primary(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                     color: theme.colorScheme.onSurface,
@@ -1011,12 +1003,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: 0.1),
+                    color: primaryColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     _currentChannel.category,
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w800,
                       color: primaryColor,
@@ -1030,13 +1022,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 1.05,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: horizontalPad),
+            gridDelegate: AppResponsive.channelGridDelegate(context),
             itemCount: fourChannels.length,
             itemBuilder: (context, index) {
               final ch = fourChannels[index];
@@ -1077,19 +1064,19 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
       'title': 'Canal caído / Sin señal',
       'desc': 'Pantalla negra o error de reproducción continuo',
       'icon': Icons.signal_cellular_connected_no_internet_0_bar_rounded,
-      'color': Color(0xFFEF4444),
+      'color': AppColors.live,
     },
     {
       'title': 'Audio desfasado o mudo',
       'desc': 'Sin sonido o el audio no coincide con el video',
       'icon': Icons.volume_off_rounded,
-      'color': Color(0xFFF59E0B),
+      'color': AppColors.warning,
     },
     {
       'title': 'Cortes constantes / Buffering',
       'desc': 'La transmisión se congela o carga muy lento',
       'icon': Icons.motion_photos_paused_rounded,
-      'color': Color(0xFF3B82F6),
+      'color': AppColors.secondary,
     },
     {
       'title': 'Baja calidad / Imagen defectuosa',
@@ -1101,7 +1088,7 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
       'title': 'Canal equivocado',
       'desc': 'El contenido no coincide con el canal',
       'icon': Icons.alt_route_rounded,
-      'color': Color(0xFF10B981),
+      'color': AppColors.success,
     },
   ];
 
@@ -1112,12 +1099,10 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF16161A) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        color: isDark ? AppColors.ink1 : Colors.white,
+        borderRadius: AppRadius.sheetAll,
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.08),
+          color: AppTheme.border(context),
         ),
       ),
       padding: EdgeInsets.only(
@@ -1149,12 +1134,12 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE58B46).withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.warning.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: const Icon(
                   Icons.report_problem_rounded,
-                  color: Color(0xFFE58B46),
+                  color: AppColors.warning,
                   size: 22,
                 ),
               ),
@@ -1165,7 +1150,7 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
                   children: [
                     Text(
                       'Reportar Problema',
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
                         color: theme.colorScheme.onSurface,
@@ -1173,10 +1158,10 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
                     ),
                     Text(
                       widget.channelName,
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
-                        color: theme.hintColor,
+                        color: AppTheme.textSecondary(context),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1199,29 +1184,25 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
               child: Material(
                 color: isSelected
                     ? color.withValues(alpha: isDark ? 0.16 : 0.08)
-                    : (isDark
-                        ? AppTheme.darkBg2
-                        : Colors.black.withValues(alpha: 0.03)),
-                borderRadius: BorderRadius.circular(14),
+                    : AppTheme.surface1(context),
+                borderRadius: BorderRadius.circular(AppRadius.md),
                 child: InkWell(
                   onTap: () {
                     HapticFeedback.selectionClick();
                     setState(() => _selectedReasonIndex = index);
                   },
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 11,
                     ),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                       border: Border.all(
                         color: isSelected
                             ? color.withValues(alpha: 0.7)
-                            : (isDark
-                                ? Colors.white.withValues(alpha: 0.05)
-                                : Colors.black.withValues(alpha: 0.04)),
+                            : AppTheme.border(context),
                         width: isSelected ? 1.5 : 1,
                       ),
                     ),
@@ -1229,7 +1210,9 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
                       children: [
                         Icon(
                           reason['icon'] as IconData,
-                          color: isSelected ? color : theme.hintColor,
+                          color: isSelected
+                              ? color
+                              : AppTheme.textSecondary(context),
                           size: 20,
                         ),
                         const SizedBox(width: 12),
@@ -1239,7 +1222,7 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
                             children: [
                               Text(
                                 reason['title'] as String,
-                                style: GoogleFonts.spaceGrotesk(
+                                style: AppFont.primary(
                                   fontSize: 13,
                                   fontWeight: isSelected
                                       ? FontWeight.w800
@@ -1249,9 +1232,9 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
                               ),
                               Text(
                                 reason['desc'] as String,
-                                style: GoogleFonts.spaceGrotesk(
+                                style: AppFont.primary(
                                   fontSize: 10.5,
-                                  color: theme.hintColor,
+                                  color: AppTheme.textSecondary(context),
                                 ),
                               ),
                             ],
@@ -1293,28 +1276,30 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
                       }
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE58B46),
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.accent(context),
+                foregroundColor: AppTheme.onAccent(context),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 elevation: 0,
               ),
               child: _isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            AppTheme.onAccent(context)),
                       ),
                     )
                   : Text(
                       'Enviar Reporte',
-                      style: GoogleFonts.spaceGrotesk(
+                      style: AppFont.primary(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.3,
+                        color: AppTheme.onAccent(context),
                       ),
                     ),
             ),

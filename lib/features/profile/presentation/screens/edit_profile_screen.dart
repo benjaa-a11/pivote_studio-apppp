@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
@@ -82,7 +82,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           title: Text(
             'Confirmar contraseña actual',
-            style: GoogleFonts.inter(
+            style: AppFont.primary(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: palette.text,
@@ -94,7 +94,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             children: [
               Text(
                 'Ingresá tu contraseña actual para guardar la nueva clave.',
-                style: GoogleFonts.inter(
+                style: AppFont.primary(
                   fontSize: 13.5,
                   color: palette.muted,
                 ),
@@ -112,14 +112,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   controller: currentPassCtrl,
                   obscureText: true,
                   autofocus: true,
-                  style: GoogleFonts.inter(
+                  style: AppFont.primary(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     color: palette.text,
                   ),
                   decoration: InputDecoration(
                     hintText: 'Contraseña actual',
-                    hintStyle: GoogleFonts.inter(
+                    hintStyle: AppFont.primary(
                       color: palette.muted,
                       fontSize: 15,
                     ),
@@ -136,7 +136,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               onPressed: () => Navigator.pop(ctx),
               child: Text(
                 'Cancelar',
-                style: GoogleFonts.inter(
+                style: AppFont.primary(
                   color: palette.muted,
                   fontWeight: FontWeight.w600,
                 ),
@@ -146,7 +146,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               onPressed: () => Navigator.pop(ctx, currentPassCtrl.text),
               child: Text(
                 'Confirmar',
-                style: GoogleFonts.inter(
+                style: AppFont.primary(
                   color: palette.accent,
                   fontWeight: FontWeight.w600,
                 ),
@@ -436,7 +436,7 @@ class _EditableProfileFieldState extends State<_EditableProfileField> {
           children: [
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 150),
-              style: GoogleFonts.inter(
+              style: AppFont.primary(
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
                 color: _focused ? palette.text : palette.muted,
@@ -450,7 +450,7 @@ class _EditableProfileFieldState extends State<_EditableProfileField> {
               keyboardType: widget.keyboardType,
               obscureText: widget.obscureText,
               onTap: widget.onTap,
-              style: GoogleFonts.inter(
+              style: AppFont.primary(
                 fontSize: 17,
                 fontWeight: FontWeight.w500,
                 color: palette.text,

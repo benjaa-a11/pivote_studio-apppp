@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/video/presentation/widgets/exo_player_widget.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
@@ -388,7 +387,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                 children: [
                   Text(
                     widget.channelName,
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: widget.isFullScreen ? 17 : 15.5,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -424,7 +423,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                       const SizedBox(width: 6),
                       Text(
                         'EN VIVO',
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontWeight: FontWeight.w900,
                           fontSize: 10.5,
                           color: Colors.white,
@@ -532,7 +531,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                           widget.totalServers > 1
                               ? 'Servidor ${widget.currentServer}/${widget.totalServers}'
                               : 'Servidor 1',
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
@@ -622,7 +621,7 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                   const SizedBox(width: 6),
                   Text(
                     label,
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontWeight: FontWeight.w700,
                       fontSize: 11.5,
                       color: Colors.white,
@@ -718,7 +717,7 @@ class _ServerSelectorSheet extends StatelessWidget {
                         children: [
                           Text(
                             'Seleccionar Servidor',
-                            style: GoogleFonts.spaceGrotesk(
+                            style: AppFont.primary(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
                               color: Colors.white,
@@ -728,7 +727,7 @@ class _ServerSelectorSheet extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             'Si una señal presenta cortes, prueba otra opción',
-                            style: GoogleFonts.spaceGrotesk(
+                            style: AppFont.primary(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w500,
                               color: Colors.white60,
@@ -802,11 +801,11 @@ class _ServerSelectorSheet extends StatelessWidget {
                                 ),
                                 child: Text(
                                   '${srv.index + 1}',
-                                  style: GoogleFonts.spaceGrotesk(
+                                  style: AppFont.primary(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w900,
                                     color: isCurrent
-                                        ? Colors.white
+                                        ? AppColors.ink0
                                         : Colors.white70,
                                   ),
                                 ),
@@ -820,7 +819,7 @@ class _ServerSelectorSheet extends StatelessWidget {
                                   children: [
                                     Text(
                                       'Servidor ${srv.index + 1}',
-                                      style: GoogleFonts.spaceGrotesk(
+                                      style: AppFont.primary(
                                         fontSize: 13.5,
                                         fontWeight: FontWeight.w800,
                                         color: Colors.white,
@@ -833,7 +832,7 @@ class _ServerSelectorSheet extends StatelessWidget {
                                             'opción ${srv.index + 1}')
                                       Text(
                                         srv.label,
-                                        style: GoogleFonts.spaceGrotesk(
+                                        style: AppFont.primary(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w500,
                                           color: Colors.white60,
@@ -871,7 +870,7 @@ class _ServerSelectorSheet extends StatelessWidget {
                                       const SizedBox(width: 5),
                                       Text(
                                         'ACTIVO',
-                                        style: GoogleFonts.spaceGrotesk(
+                                        style: AppFont.primary(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w900,
                                           color: const Color(0xFF10B981),

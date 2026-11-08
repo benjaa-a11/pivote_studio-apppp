@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
@@ -30,12 +29,12 @@ class ChannelCard extends StatelessWidget {
         final theme = Theme.of(context);
         final isDark = theme.isDark;
         final isEvent = channel.type == 'evento' || channel.evento != null;
+        final isFav = favoritesProvider.isFavorite(channel.id);
 
         return ApplePressable(
-          scaleDownFactor: 0.95,
-          borderRadius: BorderRadius.circular(16),
+          scaleDownFactor: 0.96,
+          borderRadius: BorderRadius.circular(AppRadius.card),
           onTap: () {
-            // Smart Sort: Registrar vista antes de navegar
             Provider.of<ChannelProvider>(context, listen: false)
                 .recordView(channel);
 
@@ -51,40 +50,40 @@ class ChannelCard extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               color: isEvent
-                  ? const Color(0xFF0C0E12)
-                  : (isDark ? AppTheme.darkCard : Colors.white),
-              borderRadius: BorderRadius.circular(16),
+                  ? AppColors.ink0
+                  : (isDark ? AppTheme.darkCard : AppTheme.lightBg1),
+              borderRadius: BorderRadius.circular(AppRadius.card),
               border: Border.all(
                 color: isEvent
-                    ? const Color(0xFFD4AF37)
+                    ? AppColors.gold.withValues(alpha: 0.85)
                     : (isDark
                         ? Colors.white.withValues(alpha: 0.08)
-                        : Colors.black.withValues(alpha: 0.06)),
-                width: isEvent ? 1.8 : 1.0,
+                        : AppTheme.lightBorder),
+                width: isEvent ? 1.6 : 1.0,
               ),
               boxShadow: isEvent
                   ? [
                       BoxShadow(
-                        color: const Color(0xFFD4AF37).withValues(alpha: 0.25),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
+                        color: AppColors.gold.withValues(alpha: 0.22),
+                        blurRadius: 16,
+                        offset: const Offset(0, 5),
                       ),
                     ]
-                  : AppShadows.appleDepth(context, elevation: 0.6),
+                  : AppShadows.appleDepth(context, elevation: 0.7),
             ),
             child: Column(
               children: [
-                // Logo del canal
+                // Zona superior: Escenario del logo
                 Expanded(
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: isEvent
-                          ? Colors.transparent
+                          ? AppColors.ink1.withValues(alpha: 0.55)
                           : (isDark ? AppTheme.darkCard : AppTheme.lightBg2),
                       borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(15),
+                        top: Radius.circular(AppRadius.card - 1),
                       ),
                     ),
                     child: Center(
@@ -95,18 +94,27 @@ class ChannelCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Info del canal
+
+                // Divisor sutil entre escenario y pie
+                Container(
+                  height: 1,
+                  color: isEvent
+                      ? AppColors.gold.withValues(alpha: 0.18)
+                      : (isDark
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : AppTheme.lightBorder.withValues(alpha: 0.7)),
+                ),
+
+                // Zona inferior: Nombre, categoría y favorito
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+                  padding: const EdgeInsets.fromLTRB(12, 8.5, 12, 10),
                   decoration: BoxDecoration(
                     color: isEvent
-                        ? const Color(0xFF07080A)
-                        : (isDark
-                            ? theme.scaffoldBackgroundColor
-                            : AppTheme.lightBg1),
+                        ? AppColors.ink0
+                        : (isDark ? AppTheme.darkBg1 : AppTheme.lightBg1),
                     borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(15),
+                      bottom: Radius.circular(AppRadius.card - 1),
                     ),
                   ),
                   child: Column(
@@ -115,12 +123,13 @@ class ChannelCard extends StatelessWidget {
                     children: [
                       Text(
                         channel.name,
-                        style: GoogleFonts.spaceGrotesk(
+                        style: AppFont.primary(
                           fontWeight: FontWeight.w700,
                           fontSize: 14.5,
                           letterSpacing: -0.3,
+                          height: 1.15,
                           color: isEvent
-                              ? const Color(0xFFD4AF37)
+                              ? AppColors.gold
                               : theme.colorScheme.onSurface,
                         ),
                         maxLines: 1,
@@ -132,25 +141,23 @@ class ChannelCard extends StatelessWidget {
                           Expanded(
                             child: Text(
                               channel.category,
-                              style: GoogleFonts.spaceGrotesk(
+                              style: AppFont.primary(
                                 color: isEvent
-                                    ? Colors.white70
-                                    : (isDark
-                                        ? AppTheme.darkText3
-                                        : AppTheme.lightText3),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
+                                    ? AppColors.slate400
+                                    : AppTheme.textTertiary(context),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                height: 1.15,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          // Favorite indicator
-                          if (favoritesProvider.isFavorite(channel.id))
+                          if (isFav)
                             const Icon(
                               Icons.favorite_rounded,
                               size: 14,
-                              color: Colors.redAccent,
+                              color: AppColors.live,
                             ),
                         ],
                       ),
@@ -169,7 +176,7 @@ class ChannelCard extends StatelessWidget {
     final logoUrl = channel.getLogoUrl(isDark);
 
     if (logoUrl.isEmpty || !logoUrl.startsWith('http')) {
-      return _buildPlaceholder(context);
+      return _buildPlaceholder(context, isDark);
     }
 
     return CachedNetworkImage(
@@ -188,9 +195,9 @@ class ChannelCard extends StatelessWidget {
           ),
         ),
       ),
-      placeholder: (context, url) => _buildLoadingShimmer(context),
-      errorWidget: (context, url, error) => _buildPlaceholder(context),
-      fadeInDuration: const Duration(milliseconds: 250),
+      placeholder: (context, url) => _buildLoadingShimmer(context, isDark),
+      errorWidget: (context, url, error) => _buildPlaceholder(context, isDark),
+      fadeInDuration: const Duration(milliseconds: 220),
       fadeOutDuration: const Duration(milliseconds: 100),
       memCacheWidth: 200,
       memCacheHeight: 200,
@@ -199,29 +206,25 @@ class ChannelCard extends StatelessWidget {
     );
   }
 
-  Widget _buildLoadingShimmer(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildLoadingShimmer(BuildContext context, bool isDark) {
     return Shimmer.fromColors(
-      baseColor: isDark ? Colors.grey[850]! : Colors.grey[300]!,
-      highlightColor: isDark ? Colors.grey[800]! : Colors.grey[100]!,
+      baseColor: isDark ? AppTheme.darkBg3 : AppTheme.lightBg3,
+      highlightColor: isDark ? AppTheme.darkBg4 : AppTheme.lightBg1,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.xs),
         ),
       ),
     );
   }
 
-  Widget _buildPlaceholder(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
+  Widget _buildPlaceholder(BuildContext context, bool isDark) {
     return Center(
       child: Icon(
         Icons.tv_rounded,
-        size: 48,
-        color: isDark ? Colors.grey[700] : Colors.grey[400],
+        size: 42,
+        color: isDark ? AppTheme.darkText3 : AppTheme.lightText3,
       ),
     );
   }

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/wakelock_service.dart';
+import 'package:pivote/core/theme/app_colors.dart';
+import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 
@@ -89,14 +90,14 @@ class AppearanceSettingsScreen extends StatelessWidget {
                           children: [
                             Text(
                               'Pequeño',
-                              style: GoogleFonts.inter(
+                              style: AppFont.primary(
                                 fontSize: 14,
                                 color: palette.muted,
                               ),
                             ),
                             Text(
                               'Grande',
-                              style: GoogleFonts.inter(
+                              style: AppFont.primary(
                                 fontSize: 14,
                                 color: palette.muted,
                               ),
@@ -190,21 +191,21 @@ class _ThemePreviewOption extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: selected ? palette.text : palette.border,
+                color: selected ? palette.accent : palette.border,
                 width: 2,
               ),
               color: mode == ThemeMode.light
                   ? Colors.white
                   : mode == ThemeMode.dark
-                      ? const Color(0xFF1B1D22)
+                      ? AppColors.ink2
                       : null,
               gradient: mode == ThemeMode.system
                   ? const LinearGradient(
                       colors: [
                         Colors.white,
                         Colors.white,
-                        Color(0xFF1B1D22),
-                        Color(0xFF1B1D22),
+                        AppColors.ink2,
+                        AppColors.ink2,
                       ],
                       stops: [0.0, 0.5, 0.5, 1.0],
                     )
@@ -246,7 +247,7 @@ class _ThemePreviewOption extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             label,
-            style: GoogleFonts.inter(
+            style: AppFont.primary(
               fontSize: 13.5,
               fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               color: selected ? palette.text : palette.muted,

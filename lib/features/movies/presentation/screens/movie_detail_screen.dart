@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/features/movies/data/models/movie.dart';
 import 'package:pivote/features/movies/presentation/screens/movie_player_screen.dart';
@@ -154,7 +153,7 @@ class MovieDetailScreen extends StatelessWidget {
                             const SizedBox(height: 8),
                             Text(
                               movie.title,
-                              style: GoogleFonts.spaceGrotesk(
+                              style: AppFont.primary(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,
                                 height: 1.15,
@@ -177,7 +176,7 @@ class MovieDetailScreen extends StatelessWidget {
                                 const SizedBox(width: 6),
                                 Text(
                                   '${movie.year}',
-                                  style: GoogleFonts.spaceGrotesk(
+                                  style: AppFont.primary(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: isDark
@@ -196,7 +195,7 @@ class MovieDetailScreen extends StatelessWidget {
                                 const SizedBox(width: 6),
                                 Text(
                                   movie.duration,
-                                  style: GoogleFonts.spaceGrotesk(
+                                  style: AppFont.primary(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: isDark
@@ -212,7 +211,7 @@ class MovieDetailScreen extends StatelessWidget {
                             const SizedBox(height: 6),
                             Text(
                               '${movie.rating.toStringAsFixed(1)} / 5.0 calificacion',
-                              style: GoogleFonts.spaceGrotesk(
+                              style: AppFont.primary(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: isDark
@@ -250,7 +249,7 @@ class MovieDetailScreen extends StatelessWidget {
                         ),
                         child: Text(
                           genre,
-                          style: GoogleFonts.spaceGrotesk(
+                          style: AppFont.primary(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                             color:
@@ -341,7 +340,7 @@ class MovieDetailScreen extends StatelessWidget {
                                               const SizedBox(width: 8),
                                               Text(
                                                 'CONTINUAR',
-                                                style: GoogleFonts.spaceGrotesk(
+                                                style: AppFont.primary(
                                                   fontWeight: FontWeight.w900,
                                                   fontSize: 13,
                                                   letterSpacing: 0.5,
@@ -421,7 +420,7 @@ class MovieDetailScreen extends StatelessWidget {
                                       children: [
                                         Text(
                                           'Te quedaste en ${_formatDuration(savedPosition)}',
-                                          style: GoogleFonts.spaceGrotesk(
+                                          style: AppFont.primary(
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold,
                                             color: isDark
@@ -432,7 +431,7 @@ class MovieDetailScreen extends StatelessWidget {
                                         if (totalDuration > Duration.zero)
                                           Text(
                                             '${(progress * 100).toInt()}% visto',
-                                            style: GoogleFonts.spaceGrotesk(
+                                            style: AppFont.primary(
                                               fontSize: 11,
                                               fontWeight: FontWeight.bold,
                                               color: AppTheme.darkAccent,
@@ -504,7 +503,7 @@ class MovieDetailScreen extends StatelessWidget {
                                           const SizedBox(width: 8),
                                           Text(
                                             'REPRODUCIR PELÍCULA',
-                                            style: GoogleFonts.spaceGrotesk(
+                                            style: AppFont.primary(
                                               fontWeight: FontWeight.w900,
                                               fontSize: 14,
                                               letterSpacing: 0.8,
@@ -533,7 +532,7 @@ class MovieDetailScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     movie.description,
-                    style: GoogleFonts.spaceGrotesk(
+                    style: AppFont.primary(
                       fontSize: 14,
                       height: 1.6,
                       color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
@@ -591,7 +590,7 @@ class MovieDetailScreen extends StatelessWidget {
                             const SizedBox(width: 8),
                             Text(
                               director,
-                              style: GoogleFonts.spaceGrotesk(
+                              style: AppFont.primary(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
                                 color:
@@ -626,7 +625,7 @@ class MovieDetailScreen extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title,
-          style: GoogleFonts.spaceGrotesk(
+          style: AppFont.primary(
             fontSize: 16,
             fontWeight: FontWeight.w800,
             color: isDark ? Colors.white : AppTheme.lightText,
@@ -677,7 +676,7 @@ class MovieDetailScreen extends StatelessWidget {
           child: Center(
             child: Text(
               initials,
-              style: GoogleFonts.spaceGrotesk(
+              style: AppFont.primary(
                 fontWeight: FontWeight.w900,
                 fontSize: 14,
                 color: isDark ? AppTheme.darkAccent : AppTheme.lightAccent,
@@ -693,7 +692,7 @@ class MovieDetailScreen extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.spaceGrotesk(
+            style: AppFont.primary(
               fontSize: 10,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white70 : Colors.black87,
@@ -758,7 +757,7 @@ class MovieDetailScreen extends StatelessWidget {
               ),
               content: Text(
                 isFavorite ? 'Quitada de Mi Lista' : 'Agregada a Mi Lista',
-                style: GoogleFonts.spaceGrotesk(
+                style: AppFont.primary(
                   color: isDark ? Colors.white : AppTheme.lightText,
                   fontWeight: FontWeight.bold,
                 ),

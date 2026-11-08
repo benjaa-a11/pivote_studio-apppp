@@ -4,10 +4,11 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/features/radio/data/models/radio.dart' as radio_model;
 import 'package:pivote/features/radio/presentation/providers/audio_manager.dart';
@@ -113,12 +114,12 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
       context: context,
       backgroundColor: palette.bg,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       builder: (sheetCtx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -127,15 +128,16 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                   height: 4,
                   decoration: BoxDecoration(
                     color: palette.border,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   'Temporizador de apagado',
-                  style: GoogleFonts.inter(
+                  style: AppFont.primary(
                     fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
                     color: palette.text,
                   ),
                 ),
@@ -198,6 +200,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
     final radioProvider = context.watch<RadioProvider>();
     final topPad = MediaQuery.paddingOf(context).top;
     final bottomPad = MediaQuery.paddingOf(context).bottom;
+    final hPad = AppResponsive.screenHorizontalPadding(context);
 
     final activeRadio = audioManager.currentRadio ?? widget.radio;
     final isPlaying = audioManager.isPlaying;
@@ -214,17 +217,16 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
         body: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
+            constraints: const BoxConstraints(maxWidth: 640),
             child: ListView(
               physics: const ClampingScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
-                10,
-                topPad + 10,
-                10,
-                math.max(24, bottomPad + 22),
+              padding: hPad.add(
+                EdgeInsets.only(
+                  top: topPad + 10,
+                  bottom: math.max(24, bottomPad + 22),
+                ),
               ),
               children: [
-                // ---------- Header (.hdr) ----------
                 ProfileSubHeader(
                   title: 'Radio en vivo',
                   onBack: () {
@@ -241,7 +243,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                       height: 40,
                       decoration: BoxDecoration(
                         color: palette.card,
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                         border: Border.all(
                           color: palette.border,
                           width: 1,
@@ -253,35 +255,32 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                             ? Icons.favorite_rounded
                             : Icons.favorite_border_rounded,
                         size: 19,
-                        color: isFav ? const Color(0xFFEF4444) : palette.text,
+                        color: isFav ? AppColors.live : palette.text,
                       ),
                     ),
                   ),
                 ),
-
-                // ---------- Tarjeta Principal de Emisora ----------
                 Container(
                   padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                   decoration: BoxDecoration(
                     color: palette.card,
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(AppRadius.hero),
                     border: Border.all(color: palette.border, width: 1),
                     boxShadow: palette.cardShadow,
                   ),
                   child: Column(
                     children: [
-                      // Artwork frame
                       Container(
-                        width: 210,
-                        height: 210,
-                        padding: const EdgeInsets.all(8),
+                        width: 200,
+                        height: 200,
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: palette.iconBox,
-                          borderRadius: BorderRadius.circular(28),
+                          borderRadius: BorderRadius.circular(AppRadius.hero),
                           border: Border.all(color: palette.border, width: 1),
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(AppRadius.card),
                           child: Hero(
                             tag: 'radio_tile_logo_${activeRadio.id}',
                             child: activeRadio.logoUrl.isNotEmpty
@@ -313,23 +312,19 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // Station Name
                       Text(
                         activeRadio.name,
                         textAlign: TextAlign.center,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.4,
+                        style: AppFont.primary(
+                          fontSize: 23,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
                           color: palette.text,
                         ),
                       ),
                       const SizedBox(height: 10),
-
-                      // Live + Frequency Pill
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
@@ -337,7 +332,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: palette.iconBox,
-                          borderRadius: BorderRadius.circular(999),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
                           border: Border.all(color: palette.border, width: 1),
                         ),
                         child: Row(
@@ -348,7 +343,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                               height: 8,
                               decoration: BoxDecoration(
                                 color: isPlaying
-                                    ? const Color(0xFF3FD1A0)
+                                    ? AppColors.positive
                                     : palette.muted,
                                 shape: BoxShape.circle,
                               ),
@@ -362,9 +357,9 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                                 if ((activeRadio.category ?? '').isNotEmpty)
                                   activeRadio.category!,
                               ].join(' · '),
-                              style: GoogleFonts.inter(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
+                              style: AppFont.primary(
+                                fontSize: 12.8,
+                                fontWeight: FontWeight.w700,
                                 color: palette.text,
                               ),
                             ),
@@ -372,8 +367,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-
-                      // Playback Controls (Previous, Play/Pause, Next)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -400,6 +393,10 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                               decoration: BoxDecoration(
                                 color: palette.primaryBtnBg,
                                 shape: BoxShape.circle,
+                                boxShadow: AppShadows.glow(
+                                  palette.primaryBtnBg,
+                                  alpha: 0.25,
+                                ),
                               ),
                               alignment: Alignment.center,
                               child: isLoading
@@ -437,8 +434,6 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                     ],
                   ),
                 ),
-
-                // ---------- Opciones de reproducción ----------
                 const ProfileSectionTitle('Opciones'),
                 ProfileGroupCard(
                   children: [
