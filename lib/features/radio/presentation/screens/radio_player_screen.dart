@@ -391,21 +391,26 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                               width: 68,
                               height: 68,
                               decoration: BoxDecoration(
-                                color: palette.primaryBtnBg,
+                                gradient: AppGradients.buttonPrimary,
                                 shape: BoxShape.circle,
-                                boxShadow: AppShadows.glow(
-                                  palette.primaryBtnBg,
-                                  alpha: 0.25,
-                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: palette.accent
+                                        .withValues(alpha: 0.45),
+                                    blurRadius: 24,
+                                    spreadRadius: 0,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
                               ),
                               alignment: Alignment.center,
                               child: isLoading
-                                  ? SizedBox(
+                                  ? const SizedBox(
                                       width: 24,
                                       height: 24,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2.5,
-                                        color: palette.primaryBtnText,
+                                        color: Colors.white,
                                       ),
                                     )
                                   : Icon(
@@ -413,7 +418,7 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
                                           ? Icons.pause_rounded
                                           : Icons.play_arrow_rounded,
                                       size: 34,
-                                      color: palette.primaryBtnText,
+                                      color: Colors.white,
                                     ),
                             ),
                           ),
@@ -492,7 +497,7 @@ class _PlayerCircleButton extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: palette.iconBox,
+          color: palette.card,
           shape: BoxShape.circle,
           border: Border.all(color: palette.border, width: 1),
         ),

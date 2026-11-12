@@ -182,8 +182,12 @@ class _SearchRadioTileState extends State<SearchRadioTile> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: isPlaying ? palette.primaryBtnBg : palette.iconBox,
+                color: isPlaying ? AppColors.accentBg : palette.iconBox,
                 borderRadius: BorderRadius.circular(AppRadius.sm),
+                border: Border.all(
+                  color: isPlaying ? palette.accent : palette.border.withValues(alpha: 0.5),
+                  width: 1,
+                ),
               ),
               alignment: Alignment.center,
               child: isLoading
@@ -193,7 +197,7 @@ class _SearchRadioTileState extends State<SearchRadioTile> {
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: isPlaying
-                            ? palette.primaryBtnText
+                            ? AppColors.accentTint
                             : palette.text,
                       ),
                     )
@@ -202,7 +206,7 @@ class _SearchRadioTileState extends State<SearchRadioTile> {
                           ? Icons.graphic_eq_rounded
                           : Icons.play_arrow_rounded,
                       size: 20,
-                      color: isPlaying ? palette.primaryBtnText : palette.text,
+                      color: isPlaying ? AppColors.accentTint : palette.text,
                     ),
             ),
           ],

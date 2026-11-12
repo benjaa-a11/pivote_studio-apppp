@@ -67,29 +67,32 @@ class SearchFilterChips extends StatelessWidget {
           final item = tabs[index];
           final isSelected = selectedTab == item.tab;
 
-          final Color bgColor =
-              isSelected ? palette.primaryBtnBg : palette.card;
-          final Color fgColor =
-              isSelected ? palette.primaryBtnText : palette.text;
-          final Color borderColor =
-              isSelected ? palette.primaryBtnBg : palette.border;
+          final Color bgColor = isSelected
+              ? (palette.isDark ? AppColors.accentBg : palette.primaryBtnBg)
+              : palette.card;
+          final Color fgColor = isSelected
+              ? (palette.isDark ? Colors.white : palette.primaryBtnText)
+              : palette.text;
+          final Color borderColor = isSelected
+              ? (palette.isDark ? palette.accent : palette.primaryBtnBg)
+              : palette.border;
 
           return Material(
             color: bgColor,
-            borderRadius: BorderRadius.circular(AppRadius.pill),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
             child: InkWell(
               onTap: () {
                 HapticFeedback.selectionClick();
                 onTabSelected(item.tab);
               },
-              borderRadius: BorderRadius.circular(AppRadius.pill),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
               splashColor: Colors.transparent,
               highlightColor: palette.cardPressed.withValues(alpha: 0.5),
               child: Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7.5),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                   border: Border.all(
                     color: borderColor,
                     width: 1,
@@ -101,7 +104,9 @@ class SearchFilterChips extends StatelessWidget {
                     Icon(
                       item.icon,
                       size: 15,
-                      color: isSelected ? fgColor : palette.muted,
+                      color: isSelected
+                          ? (palette.isDark ? AppColors.accentTint : fgColor)
+                          : palette.muted,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -123,16 +128,20 @@ class SearchFilterChips extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? fgColor.withValues(alpha: 0.16)
+                              ? (palette.isDark
+                                  ? AppColors.accent.withValues(alpha: 0.3)
+                                  : fgColor.withValues(alpha: 0.16))
                               : palette.iconBox,
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '${item.count}',
                           style: AppFont.primary(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isSelected ? fgColor : palette.muted,
+                            color: isSelected
+                                ? (palette.isDark ? AppColors.accentTint : fgColor)
+                                : palette.muted,
                           ),
                         ),
                       ),

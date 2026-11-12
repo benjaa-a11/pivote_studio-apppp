@@ -391,25 +391,25 @@ class _SearchScreenState extends State<SearchScreen> {
         children: [
           Material(
             color: palette.card,
-            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
             child: InkWell(
               onTap: () {
                 HapticFeedback.lightImpact();
                 context.read<ChannelProvider>().searchChannels('');
                 Navigator.pop(context);
               },
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
               child: Container(
-                width: 42,
-                height: 42,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   border: Border.all(color: palette.border, width: 1),
                 ),
                 alignment: Alignment.center,
                 child: ProfileSvgIcons.svg(
                   ProfileSvgIcons.chevronLeft,
-                  size: 18,
+                  size: 19,
                   color: palette.text,
                 ),
               ),
@@ -419,13 +419,13 @@ class _SearchScreenState extends State<SearchScreen> {
           Expanded(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              height: 46,
+              height: 48,
               decoration: BoxDecoration(
                 color: palette.card,
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 border: Border.all(
                   color: hasFocus ? palette.accent : palette.border,
-                  width: hasFocus ? 1.4 : 1,
+                  width: hasFocus ? 1.5 : 1,
                 ),
                 boxShadow: palette.cardShadow,
               ),
@@ -563,14 +563,14 @@ class _SearchScreenState extends State<SearchScreen> {
               return Container(
                 decoration: BoxDecoration(
                   color: palette.card,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                   border: Border.all(color: palette.border, width: 1),
                 ),
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () => _executeSearch(item),
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(12, 7, 8, 7),
                       child: Row(

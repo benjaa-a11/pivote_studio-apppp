@@ -105,7 +105,7 @@ class SoccerMatchCard extends StatelessWidget {
               ? null
               : Border(
                   bottom: BorderSide(
-                    color: AppTheme.border(context),
+                    color: isDark ? AppColors.darkBorder : AppTheme.border(context),
                     width: 1,
                   ),
                 ),
@@ -407,32 +407,42 @@ class SoccerMatchCard extends StatelessWidget {
   ) {
     if (isLive && hasChannels) {
       return Container(
-        width: 28,
-        height: 28,
+        width: 30,
+        height: 30,
         decoration: BoxDecoration(
-          color: AppColors.live.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
+          color: const Color(0x2BD92B43),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+            color: AppColors.live.withValues(alpha: 0.5),
+            width: 1,
+          ),
         ),
         child: const Icon(
           Icons.play_arrow_rounded,
-          size: 16,
-          color: AppColors.live,
+          size: 17,
+          color: AppColors.liveTint,
         ),
       );
     }
 
     if (hasChannels) {
       return Container(
-        width: 28,
-        height: 28,
+        width: 30,
+        height: 30,
         decoration: BoxDecoration(
-          color: AppTheme.accent(context).withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+          color: isDark ? AppColors.accentBg : AppTheme.accent(context).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+            color: isDark
+                ? AppColors.accent.withValues(alpha: 0.45)
+                : AppTheme.accent(context).withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
         child: Icon(
           Icons.tv_rounded,
-          size: 14,
-          color: AppTheme.accent(context),
+          size: 15,
+          color: isDark ? AppColors.accentTint : AppTheme.accent(context),
         ),
       );
     }

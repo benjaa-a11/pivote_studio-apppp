@@ -206,27 +206,26 @@ class _FutbolScreenState extends State<FutbolScreen> {
                                   });
                                 },
                                 child: Container(
-                                  width: 38,
-                                  height: 38,
+                                  width: 44,
+                                  height: 44,
                                   decoration: BoxDecoration(
                                     color: _isSearching
-                                        ? AppTheme.accent(context)
-                                            .withValues(alpha: 0.16)
-                                        : AppTheme.surface1(context),
+                                        ? AppColors.accentBg
+                                        : (isDark ? AppColors.darkBg2 : AppTheme.surface1(context)),
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: _isSearching
-                                          ? AppTheme.accent(context)
-                                          : AppTheme.border(context),
+                                          ? AppColors.accent
+                                          : (isDark ? AppColors.darkBorder2 : AppTheme.border(context)),
                                     ),
                                   ),
                                   child: Icon(
                                     _isSearching
                                         ? Icons.close_rounded
                                         : Icons.search_rounded,
-                                    size: 18,
+                                    size: 19,
                                     color: _isSearching
-                                        ? AppTheme.accent(context)
+                                        ? AppColors.accentTint
                                         : theme.colorScheme.onSurface,
                                   ),
                                 ),
@@ -608,24 +607,36 @@ class _FutbolScreenState extends State<FutbolScreen> {
     bool isLiveBadge = false,
   }) {
     final isSelected = _selectedFilter == filter;
-    final activeColor = isLiveBadge
-        ? AppColors.live
-        : AppTheme.accent(context);
+    final Color bgColor;
+    final Color borderColor;
+    final Color textColor;
+
+    if (isSelected) {
+      if (isLiveBadge) {
+        bgColor = const Color(0x2BD92B43);
+        borderColor = AppColors.live;
+        textColor = AppColors.liveTint;
+      } else {
+        bgColor = isDark ? AppColors.accentBg : AppTheme.accent(context);
+        borderColor = isDark ? AppColors.accent : AppTheme.accent(context);
+        textColor = Colors.white;
+      }
+    } else {
+      bgColor = isDark ? AppColors.darkBg2 : AppTheme.surface1(context);
+      borderColor = isDark ? AppColors.darkBorder2 : AppTheme.border(context);
+      textColor = AppTheme.textSecondary(context);
+    }
 
     return GestureDetector(
       onTap: () => setState(() => _selectedFilter = filter),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7.5),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected
-              ? activeColor
-              : AppTheme.surface1(context),
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          color: bgColor,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
-            color: isSelected
-                ? activeColor
-                : AppTheme.border(context),
+            color: borderColor,
             width: 1,
           ),
         ),
@@ -637,7 +648,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
                 width: 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : AppColors.live,
+                  color: isSelected ? AppColors.liveTint : AppColors.live,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -646,13 +657,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
             Text(
               label,
               style: AppFont.primary(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: isSelected
-                    ? (isLiveBadge
-                        ? Colors.white
-                        : AppTheme.onAccent(context))
-                    : AppTheme.textSecondary(context),
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: textColor,
               ),
             ),
           ],

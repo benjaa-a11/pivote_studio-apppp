@@ -49,7 +49,7 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
             border: Border(
               bottom: BorderSide(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
+                    ? AppColors.darkBorder
                     : AppTheme.lightBorder,
                 width: 1.0,
               ),
@@ -118,17 +118,17 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
   ) {
     return ApplePressable(
       scaleDownFactor: 0.92,
-      borderRadius: BorderRadius.circular(AppRadius.sm),
+      borderRadius: BorderRadius.circular(AppRadius.pill),
       onTap: onBackPressed ?? () => Navigator.pop(context),
       child: Container(
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg2,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
+          color: isDark ? AppColors.darkBg2 : AppTheme.lightBg2,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.09)
+                ? AppColors.darkBorder2
                 : AppTheme.lightBorder,
             width: 1.0,
           ),
@@ -136,7 +136,7 @@ class PivoteAppBar extends StatelessWidget implements PreferredSizeWidget {
         child: Center(
           child: Icon(
             Icons.arrow_back_ios_new_rounded,
-            size: 15,
+            size: 16,
             color: theme.colorScheme.onSurface,
           ),
         ),

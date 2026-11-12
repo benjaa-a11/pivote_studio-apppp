@@ -36,7 +36,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       title: 'Notificaciones',
       trailing: dynamicItems.any((e) => !e.isRead)
           ? Material(
-              color: palette.card,
+              color: AppColors.accentBg,
               borderRadius: BorderRadius.circular(AppRadius.pill),
               child: InkWell(
                 onTap: () {
@@ -45,20 +45,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 },
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppRadius.pill),
-                    border: Border.all(color: palette.border, width: 1),
+                    border: Border.all(color: palette.accent, width: 1),
                   ),
+                  alignment: Alignment.center,
                   child: Text(
-                    'Leídas',
+                    'Marcar leídas',
                     style: AppFont.primary(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: palette.text,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accentTint,
                     ),
                   ),
                 ),
@@ -381,12 +380,16 @@ class _DynamicNotificationRow extends StatelessWidget {
                         ),
                         if (!item.isRead)
                           Container(
-                            width: 8,
-                            height: 8,
+                            width: 9,
+                            height: 9,
                             margin: const EdgeInsets.only(left: 8),
-                            decoration: const BoxDecoration(
-                              color: AppColors.info,
+                            decoration: BoxDecoration(
+                              color: AppColors.live,
                               shape: BoxShape.circle,
+                              border: Border.all(
+                                color: palette.card,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                       ],

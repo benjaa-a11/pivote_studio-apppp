@@ -77,23 +77,23 @@ class _RadiosScreenState extends State<RadiosScreen> {
 
   Widget _buildHeader(ProfilePalette palette, int totalCount) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 8, 2, 10),
+      padding: const EdgeInsets.fromLTRB(2, 6, 2, 10),
       child: Column(
         children: [
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: palette.card,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   border: Border.all(color: palette.border, width: 1),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
                   Icons.radio_rounded,
-                  size: 19,
+                  size: 20,
                   color: palette.accent,
                 ),
               ),
@@ -104,7 +104,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
                       'Radio en vivo',
                       textAlign: TextAlign.center,
                       style: AppFont.primary(
-                        fontSize: 19.5,
+                        fontSize: 20,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.4,
                         color: palette.text,
@@ -115,7 +115,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
                       '$totalCount emisoras disponibles',
                       textAlign: TextAlign.center,
                       style: AppFont.primary(
-                        fontSize: 12.2,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: palette.muted,
                       ),
@@ -135,15 +135,16 @@ class _RadiosScreenState extends State<RadiosScreen> {
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color:
-                        _isSearchVisible ? palette.primaryBtnBg : palette.card,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    color: _isSearchVisible
+                        ? AppColors.accentBg
+                        : palette.card,
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                     border: Border.all(
                       color: _isSearchVisible
-                          ? palette.primaryBtnBg
+                          ? palette.accent
                           : palette.border,
                       width: 1,
                     ),
@@ -153,9 +154,9 @@ class _RadiosScreenState extends State<RadiosScreen> {
                     _isSearchVisible
                         ? Icons.close_rounded
                         : Icons.search_rounded,
-                    size: 19,
+                    size: 20,
                     color: _isSearchVisible
-                        ? palette.primaryBtnText
+                        ? AppColors.accentTint
                         : palette.text,
                   ),
                 ),
@@ -260,12 +261,16 @@ class _RadiosScreenState extends State<RadiosScreen> {
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? palette.primaryBtnBg : palette.card,
-                borderRadius: BorderRadius.circular(AppRadius.pill),
+                color: isSelected
+                    ? AppColors.accentBg
+                    : palette.card,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
                 border: Border.all(
-                  color: isSelected ? palette.primaryBtnBg : palette.border,
+                  color: isSelected
+                      ? palette.accent
+                      : palette.border,
                   width: 1,
                 ),
               ),
@@ -277,7 +282,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
                       Icons.favorite_rounded,
                       size: 14,
                       color: isSelected
-                          ? palette.primaryBtnText
+                          ? AppColors.accentTint
                           : AppColors.live,
                     ),
                     const SizedBox(width: 6),
@@ -285,23 +290,35 @@ class _RadiosScreenState extends State<RadiosScreen> {
                   Text(
                     cat,
                     style: AppFont.primary(
-                      fontSize: 12.8,
+                      fontSize: 13,
                       fontWeight:
                           isSelected ? FontWeight.w800 : FontWeight.w600,
                       letterSpacing: -0.15,
-                      color: isSelected ? palette.primaryBtnText : palette.text,
+                      color: isSelected ? Colors.white : palette.muted,
                     ),
                   ),
                   if (isFavPill && favCount > 0) ...[
                     const SizedBox(width: 6),
-                    Text(
-                      '$favCount',
-                      style: AppFont.primary(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1.5,
+                      ),
+                      decoration: BoxDecoration(
                         color: isSelected
-                            ? palette.primaryBtnText.withValues(alpha: 0.85)
-                            : palette.muted,
+                            ? AppColors.accent.withValues(alpha: 0.3)
+                            : palette.iconBox,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '$favCount',
+                        style: AppFont.primary(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected
+                              ? AppColors.accentTint
+                              : palette.muted,
+                        ),
                       ),
                     ),
                   ],

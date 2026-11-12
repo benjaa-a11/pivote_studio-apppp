@@ -67,7 +67,7 @@ class ProfilePalette {
         bg: AppTheme.darkBg,
         card: AppTheme.darkBg2,
         cardPressed: AppTheme.darkBg3,
-        border: AppTheme.darkBorder,
+        border: AppTheme.darkBorder2,
         iconBox: AppTheme.darkBg3,
         text: AppTheme.darkText,
         muted: AppTheme.darkText2,
@@ -246,11 +246,11 @@ class ProfileSubHeader extends StatelessWidget {
                 }
               },
               child: Container(
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: palette.card,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                   border: Border.all(
                     color: palette.border,
                     width: 1,
@@ -259,13 +259,13 @@ class ProfileSubHeader extends StatelessWidget {
                 alignment: Alignment.center,
                 child: ProfileSvgIcons.svg(
                   ProfileSvgIcons.chevronLeft,
-                  size: 18,
+                  size: 19,
                   color: palette.text,
                 ),
               ),
             )
           else
-            const SizedBox(width: 40, height: 40),
+            const SizedBox(width: 44, height: 44),
           Expanded(
             child: Text(
               title,
@@ -273,14 +273,14 @@ class ProfileSubHeader extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppFont.primary(
-                fontSize: 19.5,
+                fontSize: 20,
                 fontWeight: FontWeight.w800,
-                letterSpacing: -0.4,
+                letterSpacing: -0.3,
                 color: palette.text,
               ),
             ),
           ),
-          trailing ?? const SizedBox(width: 40, height: 40),
+          trailing ?? const SizedBox(width: 44, height: 44),
         ],
       ),
     );
@@ -352,7 +352,9 @@ class ProfileGroupCard extends StatelessWidget {
                   Divider(
                     height: 1,
                     thickness: 1,
-                    color: palette.border,
+                    color: palette.isDark
+                        ? AppColors.darkBorder
+                        : palette.border,
                   ),
               ],
             ],
@@ -494,11 +496,15 @@ class ProfileSettingIconBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = ProfilePalette.of(context);
     return Container(
-      width: 38,
-      height: 38,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
         color: palette.iconBox,
         borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(
+          color: palette.border.withValues(alpha: 0.6),
+          width: 1,
+        ),
       ),
       alignment: Alignment.center,
       child: ProfileSvgIcons.svg(
@@ -595,14 +601,24 @@ class ProfileActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = ProfilePalette.of(context);
 
-    Color bgColor;
+    Color? bgColor;
+    Gradient? gradient;
+    List<BoxShadow>? boxShadow;
     Color textColor;
     Border? border;
 
     switch (variant) {
       case ProfileButtonVariant.primary:
-        bgColor = palette.primaryBtnBg;
-        textColor = palette.primaryBtnText;
+        gradient = AppGradients.buttonPrimary;
+        boxShadow = [
+          BoxShadow(
+            color: palette.accent.withValues(alpha: 0.40),
+            blurRadius: 20,
+            spreadRadius: -4,
+            offset: const Offset(0, 6),
+          ),
+        ];
+        textColor = Colors.white;
         border = null;
         break;
       case ProfileButtonVariant.soft:
@@ -626,6 +642,8 @@ class ProfileActionButton extends StatelessWidget {
           height: 52,
           decoration: BoxDecoration(
             color: bgColor,
+            gradient: gradient,
+            boxShadow: boxShadow,
             borderRadius: BorderRadius.circular(AppRadius.md),
             border: border,
           ),

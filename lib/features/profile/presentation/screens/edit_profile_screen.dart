@@ -437,9 +437,9 @@ class _EditableProfileFieldState extends State<_EditableProfileField> {
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 150),
               style: AppFont.primary(
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-                color: _focused ? palette.text : palette.muted,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: _focused ? palette.accent : palette.muted,
               ),
               child: Text(widget.label),
             ),
