@@ -109,23 +109,27 @@ class _SignUpScreenState extends State<SignUpScreen>
   }
 
   void _showPolicyDialog(String title, String body) {
+    final palette = AuthPalette.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: palette.panelBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: palette.line),
+        ),
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.w700,
-            color: kHtmlInk,
+            color: palette.text,
           ),
         ),
         content: SingleChildScrollView(
           child: Text(
             body,
-            style: const TextStyle(
-              color: kHtmlMuted,
+            style: TextStyle(
+              color: palette.muted,
               fontSize: 14,
               height: 1.5,
             ),
@@ -134,8 +138,8 @@ class _SignUpScreenState extends State<SignUpScreen>
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: kHtmlBtnMain,
-              foregroundColor: Colors.white,
+              backgroundColor: palette.btnMainBg,
+              foregroundColor: palette.btnMainText,
               shape: const StadiumBorder(),
             ),
             onPressed: () => Navigator.pop(ctx),

@@ -101,18 +101,22 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _showForgotPasswordDialog() {
+    final palette = AuthPalette.of(context);
     final resetEmailController =
         TextEditingController(text: _emailController.text.trim());
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: palette.panelBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: palette.line),
+        ),
         title: Text(
           'Recuperar Contraseña',
           style: AppFont.primary(
             fontWeight: FontWeight.w700,
-            color: kHtmlInk,
+            color: palette.text,
           ),
         ),
         content: Column(
@@ -122,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen>
             Text(
               'Ingresa tu correo para recibir las instrucciones de recuperación.',
               style: AppFont.primary(
-                color: kHtmlMuted,
+                color: palette.muted,
                 fontSize: 14,
               ),
             ),
@@ -130,17 +134,25 @@ class _LoginScreenState extends State<LoginScreen>
             TextField(
               controller: resetEmailController,
               keyboardType: TextInputType.emailAddress,
-              style: AppFont.primary(color: kHtmlInk),
+              style: AppFont.primary(color: palette.text),
               decoration: InputDecoration(
                 hintText: 'ejemplo@correo.com',
-                hintStyle: AppFont.primary(color: const Color(0xFF8A8A8A)),
+                hintStyle: AppFont.primary(color: palette.muted),
                 filled: true,
-                fillColor: kHtmlField,
+                fillColor: palette.fieldBg,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(999),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(color: palette.fieldBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: BorderSide(color: palette.fieldBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: BorderSide(color: palette.linkColor),
                 ),
               ),
             ),
@@ -151,13 +163,13 @@ class _LoginScreenState extends State<LoginScreen>
             onPressed: () => Navigator.pop(ctx),
             child: Text(
               'Cancelar',
-              style: AppFont.primary(color: kHtmlMuted),
+              style: AppFont.primary(color: palette.muted),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: kHtmlBtnMain,
-              foregroundColor: Colors.white,
+              backgroundColor: palette.btnMainBg,
+              foregroundColor: palette.btnMainText,
               shape: const StadiumBorder(),
             ),
             onPressed: () {

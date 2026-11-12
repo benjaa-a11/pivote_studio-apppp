@@ -2,24 +2,116 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pivote/core/theme/app_colors.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/theme/app_typography.dart';
 
-// ─── Colores del módulo Auth alineados al Design System de Pivote ─────────────
-const Color kAuthScreenBg = AppColors.darkBg;
+// ─── Paleta de Auth adaptativa a ambos temas ─────────────────────────────────
+class AuthPalette {
+  final bool isDark;
+  final Color scaffoldBg;
+  final Color panelBg;
+  final Color heroBg;
+  final Color heroBubble1;
+  final Color heroBubble2;
+  final Color text;
+  final Color muted;
+  final Color fieldBg;
+  final Color fieldFocusBg;
+  final Color fieldBorder;
+  final Color line;
+  final Color btnMainBg;
+  final Color btnMainPressed;
+  final Gradient? btnMainGradient;
+  final Color btnMainText;
+  final Color googleBtnBg;
+  final Color googleBtnBorder;
+  final Color googleBtnText;
+  final Color backBtnBg;
+  final Color backBtnIcon;
+  final Color linkColor;
 
-// Colores del Hero y burbujas decorativas
-const Color kHtmlOrange = Color(0xFFE9744D);
-const Color kHtmlGold = Color(0xFFD8B968);
-const Color kHtmlGreen = Color(0xFF4DBB88);
+  const AuthPalette({
+    required this.isDark,
+    required this.scaffoldBg,
+    required this.panelBg,
+    required this.heroBg,
+    required this.heroBubble1,
+    required this.heroBubble2,
+    required this.text,
+    required this.muted,
+    required this.fieldBg,
+    required this.fieldFocusBg,
+    required this.fieldBorder,
+    required this.line,
+    required this.btnMainBg,
+    required this.btnMainPressed,
+    this.btnMainGradient,
+    required this.btnMainText,
+    required this.googleBtnBg,
+    required this.googleBtnBorder,
+    required this.googleBtnText,
+    required this.backBtnBg,
+    required this.backBtnIcon,
+    required this.linkColor,
+  });
 
-// Colores del panel blanco y sus inputs
-const Color kHtmlInk = AppColors.lightText;
-const Color kHtmlMuted = AppColors.lightText2;
-const Color kHtmlField = Color(0xFFF4F4F4);
-const Color kHtmlFieldFocus = Color(0xFFECECEC);
-const Color kHtmlLine = AppColors.lightBorder;
-const Color kHtmlBtnMain = AppColors.darkBg;
-const Color kHtmlBtnMainPressed = AppColors.darkBg3;
+  factory AuthPalette.of(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    if (isDark) {
+      return AuthPalette(
+        isDark: true,
+        scaffoldBg: AppColors.darkBg,
+        panelBg: AppColors.darkBg1,
+        heroBg: AppColors.darkBg2,
+        heroBubble1: AppColors.accent.withValues(alpha: 0.22),
+        heroBubble2: AppColors.accentTint.withValues(alpha: 0.14),
+        text: AppColors.darkText,
+        muted: AppColors.darkText3,
+        fieldBg: AppColors.darkBg2,
+        fieldFocusBg: AppColors.darkBg3,
+        fieldBorder: AppColors.darkBorder2,
+        line: AppColors.darkBorder,
+        btnMainBg: AppColors.darkAccent,
+        btnMainPressed: AppColors.accentStrong,
+        btnMainGradient: AppGradients.buttonPrimary,
+        btnMainText: Colors.white,
+        googleBtnBg: AppColors.darkBg2,
+        googleBtnBorder: AppColors.darkBorder2,
+        googleBtnText: AppColors.darkText,
+        backBtnBg: AppColors.darkBg3.withValues(alpha: 0.8),
+        backBtnIcon: AppColors.darkText,
+        linkColor: AppColors.accentTint,
+      );
+    } else {
+      return const AuthPalette(
+        isDark: false,
+        scaffoldBg: AppColors.lightBg,
+        panelBg: Colors.white,
+        heroBg: AppColors.darkAccent,
+        heroBubble1: Color(0x554887FF),
+        heroBubble2: Color(0x407DB0FF),
+        text: AppColors.lightText,
+        muted: AppColors.lightText2,
+        fieldBg: Color(0xFFF4F6F9),
+        fieldFocusBg: Color(0xFFECEFF4),
+        fieldBorder: AppColors.lightBorder,
+        line: AppColors.lightBorder,
+        btnMainBg: AppColors.darkAccent,
+        btnMainPressed: AppColors.accentStrong,
+        btnMainGradient: AppGradients.buttonPrimary,
+        btnMainText: Colors.white,
+        googleBtnBg: Colors.white,
+        googleBtnBorder: AppColors.lightBorder,
+        googleBtnText: AppColors.lightText,
+        backBtnBg: Color(0x33000000),
+        backBtnIcon: Colors.white,
+        linkColor: AppColors.darkAccent,
+      );
+    }
+  }
+}
 
 // ─── SVG Oficial de Google ───────────────────────────────────────────────────
 const String _kGoogleSvg = '''
@@ -31,7 +123,7 @@ const String _kGoogleSvg = '''
 </svg>
 ''';
 
-// ─── Stage Layout (Pantalla completa nativa, sin fondos externos) ─────────────
+// ─── Stage Layout (Pantalla completa nativa, adaptativa) ─────────────────────
 class AuthStageLayout extends StatelessWidget {
   final Widget card;
   final VoidCallback? onBack;
@@ -44,18 +136,20 @@ class AuthStageLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
     final topPadding = MediaQuery.paddingOf(context).top;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: Colors.white,
-        systemNavigationBarIconBrightness: Brightness.dark,
+        statusBarBrightness: palette.isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: palette.panelBg,
+        systemNavigationBarIconBrightness:
+            palette.isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: palette.scaffoldBg,
         resizeToAvoidBottomInset: true,
         body: Stack(
           children: [
@@ -99,12 +193,18 @@ class AuthStageLayout extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.18),
+                        color: palette.backBtnBg,
                         shape: BoxShape.circle,
+                        border: Border.all(
+                          color: palette.isDark
+                              ? palette.fieldBorder
+                              : Colors.white.withValues(alpha: 0.25),
+                          width: 1,
+                        ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white,
+                        color: palette.backBtnIcon,
                         size: 18,
                       ),
                     ),
@@ -131,8 +231,9 @@ class AuthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
     return ColoredBox(
-      color: kHtmlOrange,
+      color: palette.heroBg,
       child: Column(
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -147,7 +248,7 @@ class AuthCard extends StatelessWidget {
   }
 }
 
-// ─── Hero con burbujas EXACTAS del HTML adaptado al notch superior ───────────
+// ─── Hero con burbujas adaptado al notch superior ────────────────────────────
 class AuthHero extends StatelessWidget {
   final String title;
   final bool single;
@@ -160,12 +261,11 @@ class AuthHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
     final media = MediaQuery.of(context);
     final topPadding = media.padding.top;
     final screenHeight = media.size.height;
 
-    // Altura visible equilibrada según la pantalla para que el encabezado respire
-    // y no quede comprimido contra la barra de estado ni el panel blanco.
     final visibleHeight = single
         ? (screenHeight * 0.22).clamp(164.0, 204.0)
         : (screenHeight * 0.235).clamp(176.0, 216.0);
@@ -178,35 +278,35 @@ class AuthHero extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.hardEdge,
         children: [
-          // Fondo naranja que llena hasta la parte superior de la pantalla
+          // Fondo que llena hasta la parte superior de la pantalla
           Positioned.fill(
-            child: Container(color: kHtmlOrange),
+            child: Container(color: palette.heroBg),
           ),
 
-          // Burbuja Dorada (.gold) posicionada armónicamente respecto a la curva inferior
+          // Burbuja 1 (.gold) posicionada armónicamente
           Positioned(
             left: -62,
             bottom: -42,
             child: Container(
               width: 164,
               height: 164,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: kHtmlGold,
+                color: palette.heroBubble1,
               ),
             ),
           ),
 
-          // Burbuja Verde (.green) posicionada armónicamente a la derecha
+          // Burbuja 2 (.green) posicionada armónicamente a la derecha
           Positioned(
             right: -38,
             bottom: -48,
             child: Container(
               width: 142,
               height: 142,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: kHtmlGreen,
+                color: palette.heroBubble2,
               ),
             ),
           ),
@@ -232,16 +332,16 @@ class AuthHero extends StatelessWidget {
             ),
           ),
 
-          // Curva superior del panel blanco integrada sin huecos fantasma
+          // Curva superior del panel integrada sin huecos fantasma
           Positioned(
             left: 0,
             right: 0,
             bottom: -1,
             height: bottomCurveOverlap + 1,
             child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              decoration: BoxDecoration(
+                color: palette.panelBg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
               ),
             ),
           ),
@@ -251,7 +351,7 @@ class AuthHero extends StatelessWidget {
   }
 }
 
-// ─── Panel Blanco (.panel) con Theme claro aislado ────────────────────────────
+// ─── Panel (.panel) adaptativo ───────────────────────────────────────────────
 class AuthPanel extends StatelessWidget {
   final List<Widget> children;
   final Widget? footer;
@@ -264,53 +364,29 @@ class AuthPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Forzamos un ThemeData claro dentro del panel blanco para aislarlo
-    // totalmente del tema oscuro global de la app
-    final lightTheme = ThemeData(
-      brightness: Brightness.light,
-      primaryColor: kHtmlInk,
-      scaffoldBackgroundColor: Colors.white,
-      textSelectionTheme: const TextSelectionThemeData(
-        cursorColor: kHtmlInk,
-        selectionColor: Color(0x33111111),
-        selectionHandleColor: kHtmlInk,
-      ),
-      inputDecorationTheme: const InputDecorationTheme(
-        filled: true,
-        fillColor: kHtmlField,
-        border: InputBorder.none,
-        enabledBorder: InputBorder.none,
-        focusedBorder: InputBorder.none,
-        errorBorder: InputBorder.none,
-        focusedErrorBorder: InputBorder.none,
-      ),
-    );
-
+    final palette = AuthPalette.of(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
 
-    return Theme(
-      data: lightTheme,
-      child: Container(
-        width: double.infinity,
-        color: Colors.white,
-        padding: EdgeInsets.fromLTRB(26, 12, 26, 26 + bottomInset),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: children,
+    return Container(
+      width: double.infinity,
+      color: palette.panelBg,
+      padding: EdgeInsets.fromLTRB(26, 12, 26, 26 + bottomInset),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: children,
+          ),
+          if (footer != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 28),
+              child: footer!,
             ),
-            if (footer != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 28),
-                child: footer!,
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -336,6 +412,8 @@ class _AuthGoogleBtnState extends State<AuthGoogleBtn> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
+
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) => setState(() => _isPressed = false),
@@ -353,9 +431,11 @@ class _AuthGoogleBtnState extends State<AuthGoogleBtn> {
           width: double.infinity,
           height: 52,
           decoration: BoxDecoration(
-            color: _isPressed ? const Color(0xFFFAFAFA) : Colors.white,
+            color: _isPressed
+                ? (palette.isDark ? palette.fieldFocusBg : const Color(0xFFFAFAFA))
+                : palette.googleBtnBg,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: kHtmlLine, width: 1),
+            border: Border.all(color: palette.googleBtnBorder, width: 1),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -371,7 +451,7 @@ class _AuthGoogleBtnState extends State<AuthGoogleBtn> {
                 style: AppFont.primary(
                   fontSize: 16.5,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF333333),
+                  color: palette.googleBtnText,
                 ),
               ),
             ],
@@ -388,13 +468,15 @@ class AuthOrText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Text(
         'o',
         style: AppFont.primary(
           fontSize: 15,
-          color: const Color(0xFF555555),
+          color: palette.muted,
           fontWeight: FontWeight.w400,
         ),
       ),
@@ -402,9 +484,7 @@ class AuthOrText extends StatelessWidget {
   }
 }
 
-// ─── Input Pill (.field.pill) con fondo garantizado claro ────────────────────
-// .field { flex:1; min-width:0; height:50px; border:0; outline:0; background:var(--field); font:400 17px 'Figtree'; color:var(--ink); padding:0 23px; }
-// .field:focus { background:#ececec; }
+// ─── Input Pill (.field.pill) adaptativo ─────────────────────────────────────
 class AuthPillInput extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -453,7 +533,8 @@ class _AuthPillInputState extends State<AuthPillInput> {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = _isFocused ? kHtmlFieldFocus : kHtmlField;
+    final palette = AuthPalette.of(context);
+    final bgColor = _isFocused ? palette.fieldFocusBg : palette.fieldBg;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -467,6 +548,12 @@ class _AuthPillInputState extends State<AuthPillInput> {
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: _isFocused
+                  ? palette.linkColor
+                  : (palette.isDark ? palette.fieldBorder : Colors.transparent),
+              width: 1,
+            ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 22),
           alignment: Alignment.center,
@@ -476,17 +563,17 @@ class _AuthPillInputState extends State<AuthPillInput> {
             keyboardType: widget.keyboardType,
             textInputAction: widget.textInputAction,
             onFieldSubmitted: widget.onSubmitted,
-            cursorColor: kHtmlInk,
+            cursorColor: palette.linkColor,
             cursorWidth: 1.5,
             style: AppFont.primary(
               fontSize: 17,
               fontWeight: FontWeight.w400,
-              color: kHtmlInk, // Texto negro visible
+              color: palette.text,
             ),
             decoration: InputDecoration(
               isCollapsed: true,
               filled: true,
-              fillColor: bgColor, // Fondo claro explícito
+              fillColor: bgColor,
               border: InputBorder.none,
               focusedBorder: InputBorder.none,
               enabledBorder: InputBorder.none,
@@ -496,7 +583,7 @@ class _AuthPillInputState extends State<AuthPillInput> {
               hintStyle: AppFont.primary(
                 fontSize: 17,
                 fontWeight: FontWeight.w400,
-                color: const Color(0xFF8A8A8A),
+                color: palette.muted,
               ),
             ),
             validator: (value) {
@@ -588,6 +675,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
     const leftRadius = BorderRadius.only(
       topLeft: Radius.circular(999),
       bottomLeft: Radius.circular(999),
@@ -597,8 +685,8 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
       bottomRight: Radius.circular(999),
     );
 
-    final firstBg = _firstFocused ? kHtmlFieldFocus : kHtmlField;
-    final lastBg = _lastFocused ? kHtmlFieldFocus : kHtmlField;
+    final firstBg = _firstFocused ? palette.fieldFocusBg : palette.fieldBg;
+    final lastBg = _lastFocused ? palette.fieldFocusBg : palette.fieldBg;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -615,6 +703,12 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                 decoration: BoxDecoration(
                   color: firstBg,
                   borderRadius: leftRadius,
+                  border: Border.all(
+                    color: _firstFocused
+                        ? palette.linkColor
+                        : (palette.isDark ? palette.fieldBorder : Colors.transparent),
+                    width: 1,
+                  ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 alignment: Alignment.center,
@@ -624,17 +718,17 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                   textInputAction: TextInputAction.next,
                   textCapitalization: TextCapitalization.words,
                   onFieldSubmitted: widget.onFirstSubmitted,
-                  cursorColor: kHtmlInk,
+                  cursorColor: palette.linkColor,
                   cursorWidth: 1.5,
                   style: AppFont.primary(
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
-                    color: kHtmlInk, // Texto negro visible
+                    color: palette.text,
                   ),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     filled: true,
-                    fillColor: firstBg, // Fondo claro explícito
+                    fillColor: firstBg,
                     border: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     enabledBorder: InputBorder.none,
@@ -644,7 +738,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                     hintStyle: AppFont.primary(
                       fontSize: 17,
                       fontWeight: FontWeight.w400,
-                      color: const Color(0xFF8A8A8A),
+                      color: palette.muted,
                     ),
                   ),
                   validator: (value) {
@@ -669,6 +763,12 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                 decoration: BoxDecoration(
                   color: lastBg,
                   borderRadius: rightRadius,
+                  border: Border.all(
+                    color: _lastFocused
+                        ? palette.linkColor
+                        : (palette.isDark ? palette.fieldBorder : Colors.transparent),
+                    width: 1,
+                  ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 alignment: Alignment.center,
@@ -678,17 +778,17 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                   textInputAction: TextInputAction.next,
                   textCapitalization: TextCapitalization.words,
                   onFieldSubmitted: widget.onLastSubmitted,
-                  cursorColor: kHtmlInk,
+                  cursorColor: palette.linkColor,
                   cursorWidth: 1.5,
                   style: AppFont.primary(
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
-                    color: kHtmlInk, // Texto negro visible
+                    color: palette.text,
                   ),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     filled: true,
-                    fillColor: lastBg, // Fondo claro explícito
+                    fillColor: lastBg,
                     border: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     enabledBorder: InputBorder.none,
@@ -698,7 +798,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                     hintStyle: AppFont.primary(
                       fontSize: 17,
                       fontWeight: FontWeight.w400,
-                      color: const Color(0xFF8A8A8A),
+                      color: palette.muted,
                     ),
                   ),
                   validator: (value) {
@@ -732,9 +832,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
   }
 }
 
-// ─── Input Contraseña + Ojo corregido (Ojo cerrado cuando está oculta) ────────
-// .row.pw .field{border-radius:999px 0 0 999px}
-// .eye { width:54px; height:50px; border:0; background:var(--field); border-radius:0 999px 999px 0; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#555; }
+// ─── Input Contraseña + Ojo ──────────────────────────────────────────────────
 class AuthPasswordInput extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -759,7 +857,6 @@ class AuthPasswordInput extends StatefulWidget {
 
 class _AuthPasswordInputState extends State<AuthPasswordInput> {
   bool _isFocused = false;
-  // Inicia oculta con puntos ••••••
   bool _isObscured = true;
   String? _errorText;
 
@@ -781,6 +878,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
     const leftRadius = BorderRadius.only(
       topLeft: Radius.circular(999),
       bottomLeft: Radius.circular(999),
@@ -790,7 +888,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
       bottomRight: Radius.circular(999),
     );
 
-    final bgColor = _isFocused ? kHtmlFieldFocus : kHtmlField;
+    final bgColor = _isFocused ? palette.fieldFocusBg : palette.fieldBg;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -807,6 +905,12 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                 decoration: BoxDecoration(
                   color: bgColor,
                   borderRadius: leftRadius,
+                  border: Border.all(
+                    color: _isFocused
+                        ? palette.linkColor
+                        : (palette.isDark ? palette.fieldBorder : Colors.transparent),
+                    width: 1,
+                  ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 22),
                 alignment: Alignment.center,
@@ -816,17 +920,17 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                   obscureText: _isObscured,
                   textInputAction: widget.textInputAction,
                   onFieldSubmitted: widget.onSubmitted,
-                  cursorColor: kHtmlInk,
+                  cursorColor: palette.linkColor,
                   cursorWidth: 1.5,
                   style: AppFont.primary(
                     fontSize: 17,
                     fontWeight: FontWeight.w400,
-                    color: kHtmlInk, // Texto negro visible
+                    color: palette.text,
                   ),
                   decoration: InputDecoration(
                     isCollapsed: true,
                     filled: true,
-                    fillColor: bgColor, // Fondo claro explícito
+                    fillColor: bgColor,
                     border: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     enabledBorder: InputBorder.none,
@@ -836,7 +940,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                     hintStyle: AppFont.primary(
                       fontSize: 17,
                       fontWeight: FontWeight.w400,
-                      color: const Color(0xFF8A8A8A),
+                      color: palette.muted,
                     ),
                   ),
                   validator: (value) {
@@ -851,9 +955,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                 ),
               ),
             ),
-            // Botón ojo (.eye):
-            // CUANDO ESTÁ OCULTA (_isObscured == true): Muestra ojo tachado (oculto)
-            // CUANDO ESTÁ VISIBLE (_isObscured == false): Muestra ojo abierto (visible)
+            // Botón ojo
             AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
@@ -862,6 +964,12 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
               decoration: BoxDecoration(
                 color: bgColor,
                 borderRadius: rightRadius,
+                border: Border.all(
+                  color: _isFocused
+                      ? palette.linkColor
+                      : (palette.isDark ? palette.fieldBorder : Colors.transparent),
+                  width: 1,
+                ),
               ),
               child: Material(
                 color: Colors.transparent,
@@ -878,10 +986,10 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                           ScaleTransition(scale: anim, child: child),
                       child: Icon(
                         _isObscured
-                            ? Icons.visibility_off_rounded // Ojo tachado = oculta
-                            : Icons.visibility_rounded, // Ojo abierto = visible
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
                         key: ValueKey<bool>(_isObscured),
-                        color: const Color(0xFF555555),
+                        color: _isFocused ? palette.linkColor : palette.muted,
                         size: 22,
                       ),
                     ),
@@ -908,7 +1016,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
   }
 }
 
-// ─── Botón Principal Negro (.btn-main) ────────────────────────────────────────
+// ─── Botón Principal (.btn-main) adaptativo ──────────────────────────────────
 class AuthMainBtn extends StatefulWidget {
   final String label;
   final bool isLoading;
@@ -930,6 +1038,8 @@ class _AuthMainBtnState extends State<AuthMainBtn> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
+
     return Padding(
       padding: const EdgeInsets.only(top: 22),
       child: GestureDetector(
@@ -953,17 +1063,26 @@ class _AuthMainBtnState extends State<AuthMainBtn> {
             width: double.infinity,
             height: 52,
             decoration: BoxDecoration(
-              color: _isPressed ? kHtmlBtnMainPressed : kHtmlBtnMain,
+              color: _isPressed ? palette.btnMainPressed : palette.btnMainBg,
+              gradient: palette.btnMainGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: palette.btnMainBg.withValues(alpha: 0.35),
+                  blurRadius: 18,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 6),
+                ),
+              ],
               borderRadius: BorderRadius.circular(999),
             ),
             alignment: Alignment.center,
             child: widget.isLoading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.4,
-                      color: Colors.white,
+                      color: palette.btnMainText,
                     ),
                   )
                 : Text(
@@ -971,7 +1090,7 @@ class _AuthMainBtnState extends State<AuthMainBtn> {
                     style: AppFont.primary(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: palette.btnMainText,
                     ),
                   ),
           ),
@@ -994,6 +1113,8 @@ class AuthLegalNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
+
     return Padding(
       padding: const EdgeInsets.only(top: 18),
       child: Text.rich(
@@ -1002,7 +1123,7 @@ class AuthLegalNotice extends StatelessWidget {
           style: AppFont.primary(
             fontSize: 14.5,
             height: 1.45,
-            color: kHtmlMuted,
+            color: palette.muted,
             fontWeight: FontWeight.w400,
           ),
           children: [
@@ -1014,10 +1135,10 @@ class AuthLegalNotice extends StatelessWidget {
                   style: AppFont.primary(
                     fontSize: 14.5,
                     height: 1.45,
-                    color: kHtmlInk,
-                    fontWeight: FontWeight.w400,
+                    color: palette.text,
+                    fontWeight: FontWeight.w500,
                     decoration: TextDecoration.underline,
-                    decorationColor: kHtmlInk,
+                    decorationColor: palette.text,
                   ),
                 ),
               ),
@@ -1031,10 +1152,10 @@ class AuthLegalNotice extends StatelessWidget {
                   style: AppFont.primary(
                     fontSize: 14.5,
                     height: 1.45,
-                    color: kHtmlInk,
-                    fontWeight: FontWeight.w400,
+                    color: palette.text,
+                    fontWeight: FontWeight.w500,
                     decoration: TextDecoration.underline,
-                    decorationColor: kHtmlInk,
+                    decorationColor: palette.text,
                   ),
                 ),
               ),
@@ -1063,6 +1184,8 @@ class AuthSmallLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
+
     return Padding(
       padding: const EdgeInsets.only(top: 18),
       child: Row(
@@ -1072,7 +1195,7 @@ class AuthSmallLink extends StatelessWidget {
             text,
             style: AppFont.primary(
               fontSize: 15.5,
-              color: kHtmlMuted,
+              color: palette.muted,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -1085,10 +1208,10 @@ class AuthSmallLink extends StatelessWidget {
               linkText,
               style: AppFont.primary(
                 fontSize: 15.5,
-                color: kHtmlInk,
-                fontWeight: FontWeight.w500,
+                color: palette.linkColor,
+                fontWeight: FontWeight.w600,
                 decoration: TextDecoration.underline,
-                decorationColor: kHtmlInk,
+                decorationColor: palette.linkColor,
               ),
             ),
           ),
@@ -1113,6 +1236,8 @@ class AuthFootLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AuthPalette.of(context);
+
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 2),
       child: Row(
@@ -1122,7 +1247,7 @@ class AuthFootLink extends StatelessWidget {
             prefix,
             style: AppFont.primary(
               fontSize: 16.5,
-              color: const Color(0xFF111111),
+              color: palette.muted,
               fontWeight: FontWeight.w400,
             ),
           ),
@@ -1136,10 +1261,10 @@ class AuthFootLink extends StatelessWidget {
               linkText,
               style: AppFont.primary(
                 fontSize: 16.5,
-                color: kHtmlInk,
-                fontWeight: FontWeight.w600,
+                color: palette.linkColor,
+                fontWeight: FontWeight.w700,
                 decoration: TextDecoration.underline,
-                decorationColor: kHtmlInk,
+                decorationColor: palette.linkColor,
               ),
             ),
           ),
