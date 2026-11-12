@@ -57,7 +57,7 @@ class ChannelCard extends StatelessWidget {
                 color: isEvent
                     ? AppColors.gold.withValues(alpha: 0.85)
                     : (isDark
-                        ? Colors.white.withValues(alpha: 0.08)
+                        ? AppColors.darkBorder2
                         : AppTheme.lightBorder),
                 width: isEvent ? 1.6 : 1.0,
               ),
@@ -69,7 +69,7 @@ class ChannelCard extends StatelessWidget {
                         offset: const Offset(0, 5),
                       ),
                     ]
-                  : AppShadows.appleDepth(context, elevation: 0.7),
+                  : AppShadows.card(context),
             ),
             child: Column(
               children: [
@@ -81,7 +81,7 @@ class ChannelCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isEvent
                           ? AppColors.ink1.withValues(alpha: 0.55)
-                          : (isDark ? AppTheme.darkCard : AppTheme.lightBg2),
+                          : (isDark ? AppColors.darkBg1 : AppTheme.lightBg2),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(AppRadius.card - 1),
                       ),
@@ -101,7 +101,7 @@ class ChannelCard extends StatelessWidget {
                   color: isEvent
                       ? AppColors.gold.withValues(alpha: 0.18)
                       : (isDark
-                          ? Colors.white.withValues(alpha: 0.05)
+                          ? AppColors.darkBorder
                           : AppTheme.lightBorder.withValues(alpha: 0.7)),
                 ),
 

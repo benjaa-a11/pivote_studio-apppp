@@ -65,12 +65,12 @@ class FloatingBottomBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
             decoration: BoxDecoration(
               color: isDark
-                  ? AppTheme.darkBg1.withValues(alpha: 0.88)
-                  : AppTheme.lightBg1.withValues(alpha: 0.92),
+                  ? AppColors.glassPanel
+                  : AppTheme.lightBg1.withValues(alpha: 0.94),
               borderRadius: BorderRadius.circular(AppRadius.xl),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.10)
+                    ? AppColors.glassBorder
                     : AppTheme.lightBorder,
                 width: 1.0,
               ),
@@ -120,7 +120,7 @@ class _BarTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = theme.colorScheme.primary;
+    final accentColor = isDark ? AppColors.accentTint : theme.colorScheme.primary;
     final inactiveColor = isDark ? AppTheme.darkText3 : AppTheme.lightText3;
 
     return ApplePressable(
@@ -134,12 +134,16 @@ class _BarTab extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
           color: isSelected
-              ? accentColor.withValues(alpha: isDark ? 0.14 : 0.10)
+              ? (isDark
+                  ? AppColors.accentBg.withValues(alpha: 0.85)
+                  : theme.colorScheme.primary.withValues(alpha: 0.12))
               : Colors.transparent,
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
             color: isSelected
-                ? accentColor.withValues(alpha: isDark ? 0.28 : 0.22)
+                ? (isDark
+                    ? AppColors.accent.withValues(alpha: 0.55)
+                    : theme.colorScheme.primary.withValues(alpha: 0.35))
                 : Colors.transparent,
             width: 1,
           ),

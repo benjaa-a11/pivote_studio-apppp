@@ -82,7 +82,7 @@ class ProfilePalette {
         dangerBg: AppTheme.darkDangerDim,
         dangerBorder: AppTheme.darkDanger.withValues(alpha: 0.28),
         avatarPlaceholderBg: AppTheme.darkBg4,
-        cardShadow: AppShadows.appleDepth(context, elevation: 0.7),
+        cardShadow: AppShadows.card(context),
       );
     } else {
       return ProfilePalette(

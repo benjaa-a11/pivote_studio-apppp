@@ -59,56 +59,60 @@ class AppSpacing {
 class AppBorders {
   AppBorders._();
 
-  /// Borde estándar para tarjetas y contenedores (inspirado en ChannelCard).
+  /// Borde estándar para tarjetas y contenedores (CSS: 1px solid var(--line2)).
   static Border card(BuildContext context, {bool highlighted = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     if (highlighted) {
       final accent =
           isDark ? AppColors.darkAccent : AppColors.lightAccent;
       return Border.all(
-        color: accent.withValues(alpha: isDark ? 0.55 : 0.45),
+        color: accent.withValues(alpha: isDark ? 0.75 : 0.60),
         width: 1.3,
       );
     }
     return Border.all(
-      color: isDark
-          ? Colors.white.withValues(alpha: 0.08)
-          : AppColors.lightBorder,
+      color: isDark ? AppColors.darkBorder2 : AppColors.lightBorder,
       width: 1.0,
     );
   }
 
-  /// Borde sutil para contenedores secundarios y chips inactivos.
+  /// Borde glassmórfico translúcido (CSS: 1px solid var(--glb)).
+  static Border glass(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Border.all(
+      color: isDark ? AppColors.glassBorder : AppColors.lightBorder,
+      width: 1.0,
+    );
+  }
+
+  /// Borde sutil para contenedores secundarios y chips inactivos (CSS: var(--line)).
   static Border subtle(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Border.all(
-      color: isDark
-          ? Colors.white.withValues(alpha: 0.06)
-          : Colors.black.withValues(alpha: 0.06),
+      color: isDark ? AppColors.darkBorder : Colors.black.withValues(alpha: 0.06),
       width: 1.0,
     );
   }
 
-  /// Color de divisor consistente en ambos modos.
+  /// Color de divisor consistente en ambos modos (CSS: var(--line)).
   static Color dividerColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark
-        ? Colors.white.withValues(alpha: 0.07)
-        : AppColors.lightBorder;
+    return isDark ? AppColors.darkBorder : AppColors.lightBorder;
   }
 }
 
 class AppShadows {
   AppShadows._();
 
-  /// Elevación suave para tarjetas (misma firma visual que ChannelCard).
+  /// Elevación suave para tarjetas (CSS: 0 10px 34px -10px rgba(0,0,0,.6)).
   static List<BoxShadow> card(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return [
       BoxShadow(
-        color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.06),
-        blurRadius: 16,
-        offset: const Offset(0, 6),
+        color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.06),
+        blurRadius: 20,
+        spreadRadius: -4,
+        offset: const Offset(0, 8),
       ),
     ];
   }
@@ -118,20 +122,34 @@ class AppShadows {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return [
       BoxShadow(
-        color: Colors.black.withValues(alpha: isDark ? 0.42 : 0.12),
-        blurRadius: 24,
+        color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.12),
+        blurRadius: 28,
+        spreadRadius: -6,
+        offset: const Offset(0, 12),
+      ),
+    ];
+  }
+
+  /// Sombra glass cinematográfica (CSS: --glsh: 0 10px 34px -10px rgba(0,0,0,.6))
+  static List<BoxShadow> glass(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: isDark ? 0.60 : 0.10),
+        blurRadius: 34,
+        spreadRadius: -10,
         offset: const Offset(0, 10),
       ),
     ];
   }
 
   /// Resplandor cromático controlado para acentos o indicadores en vivo.
-  static List<BoxShadow> glow(Color color, {double alpha = 0.30}) {
+  static List<BoxShadow> glow(Color color, {double alpha = 0.35}) {
     return [
       BoxShadow(
         color: color.withValues(alpha: alpha),
-        blurRadius: 18,
-        spreadRadius: -3,
+        blurRadius: 22,
+        spreadRadius: -2,
         offset: const Offset(0, 6),
       ),
     ];
@@ -165,14 +183,44 @@ class AppShadows {
 class AppGradients {
   AppGradients._();
 
-  /// Borde especular sutil.
+  /// Fondo ambiental radial / mesh cinematográfico (CSS: #app).
+  static BoxDecoration ambientAppBackground(bool isDark) {
+    if (!isDark) {
+      return const BoxDecoration(color: AppColors.lightBg);
+    }
+    return const BoxDecoration(
+      color: AppColors.darkBg,
+      gradient: RadialGradient(
+        center: Alignment(-0.8, -1.0),
+        radius: 1.4,
+        colors: [
+          Color(0x382A6FF0), // rgba(42,111,240, .22)
+          Color(0x1F965FFF), // rgba(150,95,255, .12)
+          AppColors.darkBg,
+        ],
+        stops: [0.0, 0.48, 1.0],
+      ),
+    );
+  }
+
+  /// Gradiente de botón primario brillante (CSS: .btn.p).
+  static const LinearGradient buttonPrimary = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFF4887FF),
+      AppColors.darkAccent,
+    ],
+  );
+
+  /// Borde especular sutil (CSS: --glh: inset 0 1px 0 rgba(255,255,255,.16)).
   static LinearGradient specularBorder(bool isDark) {
     return LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: isDark
           ? [
-              Colors.white.withValues(alpha: 0.14),
+              Colors.white.withValues(alpha: 0.16),
               Colors.white.withValues(alpha: 0.03),
             ]
           : [
@@ -182,18 +230,18 @@ class AppGradients {
     );
   }
 
-  /// Fondo de cabeceras principales unificado en ambos temas.
+  /// Fondo de cabeceras principales unificado en ambos temas (CSS: var(--s1)).
   static LinearGradient backdrop(bool isDark) {
     return LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: isDark
-          ? const [AppColors.darkBg2, AppColors.darkBg]
+          ? const [AppColors.darkBg1, AppColors.darkBg]
           : const [AppColors.lightBg1, AppColors.lightBg],
     );
   }
 
-  /// Superficie de tarjeta con ligera profundidad vertical.
+  /// Superficie de tarjeta con profundidad glassmorphic (CSS: var(--gl)).
   static LinearGradient cardSurface(bool isDark) {
     return LinearGradient(
       begin: Alignment.topLeft,

@@ -174,15 +174,15 @@ class UnifiedHomeHeader extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: isDark ? AppTheme.darkBg2 : AppTheme.lightBg1,
+          color: isDark ? AppColors.darkBg2 : AppTheme.lightBg1,
           borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
+                ? AppColors.darkBorder2
                 : AppTheme.lightBorder,
             width: 1.0,
           ),
-          boxShadow: AppShadows.appleDepth(context, elevation: 0.4),
+          boxShadow: AppShadows.card(context),
         ),
         alignment: Alignment.center,
         child: Hero(
@@ -190,7 +190,7 @@ class UnifiedHomeHeader extends StatelessWidget {
           child: Icon(
             icon,
             size: 20,
-            color: isDark ? AppTheme.darkAccent : theme.colorScheme.primary,
+            color: isDark ? AppColors.darkText : theme.colorScheme.primary,
           ),
         ),
       ),

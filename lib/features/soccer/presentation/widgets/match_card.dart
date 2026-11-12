@@ -112,7 +112,7 @@ class MatchCard extends StatelessWidget {
                       color: isLive
                           ? AppColors.live
                               .withValues(alpha: isDark ? 0.45 : 0.30)
-                          : (isDark ? AppColors.ink3 : AppTheme.lightBorder),
+                          : (isDark ? AppColors.darkBorder2 : AppTheme.lightBorder),
                       width: isLive ? 1.4 : 1,
                     ),
                     boxShadow: [
@@ -178,7 +178,7 @@ class MatchCard extends StatelessWidget {
                         height: 1,
                         thickness: 1,
                         color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
+                            ? AppColors.darkBorder
                             : Colors.black.withValues(alpha: 0.06),
                       ),
                       const Spacer(),
@@ -196,7 +196,7 @@ class MatchCard extends StatelessWidget {
                         height: 1,
                         thickness: 1,
                         color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
+                            ? AppColors.darkBorder
                             : Colors.black.withValues(alpha: 0.06),
                       ),
                       const SizedBox(height: 8),

@@ -805,7 +805,7 @@ class _ServerSelectorSheet extends StatelessWidget {
                                     fontSize: 13,
                                     fontWeight: FontWeight.w900,
                                     color: isCurrent
-                                        ? AppColors.ink0
+                                        ? Colors.white
                                         : Colors.white70,
                                   ),
                                 ),
@@ -852,7 +852,7 @@ class _ServerSelectorSheet extends StatelessWidget {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981)
+                                    color: AppColors.positive
                                         .withValues(alpha: 0.16),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -863,7 +863,7 @@ class _ServerSelectorSheet extends StatelessWidget {
                                         width: 6,
                                         height: 6,
                                         decoration: const BoxDecoration(
-                                          color: Color(0xFF10B981),
+                                          color: AppColors.positive,
                                           shape: BoxShape.circle,
                                         ),
                                       ),
@@ -873,7 +873,7 @@ class _ServerSelectorSheet extends StatelessWidget {
                                         style: AppFont.primary(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w900,
-                                          color: const Color(0xFF10B981),
+                                          color: AppColors.positive,
                                           letterSpacing: 0.5,
                                         ),
                                       ),

@@ -288,27 +288,27 @@ class AppFilterPill extends StatelessWidget {
 
     return ApplePressable(
       scaleDownFactor: 0.95,
-      borderRadius: BorderRadius.circular(AppRadius.pill),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.5),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8.5),
         decoration: BoxDecoration(
           color: selected
-              ? accent
-              : (isDark ? AppTheme.darkBg2 : AppTheme.lightBg1),
-          borderRadius: BorderRadius.circular(AppRadius.pill),
+              ? (isDark ? AppColors.accentBg : accent)
+              : (isDark ? AppColors.darkBg2 : AppTheme.lightBg1),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
             color: selected
-                ? accent
+                ? AppColors.accent
                 : (isDark
-                    ? Colors.white.withValues(alpha: 0.08)
+                    ? AppColors.darkBorder2
                     : AppTheme.lightBorder),
-            width: 1,
+            width: selected ? 1.2 : 1,
           ),
           boxShadow: selected
-              ? AppShadows.glow(accent, alpha: isDark ? 0.25 : 0.16)
+              ? AppShadows.glow(accent, alpha: isDark ? 0.28 : 0.16)
               : null,
         ),
         child: Row(
@@ -318,17 +318,21 @@ class AppFilterPill extends StatelessWidget {
               Icon(
                 icon,
                 size: 15,
-                color: selected ? onAccent : AppTheme.textSecondary(context),
+                color: selected
+                    ? (isDark ? AppColors.accentTint : onAccent)
+                    : (isDark ? AppColors.darkText2 : AppTheme.textSecondary(context)),
               ),
               const SizedBox(width: 6),
             ],
             Text(
               label,
               style: AppFont.primary(
-                fontSize: 12.5,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
                 letterSpacing: -0.1,
-                color: selected ? onAccent : AppTheme.textSecondary(context),
+                color: selected
+                    ? Colors.white
+                    : (isDark ? AppColors.darkText2 : AppTheme.textSecondary(context)),
               ),
             ),
             if (count != null) ...[
@@ -337,9 +341,9 @@ class AppFilterPill extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   color: selected
-                      ? onAccent.withValues(alpha: 0.16)
+                      ? (isDark ? AppColors.accent.withValues(alpha: 0.35) : onAccent.withValues(alpha: 0.16))
                       : (isDark
-                          ? Colors.white.withValues(alpha: 0.07)
+                          ? AppColors.darkBorder
                           : Colors.black.withValues(alpha: 0.05)),
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
@@ -348,7 +352,7 @@ class AppFilterPill extends StatelessWidget {
                   style: AppFont.primary(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w800,
-                    color: selected ? onAccent : AppTheme.textTertiary(context),
+                    color: selected ? Colors.white : (isDark ? AppColors.darkText3 : AppTheme.textTertiary(context)),
                   ),
                 ),
               ),
