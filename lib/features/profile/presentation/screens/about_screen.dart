@@ -4,6 +4,7 @@ import 'package:pivote/core/theme/app_colors.dart';
 import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/profile/presentation/screens/support_screen.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -15,47 +16,43 @@ class AboutScreen extends StatelessWidget {
   }) {
     final palette = ProfilePalette.of(context);
 
-    showModalBottomSheet<void>(
+    AppDialogs.showModal<void>(
       context: context,
-      backgroundColor: palette.bg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppFont.primary(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: palette.text,
-                  ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: AppFont.primary(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                  color: palette.text,
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  body,
-                  style: AppFont.primary(
-                    fontSize: 14,
-                    color: palette.muted,
-                    height: 1.5,
-                  ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                body,
+                style: AppFont.primary(
+                  fontSize: 14,
+                  color: palette.muted,
+                  height: 1.5,
                 ),
-                const SizedBox(height: 8),
-                ProfileActionButton(
-                  label: 'Entendido',
-                  onTap: () => Navigator.pop(ctx),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              ProfileActionButton(
+                label: 'Entendido',
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

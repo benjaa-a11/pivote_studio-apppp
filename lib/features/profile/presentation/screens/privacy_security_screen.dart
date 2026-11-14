@@ -53,28 +53,26 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
 
   void _showTwoFactorSheet() {
     final palette = ProfilePalette.of(context);
-    showModalBottomSheet<void>(
+    AppDialogs.showModal<void>(
       context: context,
-      backgroundColor: palette.bg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
+      child: Builder(
+        builder: (ctx) => SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 22),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 22),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                   child: Text(
                     'Verificación en dos pasos',
                     style: AppFont.primary(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
                       color: palette.text,
                     ),
                   ),
@@ -103,8 +101,8 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -112,51 +110,47 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     final palette = ProfilePalette.of(context);
     final email = context.read<UserProvider>().user?.email ?? 'Sesión activa';
 
-    showModalBottomSheet<void>(
+    AppDialogs.showModal<void>(
       context: context,
-      backgroundColor: palette.bg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  child: Text(
-                    'Dispositivos conectados',
-                    style: AppFont.primary(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: palette.text,
-                    ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                child: Text(
+                  'Dispositivos conectados',
+                  style: AppFont.primary(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                    color: palette.text,
                   ),
                 ),
-                ProfileGroupCard(
-                  children: [
-                    ProfileGroupRow(
-                      title: 'Este dispositivo',
-                      subtitle: '$email · En línea ahora',
-                      valueText: 'Actual',
-                    ),
-                    const ProfileGroupRow(
-                      title: 'Pivote Web / Smart TV',
-                      subtitle: 'Sincronizado con tu cuenta',
-                      valueText: 'Activo',
-                    ),
-                  ],
-                ),
-              ],
-            ),
+              ),
+              ProfileGroupCard(
+                children: [
+                  ProfileGroupRow(
+                    title: 'Este dispositivo',
+                    subtitle: '$email · En línea ahora',
+                    valueText: 'Actual',
+                  ),
+                  const ProfileGroupRow(
+                    title: 'Pivote Web / Smart TV',
+                    subtitle: 'Sincronizado con tu cuenta',
+                    valueText: 'Activo',
+                  ),
+                ],
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

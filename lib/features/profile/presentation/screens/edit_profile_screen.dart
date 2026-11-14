@@ -73,9 +73,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return showDialog<String>(
       context: context,
+      barrierColor: palette.isDark
+          ? const Color(0xBD02040A)
+          : const Color(0x8C02040A),
       builder: (ctx) {
         return AlertDialog(
-          backgroundColor: palette.bg,
+          backgroundColor: palette.card,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(26),
             side: BorderSide(color: palette.border),

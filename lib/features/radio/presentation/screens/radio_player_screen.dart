@@ -1,6 +1,3 @@
-import 'dart:async';
-import 'dart:math' as math;
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +11,7 @@ import 'package:pivote/features/radio/data/models/radio.dart' as radio_model;
 import 'package:pivote/features/radio/presentation/providers/audio_manager.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 class RadioPlayerScreen extends StatefulWidget {
   final radio_model.Radio radio;
@@ -28,9 +26,6 @@ class RadioPlayerScreen extends StatefulWidget {
 }
 
 class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
-  Timer? _sleepTimer;
-  int _sleepMinutesRemaining = 0;
-
   @override
   void initState() {
     super.initState();
@@ -68,108 +63,10 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
 
   @override
   void dispose() {
-    _sleepTimer?.cancel();
     final audioManager = context.read<AudioManager>();
     audioManager.removeListener(_onAudioManagerChanged);
     audioManager.stop();
     super.dispose();
-  }
-
-  void _setSleepTimer(int minutes) {
-    _sleepTimer?.cancel();
-    if (minutes <= 0) {
-      setState(() => _sleepMinutesRemaining = 0);
-      AppNotifications.showInfo(context, 'Temporizador desactivado');
-      return;
-    }
-
-    setState(() => _sleepMinutesRemaining = minutes);
-    AppNotifications.showSuccess(
-      context,
-      'La radio se apagará en $minutes minutos',
-    );
-
-    _sleepTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        _sleepMinutesRemaining--;
-        if (_sleepMinutesRemaining <= 0) {
-          timer.cancel();
-          context.read<AudioManager>().stop();
-          AppNotifications.showSuccess(
-            context,
-            'Temporizador completado: radio apagada',
-          );
-        }
-      });
-    });
-  }
-
-  void _showSleepTimerSheet(BuildContext context, ProfilePalette palette) {
-    final options = [15, 30, 45, 60];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: palette.bg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
-      builder: (sheetCtx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 38,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: palette.border,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Temporizador de apagado',
-                  style: AppFont.primary(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                    color: palette.text,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ProfileGroupCard(
-                  children: [
-                    for (final m in options)
-                      ProfileGroupRow(
-                        title: '$m minutos',
-                        valueText: _sleepMinutesRemaining == m ? 'Activo' : null,
-                        onTap: () {
-                          Navigator.pop(sheetCtx);
-                          _setSleepTimer(m);
-                        },
-                      ),
-                    if (_sleepMinutesRemaining > 0)
-                      ProfileGroupRow(
-                        title: 'Desactivar temporizador',
-                        isDanger: true,
-                        onTap: () {
-                          Navigator.pop(sheetCtx);
-                          _setSleepTimer(0);
-                        },
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   void _goToNextRadio(
@@ -198,14 +95,17 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
     final palette = ProfilePalette.of(context);
     final audioManager = context.watch<AudioManager>();
     final radioProvider = context.watch<RadioProvider>();
-    final topPad = MediaQuery.paddingOf(context).top;
-    final bottomPad = MediaQuery.paddingOf(context).bottom;
     final hPad = AppResponsive.screenHorizontalPadding(context);
 
     final activeRadio = audioManager.currentRadio ?? widget.radio;
     final isPlaying = audioManager.isPlaying;
     final isLoading = audioManager.isLoading;
     final isFav = activeRadio.isFavorite;
+
+    final subtitleParts = <String>[
+      if (activeRadio.frequency.isNotEmpty) activeRadio.frequency,
+      if ((activeRadio.category ?? '').isNotEmpty) activeRadio.category!,
+    ];
 
     return PopScope(
       canPop: true,
@@ -214,260 +114,310 @@ class _RadioPlayerScreenState extends State<RadioPlayerScreen> {
       },
       child: Scaffold(
         backgroundColor: palette.bg,
-        body: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: ListView(
-              physics: const ClampingScrollPhysics(),
-              padding: hPad.add(
-                EdgeInsets.only(
-                  top: topPad + 10,
-                  bottom: math.max(24, bottomPad + 22),
-                ),
-              ),
-              children: [
-                ProfileSubHeader(
-                  title: 'Radio en vivo',
-                  onBack: () {
-                    audioManager.stop();
-                    Navigator.pop(context);
-                  },
-                  trailing: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      radioProvider.toggleFavorite(activeRadio);
-                    },
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: palette.card,
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                        border: Border.all(
-                          color: palette.border,
-                          width: 1,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        isFav
-                            ? Icons.favorite_rounded
-                            : Icons.favorite_border_rounded,
-                        size: 19,
-                        color: isFav ? AppColors.live : palette.text,
+        body: Stack(
+          children: [
+            // Sutil resplandor ambiental de fondo (estilo CSS --acc mesh)
+            if (palette.isDark)
+              Positioned(
+                top: -120,
+                left: 0,
+                right: 0,
+                height: 420,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(0, -0.2),
+                        radius: 0.9,
+                        colors: [
+                          AppColors.accent
+                              .withValues(alpha: isPlaying ? 0.22 : 0.12),
+                          AppColors.violet.withValues(alpha: 0.06),
+                          Colors.transparent,
+                        ],
                       ),
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-                  decoration: BoxDecoration(
-                    color: palette.card,
-                    borderRadius: BorderRadius.circular(AppRadius.hero),
-                    border: Border.all(color: palette.border, width: 1),
-                    boxShadow: palette.cardShadow,
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 200,
-                        height: 200,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: palette.iconBox,
-                          borderRadius: BorderRadius.circular(AppRadius.hero),
-                          border: Border.all(color: palette.border, width: 1),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(AppRadius.card),
-                          child: Hero(
-                            tag: 'radio_tile_logo_${activeRadio.id}',
-                            child: activeRadio.logoUrl.isNotEmpty
-                                ? CachedNetworkImage(
-                                    key: ValueKey<String>(activeRadio.logoUrl),
-                                    cacheManager:
-                                        ImageCacheHelper.logoCacheManager,
-                                    imageUrl: activeRadio.logoUrl,
-                                    fit: BoxFit.cover,
-                                    memCacheWidth: 420,
-                                    placeholder: (context, url) => Center(
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.4,
-                                        color: palette.muted,
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) => Icon(
-                                      Icons.radio_rounded,
-                                      size: 56,
-                                      color: palette.muted,
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.radio_rounded,
-                                    size: 56,
-                                    color: palette.muted,
-                                  ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        activeRadio.name,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppFont.primary(
-                          fontSize: 23,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                          color: palette.text,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: palette.iconBox,
-                          borderRadius: BorderRadius.circular(AppRadius.pill),
-                          border: Border.all(color: palette.border, width: 1),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
+              ),
+
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Padding(
+                    padding: hPad.add(const EdgeInsets.only(top: 10, bottom: 24)),
+                    child: Column(
+                      children: [
+                        // Barra superior con botón volver y corazón arriba a la derecha
+                        ProfileSubHeader(
+                          title: 'Radio en vivo',
+                          onBack: () {
+                            audioManager.stop();
+                            Navigator.pop(context);
+                          },
+                          trailing: GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              radioProvider.toggleFavorite(activeRadio);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 42,
+                              height: 42,
                               decoration: BoxDecoration(
-                                color: isPlaying
-                                    ? AppColors.positive
-                                    : palette.muted,
-                                shape: BoxShape.circle,
+                                color: isFav
+                                    ? AppColors.live.withValues(alpha: 0.14)
+                                    : palette.card,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.sm),
+                                border: Border.all(
+                                  color: isFav
+                                      ? AppColors.live.withValues(alpha: 0.40)
+                                      : palette.border,
+                                  width: 1,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Icon(
+                                isFav
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                size: 20,
+                                color: isFav ? AppColors.live : palette.text,
                               ),
                             ),
-                            const SizedBox(width: 7),
-                            Text(
-                              [
-                                isPlaying ? 'En vivo' : 'En pausa',
-                                if (activeRadio.frequency.isNotEmpty)
-                                  activeRadio.frequency,
-                                if ((activeRadio.category ?? '').isNotEmpty)
-                                  activeRadio.category!,
-                              ].join(' · '),
-                              style: AppFont.primary(
-                                fontSize: 12.8,
-                                fontWeight: FontWeight.w700,
-                                color: palette.text,
+                          ),
+                        ),
+
+                        const Spacer(flex: 2),
+
+                        // Carátula de la emisora
+                        Container(
+                          width: 224,
+                          height: 224,
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: palette.card,
+                            borderRadius: BorderRadius.circular(32),
+                            border: Border.all(color: palette.border, width: 1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: palette.isDark ? 0.50 : 0.08,
+                                ),
+                                blurRadius: 36,
+                                spreadRadius: -8,
+                                offset: const Offset(0, 18),
+                              ),
+                              if (isPlaying)
+                                BoxShadow(
+                                  color: palette.accent.withValues(alpha: 0.18),
+                                  blurRadius: 42,
+                                  spreadRadius: -10,
+                                  offset: const Offset(0, 12),
+                                ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(22),
+                            child: Hero(
+                              tag: 'radio_tile_logo_${activeRadio.id}',
+                              child: activeRadio.logoUrl.isNotEmpty
+                                  ? CachedNetworkImage(
+                                      key: ValueKey<String>(activeRadio.logoUrl),
+                                      cacheManager:
+                                          ImageCacheHelper.logoCacheManager,
+                                      imageUrl: activeRadio.logoUrl,
+                                      fit: BoxFit.cover,
+                                      memCacheWidth: 460,
+                                      placeholder: (context, url) => Center(
+                                        child: PivoteLoader(
+                                          size: 26,
+                                          strokeWidth: 2.4,
+                                          color: palette.muted,
+                                        ),
+                                      ),
+                                      errorWidget: (context, url, error) => Icon(
+                                        Icons.radio_rounded,
+                                        size: 64,
+                                        color: palette.muted,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.radio_rounded,
+                                      size: 64,
+                                      color: palette.muted,
+                                    ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 28),
+
+                        // Estado EN VIVO / EN PAUSA
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isPlaying
+                                ? AppColors.live.withValues(alpha: 0.14)
+                                : palette.card,
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
+                            border: Border.all(
+                              color: isPlaying
+                                  ? AppColors.live.withValues(alpha: 0.35)
+                                  : palette.border,
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: isPlaying
+                                      ? AppColors.live
+                                      : palette.muted,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 7),
+                              Text(
+                                isPlaying ? 'EN VIVO' : 'EN PAUSA',
+                                style: AppFont.primary(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.8,
+                                  color: isPlaying
+                                      ? (palette.isDark
+                                          ? AppColors.liveTint
+                                          : AppColors.live)
+                                      : palette.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // Nombre de la emisora
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            activeRadio.name,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppFont.primary(
+                              fontSize: 25,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.6,
+                              height: 1.18,
+                              color: palette.text,
+                            ),
+                          ),
+                        ),
+
+                        if (subtitleParts.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            subtitleParts.join(' · '),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppFont.primary(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: palette.muted,
+                            ),
+                          ),
+                        ],
+
+                        const Spacer(flex: 2),
+
+                        // Controles de reproducción limpios
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _PlayerCircleButton(
+                              size: 56,
+                              icon: Icons.skip_previous_rounded,
+                              iconSize: 28,
+                              palette: palette,
+                              onTap: () => _goToNextRadio(
+                                radioProvider,
+                                audioManager,
+                                false,
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.mediumImpact();
+                                audioManager.playRadio(activeRadio);
+                              },
+                              child: Container(
+                                width: 76,
+                                height: 76,
+                                decoration: BoxDecoration(
+                                  gradient: AppGradients.buttonPrimary,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: palette.accent
+                                          .withValues(alpha: 0.45),
+                                      blurRadius: 26,
+                                      spreadRadius: -2,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                alignment: Alignment.center,
+                                child: isLoading
+                                    ? const PivoteLoader(
+                                        size: 26,
+                                        strokeWidth: 2.6,
+                                        color: Colors.white,
+                                      )
+                                    : Icon(
+                                        isPlaying
+                                            ? Icons.pause_rounded
+                                            : Icons.play_arrow_rounded,
+                                        size: 38,
+                                        color: Colors.white,
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            _PlayerCircleButton(
+                              size: 56,
+                              icon: Icons.skip_next_rounded,
+                              iconSize: 28,
+                              palette: palette,
+                              onTap: () => _goToNextRadio(
+                                radioProvider,
+                                audioManager,
+                                true,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _PlayerCircleButton(
-                            size: 52,
-                            icon: Icons.skip_previous_rounded,
-                            iconSize: 26,
-                            palette: palette,
-                            onTap: () => _goToNextRadio(
-                              radioProvider,
-                              audioManager,
-                              false,
-                            ),
-                          ),
-                          const SizedBox(width: 18),
-                          GestureDetector(
-                            onTap: () {
-                              HapticFeedback.mediumImpact();
-                              audioManager.playRadio(activeRadio);
-                            },
-                            child: Container(
-                              width: 68,
-                              height: 68,
-                              decoration: BoxDecoration(
-                                gradient: AppGradients.buttonPrimary,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: palette.accent
-                                        .withValues(alpha: 0.45),
-                                    blurRadius: 24,
-                                    spreadRadius: 0,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              alignment: Alignment.center,
-                              child: isLoading
-                                  ? const SizedBox(
-                                      width: 24,
-                                      height: 24,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : Icon(
-                                      isPlaying
-                                          ? Icons.pause_rounded
-                                          : Icons.play_arrow_rounded,
-                                      size: 34,
-                                      color: Colors.white,
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(width: 18),
-                          _PlayerCircleButton(
-                            size: 52,
-                            icon: Icons.skip_next_rounded,
-                            iconSize: 26,
-                            palette: palette,
-                            onTap: () => _goToNextRadio(
-                              radioProvider,
-                              audioManager,
-                              true,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+
+                        const Spacer(flex: 3),
+                      ],
+                    ),
                   ),
                 ),
-                const ProfileSectionTitle('Opciones'),
-                ProfileGroupCard(
-                  children: [
-                    ProfileGroupRow(
-                      title: 'Temporizador de apagado',
-                      subtitle: _sleepMinutesRemaining > 0
-                          ? 'Se apagará automáticamente en $_sleepMinutesRemaining min'
-                          : 'Apagar la radio automáticamente',
-                      valueText: _sleepMinutesRemaining > 0
-                          ? '$_sleepMinutesRemaining min'
-                          : 'Desactivado',
-                      showChevron: true,
-                      onTap: () => _showSleepTimerSheet(context, palette),
-                    ),
-                    ProfileGroupRow(
-                      title: 'Emisora favorita',
-                      subtitle: 'Acceso rápido desde Favoritos y Radio',
-                      onTap: () => radioProvider.toggleFavorite(activeRadio),
-                      trailing: ProfileSwitch(
-                        value: isFav,
-                        onChanged: (_) =>
-                            radioProvider.toggleFavorite(activeRadio),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -491,21 +441,25 @@ class _PlayerCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: palette.card,
-          shape: BoxShape.circle,
-          border: Border.all(color: palette.border, width: 1),
-        ),
-        alignment: Alignment.center,
-        child: Icon(
-          icon,
-          size: iconSize,
-          color: palette.text,
+    return Material(
+      color: palette.card,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: palette.border, width: 1),
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            size: iconSize,
+            color: palette.text,
+          ),
         ),
       ),
     );

@@ -130,9 +130,11 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _confirmClearAllHistory() async {
     final palette = ProfilePalette.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
+      barrierColor: dark ? const Color(0xBD02040A) : const Color(0x8C02040A),
       builder: (ctx) {
         return SafeArea(
           child: Padding(
@@ -525,7 +527,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final hPad = AppResponsive.screenHorizontalPadding(context);
 
     return ListView(
-      physics: const BouncingScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       padding: hPad.add(const EdgeInsets.only(top: 8, bottom: 36)),
       children: [
         if (_searchHistory.isNotEmpty) ...[
@@ -831,7 +833,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final hPad = AppResponsive.screenHorizontalPadding(context);
 
     return CustomScrollView(
-      physics: const BouncingScrollPhysics(),
+      physics: const ClampingScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(
           child: Padding(

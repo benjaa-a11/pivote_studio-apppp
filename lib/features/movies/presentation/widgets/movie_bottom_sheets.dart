@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:pivote/features/movies/presentation/widgets/movie_video_engine.dart';
 import 'package:pivote/core/theme/app_theme.dart';
@@ -12,67 +13,77 @@ Widget _buildSheetWrapper({
   final isDark = theme.brightness == Brightness.dark;
   final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-  return Container(
-    constraints: BoxConstraints(
-      maxHeight: MediaQuery.of(context).size.height * 0.86,
-    ),
-    decoration: BoxDecoration(
-      color: theme.cardColor,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      border: Border(
-        top: BorderSide(
-          color: theme.dividerColor.withValues(alpha: isDark ? 0.6 : 0.8),
+  return ClipRRect(
+    borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+    child: BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.86,
         ),
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.08),
-          blurRadius: 26,
-          offset: const Offset(0, -5),
-        ),
-      ],
-    ),
-    padding: EdgeInsets.fromLTRB(20, 10, 20, 20 + bottomInset),
-    child: SafeArea(
-      top: false,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 38,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.22),
-                borderRadius: BorderRadius.circular(99),
-              ),
+        decoration: BoxDecoration(
+          color: isDark
+              ? const Color(0xEB121622)
+              : AppTheme.lightBg1.withValues(alpha: 0.97),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border(
+            top: BorderSide(
+              color: isDark ? AppColors.glassBorder : AppTheme.lightBorder,
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.65 : 0.14),
+              blurRadius: 36,
+              offset: const Offset(0, -10),
+            ),
+          ],
+        ),
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottomInset),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: AppFont.primary(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.35,
-                    color: theme.colorScheme.onSurface,
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.darkBorder2
+                        : AppColors.lightBorder2,
+                    borderRadius: BorderRadius.circular(99),
                   ),
                 ),
               ),
-              IconButton(
-                tooltip: 'Cerrar',
-                onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(Icons.close_rounded),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: AppFont.primary(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
               ),
+              const SizedBox(height: 10),
+              child,
             ],
           ),
-          const SizedBox(height: 10),
-          child,
-        ],
+        ),
       ),
     ),
   );

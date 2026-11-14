@@ -5,6 +5,7 @@ import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/notification_service.dart';
 import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 
 class NotificationsSettingsScreen extends StatefulWidget {
   const NotificationsSettingsScreen({super.key});
@@ -68,28 +69,26 @@ class _NotificationsSettingsScreenState
       'Desactivado',
     ];
 
-    final chosen = await showModalBottomSheet<String>(
+    final chosen = await AppDialogs.showModal<String>(
       context: context,
-      backgroundColor: palette.bg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
+      child: Builder(
+        builder: (ctx) => SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
                   child: Text(
                     'Horario silencioso',
                     style: AppFont.primary(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
                       color: palette.text,
                     ),
                   ),
@@ -107,8 +106,8 @@ class _NotificationsSettingsScreenState
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
 
     if (chosen != null && mounted) {

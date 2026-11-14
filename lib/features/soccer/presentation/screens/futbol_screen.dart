@@ -154,7 +154,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
               backgroundColor: AppTheme.cardSurface(context),
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
+                  parent: ClampingScrollPhysics(),
                 ),
                 slivers: [
                   // ─── HEADER SECCIÓN + BUSCADOR ───
@@ -297,7 +297,7 @@ class _FutbolScreenState extends State<FutbolScreen> {
                           // ─── PILLS DE FILTRO RÁPIDO ───
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            physics: const BouncingScrollPhysics(),
+                            physics: const ClampingScrollPhysics(),
                             child: Row(
                               children: [
                                 _buildFilterChip(

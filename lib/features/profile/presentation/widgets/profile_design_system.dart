@@ -65,12 +65,12 @@ class ProfilePalette {
       return ProfilePalette(
         isDark: true,
         bg: AppTheme.darkBg,
-        card: AppTheme.darkBg2,
-        cardPressed: AppTheme.darkBg3,
-        border: AppTheme.darkBorder2,
-        iconBox: AppTheme.darkBg3,
+        card: AppTheme.darkBg1,
+        cardPressed: AppTheme.darkBg2,
+        border: AppColors.glassBorderSubtle,
+        iconBox: AppTheme.darkBg2,
         text: AppTheme.darkText,
-        muted: AppTheme.darkText2,
+        muted: AppTheme.darkText3,
         chevron: AppTheme.darkText3,
         switchOff: AppTheme.darkBg4,
         switchOn: AppTheme.darkAccent,
@@ -80,8 +80,8 @@ class ProfilePalette {
         primaryBtnText: AppColors.onDarkAccent,
         danger: AppTheme.darkDanger,
         dangerBg: AppTheme.darkDangerDim,
-        dangerBorder: AppTheme.darkDanger.withValues(alpha: 0.28),
-        avatarPlaceholderBg: AppTheme.darkBg4,
+        dangerBorder: AppTheme.darkDanger.withValues(alpha: 0.35),
+        avatarPlaceholderBg: AppTheme.darkBg3,
         cardShadow: AppShadows.card(context),
       );
     } else {
@@ -304,11 +304,11 @@ class ProfileSectionTitle extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(8, first ? 0 : 18, 8, 8),
       child: Text(
-        text,
+        text.toUpperCase(),
         style: AppFont.primary(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.1,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.75,
           color: palette.muted,
         ),
       ),

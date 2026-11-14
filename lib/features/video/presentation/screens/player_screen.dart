@@ -495,10 +495,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // ADVANCED & ANIMATED REPORT MODAL
   // ══════════════════════════════════════════════════════════════════════════
   void _showReportModal(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      barrierColor: dark ? const Color(0xBD02040A) : const Color(0x8C02040A),
       showDragHandle: false,
       useSafeArea: true,
       builder: (ctx) => _ReportModalSheet(

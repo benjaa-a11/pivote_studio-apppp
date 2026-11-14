@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pivote/core/services/notification_service.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/home/presentation/screens/home_screen.dart';
 import 'package:pivote/features/soccer/presentation/screens/futbol_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/profile_screen.dart';
@@ -117,9 +118,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void _showNotificationPrompt(SharedPreferences prefs) {
     final theme = Theme.of(context);
 
+    final dark = theme.brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: AppTheme.surface1(context),
+      barrierColor: dark ? const Color(0xBD02040A) : const Color(0x8C02040A),
       showDragHandle: false,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(

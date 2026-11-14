@@ -59,7 +59,7 @@ class SearchFilterChips extends StatelessWidget {
       height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
+        physics: const ClampingScrollPhysics(),
         padding: AppResponsive.screenHorizontalPadding(context),
         itemCount: tabs.length,
         separatorBuilder: (context, index) => const SizedBox(width: 8),

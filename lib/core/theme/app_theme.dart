@@ -58,8 +58,8 @@ class AppTheme {
 
   // Acento modo claro (equilibrado y con contraste óptimo sobre fondos claros)
   static const Color lightAccent = AppColors.lightAccent;
-  static const Color lightAccentDim = Color(0x1A4E7A00);
-  static const Color lightAccentGlow = Color(0x334E7A00);
+  static const Color lightAccentDim = Color(0x1A1D5AD0);
+  static const Color lightAccentGlow = Color(0x331D5AD0);
 
   // Estados semánticos modo claro
   static const Color lightDanger = AppColors.lightDanger;
@@ -320,11 +320,12 @@ class AppTheme {
     ),
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: darkBg1,
+      modalBarrierColor: Color(0xBD02040A),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       clipBehavior: Clip.antiAlias,
       showDragHandle: true,
-      dragHandleColor: darkText3,
+      dragHandleColor: darkBorder2,
       dragHandleSize: Size(36, 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
@@ -678,11 +679,12 @@ class AppTheme {
     ),
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: lightBg1,
+      modalBarrierColor: Color(0x8C02040A),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       clipBehavior: Clip.antiAlias,
       showDragHandle: true,
-      dragHandleColor: lightText3,
+      dragHandleColor: lightBorder2,
       dragHandleSize: Size(36, 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),

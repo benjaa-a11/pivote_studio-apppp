@@ -54,28 +54,26 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
     final palette = ProfilePalette.of(context);
     final options = ['Alta', 'Media', 'Baja'];
 
-    final chosen = await showModalBottomSheet<String>(
+    final chosen = await AppDialogs.showModal<String>(
       context: context,
-      backgroundColor: palette.bg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
+      child: Builder(
+        builder: (ctx) => SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
                   child: Text(
                     'Calidad de descarga',
                     style: AppFont.primary(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
                       color: palette.text,
                     ),
                   ),
@@ -94,8 +92,8 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
               ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
 
     if (chosen != null && mounted) {

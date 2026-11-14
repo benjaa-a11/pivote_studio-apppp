@@ -181,7 +181,7 @@ class _MatchesHeroState extends State<MatchesHero> {
               child: ListView.builder(
                 controller: _scrollController,
                 scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 padding: horizontalPad,
                 itemCount: matches.length,
                 itemBuilder: (context, index) {

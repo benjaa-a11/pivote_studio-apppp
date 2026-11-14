@@ -56,9 +56,13 @@ class AppDialogs {
     required Widget child,
     bool scrollable = true,
   }) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return showModalBottomSheet<T>(
       context: context,
       backgroundColor: Colors.transparent,
+      barrierColor: dark
+          ? const Color(0xBD02040A)
+          : const Color(0x8C02040A),
       isScrollControlled: true,
       showDragHandle: false,
       useSafeArea: true,
@@ -307,40 +311,55 @@ class _ModernBottomSheet extends StatelessWidget {
         top: Radius.circular(AppRadius.xl),
       ),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
         child: Container(
-          constraints: BoxConstraints(maxHeight: mq.size.height * 0.92),
+          constraints: BoxConstraints(maxHeight: mq.size.height * 0.90),
           decoration: BoxDecoration(
-            color: (dark ? AppTheme.darkBg1 : AppTheme.lightBg1)
-                .withValues(alpha: dark ? 0.94 : 0.96),
+            color: dark
+                ? const Color(0xEB121622)
+                : AppTheme.lightBg1.withValues(alpha: 0.97),
             borderRadius: const BorderRadius.vertical(
               top: Radius.circular(AppRadius.xl),
             ),
             border: Border(
               top: BorderSide(
                 color: dark
-                    ? Colors.white.withValues(alpha: 0.10)
+                    ? AppColors.glassBorder
                     : AppTheme.lightBorder,
                 width: 1.0,
               ),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: dark ? 0.65 : 0.16),
+                blurRadius: 40,
+                offset: const Offset(0, -12),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Padding(
-                padding: const EdgeInsets.only(top: 10, bottom: 8),
+                padding: const EdgeInsets.only(top: 12, bottom: 10),
                 child: Container(
                   width: 36,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.22),
+                    color: dark
+                        ? AppColors.darkBorder2
+                        : AppColors.lightBorder2,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                   ),
                 ),
               ),
               scrollable
-                  ? Flexible(child: SingleChildScrollView(child: child))
+                  ? Flexible(
+                      child: SingleChildScrollView(
+                        physics: const ClampingScrollPhysics(),
+                        child: child,
+                      ),
+                    )
                   : Flexible(child: child),
             ],
           ),

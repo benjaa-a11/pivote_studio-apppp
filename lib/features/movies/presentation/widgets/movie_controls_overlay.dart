@@ -270,6 +270,7 @@ class _MovieControlsOverlayState extends State<MovieControlsOverlay>
     await showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      barrierColor: const Color(0xBD02040A),
       isScrollControlled: true,
       showDragHandle: false,
       useSafeArea: true,
