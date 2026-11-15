@@ -5,15 +5,15 @@ import 'package:http/http.dart' as http;
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 
 class SoccerService {
-  static const String apiUrl =
-      'https://apipro-pivo.provip.workers.dev/api/v1/live';
+  static const String baseUrl =
+      'https://apipro-pivo.provip.workers.dev/api/v1/matches';
 
   // === PREFETCHING OPTIMIZATION ===
   static Future<SoccerData>? _prefetchFuture;
 
   static void prefetchLiveSoccerData() {
-    debugPrint('🚀 SoccerService: Iniciando pre-fetch en background...');
-    final future = SoccerService()._executeFetch();
+    debugPrint('🚀 SoccerService: Iniciando pre-fetch de partidos de hoy...');
+    final future = SoccerService()._executeFetch(date: 'today');
     _prefetchFuture = future;
     unawaited(future.then((_) {}, onError: (Object e) {
       debugPrint('⚠️ SoccerService: Pre-fetch en background falló: $e');
@@ -23,8 +23,10 @@ class SoccerService {
     }));
   }
 
-  Future<SoccerData> fetchLiveSoccerData() async {
-    if (_prefetchFuture != null) {
+  Future<SoccerData> fetchLiveSoccerData() => fetchMatches(date: 'today');
+
+  Future<SoccerData> fetchMatches({String date = 'today'}) async {
+    if (date == 'today' && _prefetchFuture != null) {
       debugPrint('⚡ SoccerService: Consumiendo data pre-cargada!');
       try {
         final data = await _prefetchFuture!;
@@ -33,30 +35,31 @@ class SoccerService {
       } catch (e) {
         _prefetchFuture = null;
         debugPrint('⚠️ Pre-fetch falló, re-intentando: $e');
-        return _executeFetch();
+        return _executeFetch(date: date);
       }
     }
-    return _executeFetch();
+    return _executeFetch(date: date);
   }
 
-  Future<SoccerData> _executeFetch() async {
+  Future<SoccerData> _executeFetch({String date = 'today'}) async {
     try {
+      final url = '$baseUrl?date=${Uri.encodeQueryComponent(date)}';
       http.Response response;
       if (kIsWeb) {
         try {
           response = await http
-              .get(Uri.parse(apiUrl))
+              .get(Uri.parse(url))
               .timeout(const Duration(seconds: 12));
         } catch (_) {
           final proxiedUrl =
-              'https://myproxy.canalesonline24.workers.dev/?url=${Uri.encodeComponent(apiUrl)}';
+              'https://myproxy.canalesonline24.workers.dev/?url=${Uri.encodeComponent(url)}';
           response = await http
               .get(Uri.parse(proxiedUrl))
               .timeout(const Duration(seconds: 12));
         }
       } else {
         response = await http.get(
-          Uri.parse(apiUrl),
+          Uri.parse(url),
           headers: const {
             'Accept': 'application/json',
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -73,7 +76,7 @@ class SoccerService {
         throw Exception('Error al cargar datos: ${response.statusCode}');
       }
     } catch (e) {
-      debugPrint('❌ Error en SoccerService._executeFetch: $e');
+      debugPrint('❌ Error en SoccerService._executeFetch($date): $e');
       rethrow;
     }
   }

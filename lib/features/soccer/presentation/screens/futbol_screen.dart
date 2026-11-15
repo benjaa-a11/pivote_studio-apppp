@@ -135,6 +135,64 @@ class _FutbolScreenState extends State<FutbolScreen> {
     );
   }
 
+  Future<void> _pickDate(
+    BuildContext context,
+    SoccerProvider soccerProvider,
+  ) async {
+    final now = DateTime.now();
+    final initial = soccerProvider.isViewingToday
+        ? now
+        : (DateTime.tryParse(soccerProvider.selectedDateKey) ?? now);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: now.subtract(const Duration(days: 90)),
+      lastDate: now.add(const Duration(days: 90)),
+      builder: (ctx, child) {
+        return Theme(
+          data: Theme.of(ctx).copyWith(
+            colorScheme: isDark
+                ? const ColorScheme.dark(
+                    primary: AppColors.darkAccent,
+                    onPrimary: Colors.white,
+                    surface: AppColors.darkBg1,
+                    onSurface: AppColors.darkText,
+                  )
+                : const ColorScheme.light(
+                    primary: AppColors.lightAccent,
+                    onPrimary: Colors.white,
+                    surface: AppColors.lightBg1,
+                    onSurface: AppColors.lightText,
+                  ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: isDark ? AppColors.darkBg1 : AppColors.lightBg1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() => _selectedLeagueId = null);
+      await soccerProvider.selectDate(SoccerProvider.formatDateKey(picked));
+    }
+  }
+
+  String _formatDateBadgeLabel(String dateKey) {
+    if (dateKey == 'today') return 'Hoy';
+    final parsed = DateTime.tryParse(dateKey);
+    if (parsed == null) return dateKey;
+    final dd = parsed.day.toString().padLeft(2, '0');
+    final mm = parsed.month.toString().padLeft(2, '0');
+    return '$dd/$mm';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -144,7 +202,19 @@ class _FutbolScreenState extends State<FutbolScreen> {
 
     final soccerProvider = context.watch<SoccerProvider>();
     final channelProvider = context.watch<ChannelProvider>();
-    final data = soccerProvider.soccerData;
+    final data = soccerProvider.selectedDateData;
+    final isLoading = soccerProvider.isLoadingSelectedDate;
+    final dateError = soccerProvider.selectedDateError;
+
+    final now = DateTime.now();
+    final yesterdayKey =
+        SoccerProvider.formatDateKey(now.subtract(const Duration(days: 1)));
+    final tomorrowKey =
+        SoccerProvider.formatDateKey(now.add(const Duration(days: 1)));
+    final selectedKey = soccerProvider.selectedDateKey;
+    final isCustomDate = !soccerProvider.isViewingToday &&
+        selectedKey != yesterdayKey &&
+        selectedKey != tomorrowKey;
 
     final allMatches = data?.matches ?? const <SoccerMatch>[];
     final liveCount = allMatches.where((m) => m.isLive).length;
@@ -257,6 +327,53 @@ class _FutbolScreenState extends State<FutbolScreen> {
                     ),
 
                     const SizedBox(height: 14),
+
+                    // Selector de fecha (Ayer · Hoy · Mañana · Elegir fecha)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const ClampingScrollPhysics(),
+                      child: Row(
+                        children: [
+                          _DatePill(
+                            label: 'Ayer',
+                            selected: selectedKey == yesterdayKey,
+                            onTap: () {
+                              setState(() => _selectedLeagueId = null);
+                              soccerProvider.selectDate(yesterdayKey);
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _DatePill(
+                            label: 'Hoy',
+                            selected: soccerProvider.isViewingToday,
+                            onTap: () {
+                              setState(() => _selectedLeagueId = null);
+                              soccerProvider.selectDate('today');
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _DatePill(
+                            label: 'Mañana',
+                            selected: selectedKey == tomorrowKey,
+                            onTap: () {
+                              setState(() => _selectedLeagueId = null);
+                              soccerProvider.selectDate(tomorrowKey);
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _DatePill(
+                            label: isCustomDate
+                                ? _formatDateBadgeLabel(selectedKey)
+                                : 'Fecha',
+                            icon: Icons.calendar_month_rounded,
+                            selected: isCustomDate,
+                            onTap: () => _pickDate(context, soccerProvider),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
 
                     // Barra de búsqueda (.sbar)
                     Container(
@@ -415,12 +532,12 @@ class _FutbolScreenState extends State<FutbolScreen> {
               ),
 
             // ─── ESTADO DE CARGA / ERROR / VACÍO ───
-            if (soccerProvider.isLoading && data == null)
+            if (isLoading && data == null)
               const SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(child: PivoteLoader(size: 40)),
               )
-            else if (soccerProvider.error != null && data == null)
+            else if (dateError != null && data == null)
               SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(
@@ -537,6 +654,70 @@ class _LeagueSectionData {
     required this.league,
     required this.matches,
   });
+}
+
+class _DatePill extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DatePill({
+    required this.label,
+    this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = AppTheme.accent(context);
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: selected
+              ? accent
+              : (isDark ? AppColors.darkBg1 : AppTheme.lightBg1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected
+                ? accent
+                : (isDark ? AppColors.darkBorder2 : AppTheme.lightBorder),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? Colors.white : AppTheme.textSecondary(context),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: AppFont.primary(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : AppTheme.textSecondary(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _FilterPill extends StatelessWidget {

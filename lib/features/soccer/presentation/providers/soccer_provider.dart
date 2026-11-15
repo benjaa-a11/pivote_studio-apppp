@@ -16,11 +16,25 @@ class SoccerProvider extends ChangeNotifier {
   Timer? _updateTimer;
   DateTime? _lastFetchedAt;
 
+  // Estado por fecha seleccionada en la sección Fútbol ('today' o 'yyyy-MM-dd')
+  String _selectedDateKey = 'today';
+  final Map<String, SoccerData> _dateCache = {};
+  bool _isLoadingDate = false;
+  String? _dateError;
+
   SoccerData? get soccerData => _soccerData;
   SoccerData? get data => _soccerData;
   bool get isLoading => _isLoading;
   String? get error => _error;
   DateTime? get lastFetchedAt => _lastFetchedAt;
+
+  String get selectedDateKey => _selectedDateKey;
+  bool get isViewingToday => _selectedDateKey == 'today';
+  bool get isLoadingSelectedDate =>
+      isViewingToday ? _isLoading : _isLoadingDate;
+  String? get selectedDateError => isViewingToday ? _error : _dateError;
+  SoccerData? get selectedDateData =>
+      isViewingToday ? _soccerData : _dateCache[_selectedDateKey];
 
   bool get hasMatchesForToday {
     final matches = _soccerData?.matches ?? [];
@@ -65,11 +79,64 @@ class SoccerProvider extends ChangeNotifier {
     return matches.where((m) => m.isLive).length;
   }
 
-  Future<void> refresh() => fetchData(silent: _soccerData != null);
+  Future<void> refresh() {
+    if (isViewingToday) {
+      return fetchData(silent: _soccerData != null);
+    }
+    return selectDate(_selectedDateKey, forceRefresh: true);
+  }
 
   SoccerProvider() {
     fetchData();
     _startAutoUpdate();
+  }
+
+  static String formatDateKey(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  Future<void> selectDate(String dateKey, {bool forceRefresh = false}) async {
+    final todayKey = formatDateKey(DateTime.now());
+    final normalized = (dateKey == 'today' || dateKey == todayKey)
+        ? 'today'
+        : dateKey;
+
+    _selectedDateKey = normalized;
+    _dateError = null;
+
+    if (normalized == 'today') {
+      notifyListeners();
+      if (forceRefresh || _soccerData == null) {
+        await fetchData(silent: _soccerData != null);
+      }
+      return;
+    }
+
+    if (!forceRefresh && _dateCache.containsKey(normalized)) {
+      _isLoadingDate = false;
+      notifyListeners();
+      return;
+    }
+
+    _isLoadingDate = true;
+    notifyListeners();
+
+    try {
+      final fetched = await _soccerService.fetchMatches(date: normalized);
+      _dateCache[normalized] = fetched;
+      _dateError = null;
+      _warmUpSoccerLogos(fetched);
+    } catch (e) {
+      if (!_dateCache.containsKey(normalized)) {
+        _dateError = e.toString();
+      }
+    } finally {
+      _isLoadingDate = false;
+      notifyListeners();
+    }
   }
 
   Future<void> fetchData({bool silent = false}) async {
@@ -83,7 +150,7 @@ class SoccerProvider extends ChangeNotifier {
     }
 
     try {
-      final newData = await _soccerService.fetchLiveSoccerData();
+      final newData = await _soccerService.fetchMatches(date: 'today');
       _soccerData = newData;
       _isLoading = false;
       _error = null;
@@ -93,7 +160,6 @@ class SoccerProvider extends ChangeNotifier {
         _warmUpSoccerLogos(newData);
       }
     } catch (e) {
-      // En refrescos silenciosos (cada 15s), conservar la última data válida sin mostrar error
       if (!silent || _soccerData == null) {
         _error = e.toString();
       }
@@ -112,8 +178,12 @@ class SoccerProvider extends ChangeNotifier {
   }
 
   void retry() {
-    fetchData();
-    _startAutoUpdate();
+    if (isViewingToday) {
+      fetchData();
+      _startAutoUpdate();
+    } else {
+      selectDate(_selectedDateKey, forceRefresh: true);
+    }
   }
 
   void refreshIfStale() {
