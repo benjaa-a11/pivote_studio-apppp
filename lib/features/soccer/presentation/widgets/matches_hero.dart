@@ -31,14 +31,19 @@ class _MatchesHeroState extends State<MatchesHero> {
 
   @override
   Widget build(BuildContext context) {
+    final channelProvider = context.watch<ChannelProvider>();
     return Consumer<SoccerProvider>(
       builder: (context, soccerProvider, child) {
         if (!soccerProvider.hasMatchesForToday) {
           return const SizedBox.shrink();
         }
 
-        final matches = soccerProvider.heroMatches;
-        final liveCount = soccerProvider.liveMatchesCount;
+        final matches = soccerProvider.playableHeroMatches(channelProvider);
+        if (matches.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final liveCount = matches.where((m) => m.isLive).length;
         final theme = Theme.of(context);
         final isDark = theme.brightness == Brightness.dark;
         final horizontalPad = AppResponsive.screenHorizontalPadding(context);
