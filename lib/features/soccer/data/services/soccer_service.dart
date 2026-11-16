@@ -80,4 +80,44 @@ class SoccerService {
       rethrow;
     }
   }
+
+  Future<SoccerMatchDetail> fetchMatchDetail(String matchId) async {
+    try {
+      final url = '$baseUrl/${Uri.encodeComponent(matchId)}';
+      http.Response response;
+      if (kIsWeb) {
+        try {
+          response = await http
+              .get(Uri.parse(url))
+              .timeout(const Duration(seconds: 12));
+        } catch (_) {
+          final proxiedUrl =
+              'https://myproxy.canalesonline24.workers.dev/?url=${Uri.encodeComponent(url)}';
+          response = await http
+              .get(Uri.parse(proxiedUrl))
+              .timeout(const Duration(seconds: 12));
+        }
+      } else {
+        response = await http.get(
+          Uri.parse(url),
+          headers: const {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          },
+        ).timeout(const Duration(seconds: 12));
+      }
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> decoded = json.decode(response.body);
+        return SoccerMatchDetail.fromJson(decoded);
+      } else {
+        throw Exception('Error al cargar detalle: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error en SoccerService.fetchMatchDetail($matchId): $e');
+      rethrow;
+    }
+  }
 }

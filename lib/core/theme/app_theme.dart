@@ -23,18 +23,18 @@ class AppTheme {
   static const Color darkBorder = AppColors.darkBorder; // Borde discreto (#262C36)
   static const Color darkBorder2 = AppColors.darkBorder2; // Borde enfatizado (#333A45)
 
-  // Acento principal modo oscuro (CSS: --acc: #2A6FF0, --accBg: #1B2A4D)
+  // Acento principal modo oscuro (CSS: --lime: #C8FF47)
   static const Color darkAccent = AppColors.darkAccent;
-  static const Color darkAccentDim = Color(0x332A6FF0);
-  static const Color darkAccentGlow = Color(0x552A6FF0);
+  static const Color darkAccentDim = Color(0x1FC8FF47);
+  static const Color darkAccentGlow = Color(0x40C8FF47);
 
-  // Estados semánticos modo oscuro (CSS: --live, --warn, --ok)
+  // Estados semánticos modo oscuro (CSS: --red, --amber, --win)
   static const Color darkDanger = AppColors.darkDanger;
-  static const Color darkDangerDim = Color(0x26D92B43);
+  static const Color darkDangerDim = Color(0x26FF4D5E);
   static const Color darkWarning = AppColors.darkWarning;
-  static const Color darkWarningDim = Color(0x26E6D28A);
+  static const Color darkWarningDim = Color(0x26FFC247);
   static const Color darkSuccess = AppColors.darkSuccess;
-  static const Color darkSuccessDim = Color(0x269AD9B4);
+  static const Color darkSuccessDim = Color(0x2635D07F);
   static const Color darkInfo = AppColors.darkInfo;
   static const Color darkInfoDim = Color(0x267DB0FF);
 

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
-import 'package:pivote/features/soccer/presentation/widgets/match_details_bottom_sheet.dart';
+import 'package:pivote/features/soccer/presentation/screens/match_detail_screen.dart';
 import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 
 class SoccerMatchCard extends StatelessWidget {
@@ -43,16 +44,6 @@ class SoccerMatchCard extends StatelessWidget {
         shortName: match.awayTeam,
       ),
     );
-    final league = data.leagues.firstWhere(
-      (l) => l.id == match.leagueId,
-      orElse: () => SoccerLeague(
-        id: match.leagueId,
-        name: 'Torneo',
-        country: '',
-        shortName: '',
-      ),
-    );
-
     final homeScorers = match.getScorersSummary(match.homeTeamId);
     final awayScorers = match.getScorersSummary(match.awayTeamId);
 
@@ -73,25 +64,10 @@ class SoccerMatchCard extends StatelessWidget {
           ? const BorderRadius.vertical(bottom: Radius.circular(AppRadius.xl))
           : BorderRadius.zero,
       onTap: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          showDragHandle: false,
-          useSafeArea: true,
-          builder: (context) {
-            return ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.75,
-              ),
-              child: MatchDetailsBottomSheet(
-                match: match,
-                homeTeam: homeTeam,
-                awayTeam: awayTeam,
-                league: league,
-              ),
-            );
-          },
+        Navigator.of(context).push(
+          AppAnimations.createRoute(
+            MatchDetailScreen(match: match),
+          ),
         );
       },
       child: Container(

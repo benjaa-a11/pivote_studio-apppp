@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
-import 'package:pivote/features/soccer/presentation/widgets/match_details_bottom_sheet.dart';
+import 'package:pivote/features/soccer/presentation/screens/match_detail_screen.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 
@@ -69,23 +70,10 @@ class SearchMatchTile extends StatelessWidget {
         child: InkWell(
           onTap: () {
             HapticFeedback.lightImpact();
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) {
-                return ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.64,
-                  ),
-                  child: MatchDetailsBottomSheet(
-                    match: match,
-                    homeTeam: homeTeam,
-                    awayTeam: awayTeam,
-                    league: league,
-                  ),
-                );
-              },
+            Navigator.of(context).push(
+              AppAnimations.createRoute(
+                MatchDetailScreen(match: match),
+              ),
             );
           },
           splashColor: Colors.transparent,

@@ -666,32 +666,53 @@ class SoccerMatch {
   }
 
   bool get isLive {
-    if (matchStatus.isLive) return true;
+    if (isFinished) return false;
     final state = matchStatus.state.toUpperCase();
-    if (state == 'LIVE' || state == 'HT' || state == 'ET') return true;
+    if (state == 'PRE' || state == 'SCHEDULED') return false;
+    if (matchStatus.isLive) return true;
+    if (state == 'LIVE' || state == 'HT' || state == 'ET' || state == 'PEN_LIVE') {
+      return true;
+    }
     final ts = timeStatus.toLowerCase();
-    return ts.contains('pt') ||
-        ts.contains('st') ||
-        ts.contains('et') ||
+    return ts.contains('primer tiempo') ||
+        ts.contains('segundo tiempo') ||
         ts.contains('entretiempo') ||
-        time.contains("'");
+        ts == '1°' ||
+        ts == '2°' ||
+        ts == 'mt';
   }
 
   bool get isHalfTime =>
-      matchStatus.state.toUpperCase() == 'HT' ||
-      matchStatus.shortLabel.toUpperCase() == 'MT' ||
-      matchStatus.label.toLowerCase().contains('medio tiempo');
+      !isFinished &&
+      (matchStatus.state.toUpperCase() == 'HT' ||
+          matchStatus.shortLabel.toUpperCase() == 'MT' ||
+          matchStatus.label.toLowerCase().contains('medio tiempo') ||
+          matchStatus.label.toLowerCase().contains('entretiempo'));
 
   bool get isFinished {
     if (matchStatus.isFinished) return true;
     final state = matchStatus.state.toUpperCase();
-    if (state == 'FT' || state == 'FINISHED' || state == 'FINAL') return true;
+    if (state == 'FT' ||
+        state == 'PEN' ||
+        state == 'AET' ||
+        state == 'FINISHED' ||
+        state == 'FINAL' ||
+        state == 'CANCELED' ||
+        state == 'POSTPONED' ||
+        state == 'SUSPENDED') {
+      return true;
+    }
     final s = status.toLowerCase();
     final ts = timeStatus.toLowerCase();
     return s.contains('finalizado') ||
         s.contains('terminado') ||
+        s.contains('final') ||
+        s.contains('penales') ||
         ts.contains('finalizado') ||
-        ts.contains('terminado');
+        ts.contains('terminado') ||
+        ts == 'final' ||
+        ts == 'f' ||
+        ts.contains('penales');
   }
 
   bool get isScheduled {
@@ -750,8 +771,8 @@ class SoccerMatch {
   }
 
   bool get isWatchable {
-    if (isLive) return true;
     if (isFinished || isAutoFinished) return false;
+    if (isLive) return true;
 
     final start = startDateTime;
     if (start != null) {
@@ -943,4 +964,504 @@ double? _toDouble(dynamic value) {
   if (value is num) return value.toDouble();
   if (value is String) return double.tryParse(value);
   return null;
+}
+
+// ============================================================================
+// DETALLE COMPLETO DE PARTIDO (/api/v1/matches/{id})
+// ============================================================================
+
+class SoccerGameInfoItem {
+  final String label;
+  final String value;
+
+  const SoccerGameInfoItem({required this.label, required this.value});
+
+  factory SoccerGameInfoItem.fromJson(Map<String, dynamic> json) {
+    return SoccerGameInfoItem(
+      label: (json['label'] ?? '').toString(),
+      value: (json['value'] ?? '').toString(),
+    );
+  }
+}
+
+class SoccerMatchEvent {
+  final String stage;
+  final bool isShootout;
+  final String type;
+  final String teamSide; // 'home' | 'away'
+  final String teamId;
+  final String teamName;
+  final int minute;
+  final String minuteDisplay;
+  final String playerName;
+  final int? playerJersey;
+  final String? secondaryPlayerName;
+  final String description;
+
+  const SoccerMatchEvent({
+    this.stage = '',
+    this.isShootout = false,
+    required this.type,
+    required this.teamSide,
+    this.teamId = '',
+    this.teamName = '',
+    this.minute = 0,
+    this.minuteDisplay = '',
+    required this.playerName,
+    this.playerJersey,
+    this.secondaryPlayerName,
+    this.description = '',
+  });
+
+  bool get isHome => teamSide == 'home';
+  bool get isGoal => type.contains('goal');
+  bool get isYellowCard => type == 'yellow_card';
+  bool get isRedCard => type == 'red_card' || type == 'second_yellow';
+  bool get isSubstitution => type.contains('sub');
+
+  factory SoccerMatchEvent.fromJson(Map<String, dynamic> json) {
+    final min = _toInt(json['minute']);
+    final minDisp = (json['minuteDisplay'] ?? '').toString();
+    return SoccerMatchEvent(
+      stage: (json['stage'] ?? '').toString(),
+      isShootout: json['isShootout'] == true,
+      type: (json['type'] ?? '').toString(),
+      teamSide: (json['teamSide'] ?? '').toString(),
+      teamId: (json['teamId'] ?? '').toString(),
+      teamName: (json['teamName'] ?? '').toString(),
+      minute: min,
+      minuteDisplay: minDisp.isNotEmpty ? minDisp : (min > 0 ? "$min'" : ''),
+      playerName: (json['playerName'] ?? '').toString(),
+      playerJersey:
+          json['playerJersey'] != null ? _toInt(json['playerJersey']) : null,
+      secondaryPlayerName: json['secondaryPlayerName']?.toString(),
+      description: (json['description'] ?? '').toString(),
+    );
+  }
+}
+
+class SoccerStageScore {
+  final String stage;
+  final int homeScore;
+  final int awayScore;
+  final bool isPenalties;
+
+  const SoccerStageScore({
+    required this.stage,
+    required this.homeScore,
+    required this.awayScore,
+    this.isPenalties = false,
+  });
+
+  factory SoccerStageScore.fromJson(Map<String, dynamic> json) {
+    return SoccerStageScore(
+      stage: (json['stage'] ?? '').toString(),
+      homeScore: _toInt(json['homeScore']),
+      awayScore: _toInt(json['awayScore']),
+      isPenalties: json['isPenalties'] == true,
+    );
+  }
+}
+
+class SoccerStat {
+  final String key;
+  final String label;
+  final String homeValue;
+  final String awayValue;
+  final double homeNumeric;
+  final double awayNumeric;
+  final int homePct;
+  final int awayPct;
+
+  const SoccerStat({
+    required this.key,
+    required this.label,
+    required this.homeValue,
+    required this.awayValue,
+    required this.homeNumeric,
+    required this.awayNumeric,
+    required this.homePct,
+    required this.awayPct,
+  });
+
+  factory SoccerStat.fromJson(Map<String, dynamic> json) {
+    return SoccerStat(
+      key: (json['key'] ?? '').toString(),
+      label: (json['label'] ?? '').toString(),
+      homeValue: (json['homeValue'] ?? '0').toString(),
+      awayValue: (json['awayValue'] ?? '0').toString(),
+      homeNumeric: _toDouble(json['homeNumeric']) ?? 0,
+      awayNumeric: _toDouble(json['awayNumeric']) ?? 0,
+      homePct: _toInt(json['homePct'], fallback: 50),
+      awayPct: _toInt(json['awayPct'], fallback: 50),
+    );
+  }
+}
+
+class SoccerLineupCoach {
+  final String name;
+  final String shortName;
+  final int? age;
+
+  const SoccerLineupCoach({
+    required this.name,
+    this.shortName = '',
+    this.age,
+  });
+
+  factory SoccerLineupCoach.fromJson(Map<String, dynamic> json) {
+    return SoccerLineupCoach(
+      name: (json['name'] ?? '').toString(),
+      shortName: (json['shortName'] ?? '').toString(),
+      age: json['age'] != null ? _toInt(json['age']) : null,
+    );
+  }
+}
+
+class SoccerLineupPlayer {
+  final String id;
+  final String name;
+  final String shortName;
+  final int? jerseyNumber;
+  final String position;
+  final String formationPosition;
+  final bool isCaptain;
+  final bool starter;
+  final bool subbedIn;
+  final bool subbedOut;
+  final String countryFlag;
+  final int goals;
+  final int assists;
+  final int yellowCards;
+  final int redCards;
+
+  const SoccerLineupPlayer({
+    this.id = '',
+    required this.name,
+    this.shortName = '',
+    this.jerseyNumber,
+    this.position = '',
+    this.formationPosition = '',
+    this.isCaptain = false,
+    this.starter = true,
+    this.subbedIn = false,
+    this.subbedOut = false,
+    this.countryFlag = '',
+    this.goals = 0,
+    this.assists = 0,
+    this.yellowCards = 0,
+    this.redCards = 0,
+  });
+
+  factory SoccerLineupPlayer.fromJson(Map<String, dynamic> json) {
+    final stats = json['stats'] is Map<String, dynamic>
+        ? json['stats'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+    return SoccerLineupPlayer(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      shortName: (json['shortName'] ?? '').toString(),
+      jerseyNumber:
+          json['jerseyNumber'] != null ? _toInt(json['jerseyNumber']) : null,
+      position: (json['position'] ?? '').toString(),
+      formationPosition: (json['formationPosition'] ?? '').toString(),
+      isCaptain: json['isCaptain'] == true,
+      starter: json['starter'] != false,
+      subbedIn: json['subbedIn'] == true,
+      subbedOut: json['subbedOut'] == true,
+      countryFlag: (json['countryFlag'] ?? '').toString(),
+      goals: _toInt(stats['goals']),
+      assists: _toInt(stats['assists']),
+      yellowCards: _toInt(stats['yellowCards']),
+      redCards: _toInt(stats['redCards']),
+    );
+  }
+}
+
+class SoccerLineup {
+  final String side;
+  final String teamId;
+  final String teamName;
+  final String status;
+  final String formation;
+  final SoccerLineupCoach? coach;
+  final List<SoccerLineupPlayer> starters;
+  final List<SoccerLineupPlayer> bench;
+
+  const SoccerLineup({
+    required this.side,
+    this.teamId = '',
+    required this.teamName,
+    this.status = '',
+    this.formation = '',
+    this.coach,
+    this.starters = const [],
+    this.bench = const [],
+  });
+
+  factory SoccerLineup.fromJson(Map<String, dynamic> json) {
+    return SoccerLineup(
+      side: (json['side'] ?? '').toString(),
+      teamId: (json['teamId'] ?? '').toString(),
+      teamName: (json['teamName'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      formation: (json['formation'] ?? '').toString(),
+      coach: json['coach'] is Map<String, dynamic>
+          ? SoccerLineupCoach.fromJson(json['coach'] as Map<String, dynamic>)
+          : null,
+      starters: (json['starters'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SoccerLineupPlayer.fromJson)
+              .toList() ??
+          const [],
+      bench: (json['bench'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SoccerLineupPlayer.fromJson)
+              .toList() ??
+          const [],
+    );
+  }
+}
+
+class SoccerH2HMatch {
+  final String id;
+  final String date;
+  final String leagueName;
+  final String homeName;
+  final String awayName;
+  final int homeScore;
+  final int awayScore;
+
+  const SoccerH2HMatch({
+    required this.id,
+    required this.date,
+    required this.leagueName,
+    required this.homeName,
+    required this.awayName,
+    required this.homeScore,
+    required this.awayScore,
+  });
+
+  factory SoccerH2HMatch.fromJson(Map<String, dynamic> json) {
+    return SoccerH2HMatch(
+      id: (json['id'] ?? '').toString(),
+      date: (json['date'] ?? '').toString(),
+      leagueName: (json['leagueName'] ?? '').toString(),
+      homeName: (json['homeName'] ?? '').toString(),
+      awayName: (json['awayName'] ?? '').toString(),
+      homeScore: _toInt(json['homeScore']),
+      awayScore: _toInt(json['awayScore']),
+    );
+  }
+}
+
+class SoccerH2H {
+  final int homeWins;
+  final int draws;
+  final int awayWins;
+  final List<SoccerH2HMatch> recentMatches;
+
+  const SoccerH2H({
+    this.homeWins = 0,
+    this.draws = 0,
+    this.awayWins = 0,
+    this.recentMatches = const [],
+  });
+
+  factory SoccerH2H.fromJson(Map<String, dynamic> json) {
+    return SoccerH2H(
+      homeWins: _toInt(json['homeWins']),
+      draws: _toInt(json['draws']),
+      awayWins: _toInt(json['awayWins']),
+      recentMatches: (json['recentMatches'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SoccerH2HMatch.fromJson)
+              .toList() ??
+          const [],
+    );
+  }
+}
+
+class SoccerRecentMatch {
+  final String id;
+  final String date;
+  final String opponentName;
+  final String opponentLogo;
+  final String homeOrAway;
+  final int scoreFor;
+  final int scoreAgainst;
+  final String result; // W, D, L
+  final String leagueName;
+
+  const SoccerRecentMatch({
+    required this.id,
+    this.date = '',
+    required this.opponentName,
+    this.opponentLogo = '',
+    this.homeOrAway = '',
+    this.scoreFor = 0,
+    this.scoreAgainst = 0,
+    this.result = '',
+    this.leagueName = '',
+  });
+
+  factory SoccerRecentMatch.fromJson(Map<String, dynamic> json) {
+    return SoccerRecentMatch(
+      id: (json['id'] ?? '').toString(),
+      date: (json['date'] ?? '').toString(),
+      opponentName: (json['opponentName'] ?? '').toString(),
+      opponentLogo: (json['opponentLogo'] ?? '').toString(),
+      homeOrAway: (json['homeOrAway'] ?? '').toString(),
+      scoreFor: _toInt(json['scoreFor']),
+      scoreAgainst: _toInt(json['scoreAgainst']),
+      result: (json['result'] ?? '').toString(),
+      leagueName: (json['leagueName'] ?? '').toString(),
+    );
+  }
+}
+
+class SoccerRecentForm {
+  final List<String> home;
+  final List<String> away;
+  final List<SoccerRecentMatch> homeMatches;
+  final List<SoccerRecentMatch> awayMatches;
+
+  const SoccerRecentForm({
+    this.home = const [],
+    this.away = const [],
+    this.homeMatches = const [],
+    this.awayMatches = const [],
+  });
+
+  factory SoccerRecentForm.fromJson(Map<String, dynamic> json) {
+    return SoccerRecentForm(
+      home: (json['home'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
+      away: (json['away'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
+      homeMatches: (json['homeMatches'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SoccerRecentMatch.fromJson)
+              .toList() ??
+          const [],
+      awayMatches: (json['awayMatches'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SoccerRecentMatch.fromJson)
+              .toList() ??
+          const [],
+    );
+  }
+}
+
+class SoccerNewsItem {
+  final String headline;
+  final String description;
+  final String url;
+  final String published;
+  final String image;
+
+  const SoccerNewsItem({
+    required this.headline,
+    this.description = '',
+    this.url = '',
+    this.published = '',
+    this.image = '',
+  });
+
+  factory SoccerNewsItem.fromJson(Map<String, dynamic> json) {
+    return SoccerNewsItem(
+      headline: (json['headline'] ?? '').toString(),
+      description: (json['description'] ?? '').toString(),
+      url: (json['url'] ?? '').toString(),
+      published: (json['published'] ?? '').toString(),
+      image: (json['image'] ?? '').toString(),
+    );
+  }
+}
+
+class SoccerMatchDetail {
+  final SoccerMatch match;
+  final List<SoccerGameInfoItem> gameInfo;
+  final String referee;
+  final String attendance;
+  final List<SoccerMatchEvent> events;
+  final List<SoccerStageScore> stageScores;
+  final List<SoccerStat> statistics;
+  final SoccerLineup? homeLineup;
+  final SoccerLineup? awayLineup;
+  final SoccerH2H? headToHead;
+  final SoccerRecentForm? recentForm;
+  final List<SoccerNewsItem> news;
+
+  const SoccerMatchDetail({
+    required this.match,
+    this.gameInfo = const [],
+    this.referee = '',
+    this.attendance = '',
+    this.events = const [],
+    this.stageScores = const [],
+    this.statistics = const [],
+    this.homeLineup,
+    this.awayLineup,
+    this.headToHead,
+    this.recentForm,
+    this.news = const [],
+  });
+
+  factory SoccerMatchDetail.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] is Map<String, dynamic>
+        ? json['data'] as Map<String, dynamic>
+        : json;
+    final matchMap = data['match'] is Map<String, dynamic>
+        ? data['match'] as Map<String, dynamic>
+        : const <String, dynamic>{};
+
+    final lineupsMap = data['lineups'] is Map<String, dynamic>
+        ? data['lineups'] as Map<String, dynamic>
+        : null;
+
+    return SoccerMatchDetail(
+      match: SoccerMatch.fromJson(matchMap),
+      gameInfo: (data['gameInfo'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SoccerGameInfoItem.fromJson)
+              .toList() ??
+          const [],
+      referee: (data['referee'] ?? '').toString(),
+      attendance: (data['attendance'] ?? '').toString(),
+      events: (data['events'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SoccerMatchEvent.fromJson)
+              .toList() ??
+          const [],
+      stageScores: (data['stageScores'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SoccerStageScore.fromJson)
+              .toList() ??
+          const [],
+      statistics: (data['statistics'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SoccerStat.fromJson)
+              .toList() ??
+          const [],
+      homeLineup: lineupsMap?['home'] is Map<String, dynamic>
+          ? SoccerLineup.fromJson(lineupsMap!['home'] as Map<String, dynamic>)
+          : null,
+      awayLineup: lineupsMap?['away'] is Map<String, dynamic>
+          ? SoccerLineup.fromJson(lineupsMap!['away'] as Map<String, dynamic>)
+          : null,
+      headToHead: data['headToHead'] is Map<String, dynamic>
+          ? SoccerH2H.fromJson(data['headToHead'] as Map<String, dynamic>)
+          : null,
+      recentForm: data['recentForm'] is Map<String, dynamic>
+          ? SoccerRecentForm.fromJson(
+              data['recentForm'] as Map<String, dynamic>)
+          : null,
+      news: (data['news'] as List?)
+              ?.whereType<Map<String, dynamic>>()
+              .map(SoccerNewsItem.fromJson)
+              .toList() ??
+          const [],
+    );
+  }
 }
