@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -185,7 +185,7 @@ class _SearchRadioTileState extends State<SearchRadioTile> {
                 color: isPlaying ? AppColors.accentBg : palette.iconBox,
                 borderRadius: BorderRadius.circular(AppRadius.sm),
                 border: Border.all(
-                  color: isPlaying ? palette.accent : palette.border.withValues(alpha: 0.5),
+                  color: isPlaying ? palette.primaryBtnBg : palette.border,
                   width: 1,
                 ),
               ),
@@ -206,7 +206,7 @@ class _SearchRadioTileState extends State<SearchRadioTile> {
                           ? Icons.graphic_eq_rounded
                           : Icons.play_arrow_rounded,
                       size: 20,
-                      color: isPlaying ? AppColors.accentTint : palette.text,
+                      color: isPlaying ? palette.primaryBtnText : palette.text,
                     ),
             ),
           ],

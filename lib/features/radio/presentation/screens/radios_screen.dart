@@ -18,14 +18,6 @@ class RadiosScreen extends StatefulWidget {
 
 class _RadiosScreenState extends State<RadiosScreen> {
   String _selectedCategory = 'Todas';
-  final TextEditingController _searchController = TextEditingController();
-  bool _isSearchVisible = false;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,38 +29,30 @@ class _RadiosScreenState extends State<RadiosScreen> {
 
     return Scaffold(
       backgroundColor: palette.bg,
-      body: RefreshIndicator(
-        color: palette.accent,
-        backgroundColor: palette.card,
-        strokeWidth: 2.5,
-        onRefresh: () => radioProvider.loadRadiosFromFirestore(),
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 820),
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: ClampingScrollPhysics(),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 820),
+          child: CustomScrollView(
+            physics: const ClampingScrollPhysics(),
+            slivers: [
+              SliverPadding(
+                padding: hPad.add(EdgeInsets.only(top: topPad + 10)),
+                sliver: SliverToBoxAdapter(
+                  child: _buildHeader(palette, radioProvider.radios.length),
+                ),
               ),
-              slivers: [
-                SliverPadding(
-                  padding: hPad.add(EdgeInsets.only(top: topPad + 10)),
-                  sliver: SliverToBoxAdapter(
-                    child: _buildHeader(palette, radioProvider.radios.length),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: _buildCategoryPills(context, radioProvider, palette),
-                ),
-                SliverPadding(
-                  padding: hPad.add(const EdgeInsets.only(top: 6)),
-                  sliver: _buildRadiosList(radioProvider, palette),
-                ),
-                SliverToBoxAdapter(
-                  child: SizedBox(height: math.max(108, bottomPad + 92)),
-                ),
-              ],
-            ),
+              SliverToBoxAdapter(
+                child: _buildCategoryPills(context, radioProvider, palette),
+              ),
+              SliverPadding(
+                padding: hPad.add(const EdgeInsets.only(top: 6)),
+                sliver: _buildRadiosList(radioProvider, palette),
+              ),
+              SliverToBoxAdapter(
+                child: SizedBox(height: math.max(108, bottomPad + 92)),
+              ),
+            ],
           ),
         ),
       ),
@@ -77,152 +61,31 @@ class _RadiosScreenState extends State<RadiosScreen> {
 
   Widget _buildHeader(ProfilePalette palette, int totalCount) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 6, 2, 10),
+      padding: const EdgeInsets.fromLTRB(2, 10, 2, 12),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: palette.card,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  border: Border.all(color: palette.border, width: 1),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.radio_rounded,
-                  size: 20,
-                  color: palette.accent,
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    Text(
-                      'Radio en vivo',
-                      textAlign: TextAlign.center,
-                      style: AppFont.primary(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.4,
-                        color: palette.text,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '$totalCount emisoras disponibles',
-                      textAlign: TextAlign.center,
-                      style: AppFont.primary(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: palette.muted,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() {
-                    _isSearchVisible = !_isSearchVisible;
-                    if (!_isSearchVisible) {
-                      _searchController.clear();
-                    }
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: _isSearchVisible
-                        ? AppColors.accentBg
-                        : palette.card,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                    border: Border.all(
-                      color: _isSearchVisible
-                          ? palette.accent
-                          : palette.border,
-                      width: 1,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    _isSearchVisible
-                        ? Icons.close_rounded
-                        : Icons.search_rounded,
-                    size: 20,
-                    color: _isSearchVisible
-                        ? AppColors.accentTint
-                        : palette.text,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (_isSearchVisible) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-              decoration: BoxDecoration(
-                color: palette.card,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: palette.border, width: 1),
-                boxShadow: palette.cardShadow,
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.search_rounded,
-                    size: 18,
-                    color: palette.muted,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      autofocus: true,
-                      onChanged: (_) => setState(() {}),
-                      style: AppFont.primary(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w600,
-                        color: palette.text,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'Buscar por nombre o frecuencia...',
-                        hintStyle: AppFont.primary(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: palette.muted,
-                        ),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        isDense: true,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 11),
-                      ),
-                    ),
-                  ),
-                  if (_searchController.text.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        _searchController.clear();
-                        setState(() {});
-                      },
-                      child: Icon(
-                        Icons.cancel_rounded,
-                        size: 18,
-                        color: palette.muted,
-                      ),
-                    ),
-                ],
-              ),
+          Text(
+            'Radio en vivo',
+            style: AppFont.primary(
+              fontSize: 30,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -1.0,
+              height: 1.05,
+              color: palette.text,
             ),
-          ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            totalCount == 1
+                ? '1 emisora disponible'
+                : '$totalCount emisoras disponibles',
+            style: AppFont.primary(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: palette.muted,
+            ),
+          ),
         ],
       ),
     );
@@ -241,7 +104,7 @@ class _RadiosScreenState extends State<RadiosScreen> {
     final favCount = provider.radios.where((r) => r.isFavorite).length;
 
     return Container(
-      height: 38,
+      height: 40,
       margin: const EdgeInsets.only(top: 4, bottom: 10),
       child: ListView.separated(
         padding: AppResponsive.screenHorizontalPadding(context),
@@ -253,25 +116,23 @@ class _RadiosScreenState extends State<RadiosScreen> {
           final cat = categories[index];
           final isSelected = _selectedCategory == cat;
           final isFavPill = cat == 'Favoritas';
+          final fg = isSelected ? palette.primaryBtnText : palette.muted;
 
           return GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
               HapticFeedback.selectionClick();
               setState(() => _selectedCategory = cat);
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.accentBg
-                    : palette.card,
-                borderRadius: BorderRadius.circular(AppRadius.sm),
+                color: isSelected ? palette.primaryBtnBg : palette.card,
+                borderRadius: BorderRadius.circular(AppRadius.md),
                 border: Border.all(
-                  color: isSelected
-                      ? palette.accent
-                      : palette.border,
-                  width: 1,
+                  color: isSelected ? palette.primaryBtnBg : palette.border,
                 ),
               ),
               child: Row(
@@ -281,44 +142,26 @@ class _RadiosScreenState extends State<RadiosScreen> {
                     Icon(
                       Icons.favorite_rounded,
                       size: 14,
-                      color: isSelected
-                          ? AppColors.accentTint
-                          : AppColors.live,
+                      color: isSelected ? fg : AppColors.live,
                     ),
                     const SizedBox(width: 6),
                   ],
                   Text(
                     cat,
                     style: AppFont.primary(
-                      fontSize: 13,
-                      fontWeight:
-                          isSelected ? FontWeight.w800 : FontWeight.w600,
-                      letterSpacing: -0.15,
-                      color: isSelected ? Colors.white : palette.muted,
+                      fontSize: 13.5,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                      color: fg,
                     ),
                   ),
                   if (isFavPill && favCount > 0) ...[
                     const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 1.5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.accent.withValues(alpha: 0.3)
-                            : palette.iconBox,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '$favCount',
-                        style: AppFont.primary(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                          color: isSelected
-                              ? AppColors.accentTint
-                              : palette.muted,
-                        ),
+                    Text(
+                      '$favCount',
+                      style: AppFont.primary(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: fg.withValues(alpha: 0.75),
                       ),
                     ),
                   ],
@@ -333,13 +176,19 @@ class _RadiosScreenState extends State<RadiosScreen> {
 
   Widget _buildRadiosList(RadioProvider provider, ProfilePalette palette) {
     if (provider.isLoading && provider.radios.isEmpty) {
-      return SliverFillRemaining(
-        hasScrollBody: false,
-        child: Center(
-          child: CircularProgressIndicator(
-            color: palette.accent,
-            strokeWidth: 2.5,
+      // Placeholders estáticos: sin spinners.
+      return SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => Container(
+            height: 72,
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: palette.card,
+              borderRadius: BorderRadius.circular(AppRadius.card),
+              border: Border.all(color: palette.border),
+            ),
           ),
+          childCount: 6,
         ),
       );
     }
@@ -352,16 +201,8 @@ class _RadiosScreenState extends State<RadiosScreen> {
       list = list.where((r) => r.category == _selectedCategory).toList();
     }
 
-    final query = _searchController.text.trim().toLowerCase();
-    if (query.isNotEmpty) {
-      list = list.where((r) {
-        return r.name.toLowerCase().contains(query) ||
-            r.frequency.toLowerCase().contains(query) ||
-            (r.category ?? '').toLowerCase().contains(query);
-      }).toList();
-    }
-
     if (list.isEmpty) {
+      final isFav = _selectedCategory == 'Favoritas';
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(top: 12),
@@ -371,37 +212,35 @@ class _RadiosScreenState extends State<RadiosScreen> {
               Column(
                 children: [
                   Container(
-                    width: 52,
-                    height: 52,
+                    width: 56,
+                    height: 56,
                     decoration: BoxDecoration(
                       color: palette.iconBox,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
                     ),
                     alignment: Alignment.center,
                     child: Icon(
-                      _selectedCategory == 'Favoritas'
+                      isFav
                           ? Icons.favorite_border_rounded
                           : Icons.radio_rounded,
-                      size: 24,
+                      size: 26,
                       color: palette.accent,
                     ),
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    _selectedCategory == 'Favoritas'
-                        ? 'Sin emisoras favoritas'
-                        : 'No se encontraron radios',
+                    isFav ? 'Sin emisoras favoritas' : 'No hay radios',
                     style: AppFont.primary(
                       fontSize: 17,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w700,
                       color: palette.text,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    _selectedCategory == 'Favoritas'
+                    isFav
                         ? 'Tocá el corazón en cualquier emisora para guardarla acá.'
-                        : 'Probá con otra categoría o término de búsqueda.',
+                        : 'Probá con otra categoría.',
                     textAlign: TextAlign.center,
                     style: AppFont.primary(
                       fontSize: 13.5,
@@ -419,13 +258,13 @@ class _RadiosScreenState extends State<RadiosScreen> {
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final radio = list[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: SearchRadioTile(radio: radio),
-          );
-        },
+        (context, index) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: SearchRadioTile(
+            key: ValueKey(list[index].id),
+            radio: list[index],
+          ),
+        ),
         childCount: list.length,
       ),
     );
