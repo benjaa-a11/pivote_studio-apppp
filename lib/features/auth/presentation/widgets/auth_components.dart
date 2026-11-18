@@ -604,7 +604,7 @@ class _AuthPillInputState extends State<AuthPillInput> {
               _errorText!,
               style: AppFont.primary(
                 fontSize: 12,
-                color: const AppColors.live,
+                color: AppColors.live,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -822,7 +822,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
               _firstError ?? _lastError!,
               style: AppFont.primary(
                 fontSize: 12,
-                color: const AppColors.live,
+                color: AppColors.live,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1006,7 +1006,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
               _errorText!,
               style: AppFont.primary(
                 fontSize: 12,
-                color: const AppColors.live,
+                color: AppColors.live,
                 fontWeight: FontWeight.w500,
               ),
             ),
