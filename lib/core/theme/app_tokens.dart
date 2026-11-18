@@ -191,14 +191,14 @@ class AppGradients {
     return const BoxDecoration(
       color: AppColors.darkBg,
       gradient: RadialGradient(
-        center: Alignment(-0.8, -1.0),
-        radius: 1.4,
+        center: Alignment(0.7, -1.1),
+        radius: 1.1,
         colors: [
-          Color(0x382A6FF0), // rgba(42,111,240, .22)
-          Color(0x1F965FFF), // rgba(150,95,255, .12)
+          Color(0x17C8FF47),
+          Color(0x00C8FF47),
           AppColors.darkBg,
         ],
-        stops: [0.0, 0.48, 1.0],
+        stops: [0.0, 0.6, 1.0],
       ),
     );
   }
@@ -208,7 +208,7 @@ class AppGradients {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
-      Color(0xFF4887FF),
+      AppColors.darkAccent,
       AppColors.darkAccent,
     ],
   );

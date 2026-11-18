@@ -618,7 +618,7 @@ class ProfileActionButton extends StatelessWidget {
             offset: const Offset(0, 6),
           ),
         ];
-        textColor = Colors.white;
+        textColor = AppColors.onDarkAccent;
         border = null;
         break;
       case ProfileButtonVariant.soft:

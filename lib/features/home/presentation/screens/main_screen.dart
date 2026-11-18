@@ -26,17 +26,18 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
 
-  final ScrollController _homeScrollController = ScrollController();
+  final List<ScrollController> _scrollControllers =
+      List.generate(4, (_) => ScrollController());
 
-  List<Widget> get _screens => [
-        PrimaryScrollController(
-          controller: _homeScrollController,
-          child: HomeScreen(onNavigateToTab: _onNavItemTapped),
-        ),
-        const FutbolScreen(),
-        const RadiosScreen(),
-        const ProfileScreen(),
-      ];
+  List<Widget> get _screens {
+    final pages = <Widget>[
+      HomeScreen(onNavigateToTab: _onNavItemTapped),
+      const FutbolScreen(),
+      const RadiosScreen(),
+      const ProfileScreen(),
+    ];
+    return [for (var i = 0; i < pages.length; i++) PrimaryScrollController(controller: _scrollControllers[i], child: pages[i])];
+  }
 
   @override
   void initState() {
@@ -51,7 +52,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _homeScrollController.dispose();
+    for (final c in _scrollControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -70,14 +73,11 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   void _onNavItemTapped(int index) {
     if (_selectedIndex == index) {
-      // Second tap on the active tab: scroll back to top instead of a no-op.
-      if (index == 0 && _homeScrollController.hasClients) {
+      // Second tap on the active tab: scroll back to top.
+      final c = _scrollControllers[index];
+      if (c.hasClients && c.offset > 0) {
         HapticFeedback.selectionClick();
-        _homeScrollController.animateTo(
-          0,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOutCubic,
-        );
+        c.animateTo(0, duration: const Duration(milliseconds: 450), curve: Curves.easeOutCubic);
       }
       return;
     }

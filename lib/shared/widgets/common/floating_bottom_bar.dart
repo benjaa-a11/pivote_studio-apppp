@@ -87,10 +87,8 @@ class FloatingBottomBar extends StatelessWidget {
                     isDark: isDark,
                     theme: theme,
                     onTap: () {
-                      if (!isSelected) {
-                        HapticFeedback.selectionClick();
-                        onTap(index);
-                      }
+                      if (!isSelected) HapticFeedback.selectionClick();
+                      onTap(index);
                     },
                   ),
                 );
@@ -101,6 +99,24 @@ class FloatingBottomBar extends StatelessWidget {
       ),
     );
   }
+}
+
+
+class FloatingBottomBarItem {
+  final Widget icon;
+  final Widget? activeIcon;
+  final String label;
+
+  FloatingBottomBarItem({
+    required dynamic icon,
+    dynamic activeIcon,
+    required this.label,
+  })  : icon = icon is IconData ? Icon(icon) : (icon as Widget),
+        activeIcon = activeIcon == null
+            ? null
+            : (activeIcon is IconData
+                ? Icon(activeIcon)
+                : (activeIcon as Widget));
 }
 
 class _BarTab extends StatelessWidget {
@@ -120,82 +136,68 @@ class _BarTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = isDark ? AppColors.accentTint : theme.colorScheme.primary;
+    final accentColor = theme.colorScheme.primary;
     final inactiveColor = isDark ? AppTheme.darkText3 : AppTheme.lightText3;
 
-    return ApplePressable(
-      scaleDownFactor: 0.92,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      enableHaptics: false,
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: AppMotion.normal,
-        curve: AppMotion.springSnappy,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark
-                  ? AppColors.accentBg.withValues(alpha: 0.85)
-                  : theme.colorScheme.primary.withValues(alpha: 0.12))
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(
-            color: isSelected
-                ? (isDark
-                    ? AppColors.accent.withValues(alpha: 0.55)
-                    : theme.colorScheme.primary.withValues(alpha: 0.35))
-                : Colors.transparent,
-            width: 1,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: item.label,
+      child: ApplePressable(
+        scaleDownFactor: 0.94,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        enableHaptics: false,
+        onTap: onTap,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            AnimatedScale(
-              scale: isSelected ? 1.08 : 1.0,
-              duration: AppMotion.fast,
-              curve: AppMotion.springBouncy,
-              child: isSelected && item.activeIcon != null
-                  ? item.activeIcon!
-                  : item.icon,
+            // Indicador discreto superior: no cubre el icono ni el texto.
+            Positioned(
+              top: 0,
+              child: AnimatedContainer(
+                duration: AppMotion.normal,
+                curve: Curves.easeOutCubic,
+                width: isSelected ? 22 : 0,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
             ),
-            const SizedBox(height: 3),
-            AnimatedDefaultTextStyle(
-              duration: AppMotion.fast,
-              curve: AppMotion.curveOut,
-              style: AppFont.primary(
-                fontSize: 10.5,
-                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                letterSpacing: isSelected ? -0.1 : 0,
-                color: isSelected ? accentColor : inactiveColor,
-                height: 1.1,
-              ),
-              child: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 2),
+                AnimatedScale(
+                  scale: isSelected ? 1.06 : 1.0,
+                  duration: AppMotion.fast,
+                  curve: Curves.easeOutCubic,
+                  child: isSelected && item.activeIcon != null
+                      ? item.activeIcon!
+                      : item.icon,
+                ),
+                const SizedBox(height: 4),
+                AnimatedDefaultTextStyle(
+                  duration: AppMotion.fast,
+                  curve: Curves.easeOutCubic,
+                  style: AppFont.primary(
+                    fontSize: 10.5,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? accentColor : inactiveColor,
+                    height: 1.1,
+                  ),
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
   }
-}
-
-class FloatingBottomBarItem {
-  final Widget icon;
-  final Widget? activeIcon;
-  final String label;
-
-  FloatingBottomBarItem({
-    required dynamic icon,
-    dynamic activeIcon,
-    required this.label,
-  })  : icon = icon is IconData ? Icon(icon) : (icon as Widget),
-        activeIcon = activeIcon == null
-            ? null
-            : (activeIcon is IconData
-                ? Icon(activeIcon)
-                : (activeIcon as Widget));
 }

@@ -36,7 +36,7 @@ class AppTheme {
   static const Color darkSuccess = AppColors.darkSuccess;
   static const Color darkSuccessDim = Color(0x2635D07F);
   static const Color darkInfo = AppColors.darkInfo;
-  static const Color darkInfoDim = Color(0x267DB0FF);
+  static const Color darkInfoDim = Color(0x26D9FF7A);
 
   // Textos modo oscuro
   static const Color darkText = AppColors.darkText;
@@ -58,8 +58,8 @@ class AppTheme {
 
   // Acento modo claro (equilibrado y con contraste óptimo sobre fondos claros)
   static const Color lightAccent = AppColors.lightAccent;
-  static const Color lightAccentDim = Color(0x1A1D5AD0);
-  static const Color lightAccentGlow = Color(0x331D5AD0);
+  static const Color lightAccentDim = Color(0x1F4D7C0F);
+  static const Color lightAccentGlow = Color(0x334D7C0F);
 
   // Estados semánticos modo claro
   static const Color lightDanger = AppColors.lightDanger;
@@ -69,7 +69,7 @@ class AppTheme {
   static const Color lightSuccess = AppColors.lightSuccess;
   static const Color lightSuccessDim = Color(0x1A1B9A62);
   static const Color lightInfo = AppColors.lightInfo;
-  static const Color lightInfoDim = Color(0x1A2563C9);
+  static const Color lightInfoDim = Color(0x1A3F6B0C);
 
   // Textos modo claro
   static const Color lightText = AppColors.lightText;

@@ -76,7 +76,7 @@ class AuthPalette {
         btnMainBg: AppColors.darkAccent,
         btnMainPressed: AppColors.accentStrong,
         btnMainGradient: AppGradients.buttonPrimary,
-        btnMainText: Colors.white,
+        btnMainText: AppColors.onDarkAccent,
         googleBtnBg: AppColors.darkBg2,
         googleBtnBorder: AppColors.darkBorder2,
         googleBtnText: AppColors.darkText,
@@ -90,8 +90,8 @@ class AuthPalette {
         scaffoldBg: AppColors.lightBg,
         panelBg: Colors.white,
         heroBg: AppColors.darkAccent,
-        heroBubble1: Color(0x554887FF),
-        heroBubble2: Color(0x407DB0FF),
+        heroBubble1: Color(0x2E0B0D12),
+        heroBubble2: Color(0x1A0B0D12),
         text: AppColors.lightText,
         muted: AppColors.lightText2,
         fieldBg: Color(0xFFF4F6F9),
@@ -101,12 +101,12 @@ class AuthPalette {
         btnMainBg: AppColors.darkAccent,
         btnMainPressed: AppColors.accentStrong,
         btnMainGradient: AppGradients.buttonPrimary,
-        btnMainText: Colors.white,
+        btnMainText: AppColors.onDarkAccent,
         googleBtnBg: Colors.white,
         googleBtnBorder: AppColors.lightBorder,
         googleBtnText: AppColors.lightText,
-        backBtnBg: Color(0x33000000),
-        backBtnIcon: Colors.white,
+        backBtnBg: Color(0x1F0B0D12),
+        backBtnIcon: AppColors.onDarkAccent,
         linkColor: AppColors.darkAccent,
       );
     }
@@ -198,7 +198,7 @@ class AuthStageLayout extends StatelessWidget {
                         border: Border.all(
                           color: palette.isDark
                               ? palette.fieldBorder
-                              : Colors.white.withValues(alpha: 0.25),
+                              : AppColors.onDarkAccent.withValues(alpha: 0.18),
                           width: 1,
                         ),
                       ),
@@ -326,7 +326,7 @@ class AuthHero extends StatelessWidget {
                   height: 1.14,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.3,
-                  color: Colors.white,
+                  color: palette.isDark ? AppColors.darkText : AppColors.onDarkAccent,
                 ),
               ),
             ),
@@ -604,7 +604,7 @@ class _AuthPillInputState extends State<AuthPillInput> {
               _errorText!,
               style: AppFont.primary(
                 fontSize: 12,
-                color: const Color(0xFFD32F2F),
+                color: const AppColors.live,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -822,7 +822,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
               _firstError ?? _lastError!,
               style: AppFont.primary(
                 fontSize: 12,
-                color: const Color(0xFFD32F2F),
+                color: const AppColors.live,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1006,7 +1006,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
               _errorText!,
               style: AppFont.primary(
                 fontSize: 12,
-                color: const Color(0xFFD32F2F),
+                color: const AppColors.live,
                 fontWeight: FontWeight.w500,
               ),
             ),

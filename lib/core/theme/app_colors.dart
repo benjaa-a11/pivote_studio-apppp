@@ -47,19 +47,19 @@ class AppColors {
   static const Color accentBg = Color(0x1FC8FF47); // rgba(200,255,71,.12)
 
   /// Tono secundario complementario de marca.
-  static const Color violet = Color(0xFF965FFF);
+  static const Color violet = Color(0xFFB3EB30);
   static const Color secondary = violet;
 
   // ── Semánticos (CSS: --red: #FF4D5E, --amber: #FFC247, --win: #35D07F) ──────
   static const Color darkDanger = Color(0xFFFF4D5E); // --red: Rojo en vivo
   static const Color darkWarning = Color(0xFFFFC247); // --amber: Ámbar / advertencia
   static const Color darkSuccess = Color(0xFF35D07F); // --win: Verde victoria
-  static const Color darkInfo = Color(0xFF7DB0FF); // Azul informativo
+  static const Color darkInfo = Color(0xFFD9FF7A);
 
   static const Color lightDanger = Color(0xFFD92B43);
   static const Color lightWarning = Color(0xFFB58000);
   static const Color lightSuccess = Color(0xFF1E8752);
-  static const Color lightInfo = Color(0xFF1D5AD0);
+  static const Color lightInfo = Color(0xFF3F6B0C);
 
   // ── Tokens Glassmorphic (CSS: --glass: rgba(255,255,255,.045), --line) ──────
   static const Color glass = Color(0x0BFFFFFF); // --glass: rgba(255,255,255,.045)
@@ -84,7 +84,7 @@ class AppColors {
   static const Color gold = Color(0xFFFFC247);
 
   /// Azul informativo.
-  static const Color info = Color(0xFF7DB0FF);
+  static const Color info = Color(0xFFD9FF7A);
 
   /// Superficie clara alternativa.
   static const Color lightSurface2 = lightBg2;
