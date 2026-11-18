@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
@@ -24,7 +25,6 @@ import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 import 'package:pivote/shared/screens/firebase_required_screen.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/features/auth/presentation/screens/suspended_screen.dart';
-import 'package:pivote/features/movies/presentation/providers/movies_provider.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/wakelock_service.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
@@ -138,7 +138,6 @@ class PivoteApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RadioProvider()),
         ChangeNotifierProvider(create: (_) => SoccerProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => MoviesProvider()),
         ChangeNotifierProvider(create: (_) => NotificationsProvider()),
         ChangeNotifierProvider.value(value: audioManager),
       ],
@@ -300,13 +299,10 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
               SizedBox(
                 width: 80,
                 height: 80,
-                child: Image.asset(
-                  'assets/logo.png',
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.play_circle_fill,
-                    size: 60,
-                    color: AppTheme.darkAccent,
-                  ),
+                child: SvgPicture.asset(
+                  'assets/logo.svg',
+                  width: 80,
+                  height: 80,
                 ),
               ),
               const SizedBox(height: 28),
@@ -356,21 +352,13 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    padding: const EdgeInsets.all(20),
-                    decoration: const BoxDecoration(
-                      color: AppTheme.darkBg,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Image.asset(
-                      'assets/logo.png',
-                      errorBuilder: (context, _, __) => const Icon(
-                        Icons.play_circle_fill,
-                        size: 60,
-                        color: AppTheme.darkAccent,
-                      ),
+                  SizedBox(
+                    width: 84,
+                    height: 84,
+                    child: SvgPicture.asset(
+                      'assets/logo.svg',
+                      width: 84,
+                      height: 84,
                     ),
                   ),
                   const SizedBox(height: 32),

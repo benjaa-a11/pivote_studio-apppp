@@ -126,11 +126,6 @@ class FirebaseService {
     return firestore.collection('channels');
   }
 
-  /// Movies collection reference
-  static CollectionReference get moviesCollection {
-    return firestore.collection('movies');
-  }
-
   /// Radios collection reference
   static CollectionReference get radiosCollection {
     return firestore.collection('radio');

@@ -128,8 +128,8 @@ class ActivityScreen extends StatelessWidget {
                             end: Alignment.bottomRight,
                             colors: isDark
                                 ? [
-                                    const Color(0xFF18221D),
-                                    const Color(0xFF131722),
+                                    AppColors.darkBg2,
+                                    AppColors.darkBg1,
                                   ]
                                 : [
                                     primaryColor.withValues(alpha: 0.14),
@@ -179,11 +179,11 @@ class ActivityScreen extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 5),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF10B981)
+                                color: AppColors.positive
                                     .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(100),
                                 border: Border.all(
-                                  color: const Color(0xFF10B981)
+                                  color: AppColors.positive
                                       .withValues(alpha: 0.3),
                                 ),
                               ),
@@ -194,7 +194,7 @@ class ActivityScreen extends StatelessWidget {
                                     width: 7,
                                     height: 7,
                                     decoration: const BoxDecoration(
-                                      color: Color(0xFF10B981),
+                                      color: AppColors.positive,
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -204,7 +204,7 @@ class ActivityScreen extends StatelessWidget {
                                     style: AppFont.primary(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w800,
-                                      color: const Color(0xFF10B981),
+                                      color: AppColors.positive,
                                     ),
                                   ),
                                 ],
@@ -228,12 +228,12 @@ class ActivityScreen extends StatelessWidget {
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
                               color: isDark
-                                  ? const Color(0xFF131722)
+                                  ? AppColors.darkBg1
                                   : Colors.white,
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
                                 color: isDark
-                                    ? const Color(0xFF1E2533)
+                                    ? AppColors.darkBorder
                                     : AppTheme.lightBorder,
                               ),
                             ),
@@ -379,7 +379,7 @@ class ActivityScreen extends StatelessWidget {
                                 value: '${activityService.sessionCount}',
                                 subtitle: 'Ingresos a la app',
                                 icon: Icons.login_rounded,
-                                color: const Color(0xFF74ACDF),
+                                color: primaryColor,
                                 isDark: isDark,
                               ),
                               _buildStatGridCard(
@@ -388,7 +388,7 @@ class ActivityScreen extends StatelessWidget {
                                 value: '${activityService.channelsWatched}',
                                 subtitle: 'Ver historial →',
                                 icon: Icons.tv_rounded,
-                                color: const Color(0xFF10B981),
+                                color: AppColors.positive,
                                 isDark: isDark,
                                 onTap: () => Navigator.push(
                                   context,
@@ -402,7 +402,7 @@ class ActivityScreen extends StatelessWidget {
                                 value: '${activityService.radiosListened}',
                                 subtitle: 'Emisoras en vivo',
                                 icon: Icons.radio_outlined,
-                                color: const Color(0xFFFAAD14),
+                                color: AppColors.warning,
                                 isDark: isDark,
                               ),
                               _buildStatGridCard(
@@ -411,7 +411,7 @@ class ActivityScreen extends StatelessWidget {
                                 value: '$favCount',
                                 subtitle: 'Ver guardados →',
                                 icon: Icons.favorite_rounded,
-                                color: const Color(0xFFEF4444),
+                                color: AppColors.live,
                                 isDark: isDark,
                                 onTap: () => Navigator.push(
                                   context,
@@ -437,12 +437,12 @@ class ActivityScreen extends StatelessWidget {
                           Container(
                             decoration: BoxDecoration(
                               color: isDark
-                                  ? const Color(0xFF131722)
+                                  ? AppColors.darkBg1
                                   : Colors.white,
                               borderRadius: BorderRadius.circular(22),
                               border: Border.all(
                                 color: isDark
-                                    ? const Color(0xFF1E2533)
+                                    ? AppColors.darkBorder
                                     : AppTheme.lightBorder,
                               ),
                             ),
@@ -601,7 +601,7 @@ class ActivityScreen extends StatelessWidget {
               color: isCurrent
                   ? primaryColor.withValues(alpha: 0.16)
                   : (isUnlocked
-                      ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                      ? AppColors.positive.withValues(alpha: 0.12)
                       : theme.colorScheme.onSurface.withValues(alpha: 0.05)),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -661,7 +661,7 @@ class ActivityScreen extends StatelessWidget {
             const Icon(
               Icons.check_circle_rounded,
               size: 18,
-              color: Color(0xFF10B981),
+              color: AppColors.positive,
             )
           else
             Icon(
@@ -693,10 +693,10 @@ class ActivityScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF131722) : Colors.white,
+          color: isDark ? AppColors.darkBg1 : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isDark ? const Color(0xFF1E2533) : AppTheme.lightBorder,
+            color: isDark ? AppColors.darkBorder : AppTheme.lightBorder,
           ),
         ),
         child: Column(

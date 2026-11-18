@@ -64,10 +64,10 @@ dependencies:
   crypto: ^3.0.7
 
 flutter_native_splash:
-  color: "#020611"
+  color: "#0B0D12"
   image: assets/logo.png
   android_12:
-    color: "#020611"
+    color: "#0B0D12"
     image: assets/logo.png
 
 flutter_launcher_icons:
@@ -75,6 +75,9 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/logo.png"
   min_sdk_android: 21
+  adaptive_icon_background: "#C8FF47"
+  adaptive_icon_foreground: "assets/logo_foreground.png"
+  remove_alpha_ios: true
 
 dev_dependencies:
   flutter_test:
@@ -90,5 +93,3 @@ flutter:
     - assets/logo.png
     - assets/icons/
     - assets/icons/player/
-    - assets/icons/player-movies/
-    - assets/FWC-26/

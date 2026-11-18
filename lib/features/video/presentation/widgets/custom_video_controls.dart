@@ -39,13 +39,13 @@ class ServerInfo {
   Color typeColor(BuildContext context) {
     switch (type) {
       case ServerType.hls:
-        return const Color(0xFF10B981);
+        return AppColors.positive;
       case ServerType.dash:
-        return const Color(0xFF3B82F6);
+        return AppColors.accent;
       case ServerType.web:
-        return const Color(0xFFF59E0B);
+        return AppColors.warning;
       case ServerType.unknown:
-        return const Color(0xFF8B5CF6);
+        return AppColors.accentTint;
     }
   }
 }
