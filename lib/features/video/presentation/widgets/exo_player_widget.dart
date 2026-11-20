@@ -97,6 +97,7 @@ class PivotePlayerController extends ChangeNotifier {
   String? userMessage;
   String? errorCode;
   int httpStatus = -1;
+  bool tokenExpired = false;
   bool isReady = false;
   bool firstFrameRendered = false;
   String? streamFormat;
@@ -257,6 +258,7 @@ class PivotePlayerController extends ChangeNotifier {
         errorMessage = map['message'] as String? ?? 'Error de reproducción';
         userMessage = map['userMessage'] as String? ?? errorMessage;
         httpStatus = (map['httpStatus'] as num?)?.toInt() ?? -1;
+        tokenExpired = map['tokenExpired'] as bool? ?? false;
         notifyListeners();
         break;
 
@@ -301,6 +303,7 @@ class PivotePlayerController extends ChangeNotifier {
     errorMessage = null;
     userMessage = null;
     errorCode = null;
+    tokenExpired = false;
     isReady = false;
     firstFrameRendered = false;
     isBuffering = true;

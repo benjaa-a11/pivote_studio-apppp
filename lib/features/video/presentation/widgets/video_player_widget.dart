@@ -55,6 +55,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   Timer? _orientationTimer;
   Timer? _serverTimeout;
   int _lastObservedRetryCount = 0;
+  String? _currentlyObservedSourcePage;
+  bool _isReResolvingCurrentServer = false;
 
   @override
   void initState() {
@@ -100,12 +102,24 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
   @override
   void dispose() {
     _disposed = true;
+    if (_currentlyObservedSourcePage != null) {
+      StreamUrlResolver.removeRenewalListener(_currentlyObservedSourcePage!, _onStreamAutoRenewed);
+      _currentlyObservedSourcePage = null;
+    }
     WidgetsBinding.instance.removeObserver(this);
     _orientationTimer?.cancel();
     _serverTimeout?.cancel();
     _controller.removeListener(_onPlayerState);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _onStreamAutoRenewed(ResolveResult newResult) {
+    if (_disposed || !mounted) return;
+    debugPrint('🔄 VideoPlayerWidget: Recibida renovación automática para stream en segundo plano.');
+    // Si el reproductor está activo y reproduciendo sin problemas, ExoPlayer seguirá
+    // con los segmentos actuales; actualizamos el caché interno para que cualquier
+    // reconexión inmediata o seek use el token fresco.
   }
 
   void _onPlayerState() {
@@ -132,10 +146,28 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     setState(() {});
   }
 
-  void _handlePlaybackError() {
+  void _handlePlaybackError() async {
     if (_isFailoverInProgress || _disposed || !mounted) return;
-    _isFailoverInProgress = true;
     _serverTimeout?.cancel();
+
+    // Si el error es de token expirado o HTTP 401/403 y este servidor provino de una página
+    // resoluble, intentamos re-resolverlo en caliente antes de cambiar de servidor.
+    if ((_controller.tokenExpired || _controller.httpStatus == 401 || _controller.httpStatus == 403) &&
+        _currentStream != null &&
+        !_isReResolvingCurrentServer &&
+        !_currentStream!.hasDrm) {
+      final (cleanUrl, _) = StreamSource.splitPipeHeaders(_currentStream!.url);
+      if (cleanUrl.toLowerCase().contains('.php') || !cleanUrl.toLowerCase().contains('.m3u8')) {
+        _isReResolvingCurrentServer = true;
+        debugPrint('🔄 Intentando re-resolución forzada de token para servidor actual: $cleanUrl');
+        StreamUrlResolver.invalidate(cleanUrl);
+        await _playCurrentServer(forceRefresh: true);
+        _isReResolvingCurrentServer = false;
+        return;
+      }
+    }
+
+    _isFailoverInProgress = true;
     debugPrint(
         '⚠️ Error en servidor ${_serverIndex + 1}/${widget.channel.streamUrl.length}: ${_controller.errorMessage} (${_controller.errorCode})');
     _nextServer();
@@ -172,7 +204,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
     });
   }
 
-  Future<void> _playCurrentServer() async {
+  Future<void> _playCurrentServer({bool forceRefresh = false}) async {
     if (_disposed || widget.channel.streamUrl.isEmpty) return;
 
     if (_serverIndex >= widget.channel.streamUrl.length) {
@@ -200,9 +232,24 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget>
         !url.toLowerCase().contains('.mpd') &&
         !_currentStream!.isHls) {
       try {
-        final resolved = await StreamUrlResolver.resolve(url);
+        if (_currentlyObservedSourcePage != null && _currentlyObservedSourcePage != cleanInitialUrl) {
+          StreamUrlResolver.removeRenewalListener(_currentlyObservedSourcePage!, _onStreamAutoRenewed);
+          _currentlyObservedSourcePage = null;
+        }
+
+        final resolved = await StreamUrlResolver.resolve(
+          url,
+          headers: headers,
+          forceRefresh: forceRefresh,
+        );
         if (_disposed) return;
         if (resolved.url.isNotEmpty) {
+          // Suscribirse a la renovación silenciosa de este servidor
+          if (_currentlyObservedSourcePage != cleanInitialUrl) {
+            _currentlyObservedSourcePage = cleanInitialUrl;
+            StreamUrlResolver.onStreamRenewed(cleanInitialUrl, _onStreamAutoRenewed);
+          }
+
           final (cleanResolvedUrl, resolvedPipe) =
               StreamSource.splitPipeHeaders(resolved.url);
           url = cleanResolvedUrl;
