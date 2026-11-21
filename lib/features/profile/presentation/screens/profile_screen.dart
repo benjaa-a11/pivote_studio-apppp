@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/cache_manager_service.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
-import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
@@ -16,6 +16,7 @@ import 'package:pivote/features/favorites/data/services/viewing_history_service.
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/about_screen.dart';
+import 'package:pivote/features/profile/presentation/screens/activity_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/appearance_settings_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
@@ -26,6 +27,8 @@ import 'package:pivote/features/profile/presentation/screens/storage_manager_scr
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -68,11 +71,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _formatActiveHours(int totalSeconds) {
     final hours = totalSeconds ~/ 3600;
-    if (hours > 0) {
-      return '$hours h';
-    }
+    if (hours > 0) return '${hours}h';
     final minutes = (totalSeconds ~/ 60).clamp(1, 59);
-    return '$minutes min';
+    return '${minutes}m';
   }
 
   Future<void> _showLogoutDialog(BuildContext context) async {
@@ -103,7 +104,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
     final themeProvider = context.watch<ThemeProvider>();
     final userProvider = context.watch<UserProvider>();
     final activityService = context.watch<AppActivityService>();
@@ -115,6 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (user?.lastName.isNotEmpty == true) user!.lastName,
     ].join(' ').trim();
     final displayName = fullName.isNotEmpty ? fullName : 'Usuario';
+    final email = user?.email ?? '';
     final initial = displayName[0].toUpperCase();
 
     final isVip = user?.isVip == true ||
@@ -122,213 +123,375 @@ class _ProfileScreenState extends State<ProfileScreen> {
         user?.userType.toLowerCase() == 'admin';
 
     final topPadding = MediaQuery.paddingOf(context).top;
+    final hPad = AppResponsive.horizontalPadding(context);
+    final accent = AppTheme.accent(context);
+    final danger = AppTheme.danger(context);
 
     return Scaffold(
-      backgroundColor: palette.bg,
-      body: RefreshIndicator(
-        color: palette.accent,
-        backgroundColor: palette.card,
-        onRefresh: _refreshDynamicState,
+      backgroundColor: AppTheme.bg(context),
+      body: PivoteAmbientBackdrop(
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
             child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: ClampingScrollPhysics(),
-              ),
+              physics: const ClampingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
-                AppResponsive.horizontalPadding(context),
-                topPadding + 10,
-                AppResponsive.horizontalPadding(context),
-                112,
+                hPad,
+                topPadding + 14,
+                hPad,
+                114,
               ),
               children: [
-                // ---------- Portada + Avatar con anillo ----------
-                AppAnimations.staggeredSlideIn(
-                  index: 0,
-                  child: SizedBox(
-                    height: 288, // 210 cover + 78 avatar half-overlap
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.topCenter,
-                      children: [
-                        const ProfileCoverBanner(),
-                        Positioned(
-                          top: 132, // 210 - 78
-                          child: ProfileAvatarWithRing(
-                            size: 156,
-                            imagePath: userProvider.profileImagePath,
-                            photoUrl: user?.photoUrl,
-                            fallbackInitial: initial,
-                            onTap: () => _open(const EditProfileScreen()),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // ---------- Usuario y plan ----------
-                AppAnimations.staggeredSlideIn(
-                  index: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                    child: Column(
-                      children: [
-                        Text(
-                          displayName,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppFont.primary(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.52,
-                            color: palette.text,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        ProfilePlanBadge(isVip: isVip),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // ---------- Estadísticas ----------
-                AppAnimations.staggeredSlideIn(
-                  index: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 22),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: palette.card,
-                        borderRadius: BorderRadius.circular(26),
-                        border: Border.all(color: palette.border, width: 1),
-                        boxShadow: palette.cardShadow,
-                      ),
-                      child: Row(
+                // ---------- Header principal unificado ----------
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: _ProfileStatItem(
-                              value: _formatActiveHours(
-                                activityService.totalActiveSeconds,
-                              ),
-                              label: 'Tiempo activo',
+                          Text(
+                            'Perfil',
+                            style: AppFont.primary(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.7,
+                              height: 1.05,
+                              color: AppTheme.textPrimary(context),
                             ),
                           ),
-                          Expanded(
-                            child: _ProfileStatItem(
-                              value: '${favProvider.favoriteIds.length}',
-                              label: 'Favoritos',
-                              onTap: () => _open(const FavoritesScreen()),
-                            ),
-                          ),
-                          Expanded(
-                            child: _ProfileStatItem(
-                              value: '$_historyCount',
-                              label: 'Historial',
-                              onTap: () => _open(const HistoryScreen()),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Tu cuenta y preferencias',
+                            style: AppFont.primary(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.textTertiary(context),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
+                    PivoteIconButton(
+                      icon: Icons.edit_outlined,
+                      tooltip: 'Editar perfil',
+                      onTap: () => _open(const EditProfileScreen()),
+                    ),
+                  ],
                 ),
 
-                // ---------- Lista de ajustes ----------
+                const SizedBox(height: 18),
+
+                // ---------- Hero Identity Card estilo MatchesHero ----------
                 AppAnimations.staggeredSlideIn(
-                  index: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: ProfileGroupCard(
+                  index: 0,
+                  child: PivoteDiffusedCard(
+                    borderRadius: AppRadius.hero,
+                    glowColor: accent,
+                    secondaryGlowColor: isVip ? accent : null,
+                    glowAlignment: const Alignment(-0.85, -0.75),
+                    secondaryGlowAlignment: const Alignment(0.9, 0.85),
+                    glowOpacity: 1.35,
+                    highlighted: isVip,
+                    child: Column(
                       children: [
-                        ProfileGroupRow(
-                          horizontalGap: 14,
-                          leading: const ProfileSettingIconBox(
-                            svgString: ProfileSvgIcons.appearance,
+                        // Identidad superior
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          child: Row(
+                            children: [
+                              ProfileAvatarWithRing(
+                                size: 70,
+                                imagePath: userProvider.profileImagePath,
+                                photoUrl: user?.photoUrl,
+                                fallbackInitial: initial,
+                                onTap: () => _open(const EditProfileScreen()),
+                              ),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      displayName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppFont.primary(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.45,
+                                        color: AppTheme.textPrimary(context),
+                                      ),
+                                    ),
+                                    if (email.isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        email,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppFont.primary(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppTheme.textTertiary(context),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        ProfilePlanBadge(isVip: isVip),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () {
+                                            HapticFeedback.selectionClick();
+                                            _open(const ActivityScreen());
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 9,
+                                              vertical: 4.5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.surface2(context),
+                                              borderRadius: BorderRadius.circular(
+                                                AppRadius.pill,
+                                              ),
+                                              border: Border.all(
+                                                color: AppTheme.border(context),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.bolt_rounded,
+                                                  size: 13,
+                                                  color: accent,
+                                                ),
+                                                const SizedBox(width: 3),
+                                                Text(
+                                                  'Mi rango',
+                                                  style: AppFont.primary(
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: AppTheme.textSecondary(
+                                                      context,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          title: 'Apariencia',
-                          valueText: themeProvider.themeModeLabel,
-                          showChevron: true,
-                          onTap: () => _open(const AppearanceSettingsScreen()),
                         ),
-                        ProfileGroupRow(
-                          horizontalGap: 14,
-                          leading: const ProfileSettingIconBox(
-                            svgString: ProfileSvgIcons.notifications,
-                          ),
-                          title: 'Notificaciones',
-                          showChevron: true,
-                          onTap: () =>
-                              _open(const NotificationsSettingsScreen()),
+
+                        // Divisor hairline 1px estilo MatchesHero
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: AppTheme.border(context),
                         ),
-                        ProfileGroupRow(
-                          horizontalGap: 14,
-                          leading: const ProfileSettingIconBox(
-                            svgString: ProfileSvgIcons.storage,
+
+                        // Barra de métricas interactivas integrada
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
                           ),
-                          title: 'Almacenamiento',
-                          valueText: _cacheSize,
-                          showChevron: true,
-                          onTap: () => _open(const StorageManagerScreen()),
-                        ),
-                        ProfileGroupRow(
-                          horizontalGap: 14,
-                          leading: const ProfileSettingIconBox(
-                            svgString: ProfileSvgIcons.diagnostics,
+                          child: IntrinsicHeight(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _HeroStatCell(
+                                    value: _formatActiveHours(
+                                      activityService.totalActiveSeconds,
+                                    ),
+                                    label: 'Actividad',
+                                    highlight: true,
+                                    onTap: () => _open(const ActivityScreen()),
+                                  ),
+                                ),
+                                VerticalDivider(
+                                  width: 1,
+                                  thickness: 1,
+                                  indent: 6,
+                                  endIndent: 6,
+                                  color: AppTheme.border(context),
+                                ),
+                                Expanded(
+                                  child: _HeroStatCell(
+                                    value: '${favProvider.favoriteIds.length}',
+                                    label: 'Favoritos',
+                                    onTap: () => _open(const FavoritesScreen()),
+                                  ),
+                                ),
+                                VerticalDivider(
+                                  width: 1,
+                                  thickness: 1,
+                                  indent: 6,
+                                  endIndent: 6,
+                                  color: AppTheme.border(context),
+                                ),
+                                Expanded(
+                                  child: _HeroStatCell(
+                                    value: '$_historyCount',
+                                    label: 'Historial',
+                                    onTap: () => _open(const HistoryScreen()),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          title: 'Diagnóstico de streaming',
-                          showChevron: true,
-                          onTap: () => _open(const DiagnosticsScreen()),
-                        ),
-                        ProfileGroupRow(
-                          horizontalGap: 14,
-                          leading: const ProfileSettingIconBox(
-                            svgString: ProfileSvgIcons.editProfile,
-                          ),
-                          title: 'Editar perfil',
-                          showChevron: true,
-                          onTap: () => _open(const EditProfileScreen()),
-                        ),
-                        ProfileGroupRow(
-                          horizontalGap: 14,
-                          leading: const ProfileSettingIconBox(
-                            svgString: ProfileSvgIcons.privacy,
-                          ),
-                          title: 'Privacidad y seguridad',
-                          showChevron: true,
-                          onTap: () => _open(const PrivacySecurityScreen()),
-                        ),
-                        ProfileGroupRow(
-                          horizontalGap: 14,
-                          leading: const ProfileSettingIconBox(
-                            svgString: ProfileSvgIcons.about,
-                          ),
-                          title: 'Acerca de',
-                          valueText: 'v1.0.0',
-                          showChevron: true,
-                          onTap: () => _open(const AboutScreen()),
                         ),
                       ],
                     ),
+                  ),
+                ),
+
+                // ---------- Sección 1: Preferencias ----------
+                AppAnimations.staggeredSlideIn(
+                  index: 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const ProfileSectionTitle('Preferencias'),
+                      ProfileGroupCard(
+                        children: [
+                          ProfileGroupRow(
+                            leading: const ProfileSettingIconBox(
+                              icon: Icons.palette_outlined,
+                              highlight: true,
+                            ),
+                            title: 'Apariencia',
+                            subtitle: 'Tema visual y escala de texto',
+                            valueText: themeProvider.themeModeLabel,
+                            showChevron: true,
+                            onTap: () =>
+                                _open(const AppearanceSettingsScreen()),
+                          ),
+                          ProfileGroupRow(
+                            leading: const ProfileSettingIconBox(
+                              icon: Icons.notifications_none_rounded,
+                            ),
+                            title: 'Notificaciones',
+                            subtitle: 'Alertas en vivo y horario silencioso',
+                            showChevron: true,
+                            onTap: () =>
+                                _open(const NotificationsSettingsScreen()),
+                          ),
+                          ProfileGroupRow(
+                            leading: const ProfileSettingIconBox(
+                              icon: Icons.bolt_rounded,
+                            ),
+                            title: 'Actividad y rango',
+                            subtitle: activityService.getArgentineRank(),
+                            showChevron: true,
+                            onTap: () => _open(const ActivityScreen()),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ---------- Sección 2: Rendimiento ----------
+                AppAnimations.staggeredSlideIn(
+                  index: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const ProfileSectionTitle('Sistema y streaming'),
+                      ProfileGroupCard(
+                        children: [
+                          ProfileGroupRow(
+                            leading: const ProfileSettingIconBox(
+                              icon: Icons.storage_rounded,
+                            ),
+                            title: 'Almacenamiento',
+                            subtitle: 'Caché local e imágenes',
+                            valueText: _cacheSize,
+                            showChevron: true,
+                            onTap: () => _open(const StorageManagerScreen()),
+                          ),
+                          ProfileGroupRow(
+                            leading: const ProfileSettingIconBox(
+                              icon: Icons.speed_rounded,
+                            ),
+                            title: 'Diagnóstico de red',
+                            subtitle: 'Velocidad, latencia y estabilidad',
+                            showChevron: true,
+                            onTap: () => _open(const DiagnosticsScreen()),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ---------- Sección 3: Cuenta ----------
+                AppAnimations.staggeredSlideIn(
+                  index: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const ProfileSectionTitle('Cuenta'),
+                      ProfileGroupCard(
+                        children: [
+                          ProfileGroupRow(
+                            leading: const ProfileSettingIconBox(
+                              icon: Icons.person_outline_rounded,
+                            ),
+                            title: 'Editar perfil',
+                            subtitle: 'Nombre, correo y foto',
+                            showChevron: true,
+                            onTap: () => _open(const EditProfileScreen()),
+                          ),
+                          ProfileGroupRow(
+                            leading: const ProfileSettingIconBox(
+                              icon: Icons.shield_outlined,
+                            ),
+                            title: 'Privacidad y seguridad',
+                            subtitle: 'Contraseña y dispositivos',
+                            showChevron: true,
+                            onTap: () => _open(const PrivacySecurityScreen()),
+                          ),
+                          ProfileGroupRow(
+                            leading: const ProfileSettingIconBox(
+                              icon: Icons.info_outline_rounded,
+                            ),
+                            title: 'Acerca de Pivote',
+                            valueText: 'v1.0.0',
+                            showChevron: true,
+                            onTap: () => _open(const AboutScreen()),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
 
                 // ---------- Cerrar sesión ----------
                 AppAnimations.staggeredSlideIn(
                   index: 4,
-                  child: ProfileActionButton(
-                    label: 'Cerrar sesión',
-                    variant: ProfileButtonVariant.danger,
-                    leadingIcon: ProfileSvgIcons.svg(
-                      ProfileSvgIcons.logout,
-                      size: 20,
-                      color: palette.danger,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: ProfileActionButton(
+                      label: 'Cerrar sesión',
+                      variant: ProfileButtonVariant.danger,
+                      leadingIcon: Icon(
+                        Icons.logout_rounded,
+                        size: 19,
+                        color: danger,
+                      ),
+                      onTap: () => _showLogoutDialog(context),
                     ),
-                    onTap: () => _showLogoutDialog(context),
                   ),
                 ),
               ],
@@ -340,74 +503,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-class _ProfileStatItem extends StatefulWidget {
+class _HeroStatCell extends StatelessWidget {
   final String value;
   final String label;
+  final bool highlight;
   final VoidCallback? onTap;
 
-  const _ProfileStatItem({
+  const _HeroStatCell({
     required this.value,
     required this.label,
+    this.highlight = false,
     this.onTap,
   });
 
   @override
-  State<_ProfileStatItem> createState() => _ProfileStatItemState();
-}
-
-class _ProfileStatItemState extends State<_ProfileStatItem> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
-    final interactive = widget.onTap != null;
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: interactive ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: interactive ? (_) => setState(() => _pressed = false) : null,
-      onTapCancel: interactive ? () => setState(() => _pressed = false) : null,
-      onTap: interactive
-          ? () {
-              HapticFeedback.selectionClick();
-              widget.onTap!();
-            }
-          : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-        decoration: BoxDecoration(
-          color: _pressed
-              ? (palette.isDark
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : Colors.black.withValues(alpha: 0.05))
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-        ),
+    return ApplePressable(
+      scaleDownFactor: 0.95,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              widget.value,
+              value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppFont.primary(
-                fontSize: 22,
+              style: AppFont.mono(
+                fontSize: 19,
                 fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-                color: palette.text,
+                color: highlight
+                    ? AppTheme.accent(context)
+                    : AppTheme.textPrimary(context),
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 2.5),
             Text(
-              widget.label,
+              label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppFont.primary(
-                fontSize: 13,
+                fontSize: 11.8,
                 fontWeight: FontWeight.w600,
-                color: palette.muted,
+                color: AppTheme.textTertiary(context),
               ),
             ),
           ],

@@ -6,6 +6,7 @@ import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:pivote/features/auth/presentation/widgets/auth_components.dart';
 import 'package:pivote/features/home/presentation/screens/main_screen.dart';
@@ -109,44 +110,11 @@ class _SignUpScreenState extends State<SignUpScreen>
   }
 
   void _showPolicyDialog(String title, String body) {
-    final palette = AuthPalette.of(context);
-    showDialog(
+    AppDialogs.showAlert(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: palette.panelBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: palette.line),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: palette.text,
-          ),
-        ),
-        content: SingleChildScrollView(
-          child: Text(
-            body,
-            style: TextStyle(
-              color: palette.muted,
-              fontSize: 14,
-              height: 1.5,
-            ),
-          ),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: palette.btnMainBg,
-              foregroundColor: palette.btnMainText,
-              shape: const StadiumBorder(),
-            ),
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Entendido'),
-          ),
-        ],
-      ),
+      title: title,
+      message: body,
+      type: AppDialogType.info,
     );
   }
 

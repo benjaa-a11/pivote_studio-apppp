@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/shared/widgets/common/apple_pressable.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
-/// Vista unificada del Design System para estados vacíos, errores de conexión
-/// o mensajes sin resultados en listas y pantallas.
+/// Vista unificada del Design System para estados vacíos y errores con
+/// difuminación radial inspirada en `MatchesHero`.
 class AppStateView extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -51,44 +52,42 @@ class AppStateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = AppTheme.isDark(context);
     final accentColor =
         isError ? AppTheme.danger(context) : AppTheme.accent(context);
-    final surfaceColor = AppTheme.cardSurface(context);
+    final badgeBg =
+        isError ? AppTheme.dangerDim(context) : AppTheme.accentDim(context);
 
     return Center(
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.xxl,
-          vertical: compact ? AppSpacing.xl : AppSpacing.xxxl,
+          horizontal: AppSpacing.xl,
+          vertical: compact ? AppSpacing.lg : AppSpacing.xxl,
         ),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 380),
-          child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: PivoteDiffusedCard(
+            borderRadius: AppRadius.hero,
+            glowColor: accentColor,
+            glowAlignment: const Alignment(0.0, -0.9),
+            glowOpacity: 1.25,
             padding: EdgeInsets.all(compact ? 22 : 28),
-            decoration: BoxDecoration(
-              color: surfaceColor,
-              borderRadius: BorderRadius.circular(AppRadius.hero),
-              border: AppBorders.card(context),
-              boxShadow: AppShadows.appleDepth(context, elevation: 0.9),
-            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: compact ? 56 : 68,
-                  height: compact ? 56 : 68,
+                  width: compact ? 54 : 64,
+                  height: compact ? 54 : 64,
                   decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: isDark ? 0.12 : 0.09),
-                    shape: BoxShape.circle,
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(AppRadius.card),
                     border: Border.all(
-                      color: accentColor.withValues(alpha: isDark ? 0.28 : 0.2),
-                      width: 1.2,
+                      color: accentColor.withValues(alpha: 0.30),
+                      width: 1.1,
                     ),
                   ),
                   child: Icon(
                     icon,
-                    size: compact ? 26 : 30,
+                    size: compact ? 25 : 29,
                     color: accentColor,
                   ),
                 ),
@@ -97,7 +96,7 @@ class AppStateView extends StatelessWidget {
                   title,
                   textAlign: TextAlign.center,
                   style: AppFont.primary(
-                    fontSize: compact ? 16.5 : 18.5,
+                    fontSize: compact ? 16.5 : 18,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.3,
                     color: AppTheme.textPrimary(context),
@@ -124,16 +123,9 @@ class AppStateView extends StatelessWidget {
                       height: 44,
                       padding: const EdgeInsets.symmetric(horizontal: 22),
                       decoration: BoxDecoration(
-                        color: isError
-                            ? AppTheme.danger(context)
-                            : AppTheme.accent(context),
+                        color: accentColor,
                         borderRadius: BorderRadius.circular(AppRadius.md),
-                        boxShadow: AppShadows.glow(
-                          isError
-                              ? AppTheme.danger(context)
-                              : AppTheme.accent(context),
-                          alpha: 0.24,
-                        ),
+                        boxShadow: AppShadows.glow(accentColor, alpha: 0.22),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -173,7 +165,7 @@ class AppStateView extends StatelessWidget {
   }
 }
 
-/// Encabezado de sección unificado (inspirado en MatchesHero).
+/// Alias compatible que delega a `PivoteSectionHeader`.
 class AppSectionTitle extends StatelessWidget {
   final String title;
   final String? badgeText;
@@ -190,80 +182,16 @@ class AppSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = AppTheme.isDark(context);
-    final accent = AppTheme.accent(context);
-
-    return Padding(
+    return PivoteSectionHeader(
+      title: title,
+      badgeText: badgeText,
+      trailing: trailing,
       padding: padding,
-      child: Row(
-        children: [
-          Container(
-            width: 3.5,
-            height: 18,
-            decoration: BoxDecoration(
-              color: accent,
-              borderRadius: BorderRadius.circular(4),
-              boxShadow: [
-                if (isDark)
-                  BoxShadow(
-                    color: accent.withValues(alpha: 0.35),
-                    blurRadius: 8,
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppFont.primary(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.4,
-                      color: AppTheme.textPrimary(context),
-                    ),
-                  ),
-                ),
-                if (badgeText != null) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2.5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: isDark ? 0.14 : 0.10),
-                      borderRadius: BorderRadius.circular(AppRadius.pill),
-                      border: Border.all(
-                        color: accent.withValues(alpha: isDark ? 0.28 : 0.22),
-                      ),
-                    ),
-                    child: Text(
-                      badgeText!,
-                      style: AppFont.primary(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: accent,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (trailing != null) trailing!,
-        ],
-      ),
     );
   }
 }
 
-/// Chip / Píldora de filtro interactiva con estética unificada.
+/// Alias compatible que delega a `PivoteFilterPill`.
 class AppFilterPill extends StatelessWidget {
   final String label;
   final IconData? icon;
@@ -282,85 +210,12 @@ class AppFilterPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = AppTheme.isDark(context);
-    final accent = AppTheme.accent(context);
-    final onAccent = AppTheme.onAccent(context);
-
-    return ApplePressable(
-      scaleDownFactor: 0.95,
-      borderRadius: BorderRadius.circular(AppRadius.sm),
+    return PivoteFilterPill(
+      label: label,
+      icon: icon,
+      selected: selected,
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8.5),
-        decoration: BoxDecoration(
-          color: selected
-              ? (isDark ? AppColors.accentBg : accent)
-              : (isDark ? AppColors.darkBg2 : AppTheme.lightBg1),
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          border: Border.all(
-            color: selected
-                ? AppColors.accent
-                : (isDark
-                    ? AppColors.darkBorder2
-                    : AppTheme.lightBorder),
-            width: selected ? 1.2 : 1,
-          ),
-          boxShadow: selected
-              ? AppShadows.glow(accent, alpha: isDark ? 0.28 : 0.16)
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: 15,
-                color: selected
-                    ? (isDark ? AppColors.accentTint : onAccent)
-                    : (isDark ? AppColors.darkText2 : AppTheme.textSecondary(context)),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              label,
-              style: AppFont.primary(
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
-                letterSpacing: -0.1,
-                color: selected
-                    ? Colors.white
-                    : (isDark ? AppColors.darkText2 : AppTheme.textSecondary(context)),
-              ),
-            ),
-            if (count != null) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? (isDark ? AppColors.accent.withValues(alpha: 0.35) : onAccent.withValues(alpha: 0.16))
-                      : (isDark
-                          ? AppColors.darkBorder
-                          : Colors.black.withValues(alpha: 0.05)),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                ),
-                child: Text(
-                  '$count',
-                  style: AppFont.primary(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w800,
-                    color: selected ? Colors.white : (isDark ? AppColors.darkText3 : AppTheme.textTertiary(context)),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+      count: count,
     );
   }
 }
-

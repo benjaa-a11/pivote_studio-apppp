@@ -128,6 +128,22 @@ class AppTheme {
   static Color info(BuildContext context) =>
       isDark(context) ? darkInfo : lightInfo;
 
+  static Color accentDim(BuildContext context) =>
+      isDark(context) ? darkAccentDim : lightAccentDim;
+
+  static Color dangerDim(BuildContext context) =>
+      isDark(context) ? darkDangerDim : lightDangerDim;
+
+  static Color surface4(BuildContext context) =>
+      isDark(context) ? darkBg4 : lightBg4;
+
+  static Color glassPanel(BuildContext context) =>
+      isDark(context) ? AppColors.glassPanel : AppColors.lightGlassPanel;
+
+  static Color barrierColor(BuildContext context) => isDark(context)
+      ? const Color(0xBF04060B)
+      : const Color(0x7A0B0D12);
+
   // ==================== TEMA OSCURO ====================
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,

@@ -3,13 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/animations/app_animations.dart';
-import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
 class PrivacySecurityScreen extends StatefulWidget {
   const PrivacySecurityScreen({super.key});
@@ -52,31 +52,23 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
   }
 
   void _showTwoFactorSheet() {
-    final palette = ProfilePalette.of(context);
     AppDialogs.showModal<void>(
       context: context,
       child: Builder(
         builder: (ctx) => SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 22),
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                  child: Text(
-                    'Verificación en dos pasos',
-                    style: AppFont.primary(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                      color: palette.text,
-                    ),
-                  ),
+                const PivoteSheetHeader(
+                  title: 'Verificación en dos pasos',
+                  subtitle: 'Protección adicional de inicio de sesión',
+                  icon: Icons.verified_user_outlined,
                 ),
+                const SizedBox(height: 16),
                 ProfileGroupCard(
                   children: [
                     ProfileGroupRow(
@@ -107,7 +99,6 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
   }
 
   void _showConnectedDevicesSheet() {
-    final palette = ProfilePalette.of(context);
     final email = context.read<UserProvider>().user?.email ?? 'Sesión activa';
 
     AppDialogs.showModal<void>(
@@ -115,32 +106,32 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 22),
+          padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                child: Text(
-                  'Dispositivos conectados',
-                  style: AppFont.primary(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
-                    color: palette.text,
-                  ),
-                ),
+              const PivoteSheetHeader(
+                title: 'Dispositivos conectados',
+                subtitle: 'Sesiones activas en tu cuenta',
+                icon: Icons.devices_rounded,
               ),
+              const SizedBox(height: 16),
               ProfileGroupCard(
                 children: [
                   ProfileGroupRow(
+                    leading: const ProfileSettingIconBox(
+                      icon: Icons.smartphone_rounded,
+                      highlight: true,
+                    ),
                     title: 'Este dispositivo',
                     subtitle: '$email · En línea ahora',
                     valueText: 'Actual',
                   ),
                   const ProfileGroupRow(
+                    leading: ProfileSettingIconBox(
+                      icon: Icons.tv_rounded,
+                    ),
                     title: 'Pivote Web / Smart TV',
                     subtitle: 'Sincronizado con tu cuenta',
                     valueText: 'Activo',
@@ -190,7 +181,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
   @override
   Widget build(BuildContext context) {
     return ProfileSubsectionScaffold(
-      title: 'Privacidad',
+      title: 'Privacidad y seguridad',
       children: [
         AppAnimations.staggeredSlideIn(
           index: 0,
@@ -202,7 +193,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                 children: [
                   ProfileGroupRow(
                     title: 'Guardar historial',
-                    subtitle: 'Registrar lo que reproducís',
+                    subtitle: 'Registrar los canales que reproducís',
                     onTap: () =>
                         _updatePref('privacy_save_history', !_saveHistory),
                     trailing: ProfileSwitch(
@@ -214,7 +205,9 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                     title: 'Perfil privado',
                     subtitle: 'Solo vos ves tus favoritos',
                     onTap: () => _updatePref(
-                        'privacy_private_profile', !_privateProfile),
+                      'privacy_private_profile',
+                      !_privateProfile,
+                    ),
                     trailing: ProfileSwitch(
                       value: _privateProfile,
                       onChanged: (v) =>

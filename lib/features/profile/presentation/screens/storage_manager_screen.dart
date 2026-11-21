@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/cache_manager_service.dart';
-import 'package:pivote/core/theme/app_typography.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
 class StorageManagerScreen extends StatefulWidget {
   const StorageManagerScreen({super.key});
@@ -45,14 +47,15 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
   Future<void> _toggleWifiOnly(bool val) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('storage_wifi_only', val);
-    if (mounted) {
-      setState(() => _wifiOnly = val);
-    }
+    if (mounted) setState(() => _wifiOnly = val);
   }
 
   Future<void> _pickDownloadQuality() async {
-    final palette = ProfilePalette.of(context);
-    final options = ['Alta', 'Media', 'Baja'];
+    final options = [
+      ('Alta', 'Máxima nitidez disponible'),
+      ('Media', 'Balance entre calidad y datos'),
+      ('Baja', 'Ahorro máximo de espacio'),
+    ];
 
     final chosen = await AppDialogs.showModal<String>(
       context: context,
@@ -60,32 +63,31 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
         builder: (ctx) => SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-                  child: Text(
-                    'Calidad de descarga',
-                    style: AppFont.primary(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                      color: palette.text,
-                    ),
-                  ),
+                const PivoteSheetHeader(
+                  title: 'Calidad de descarga',
+                  subtitle: 'Elegí la calidad predeterminada',
+                  icon: Icons.high_quality_rounded,
                 ),
+                const SizedBox(height: 16),
                 ProfileGroupCard(
                   children: [
-                    for (final opt in options)
+                    for (final (label, desc) in options)
                       ProfileGroupRow(
-                        title: opt,
-                        valueText:
-                            _downloadQuality == opt ? 'Seleccionada' : null,
-                        onTap: () => Navigator.pop(ctx, opt),
+                        title: label,
+                        subtitle: desc,
+                        trailing: _downloadQuality == label
+                            ? Icon(
+                                Icons.check_circle_rounded,
+                                size: 20,
+                                color: AppTheme.accent(ctx),
+                              )
+                            : null,
+                        onTap: () => Navigator.pop(ctx, label),
                       ),
                   ],
                 ),
@@ -99,9 +101,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
     if (chosen != null && mounted) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('storage_download_quality', chosen);
-      if (mounted) {
-        setState(() => _downloadQuality = chosen);
-      }
+      if (mounted) setState(() => _downloadQuality = chosen);
     }
   }
 
@@ -121,7 +121,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
 
     await HapticFeedback.mediumImpact();
     setState(() => _isCleaning = true);
-    await Future.delayed(const Duration(milliseconds: 400));
+    await Future.delayed(const Duration(milliseconds: 350));
 
     await CacheManagerService.clearAllCache(clearHistory: false);
     await _loadData();
@@ -132,10 +132,10 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
     }
   }
 
-  Widget _buildDot(Color color) {
+  Widget _buildSegmentDot(Color color) {
     return Container(
-      width: 12,
-      height: 12,
+      width: 11,
+      height: 11,
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
@@ -145,7 +145,10 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
+    final accent = AppTheme.accent(context);
+    final segColor1 = accent;
+    final segColor2 = accent.withValues(alpha: 0.50);
+    final segColor3 = AppTheme.textTertiary(context);
 
     final totalFormatted =
         (_stats['formattedTotalSize'] as String?) ?? '0 B';
@@ -161,26 +164,27 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
     final prefBytes = (_stats['preferencesSize'] as int?) ?? 0;
     final totalBytes = imgBytes + appBytes + prefBytes;
 
-    // Proportional widths relative to 8 GB (or visual minimum so segments are visible)
     final double seg1 = totalBytes == 0
-        ? 0.02
-        : ((imgBytes / (64 * 1024 * 1024)).clamp(0.04, 0.25));
+        ? 0.025
+        : ((imgBytes / (64 * 1024 * 1024)).clamp(0.05, 0.28));
     final double seg2 = totalBytes == 0
-        ? 0.01
-        : ((appBytes / (64 * 1024 * 1024)).clamp(0.03, 0.20));
+        ? 0.015
+        : ((appBytes / (64 * 1024 * 1024)).clamp(0.035, 0.22));
     final double seg3 = totalBytes == 0
         ? 0.01
-        : ((prefBytes / (64 * 1024 * 1024)).clamp(0.015, 0.10));
+        : ((prefBytes / (64 * 1024 * 1024)).clamp(0.02, 0.12));
 
     return ProfileSubsectionScaffold(
       title: 'Almacenamiento',
+      subtitle: 'Caché local y descargas',
       children: [
         AppAnimations.staggeredSlideIn(
           index: 0,
           child: ProfileGroupCard(
+            highlighted: true,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 20, 16, 14),
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -190,30 +194,31 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                       children: [
                         Text(
                           totalFormatted,
-                          style: AppFont.primary(
+                          style: AppFont.mono(
                             fontSize: 32,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.64,
-                            color: palette.text,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.7,
+                            color: AppTheme.textPrimary(context),
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         Text(
-                          'de 8 GB usados',
+                          'en caché local',
                           style: AppFont.primary(
-                            fontSize: 15,
-                            color: palette.muted,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textTertiary(context),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
                       child: Container(
-                        height: 14,
+                        height: 11,
                         width: double.infinity,
-                        color: palette.switchOff,
+                        color: AppTheme.surface3(context),
                         child: LayoutBuilder(
                           builder: (context, constraints) {
                             final maxW = constraints.maxWidth;
@@ -222,22 +227,22 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                                 AnimatedContainer(
                                   duration: const Duration(milliseconds: 300),
                                   width: maxW * seg1,
-                                  height: 14,
-                                  color: const Color(0xFF4F9BF0),
+                                  height: 11,
+                                  color: segColor1,
                                 ),
                                 const SizedBox(width: 2),
                                 AnimatedContainer(
                                   duration: const Duration(milliseconds: 300),
                                   width: maxW * seg2,
-                                  height: 14,
-                                  color: const Color(0xFF3FD1A0),
+                                  height: 11,
+                                  color: segColor2,
                                 ),
                                 const SizedBox(width: 2),
                                 AnimatedContainer(
                                   duration: const Duration(milliseconds: 300),
                                   width: maxW * seg3,
-                                  height: 14,
-                                  color: const Color(0xFFF0C93A),
+                                  height: 11,
+                                  color: segColor3,
                                 ),
                               ],
                             );
@@ -249,18 +254,18 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                 ),
               ),
               ProfileGroupRow(
-                leading: _buildDot(const Color(0xFF4F9BF0)),
-                title: 'Descargas',
+                leading: _buildSegmentDot(segColor1),
+                title: 'Imágenes y logos',
                 valueText: imageFormatted,
               ),
               ProfileGroupRow(
-                leading: _buildDot(const Color(0xFF3FD1A0)),
-                title: 'Caché',
+                leading: _buildSegmentDot(segColor2),
+                title: 'Caché de aplicación',
                 valueText: appCacheFormatted,
               ),
               ProfileGroupRow(
-                leading: _buildDot(const Color(0xFFF0C93A)),
-                title: 'Otros',
+                leading: _buildSegmentDot(segColor3),
+                title: 'Preferencias y datos',
                 valueText: prefsFormatted,
               ),
             ],
@@ -276,7 +281,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                 children: [
                   ProfileGroupRow(
                     title: 'Solo con Wi-Fi',
-                    subtitle: 'Evitá gastar datos móviles',
+                    subtitle: 'Evitá consumir datos móviles',
                     onTap: () => _toggleWifiOnly(!_wifiOnly),
                     trailing: ProfileSwitch(
                       value: _wifiOnly,
@@ -284,7 +289,7 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> {
                     ),
                   ),
                   ProfileGroupRow(
-                    title: 'Calidad de descarga',
+                    title: 'Calidad predeterminada',
                     valueText: _downloadQuality,
                     showChevron: true,
                     onTap: _pickDownloadQuality,

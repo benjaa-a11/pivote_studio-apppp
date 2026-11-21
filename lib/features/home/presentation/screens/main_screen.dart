@@ -2,19 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/services/notification_service.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/home/presentation/screens/home_screen.dart';
-import 'package:pivote/features/soccer/presentation/screens/futbol_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/profile_screen.dart';
 import 'package:pivote/features/radio/presentation/screens/radios_screen.dart';
-import 'package:provider/provider.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pivote/shared/widgets/common/user_avatar.dart';
-import 'package:pivote/shared/widgets/common/floating_bottom_bar.dart';
+import 'package:pivote/features/soccer/presentation/screens/futbol_screen.dart';
 import 'package:pivote/shared/widgets/common/animated_indexed_stack.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/floating_bottom_bar.dart';
+import 'package:pivote/shared/widgets/common/user_avatar.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -36,14 +37,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       const RadiosScreen(),
       const ProfileScreen(),
     ];
-    return [for (var i = 0; i < pages.length; i++) PrimaryScrollController(controller: _scrollControllers[i], child: pages[i])];
+    return [
+      for (var i = 0; i < pages.length; i++)
+        PrimaryScrollController(
+          controller: _scrollControllers[i],
+          child: pages[i],
+        ),
+    ];
   }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Check notification permission after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkNotificationPermission();
     });
@@ -61,10 +67,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      debugPrint('🔄 App resumida - Actualizando datos de fútbol');
       try {
-        final soccerProvider = context.read<SoccerProvider>();
-        soccerProvider.fetchData(silent: true);
+        context.read<SoccerProvider>().fetchData(silent: true);
       } catch (e) {
         debugPrint('⚠️ Error al refrescar datos de fútbol: $e');
       }
@@ -73,11 +77,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   void _onNavItemTapped(int index) {
     if (_selectedIndex == index) {
-      // Second tap on the active tab: scroll back to top.
       final c = _scrollControllers[index];
       if (c.hasClients && c.offset > 0) {
         HapticFeedback.selectionClick();
-        c.animateTo(0, duration: const Duration(milliseconds: 450), curve: Curves.easeOutCubic);
+        c.animateTo(
+          0,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+        );
       }
       return;
     }
@@ -87,24 +94,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     });
   }
 
-  /// Checks if we should show the notification permission prompt.
-  /// Only shows once, tracked via SharedPreferences.
   Future<void> _checkNotificationPermission() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final hasPrompted = prefs.getBool('notification_prompt_shown') ?? false;
       if (hasPrompted) return;
 
-      // Check current permission status
       final isAlreadyEnabled =
           await NotificationService.areNotificationsEnabled();
       if (isAlreadyEnabled) {
-        // Already authorized, just mark as done
         await prefs.setBool('notification_prompt_shown', true);
         return;
       }
 
-      // Wait a bit so user sees the main screen first
       await Future.delayed(const Duration(seconds: 2));
       if (!mounted) return;
 
@@ -114,108 +116,105 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Shows a contextual bottom sheet explaining notification benefits.
   void _showNotificationPrompt(SharedPreferences prefs) {
-    final theme = Theme.of(context);
+    final accent = AppTheme.accent(context);
+    final onAccent = AppTheme.onAccent(context);
 
-    final dark = theme.brightness == Brightness.dark;
-    showModalBottomSheet(
+    AppDialogs.showModal<void>(
       context: context,
-      backgroundColor: AppTheme.surface1(context),
-      barrierColor: dark ? const Color(0xBD02040A) : const Color(0x8C02040A),
-      showDragHandle: false,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 36),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.hintColor.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.notifications_active_rounded,
-                size: 40,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              '¡Mantente al día!',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Activa las notificaciones para recibir alertas de partidos en vivo, nuevos canales y contenido exclusivo.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 14,
-                height: 1.5,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-            const SizedBox(height: 28),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  await NotificationService.requestPermission();
-                  await prefs.setBool('notification_prompt_shown', true);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: theme.colorScheme.primary,
-                  foregroundColor: theme.colorScheme.onPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+      child: Builder(
+        builder: (ctx) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 8, 22, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentDim(ctx),
+                    borderRadius: BorderRadius.circular(AppRadius.card),
+                    border: Border.all(
+                      color: accent.withValues(alpha: 0.32),
+                    ),
                   ),
-                  elevation: 0,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.notifications_active_rounded,
+                    size: 30,
+                    color: accent,
+                  ),
                 ),
-                child: Text(
-                  'ACTIVAR NOTIFICACIONES',
-                  style: GoogleFonts.spaceGrotesk(
+                const SizedBox(height: 18),
+                Text(
+                  '¡Mantente al día!',
+                  textAlign: TextAlign.center,
+                  style: AppFont.primary(
+                    fontSize: 21,
                     fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    letterSpacing: 0.5,
+                    letterSpacing: -0.4,
+                    color: AppTheme.textPrimary(ctx),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await prefs.setBool('notification_prompt_shown', true);
-              },
-              child: Text(
-                'Ahora no',
-                style: GoogleFonts.spaceGrotesk(
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                const SizedBox(height: 8),
+                Text(
+                  'Activá las notificaciones para recibir alertas de partidos en vivo, goles y nuevos canales.',
+                  textAlign: TextAlign.center,
+                  style: AppFont.primary(
+                    fontSize: 13.5,
+                    height: 1.48,
+                    fontWeight: FontWeight.w500,
+                    color: AppTheme.textSecondary(ctx),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await NotificationService.requestPermission();
+                      await prefs.setBool('notification_prompt_shown', true);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accent,
+                      foregroundColor: onAccent,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                    ),
+                    child: Text(
+                      'Activar notificaciones',
+                      style: AppFont.primary(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14.5,
+                        color: onAccent,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await prefs.setBool('notification_prompt_shown', true);
+                  },
+                  child: Text(
+                    'Ahora no',
+                    style: AppFont.primary(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                      color: AppTheme.textTertiary(ctx),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -223,11 +222,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final selectedColor = theme.colorScheme.primary;
+    final selectedColor = AppTheme.accent(context);
+    final inactiveColor = AppTheme.textTertiary(context);
 
     return Scaffold(
       extendBody: true,
+      backgroundColor: AppTheme.bg(context),
       body: Stack(
         children: [
           AnimatedIndexedStack(
@@ -248,8 +248,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     width: 22,
                     height: 22,
                     colorFilter: ColorFilter.mode(
-                      theme.iconTheme.color?.withValues(alpha: 0.7) ??
-                          Colors.grey,
+                      inactiveColor,
                       BlendMode.srcIn,
                     ),
                   ),
@@ -268,8 +267,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                   icon: Icon(
                     Icons.sports_soccer_outlined,
                     size: 22,
-                    color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
-                        Colors.grey,
+                    color: inactiveColor,
                   ),
                   activeIcon: Icon(
                     Icons.sports_soccer_rounded,
@@ -281,13 +279,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 FloatingBottomBarItem(
                   icon: FaIcon(
                     FontAwesomeIcons.radio,
-                    size: 22,
-                    color: theme.iconTheme.color?.withValues(alpha: 0.7) ??
-                        Colors.grey,
+                    size: 20,
+                    color: inactiveColor,
                   ),
                   activeIcon: FaIcon(
                     FontAwesomeIcons.radio,
-                    size: 22,
+                    size: 20,
                     color: selectedColor,
                   ),
                   label: 'Radio',

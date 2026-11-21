@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
-import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
 class SuspendedScreen extends StatefulWidget {
   const SuspendedScreen({super.key});
@@ -18,7 +21,6 @@ class _SuspendedScreenState extends State<SuspendedScreen> {
 
   Future<void> _checkStatus() async {
     if (_isChecking) return;
-
     setState(() => _isChecking = true);
 
     try {
@@ -30,12 +32,12 @@ class _SuspendedScreenState extends State<SuspendedScreen> {
         if (user != null && !user.isSuspended) {
           AppNotifications.showSuccess(
             context,
-            '¡Tu cuenta ha sido reactivada! Bienvenido de nuevo.',
+            '¡Tu cuenta fue reactivada! Bienvenido de nuevo.',
           );
         } else {
           AppNotifications.showWarning(
             context,
-            'Tu cuenta sigue suspendida. Si tienes dudas, ponte en contacto con soporte.',
+            'Tu cuenta sigue suspendida. Contactá con soporte si creés que es un error.',
           );
         }
       }
@@ -43,131 +45,118 @@ class _SuspendedScreenState extends State<SuspendedScreen> {
       if (mounted) {
         AppNotifications.showError(
           context,
-          'No se pudo verificar el estado actual. Revisa tu conexión.',
+          'No se pudo verificar el estado actual. Revisá tu conexión.',
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isChecking = false);
-      }
+      if (mounted) setState(() => _isChecking = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final danger = AppTheme.danger(context);
+    final accent = AppTheme.accent(context);
+    final onAccent = AppTheme.onAccent(context);
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.darkBg : AppTheme.lightBg,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Spacer(),
-
-              // Animated Ban Icon
-              AppAnimations.smoothFadeInScale(
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: (isDark
-                        ? AppTheme.darkDangerDim
-                        : AppTheme.lightDangerDim),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color:
-                          (isDark ? AppTheme.darkDanger : AppTheme.lightDanger)
-                              .withValues(alpha: 0.5),
-                      width: 2,
-                    ),
-                  ),
-                  child: Icon(
-                    Icons.gavel_rounded,
-                    size: 56,
-                    color: isDark ? AppTheme.darkDanger : AppTheme.lightDanger,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // Title
-              AppAnimations.smoothFadeIn(
-                child: Text(
-                  'Cuenta Suspendida',
-                  textAlign: TextAlign.center,
-                  style: AppFont.primary(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? AppTheme.darkText : AppTheme.lightText,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Subtitle / Description
-              AppAnimations.smoothFadeIn(
-                child: Text(
-                  'Tu cuenta ha sido suspendida temporalmente por no cumplir con nuestras pautas comunitarias o términos de servicio.\n\nSi crees que esto es un error o tu cuenta ya fue reactivada, haz clic en el botón de abajo para verificar el estado de tu cuenta.',
-                  textAlign: TextAlign.center,
-                  style: AppFont.primary(
-                    fontSize: 15,
-                    height: 1.5,
-                    color: isDark ? AppTheme.darkText2 : AppTheme.lightText2,
-                  ),
-                ),
-              ),
-
-              const Spacer(),
-
-              // Buttons
-              AppAnimations.smoothFadeIn(
-                child: Column(
-                  children: [
-                    // Verify Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 58,
-                      child: ElevatedButton(
-                        onPressed: _isChecking ? null : _checkStatus,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.accent(context),
-                          foregroundColor: AppTheme.onAccent(context),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+      backgroundColor: AppTheme.bg(context),
+      body: PivoteAmbientBackdrop(
+        accentColor: danger,
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: AppAnimations.smoothFadeInScale(
+                  child: PivoteDiffusedCard(
+                    borderRadius: AppRadius.hero,
+                    glowColor: danger,
+                    glowAlignment: const Alignment(0.0, -0.9),
+                    glowOpacity: 1.4,
+                    highlighted: true,
+                    borderColor: danger.withValues(alpha: 0.36),
+                    padding: const EdgeInsets.fromLTRB(24, 30, 24, 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: AppTheme.dangerDim(context),
+                            borderRadius: BorderRadius.circular(AppRadius.hero),
+                            border: Border.all(
+                              color: danger.withValues(alpha: 0.40),
+                              width: 1.3,
+                            ),
                           ),
-                          elevation: 0,
+                          child: Icon(
+                            Icons.gavel_rounded,
+                            size: 38,
+                            color: danger,
+                          ),
                         ),
-                        child: _isChecking
-                            ? SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: PivoteLoader(
-                                  color: AppTheme.onAccent(context),
-                                  strokeWidth: 2.5,
-                                  size: 24,
-                                ),
-                              )
-                            : Text(
-                                'Verificar Estado',
-                                style: AppFont.primary(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
+                        const SizedBox(height: 22),
+                        Text(
+                          'Cuenta suspendida',
+                          textAlign: TextAlign.center,
+                          style: AppFont.primary(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textPrimary(context),
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Tu cuenta fue suspendida temporalmente por nuestras normas comunitarias.\n\nSi creés que es un error o ya fue reactivada, comprobá tu estado abajo.',
+                          textAlign: TextAlign.center,
+                          style: AppFont.primary(
+                            fontSize: 13.8,
+                            height: 1.5,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.textSecondary(context),
+                          ),
+                        ),
+                        const SizedBox(height: 26),
+                        ApplePressable(
+                          scaleDownFactor: 0.97,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          onTap: _isChecking ? null : _checkStatus,
+                          child: Container(
+                            width: double.infinity,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: accent,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              boxShadow: AppShadows.glow(accent, alpha: 0.25),
+                            ),
+                            alignment: Alignment.center,
+                            child: _isChecking
+                                ? PivoteLoader(
+                                    color: onAccent,
+                                    strokeWidth: 2.3,
+                                    size: 20,
+                                  )
+                                : Text(
+                                    'Verificar estado',
+                                    style: AppFont.primary(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: onAccent,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),

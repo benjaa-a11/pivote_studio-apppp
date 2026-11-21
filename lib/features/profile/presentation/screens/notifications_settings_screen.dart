@@ -3,9 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/notification_service.dart';
-import 'package:pivote/core/theme/app_typography.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
 class NotificationsSettingsScreen extends StatefulWidget {
   const NotificationsSettingsScreen({super.key});
@@ -61,7 +62,6 @@ class _NotificationsSettingsScreenState
   }
 
   Future<void> _pickQuietHours() async {
-    final palette = ProfilePalette.of(context);
     final options = [
       '23:00 – 07:00',
       '22:00 – 07:00',
@@ -75,30 +75,29 @@ class _NotificationsSettingsScreenState
         builder: (ctx) => SafeArea(
           top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-                  child: Text(
-                    'Horario silencioso',
-                    style: AppFont.primary(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.2,
-                      color: palette.text,
-                    ),
-                  ),
+                const PivoteSheetHeader(
+                  title: 'Horario silencioso',
+                  subtitle: 'Silenciá alertas durante tu descanso',
+                  icon: Icons.bedtime_outlined,
                 ),
+                const SizedBox(height: 16),
                 ProfileGroupCard(
                   children: [
                     for (final opt in options)
                       ProfileGroupRow(
                         title: opt,
-                        valueText: _quietHours == opt ? 'Activo' : null,
+                        trailing: _quietHours == opt
+                            ? Icon(
+                                Icons.check_circle_rounded,
+                                size: 20,
+                                color: AppTheme.accent(ctx),
+                              )
+                            : null,
                         onTap: () => Navigator.pop(ctx, opt),
                       ),
                   ],
@@ -113,9 +112,7 @@ class _NotificationsSettingsScreenState
     if (chosen != null && mounted) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('notif_quiet_hours', chosen);
-      if (mounted) {
-        setState(() => _quietHours = chosen);
-      }
+      if (mounted) setState(() => _quietHours = chosen);
     }
   }
 
@@ -123,17 +120,18 @@ class _NotificationsSettingsScreenState
   Widget build(BuildContext context) {
     return ProfileSubsectionScaffold(
       title: 'Notificaciones',
+      subtitle: 'Control de avisos y alertas',
       children: [
         AppAnimations.staggeredSlideIn(
           index: 0,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const ProfileSectionTitle('Canales', first: true),
+              const ProfileSectionTitle('Canales y eventos', first: true),
               ProfileGroupCard(
                 children: [
                   ProfileGroupRow(
-                    title: 'Nuevos videos',
+                    title: 'Nuevos contenidos',
                     subtitle: 'De los canales que seguís',
                     onTap: () => _updatePref('notif_new_videos', !_newVideos),
                     trailing: ProfileSwitch(
@@ -143,7 +141,7 @@ class _NotificationsSettingsScreenState
                   ),
                   ProfileGroupRow(
                     title: 'En vivo ahora',
-                    subtitle: 'Cuando un canal inicia una transmisión',
+                    subtitle: 'Cuando inicia un partido o transmisión',
                     onTap: () => _updatePref('notif_live_now', !_liveNow),
                     trailing: ProfileSwitch(
                       value: _liveNow,
@@ -154,7 +152,9 @@ class _NotificationsSettingsScreenState
                     title: 'Seguir viendo',
                     subtitle: 'Recordatorio de lo que dejaste a medias',
                     onTap: () => _updatePref(
-                        'notif_continue_watching', !_continueWatching),
+                      'notif_continue_watching',
+                      !_continueWatching,
+                    ),
                     trailing: ProfileSwitch(
                       value: _continueWatching,
                       onChanged: (v) =>
@@ -175,7 +175,7 @@ class _NotificationsSettingsScreenState
               ProfileGroupCard(
                 children: [
                   ProfileGroupRow(
-                    title: 'Novedades y estrenos',
+                    title: 'Novedades y mejoras',
                     onTap: () =>
                         _updatePref('notif_news_releases', !_newsAndReleases),
                     trailing: ProfileSwitch(

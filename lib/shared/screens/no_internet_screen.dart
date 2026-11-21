@@ -1,6 +1,8 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
 class NoInternetScreen extends StatelessWidget {
   final VoidCallback onRetry;
@@ -9,175 +11,110 @@ class NoInternetScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final accent = AppTheme.accent(context);
+    final onAccent = AppTheme.onAccent(context);
 
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background Gradient
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [AppTheme.darkBg, AppTheme.darkBg1]
-                    : [AppTheme.lightBg, AppTheme.lightBg2],
+      backgroundColor: AppTheme.bg(context),
+      body: PivoteAmbientBackdrop(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: PivoteDiffusedCard(
+                  borderRadius: AppRadius.hero,
+                  glowColor: accent,
+                  glowAlignment: const Alignment(0.0, -0.9),
+                  glowOpacity: 1.35,
+                  highlighted: true,
+                  padding: const EdgeInsets.fromLTRB(26, 32, 26, 26),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 78,
+                        height: 78,
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentDim(context),
+                          borderRadius: BorderRadius.circular(AppRadius.hero),
+                          border: Border.all(
+                            color: accent.withValues(alpha: 0.34),
+                            width: 1.2,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.wifi_off_rounded,
+                          size: 36,
+                          color: accent,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Text(
+                        'Sin conexión',
+                        textAlign: TextAlign.center,
+                        style: AppFont.primary(
+                          fontSize: 25,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary(context),
+                          letterSpacing: -0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'No detectamos acceso a internet. Comprobá tu Wi-Fi o datos móviles e intentá nuevamente.',
+                        textAlign: TextAlign.center,
+                        style: AppFont.primary(
+                          fontSize: 13.8,
+                          height: 1.5,
+                          color: AppTheme.textSecondary(context),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 26),
+                      ApplePressable(
+                        scaleDownFactor: 0.97,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        onTap: onRetry,
+                        child: Container(
+                          width: double.infinity,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: accent,
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            boxShadow: AppShadows.glow(accent, alpha: 0.25),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.refresh_rounded,
+                                size: 19,
+                                color: onAccent,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Reintentar',
+                                style: AppFont.primary(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: onAccent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-
-          // Decorative Blobs
-          Positioned(
-            top: -100,
-            right: -100,
-            child: _buildBlob(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              size: 300,
-            ),
-          ),
-          Positioned(
-            bottom: -50,
-            left: -50,
-            child: _buildBlob(
-              color: theme.colorScheme.secondary.withValues(alpha: 0.1),
-              size: 250,
-            ),
-          ),
-
-          // Content
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Animated Icon Container
-                  Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDark
-                          ? theme.colorScheme.surface.withValues(alpha: 0.5)
-                          : Colors.white.withValues(alpha: 0.8),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              theme.colorScheme.primary.withValues(alpha: 0.2),
-                          blurRadius: 40,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(70),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Center(
-                          child: Icon(
-                            Icons.wifi_off_rounded,
-                            size: 60,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-
-                  // Title
-                  Text(
-                    'Sin Conexión',
-                    style: AppFont.primary(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                      color: theme.colorScheme.onSurface,
-                      letterSpacing: -1,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Description
-                  Text(
-                    'No detectamos una conexión a internet activa. Comprueba tu red WiFi o datos móviles e inténtalo de nuevo.',
-                    textAlign: TextAlign.center,
-                    style: AppFont.primary(
-                      fontSize: 15,
-                      height: 1.6,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 56),
-
-                  // Retry Button
-                  Container(
-                    width: double.infinity,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: AppTheme.accent(context),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color:
-                              theme.colorScheme.primary.withValues(alpha: 0.25),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: onRetry,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.refresh_rounded,
-                            color: AppTheme.onAccent(context),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'REINTENTAR',
-                            style: AppFont.primary(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.onAccent(context),
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBlob({required Color color, required double size}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
+        ),
       ),
     );
   }

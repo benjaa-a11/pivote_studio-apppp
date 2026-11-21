@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
-import 'package:pivote/core/theme/app_typography.dart';
+import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final bool focusPassword;
@@ -67,97 +68,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<String?> _askCurrentPassword() async {
-    final palette = ProfilePalette.of(context);
-    final currentPassCtrl = TextEditingController();
-
-    return showDialog<String>(
+  Future<String?> _askCurrentPassword() {
+    return AppDialogs.showInputDialog(
       context: context,
-      barrierColor: palette.isDark
-          ? const Color(0xBD02040A)
-          : const Color(0x8C02040A),
-      builder: (ctx) {
-        return AlertDialog(
-          backgroundColor: palette.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(26),
-            side: BorderSide(color: palette.border),
-          ),
-          title: Text(
-            'Confirmar contraseña actual',
-            style: AppFont.primary(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: palette.text,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Ingresá tu contraseña actual para guardar la nueva clave.',
-                style: AppFont.primary(
-                  fontSize: 13.5,
-                  color: palette.muted,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                decoration: BoxDecoration(
-                  color: palette.card,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: palette.border),
-                ),
-                child: TextField(
-                  controller: currentPassCtrl,
-                  obscureText: true,
-                  autofocus: true,
-                  style: AppFont.primary(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: palette.text,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Contraseña actual',
-                    hintStyle: AppFont.primary(
-                      color: palette.muted,
-                      fontSize: 15,
-                    ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                'Cancelar',
-                style: AppFont.primary(
-                  color: palette.muted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, currentPassCtrl.text),
-              child: Text(
-                'Confirmar',
-                style: AppFont.primary(
-                  color: palette.accent,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+      title: 'Confirmar contraseña',
+      message: 'Ingresá tu contraseña actual para guardar la nueva clave.',
+      hintText: 'Contraseña actual',
+      obscureText: true,
+      icon: Icons.lock_outline_rounded,
     );
   }
 
@@ -229,7 +147,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
     final userProvider = context.watch<UserProvider>();
     final user = userProvider.user;
     final imagePath = userProvider.profileImagePath;
@@ -244,21 +161,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     return ProfileSubsectionScaffold(
       title: 'Editar perfil',
+      subtitle: 'Datos personales y credenciales',
       children: [
-        // Avatar (.ava: 112x112 with animated colorful ring + edit button)
         AppAnimations.staggeredSlideIn(
           index: 0,
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.only(top: 6, bottom: 18),
+              padding: const EdgeInsets.only(top: 6, bottom: 20),
               child: SizedBox(
-                width: 112,
-                height: 112,
+                width: 108,
+                height: 108,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     ProfileAvatarWithRing(
-                      size: 112,
+                      size: 108,
                       imagePath: imagePath,
                       photoUrl: photoUrl,
                       fallbackInitial: initial,
@@ -276,21 +193,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           userProvider.updateProfileImage();
                         },
                         child: Container(
-                          width: 36,
-                          height: 36,
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: palette.primaryBtnBg,
+                            color: AppTheme.accent(context),
                             border: Border.all(
-                              color: palette.bg,
+                              color: AppTheme.bg(context),
                               width: 3,
                             ),
                           ),
                           alignment: Alignment.center,
                           child: Icon(
                             Icons.edit_rounded,
-                            size: 16,
-                            color: palette.primaryBtnText,
+                            size: 15,
+                            color: AppTheme.onAccent(context),
                           ),
                         ),
                       ),
@@ -301,8 +218,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
         ),
-
-        // Fields Group
         AppAnimations.staggeredSlideIn(
           index: 1,
           child: ProfileGroupCard(
@@ -331,8 +246,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ],
           ),
         ),
-
-        // Plan Section
         AppAnimations.staggeredSlideIn(
           index: 2,
           child: Column(
@@ -353,8 +266,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ],
           ),
         ),
-
-        // Save Button
         AppAnimations.staggeredSlideIn(
           index: 3,
           child: ProfileActionButton(
@@ -415,17 +326,12 @@ class _EditableProfileFieldState extends State<_EditableProfileField> {
   @override
   void dispose() {
     _node.removeListener(_handleFocusChange);
-    if (_ownsNode) {
-      _node.dispose();
-    }
+    if (_ownsNode) _node.dispose();
     super.dispose();
   }
 
   @override
-  
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
-
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
@@ -433,20 +339,22 @@ class _EditableProfileFieldState extends State<_EditableProfileField> {
         widget.onTap?.call();
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 150),
               style: AppFont.primary(
-                fontSize: 12.5,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: _focused ? palette.accent : palette.muted,
+                color: _focused
+                    ? AppTheme.accent(context)
+                    : AppTheme.textTertiary(context),
               ),
               child: Text(widget.label),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             TextField(
               controller: widget.controller,
               focusNode: _node,
@@ -454,9 +362,9 @@ class _EditableProfileFieldState extends State<_EditableProfileField> {
               obscureText: widget.obscureText,
               onTap: widget.onTap,
               style: AppFont.primary(
-                fontSize: 17,
-                fontWeight: FontWeight.w500,
-                color: palette.text,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary(context),
               ),
               decoration: const InputDecoration(
                 isDense: true,

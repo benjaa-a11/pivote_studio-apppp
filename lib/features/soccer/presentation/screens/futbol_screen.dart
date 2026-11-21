@@ -4,17 +4,21 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:pivote/features/soccer/presentation/screens/match_detail_screen.dart';
 import 'package:pivote/features/video/data/models/channel.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/app_state_views.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
+import 'package:pivote/shared/widgets/common/loading_shimmer.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
 class FutbolScreen extends StatefulWidget {
   const FutbolScreen({super.key});
@@ -59,13 +63,9 @@ class _FutbolScreenState extends State<FutbolScreen> {
   ) async {
     unawaited(HapticFeedback.lightImpact());
     final initial = _currentSelectedDate(soccerProvider.selectedDateKey);
-    final picked = await showModalBottomSheet<DateTime>(
+    final picked = await AppDialogs.showModal<DateTime>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: const Color(0xBD02040A),
-      useSafeArea: true,
-      builder: (_) => _CustomCalendarSheet(initialDate: initial),
+      child: _CustomCalendarSheet(initialDate: initial),
     );
     if (picked != null && context.mounted) {
       final now = DateTime.now();
@@ -84,133 +84,132 @@ class _FutbolScreenState extends State<FutbolScreen> {
   Widget build(BuildContext context) {
     final soccerProvider = context.watch<SoccerProvider>();
     final channelProvider = context.watch<ChannelProvider>();
+    final hPad = AppResponsive.screenHorizontalPadding(context);
 
     final data = soccerProvider.selectedDateData;
     final isLoading = soccerProvider.isLoadingSelectedDate && data == null;
     final error = soccerProvider.selectedDateError;
     final sections =
         data != null ? _buildSections(data) : const <_LeagueSectionData>[];
+    final liveCount = data?.matches.where((m) => m.isLive).length ?? 0;
 
     return Scaffold(
-      backgroundColor: AppColors.darkBg,
-      body: Stack(
-        children: [
-          // Top-right subtle lime radial glow (CSS body)
-          Positioned(
-            top: -120,
-            right: -80,
-            child: IgnorePointer(
-              child: Container(
-                width: 340,
-                height: 340,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.darkAccent.withValues(alpha: 0.09),
-                      Colors.transparent,
+      backgroundColor: AppTheme.bg(context),
+      body: PivoteAmbientBackdrop(
+        child: SafeArea(
+          bottom: false,
+          child: CustomScrollView(
+            physics: const ClampingScrollPhysics(),
+            slivers: [
+              // Header principal unificado
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: hPad.add(const EdgeInsets.only(top: 14, bottom: 14)),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Fútbol',
+                              style: AppFont.primary(
+                                color: AppTheme.textPrimary(context),
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.7,
+                                height: 1.05,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              liveCount > 0
+                                  ? '$liveCount ${liveCount == 1 ? 'partido en vivo' : 'partidos en vivo'}'
+                                  : 'Agenda deportiva diaria',
+                              style: AppFont.primary(
+                                color: liveCount > 0
+                                    ? AppTheme.danger(context)
+                                    : AppTheme.textTertiary(context),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PivoteIconButton(
+                        icon: Icons.refresh_rounded,
+                        tooltip: 'Actualizar jornada',
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          unawaited(soccerProvider.refresh());
+                        },
+                      ),
                     ],
                   ),
                 ),
               ),
-            ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: RefreshIndicator(
-              color: AppColors.darkAccent,
-              backgroundColor: AppColors.darkBg1,
-              onRefresh: soccerProvider.refresh,
-              child: CustomScrollView(
-                physics: const ClampingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
+
+              // Selector de fecha moderno (Ayer · Hoy · Mañana · Fecha)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: hPad.add(const EdgeInsets.only(bottom: 16)),
+                  child: _DateSelectorBar(
+                    selectedDateKey: soccerProvider.selectedDateKey,
+                    onSelectDateKey: (k) {
+                      unawaited(soccerProvider.selectDate(k));
+                    },
+                    onPickCustomDate: () =>
+                        _openCustomDatePicker(context, soccerProvider),
+                  ),
                 ),
-                slivers: [
-                  // Header
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Fútbol',
-                            style: AppFont.primary(
-                              color: AppColors.darkText,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.6,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Date Selector Bar (Ayer · Hoy · Mañana · Fecha)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                      child: _DateSelectorBar(
-                        selectedDateKey: soccerProvider.selectedDateKey,
-                        onSelectDateKey: (k) {
-                          HapticFeedback.selectionClick();
-                          unawaited(soccerProvider.selectDate(k));
-                        },
-                        onPickCustomDate: () =>
-                            _openCustomDatePicker(context, soccerProvider),
-                      ),
-                    ),
-                  ),
-
-                  // Body states
-                  if (isLoading)
-                    const SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: Center(child: PivoteLoader(size: 36)),
-                    )
-                  else if (error != null && data == null)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _EmptyStateView(
-                        icon: Icons.wifi_off_rounded,
-                        title: 'Error de conexión',
-                        subtitle: 'No se pudo cargar la jornada futbolística.',
-                        actionLabel: 'Reintentar',
-                        onAction: soccerProvider.refresh,
-                      ),
-                    )
-                  else if (sections.isEmpty)
-                    const SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _EmptyStateView(
-                        icon: Icons.sports_soccer_rounded,
-                        title: 'Sin partidos para esta fecha',
-                        subtitle:
-                            'Probá seleccionando otro día en el calendario superior.',
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-                      sliver: SliverList.separated(
-                        itemCount: sections.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 14),
-                        itemBuilder: (context, idx) {
-                          final section = sections[idx];
-                          return _LeagueGroupCard(
-                            league: section.league,
-                            matches: section.matches,
-                            channelProvider: channelProvider,
-                            soccerProvider: soccerProvider,
-                          );
-                        },
-                      ),
-                    ),
-                ],
               ),
-            ),
+
+              // Estados de contenido: Skeleton + Shimmer / Error / Vacío / Ligas
+              if (isLoading)
+                const PivoteFutbolSkeleton(leagueCount: 3)
+              else if (error != null && data == null)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: AppStateView.error(
+                    icon: Icons.wifi_off_rounded,
+                    title: 'Error de conexión',
+                    subtitle: 'No se pudo cargar la jornada futbolística.',
+                    actionLabel: 'Reintentar',
+                    onAction: () => unawaited(soccerProvider.refresh()),
+                  ),
+                )
+              else if (sections.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: AppStateView.empty(
+                    icon: Icons.sports_soccer_rounded,
+                    title: 'Sin partidos para esta fecha',
+                    subtitle:
+                        'Probá seleccionando otro día en el calendario superior.',
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: hPad.add(const EdgeInsets.only(bottom: 120)),
+                  sliver: SliverList.separated(
+                    itemCount: sections.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, idx) {
+                      final section = sections[idx];
+                      return _LeagueGroupCard(
+                        league: section.league,
+                        matches: section.matches,
+                        channelProvider: channelProvider,
+                        soccerProvider: soccerProvider,
+                      );
+                    },
+                  ),
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -258,104 +257,36 @@ class _DateSelectorBar extends StatelessWidget {
       }
     }
 
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: AppColors.glass,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.darkBorder),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _DatePill(
-              label: 'Ayer',
-              selected: isYesterday,
-              onTap: () => onSelectDateKey(yesterdayKey),
-            ),
-          ),
-          Expanded(
-            child: _DatePill(
-              label: 'Hoy',
-              selected: isToday,
-              onTap: () => onSelectDateKey('today'),
-            ),
-          ),
-          Expanded(
-            child: _DatePill(
-              label: 'Mañana',
-              selected: isTomorrow,
-              onTap: () => onSelectDateKey(tomorrowKey),
-            ),
-          ),
-          Expanded(
-            child: _DatePill(
-              label: customLabel,
-              icon: Icons.calendar_today_rounded,
-              selected: isCustom,
-              onTap: onPickCustomDate,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    final selectedIndex = isYesterday
+        ? 0
+        : isToday
+            ? 1
+            : isTomorrow
+                ? 2
+                : 3;
 
-class _DatePill extends StatelessWidget {
-  final String label;
-  final IconData? icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _DatePill({
-    required this.label,
-    this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.darkAccent : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+    return PivoteSegmentedBar(
+      selectedIndex: selectedIndex,
+      items: [
+        const PivoteSegmentItem(label: 'Ayer'),
+        const PivoteSegmentItem(label: 'Hoy'),
+        const PivoteSegmentItem(label: 'Mañana'),
+        PivoteSegmentItem(
+          label: customLabel,
+          icon: Icons.calendar_today_rounded,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: 13,
-                color:
-                    selected ? AppColors.onDarkAccent : AppColors.darkText3,
-              ),
-              const SizedBox(width: 5),
-            ],
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppFont.primary(
-                  color:
-                      selected ? AppColors.onDarkAccent : AppColors.darkText2,
-                  fontSize: 13,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      ],
+      onChanged: (idx) {
+        if (idx == 0) {
+          onSelectDateKey(yesterdayKey);
+        } else if (idx == 1) {
+          onSelectDateKey('today');
+        } else if (idx == 2) {
+          onSelectDateKey(tomorrowKey);
+        } else {
+          onPickCustomDate();
+        }
+      },
     );
   }
 }
@@ -375,51 +306,53 @@ class _LeagueGroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.darkBg1,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.darkBorder),
-      ),
-      clipBehavior: Clip.antiAlias,
+    final hasLive = matches.any((m) => m.isLive);
+
+    return PivoteDiffusedCard(
+      borderRadius: AppRadius.lg,
+      glowColor: hasLive ? AppTheme.danger(context) : AppTheme.accent(context),
+      glowAlignment: const Alignment(-0.85, -0.9),
+      glowOpacity: hasLive ? 1.15 : 0.65,
+      highlighted: hasLive,
       child: Column(
         children: [
-          // League Header
+          // Cabecera de liga
           Container(
             padding: const EdgeInsets.fromLTRB(16, 13, 16, 12),
-            decoration: const BoxDecoration(
-              color: AppColors.glass,
+            decoration: BoxDecoration(
               border: Border(
-                bottom: BorderSide(color: AppColors.darkBorder),
+                bottom: BorderSide(color: AppTheme.border(context)),
               ),
             ),
             child: Row(
               children: [
-                if ((league.logoUrl ?? '').isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 10),
-                    child: CachedNetworkImage(
-                      imageUrl: league.logoUrl!,
-                      cacheManager: ImageCacheHelper.logoCacheManager,
-                      width: 22,
-                      height: 22,
-                      fit: BoxFit.contain,
-                      errorWidget: (_, __, ___) => const Icon(
-                        Icons.emoji_events_outlined,
-                        color: AppColors.darkText3,
-                        size: 18,
-                      ),
-                    ),
-                  )
-                else
-                  const Padding(
-                    padding: EdgeInsets.only(right: 10),
-                    child: Icon(
-                      Icons.emoji_events_outlined,
-                      color: AppColors.darkText3,
-                      size: 18,
-                    ),
+                Container(
+                  width: 30,
+                  height: 30,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface2(context),
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                    border: Border.all(color: AppTheme.border(context)),
                   ),
+                  child: (league.logoUrl ?? '').isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: league.logoUrl!,
+                          cacheManager: ImageCacheHelper.logoCacheManager,
+                          fit: BoxFit.contain,
+                          errorWidget: (_, __, ___) => Icon(
+                            Icons.emoji_events_outlined,
+                            color: AppTheme.textTertiary(context),
+                            size: 16,
+                          ),
+                        )
+                      : Icon(
+                          Icons.emoji_events_outlined,
+                          color: AppTheme.textTertiary(context),
+                          size: 16,
+                        ),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -429,9 +362,10 @@ class _LeagueGroupCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppFont.primary(
-                          color: AppColors.darkText,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary(context),
+                          fontSize: 14.2,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
                         ),
                       ),
                       if (league.country.isNotEmpty)
@@ -440,9 +374,9 @@ class _LeagueGroupCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppFont.primary(
-                            color: AppColors.darkText3,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w500,
+                            color: AppTheme.textTertiary(context),
+                            fontSize: 11.2,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                     ],
@@ -452,15 +386,23 @@ class _LeagueGroupCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppColors.darkBg2,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.darkBorder),
+                    color: hasLive
+                        ? AppTheme.dangerDim(context)
+                        : AppTheme.surface2(context),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(
+                      color: hasLive
+                          ? AppTheme.danger(context).withValues(alpha: 0.34)
+                          : AppTheme.border(context),
+                    ),
                   ),
                   child: Text(
                     '${matches.length}',
                     style: AppFont.mono(
-                      color: AppColors.darkText3,
-                      fontSize: 11,
+                      color: hasLive
+                          ? AppTheme.danger(context)
+                          : AppTheme.textTertiary(context),
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -469,13 +411,13 @@ class _LeagueGroupCard extends StatelessWidget {
             ),
           ),
 
-          // Match Rows
+          // Filas de partidos
           for (var i = 0; i < matches.length; i++) ...[
             if (i > 0)
-              const Divider(
+              Divider(
                 height: 1,
                 thickness: 1,
-                color: AppColors.darkBorder,
+                color: AppTheme.border(context),
               ),
             _MatchRow(
               match: matches[i],
@@ -504,6 +446,7 @@ class _MatchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
     final isLive = match.isLive;
     final isFinished = match.isFinished;
     final hasScore = !match.isScheduled;
@@ -525,10 +468,10 @@ class _MatchRow extends StatelessWidget {
                 : match.formattedTime);
 
     final statusColor = isLive
-        ? AppColors.live
+        ? AppTheme.danger(context)
         : isFinished
-            ? AppColors.darkText3
-            : AppColors.darkAccent;
+            ? AppTheme.textTertiary(context)
+            : AppTheme.accent(context);
 
     return Material(
       color: Colors.transparent,
@@ -536,9 +479,7 @@ class _MatchRow extends StatelessWidget {
         onTap: () {
           HapticFeedback.lightImpact();
           Navigator.of(context).push(
-            AppAnimations.createRoute(
-              MatchDetailScreen(match: match),
-            ),
+            AppAnimations.createRoute(MatchDetailScreen(match: match)),
           );
         },
         child: Container(
@@ -548,7 +489,7 @@ class _MatchRow extends StatelessWidget {
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                     colors: [
-                      homeColor.withValues(alpha: 0.06),
+                      homeColor.withValues(alpha: isDark ? 0.08 : 0.05),
                       Colors.transparent,
                     ],
                   ),
@@ -557,26 +498,25 @@ class _MatchRow extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 13, 14, 13),
           child: Row(
             children: [
-              // Status / Time column
+              // Columna de estado / horario
               SizedBox(
-                width: 54,
+                width: 56,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (isLive) ...[
+                        if (isLive)
                           Container(
                             width: 6,
                             height: 6,
                             margin: const EdgeInsets.only(right: 5),
-                            decoration: const BoxDecoration(
-                              color: AppColors.live,
+                            decoration: BoxDecoration(
+                              color: AppTheme.danger(context),
                               shape: BoxShape.circle,
                             ),
                           ),
-                        ],
                         Flexible(
                           child: Text(
                             statusLabel,
@@ -585,7 +525,7 @@ class _MatchRow extends StatelessWidget {
                             style: AppFont.mono(
                               color: statusColor,
                               fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
@@ -599,7 +539,7 @@ class _MatchRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppFont.primary(
-                            color: AppColors.darkText3,
+                            color: AppTheme.textTertiary(context),
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
                           ),
@@ -611,7 +551,7 @@ class _MatchRow extends StatelessWidget {
 
               const SizedBox(width: 8),
 
-              // Teams + Score column
+              // Equipos + marcador
               Expanded(
                 child: Column(
                   children: [
@@ -621,6 +561,7 @@ class _MatchRow extends StatelessWidget {
                           : match.homeTeam,
                       logoUrl: match.homeTeamData.logoUrl ?? '',
                       score: hasScore ? '${match.homeTeamData.score}' : null,
+                      isLive: isLive,
                       isWinner: isFinished &&
                           hasScore &&
                           match.homeTeamData.score > match.awayTeamData.score,
@@ -632,6 +573,7 @@ class _MatchRow extends StatelessWidget {
                           : match.awayTeam,
                       logoUrl: match.awayTeamData.logoUrl ?? '',
                       score: hasScore ? '${match.awayTeamData.score}' : null,
+                      isLive: isLive,
                       isWinner: isFinished &&
                           hasScore &&
                           match.awayTeamData.score > match.homeTeamData.score,
@@ -640,46 +582,51 @@ class _MatchRow extends StatelessWidget {
                 ),
               ),
 
-              // "Ver" button ONLY when watchable (never on finished matches!)
+              // Botón "Ver" únicamente cuando hay señal disponible
               if (canWatch) ...[
                 const SizedBox(width: 12),
-                Material(
-                  color: AppColors.darkAccent,
-                  borderRadius: BorderRadius.circular(11),
-                  child: InkWell(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.of(context).push(
-                        AppAnimations.createRoute(
-                          PlayerScreen(
-                            channel: resolvedChannels.first,
+                ApplePressable(
+                  scaleDownFactor: 0.94,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.of(context).push(
+                      AppAnimations.createRoute(
+                        PlayerScreen(channel: resolvedChannels.first),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: isLive
+                          ? AppTheme.danger(context)
+                          : AppTheme.accent(context),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.play_arrow_rounded,
+                          color: isLive
+                              ? Colors.white
+                              : AppTheme.onAccent(context),
+                          size: 16,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Ver',
+                          style: AppFont.primary(
+                            color: isLive
+                                ? Colors.white
+                                : AppTheme.onAccent(context),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(11),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 11, vertical: 7),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.play_arrow_rounded,
-                            color: AppColors.onDarkAccent,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 3),
-                          Text(
-                            'Ver',
-                            style: AppFont.primary(
-                              color: AppColors.onDarkAccent,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
                 ),
@@ -697,12 +644,14 @@ class _TeamScoreLine extends StatelessWidget {
   final String logoUrl;
   final String? score;
   final bool isWinner;
+  final bool isLive;
 
   const _TeamScoreLine({
     required this.name,
     required this.logoUrl,
     this.score,
     this.isWinner = false,
+    this.isLive = false,
   });
 
   @override
@@ -710,23 +659,23 @@ class _TeamScoreLine extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 20,
-          height: 20,
+          width: 21,
+          height: 21,
           child: logoUrl.isNotEmpty
               ? CachedNetworkImage(
                   imageUrl: logoUrl,
                   cacheManager: ImageCacheHelper.logoCacheManager,
                   fit: BoxFit.contain,
-                  errorWidget: (_, __, ___) => const Icon(
+                  errorWidget: (_, __, ___) => Icon(
                     Icons.shield_outlined,
                     size: 16,
-                    color: AppColors.darkText3,
+                    color: AppTheme.textTertiary(context),
                   ),
                 )
-              : const Icon(
+              : Icon(
                   Icons.shield_outlined,
                   size: 16,
-                  color: AppColors.darkText3,
+                  color: AppTheme.textTertiary(context),
                 ),
         ),
         const SizedBox(width: 9),
@@ -736,9 +685,11 @@ class _TeamScoreLine extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: AppFont.primary(
-              color: isWinner ? AppColors.darkText : AppColors.darkText2,
+              color: isWinner || isLive
+                  ? AppTheme.textPrimary(context)
+                  : AppTheme.textSecondary(context),
               fontSize: 13.5,
-              fontWeight: isWinner ? FontWeight.w700 : FontWeight.w600,
+              fontWeight: isWinner || isLive ? FontWeight.w700 : FontWeight.w600,
             ),
           ),
         ),
@@ -747,9 +698,11 @@ class _TeamScoreLine extends StatelessWidget {
           Text(
             score!,
             style: AppFont.mono(
-              color: isWinner ? AppColors.darkAccent : AppColors.darkText,
+              color: isWinner || isLive
+                  ? AppTheme.accent(context)
+                  : AppTheme.textPrimary(context),
               fontSize: 15,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -815,67 +768,49 @@ class _CustomCalendarSheetState extends State<_CustomCalendarSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final accent = AppTheme.accent(context);
+    final onAccent = AppTheme.onAccent(context);
     final daysInMonth =
         DateUtils.getDaysInMonth(_displayedMonth.year, _displayedMonth.month);
-    final firstWeekdayOffset = _displayedMonth.weekday - 1; // Mon=0 .. Sun=6
+    final firstWeekdayOffset = _displayedMonth.weekday - 1;
     final totalCells = firstWeekdayOffset + daysInMonth;
     final rows = (totalCells / 7).ceil();
     final now = DateTime.now();
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        14,
-        0,
-        14,
-        16 + MediaQuery.of(context).padding.bottom,
-      ),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-        decoration: BoxDecoration(
-          color: AppColors.darkBg1,
-          borderRadius: BorderRadius.circular(26),
-          border: Border.all(color: AppColors.darkBorder2),
-        ),
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 22),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Drag handle
-            Container(
-              width: 38,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: AppColors.darkBorder2,
-                borderRadius: BorderRadius.circular(99),
+            PivoteSheetHeader(
+              title:
+                  '${_months[_displayedMonth.month - 1]} ${_displayedMonth.year}',
+              subtitle: 'Elegí un día para ver la jornada',
+              icon: Icons.calendar_month_rounded,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PivoteIconButton(
+                    size: 36,
+                    iconSize: 18,
+                    icon: Icons.chevron_left_rounded,
+                    onTap: _prevMonth,
+                  ),
+                  const SizedBox(width: 8),
+                  PivoteIconButton(
+                    size: 36,
+                    iconSize: 18,
+                    icon: Icons.chevron_right_rounded,
+                    onTap: _nextMonth,
+                  ),
+                ],
               ),
             ),
+            const SizedBox(height: 18),
 
-            // Month navigation
-            Row(
-              children: [
-                Text(
-                  '${_months[_displayedMonth.month - 1]} ${_displayedMonth.year}',
-                  style: AppFont.primary(
-                    color: AppColors.darkText,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const Spacer(),
-                _CalendarNavButton(
-                  icon: Icons.chevron_left_rounded,
-                  onTap: _prevMonth,
-                ),
-                const SizedBox(width: 8),
-                _CalendarNavButton(
-                  icon: Icons.chevron_right_rounded,
-                  onTap: _nextMonth,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Weekday headers
+            // Cabeceras de día
             Row(
               children: _weekdays
                   .map(
@@ -884,7 +819,7 @@ class _CustomCalendarSheetState extends State<_CustomCalendarSheet> {
                         child: Text(
                           d,
                           style: AppFont.mono(
-                            color: AppColors.darkText3,
+                            color: AppTheme.textTertiary(context),
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
                           ),
@@ -896,7 +831,7 @@ class _CustomCalendarSheetState extends State<_CustomCalendarSheet> {
             ),
             const SizedBox(height: 8),
 
-            // Calendar Grid
+            // Grilla de días
             for (var r = 0; r < rows; r++)
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
@@ -932,15 +867,14 @@ class _CustomCalendarSheetState extends State<_CustomCalendarSheet> {
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? AppColors.darkAccent
+                                ? accent
                                 : isToday
-                                    ? AppColors.glass
+                                    ? AppTheme.accentDim(context)
                                     : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
                             border: isToday && !isSelected
                                 ? Border.all(
-                                    color: AppColors.darkAccent
-                                        .withValues(alpha: 0.45),
+                                    color: accent.withValues(alpha: 0.45),
                                   )
                                 : null,
                           ),
@@ -948,13 +882,13 @@ class _CustomCalendarSheetState extends State<_CustomCalendarSheet> {
                             '$dayNum',
                             style: AppFont.mono(
                               color: isSelected
-                                  ? AppColors.onDarkAccent
+                                  ? onAccent
                                   : isToday
-                                      ? AppColors.darkAccent
-                                      : AppColors.darkText,
+                                      ? accent
+                                      : AppTheme.textPrimary(context),
                               fontSize: 13,
                               fontWeight: isSelected || isToday
-                                  ? FontWeight.w700
+                                  ? FontWeight.w800
                                   : FontWeight.w500,
                             ),
                           ),
@@ -966,111 +900,6 @@ class _CustomCalendarSheetState extends State<_CustomCalendarSheet> {
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _CalendarNavButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _CalendarNavButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.glass,
-      borderRadius: BorderRadius.circular(11),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(11),
-        child: Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: AppColors.darkBorder),
-          ),
-          child: Icon(icon, color: AppColors.darkText, size: 18),
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyStateView extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  const _EmptyStateView({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.glass,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.darkBorder),
-            ),
-            child: Icon(icon, color: AppColors.darkText3, size: 26),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: AppFont.primary(
-              color: AppColors.darkText,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: AppFont.primary(
-              color: AppColors.darkText3,
-              fontSize: 13,
-            ),
-          ),
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: onAction,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.darkAccent,
-                foregroundColor: AppColors.onDarkAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(13),
-                ),
-              ),
-              child: Text(
-                actionLabel!,
-                style: AppFont.primary(
-                  color: AppColors.onDarkAccent,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }

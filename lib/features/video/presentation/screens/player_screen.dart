@@ -10,7 +10,10 @@ import 'package:pivote/features/video/presentation/providers/channel_provider.da
 import 'package:pivote/features/video/presentation/widgets/video_player_widget.dart';
 import 'package:pivote/features/video/presentation/widgets/channel_card.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/loading_shimmer.dart';
 import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/features/profile/presentation/screens/diagnostics_screen.dart';
@@ -495,15 +498,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // ADVANCED & ANIMATED REPORT MODAL
   // ══════════════════════════════════════════════════════════════════════════
   void _showReportModal(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
+    AppDialogs.showModal<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: dark ? const Color(0xBD02040A) : const Color(0x8C02040A),
-      showDragHandle: false,
-      useSafeArea: true,
-      builder: (ctx) => _ReportModalSheet(
+      glowColor: AppTheme.danger(context),
+      child: _ReportModalSheet(
         channelName: _currentChannel.name,
         onSubmit: (reason) {
           AppNotifications.showSuccess(
@@ -550,40 +548,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final primaryColor = AppTheme.accent(context);
 
     if (_isLoadingGuide) {
-      return Container(
-        margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.cardSurface(context),
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          border: Border.all(
-            color: AppTheme.border(context),
-          ),
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: PivoteLoader(
-                size: 18,
-                strokeWidth: 2,
-                color: primaryColor,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Cargando guía de programación...',
-                style: AppFont.primary(
-                  fontSize: 13,
-                  color: AppTheme.textSecondary(context),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
+      return const PivoteProgramGuideSkeleton();
     }
 
     if (_guideError != null) {
@@ -931,19 +896,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Color _getAmbientColor(String tipo) {
-    if (tipo.toLowerCase().contains("principal") ||
-        tipo.toLowerCase().contains("gala")) {
-      return AppColors.warning;
-    } else if (tipo.toLowerCase().contains("exclusiva") ||
-        tipo.toLowerCase().contains("dormitorio")) {
-      return const Color(0xFF8B5CF6);
-    } else if (tipo.toLowerCase().contains("jardin") ||
-        tipo.toLowerCase().contains("playa")) {
-      return AppColors.success;
-    } else if (tipo.toLowerCase().contains("confesionario")) {
+    if (tipo.toLowerCase().contains("confesionario")) {
       return AppColors.live;
     }
-    return AppColors.secondary;
+    return AppColors.accent;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1061,252 +1017,186 @@ class _ReportModalSheetState extends State<_ReportModalSheet> {
   int _selectedReasonIndex = 0;
   bool _isSubmitting = false;
 
-  final List<Map<String, dynamic>> _reasons = const [
-    {
-      'title': 'Canal caído / Sin señal',
-      'desc': 'Pantalla negra o error de reproducción continuo',
-      'icon': Icons.signal_cellular_connected_no_internet_0_bar_rounded,
-      'color': AppColors.live,
-    },
-    {
-      'title': 'Audio desfasado o mudo',
-      'desc': 'Sin sonido o el audio no coincide con el video',
-      'icon': Icons.volume_off_rounded,
-      'color': AppColors.warning,
-    },
-    {
-      'title': 'Cortes constantes / Buffering',
-      'desc': 'La transmisión se congela o carga muy lento',
-      'icon': Icons.motion_photos_paused_rounded,
-      'color': AppColors.secondary,
-    },
-    {
-      'title': 'Baja calidad / Imagen defectuosa',
-      'desc': 'Pixelado excesivo o resolución incorrecta',
-      'icon': Icons.hd_rounded,
-      'color': Color(0xFF8B5CF6),
-    },
-    {
-      'title': 'Canal equivocado',
-      'desc': 'El contenido no coincide con el canal',
-      'icon': Icons.alt_route_rounded,
-      'color': AppColors.success,
-    },
+  final List<({String title, String desc, IconData icon, bool isCritical})>
+      _reasons = const [
+    (
+      title: 'Canal caído / Sin señal',
+      desc: 'Pantalla negra o error de reproducción continuo',
+      icon: Icons.signal_cellular_connected_no_internet_0_bar_rounded,
+      isCritical: true,
+    ),
+    (
+      title: 'Audio desfasado o mudo',
+      desc: 'Sin sonido o el audio no coincide con el video',
+      icon: Icons.volume_off_rounded,
+      isCritical: true,
+    ),
+    (
+      title: 'Cortes constantes / Buffering',
+      desc: 'La transmisión se congela o carga muy lento',
+      icon: Icons.motion_photos_paused_rounded,
+      isCritical: false,
+    ),
+    (
+      title: 'Baja calidad / Imagen defectuosa',
+      desc: 'Pixelado excesivo o resolución incorrecta',
+      icon: Icons.hd_rounded,
+      isCritical: false,
+    ),
+    (
+      title: 'Canal equivocado',
+      desc: 'El contenido no coincide con el canal',
+      icon: Icons.alt_route_rounded,
+      isCritical: false,
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final accent = AppTheme.accent(context);
+    final danger = AppTheme.danger(context);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.ink1 : Colors.white,
-        borderRadius: AppRadius.sheetAll,
-        border: Border.all(
-          color: AppTheme.border(context),
-        ),
-      ),
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Drag Handle
-          Center(
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white24 : Colors.black12,
-                borderRadius: BorderRadius.circular(2),
-              ),
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            PivoteSheetHeader(
+              title: 'Reportar señal',
+              subtitle: widget.channelName,
+              icon: Icons.report_problem_outlined,
+              isDanger: true,
             ),
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.14),
+            ...List.generate(_reasons.length, (index) {
+              final reason = _reasons[index];
+              final isSelected = _selectedReasonIndex == index;
+              final itemAccent = reason.isCritical ? danger : accent;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Material(
+                  color: isSelected
+                      ? itemAccent.withValues(alpha: 0.12)
+                      : AppTheme.surface2(context),
                   borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: const Icon(
-                  Icons.report_problem_rounded,
-                  color: AppColors.warning,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Reportar Problema',
-                      style: AppFont.primary(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        color: theme.colorScheme.onSurface,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _selectedReasonIndex = index);
+                    },
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
                       ),
-                    ),
-                    Text(
-                      widget.channelName,
-                      style: AppFont.primary(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textSecondary(context),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Reason Options
-          ...List.generate(_reasons.length, (index) {
-            final reason = _reasons[index];
-            final isSelected = _selectedReasonIndex == index;
-            final color = reason['color'] as Color;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Material(
-                color: isSelected
-                    ? color.withValues(alpha: isDark ? 0.16 : 0.08)
-                    : AppTheme.surface1(context),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                child: InkWell(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    setState(() => _selectedReasonIndex = index);
-                  },
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 11,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(
-                        color: isSelected
-                            ? color.withValues(alpha: 0.7)
-                            : AppTheme.border(context),
-                        width: isSelected ? 1.5 : 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          reason['icon'] as IconData,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(
                           color: isSelected
-                              ? color
-                              : AppTheme.textSecondary(context),
-                          size: 20,
+                              ? itemAccent.withValues(alpha: 0.55)
+                              : AppTheme.border(context),
+                          width: isSelected ? 1.3 : 1,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                reason['title'] as String,
-                                style: AppFont.primary(
-                                  fontSize: 13,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                              ),
-                              Text(
-                                reason['desc'] as String,
-                                style: AppFont.primary(
-                                  fontSize: 10.5,
-                                  color: AppTheme.textSecondary(context),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (isSelected)
+                      ),
+                      child: Row(
+                        children: [
                           Icon(
-                            Icons.check_circle_rounded,
-                            color: color,
-                            size: 18,
+                            reason.icon,
+                            color: isSelected
+                                ? itemAccent
+                                : AppTheme.textTertiary(context),
+                            size: 20,
                           ),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  reason.title,
+                                  style: AppFont.primary(
+                                    fontSize: 13.5,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    color: AppTheme.textPrimary(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 1.5),
+                                Text(
+                                  reason.desc,
+                                  style: AppFont.primary(
+                                    fontSize: 11.2,
+                                    color: AppTheme.textTertiary(context),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (isSelected)
+                            Icon(
+                              Icons.check_circle_rounded,
+                              color: itemAccent,
+                              size: 19,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
 
-          const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
-          // Submit Button
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _isSubmitting
-                  ? null
-                  : () async {
-                      unawaited(HapticFeedback.mediumImpact());
-                      setState(() => _isSubmitting = true);
-                      final nav = Navigator.of(context);
-                      await Future.delayed(const Duration(milliseconds: 350));
-                      if (mounted) {
-                        nav.pop();
-                        widget.onSubmit(
-                          _reasons[_selectedReasonIndex]['title'] as String,
-                        );
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accent(context),
-                foregroundColor: AppTheme.onAccent(context),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _isSubmitting
+                    ? null
+                    : () async {
+                        unawaited(HapticFeedback.mediumImpact());
+                        setState(() => _isSubmitting = true);
+                        final nav = Navigator.of(context);
+                        await Future.delayed(const Duration(milliseconds: 350));
+                        if (mounted) {
+                          nav.pop();
+                          widget.onSubmit(_reasons[_selectedReasonIndex].title);
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: AppTheme.onAccent(context),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                  elevation: 0,
                 ),
-                elevation: 0,
-              ),
-              child: _isSubmitting
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            AppTheme.onAccent(context)),
-                      ),
-                    )
-                  : Text(
-                      'Enviar Reporte',
-                      style: AppFont.primary(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.3,
+                child: _isSubmitting
+                    ? PivoteLoader(
+                        size: 20,
+                        strokeWidth: 2.3,
                         color: AppTheme.onAccent(context),
+                      )
+                    : Text(
+                        'Enviar reporte',
+                        style: AppFont.primary(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.onAccent(context),
+                        ),
                       ),
-                    ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

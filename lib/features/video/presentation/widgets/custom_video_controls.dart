@@ -328,14 +328,14 @@ class _CustomVideoControlsState extends State<CustomVideoControls>
                         height: 7,
                         decoration: BoxDecoration(
                           color: isPlaying
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFFEF4444),
+                              ? AppColors.darkAccent
+                              : AppColors.live,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: (isPlaying
-                                      ? const Color(0xFF10B981)
-                                      : const Color(0xFFEF4444))
+                                      ? AppColors.darkAccent
+                                      : AppColors.live)
                                   .withValues(alpha: 0.6),
                               blurRadius: 6,
                               spreadRadius: 1,

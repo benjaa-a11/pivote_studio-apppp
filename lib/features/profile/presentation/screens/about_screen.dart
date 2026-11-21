@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pivote/core/animations/app_animations.dart';
-import 'package:pivote/core/theme/app_colors.dart';
-import 'package:pivote/core/theme/app_typography.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/profile/presentation/screens/support_screen.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -14,42 +16,37 @@ class AboutScreen extends StatelessWidget {
     required String title,
     required String body,
   }) {
-    final palette = ProfilePalette.of(context);
-
     AppDialogs.showModal<void>(
       context: context,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: AppFont.primary(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.2,
-                  color: palette.text,
+      child: Builder(
+        builder: (ctx) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PivoteSheetHeader(
+                  title: title,
+                  icon: Icons.description_outlined,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                body,
-                style: AppFont.primary(
-                  fontSize: 14,
-                  color: palette.muted,
-                  height: 1.5,
+                const SizedBox(height: 14),
+                Text(
+                  body,
+                  style: AppFont.primary(
+                    fontSize: 13.8,
+                    color: AppTheme.textSecondary(ctx),
+                    height: 1.52,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              ProfileActionButton(
-                label: 'Entendido',
-                onTap: () => Navigator.pop(context),
-              ),
-            ],
+                const SizedBox(height: 8),
+                ProfileActionButton(
+                  label: 'Entendido',
+                  onTap: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -58,75 +55,78 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
+    final accent = AppTheme.accent(context);
 
     return ProfileSubsectionScaffold(
       title: 'Acerca de',
       children: [
         AppAnimations.staggeredSlideIn(
           index: 0,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 18, bottom: 18),
+          child: PivoteDiffusedCard(
+            borderRadius: AppRadius.hero,
+            glowColor: accent,
+            glowAlignment: const Alignment(0.0, -0.8),
+            glowOpacity: 1.35,
+            highlighted: true,
+            padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
             child: Column(
               children: [
                 Container(
-                  width: 88,
-                  height: 88,
+                  width: 80,
+                  height: 80,
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(26),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.accent,
-                        AppColors.accentStrong,
-                      ],
+                    color: AppTheme.surface2(context),
+                    borderRadius: BorderRadius.circular(AppRadius.hero),
+                    border: Border.all(
+                      color: accent.withValues(alpha: 0.36),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.accent.withValues(alpha: 0.35),
-                        blurRadius: 24,
-                        spreadRadius: -8,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
                   ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    'P',
-                    style: AppFont.primary(
-                      fontSize: 40,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.ink0,
-                    ),
+                  child: SvgPicture.asset(
+                    'assets/logo.svg',
+                    fit: BoxFit.contain,
                   ),
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Pivote',
+                  'Pivote Studio',
                   style: AppFont.primary(
                     fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: palette.text,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.45,
+                    color: AppTheme.textPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Versión 1.0.0 (build 1)',
-                  style: AppFont.primary(
-                    fontSize: 14.5,
-                    color: palette.muted,
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentDim(context),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                  ),
+                  child: Text(
+                    'v1.0.0 · build 1',
+                    style: AppFont.mono(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: accent,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
         ),
+        const SizedBox(height: 18),
         AppAnimations.staggeredSlideIn(
           index: 1,
           child: ProfileGroupCard(
             children: [
               ProfileGroupRow(
+                leading: const ProfileSettingIconBox(
+                  icon: Icons.gavel_rounded,
+                ),
                 title: 'Términos y condiciones',
                 showChevron: true,
                 onTap: () => _showLegalModal(
@@ -137,6 +137,9 @@ class AboutScreen extends StatelessWidget {
                 ),
               ),
               ProfileGroupRow(
+                leading: const ProfileSettingIconBox(
+                  icon: Icons.privacy_tip_outlined,
+                ),
                 title: 'Política de privacidad',
                 showChevron: true,
                 onTap: () => _showLegalModal(
@@ -147,6 +150,9 @@ class AboutScreen extends StatelessWidget {
                 ),
               ),
               ProfileGroupRow(
+                leading: const ProfileSettingIconBox(
+                  icon: Icons.code_rounded,
+                ),
                 title: 'Licencias de código abierto',
                 showChevron: true,
                 onTap: () {
@@ -159,6 +165,10 @@ class AboutScreen extends StatelessWidget {
                 },
               ),
               ProfileGroupRow(
+                leading: const ProfileSettingIconBox(
+                  icon: Icons.support_agent_rounded,
+                  highlight: true,
+                ),
                 title: 'Ayuda y soporte',
                 showChevron: true,
                 onTap: () {
@@ -174,13 +184,14 @@ class AboutScreen extends StatelessWidget {
         AppAnimations.staggeredSlideIn(
           index: 2,
           child: Padding(
-            padding: const EdgeInsets.only(top: 18),
+            padding: const EdgeInsets.only(top: 20),
             child: Text(
               '© 2026 Pivote Studio',
               textAlign: TextAlign.center,
               style: AppFont.primary(
-                fontSize: 13,
-                color: palette.muted,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textTertiary(context),
               ),
             ),
           ),

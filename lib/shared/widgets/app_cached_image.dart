@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
+import 'package:pivote/core/theme/app_colors.dart';
 
 /// Widget unificado para cargar imágenes de red en toda la app.
 ///
@@ -85,15 +86,14 @@ class AppCachedImage extends StatelessWidget {
 
   Widget _buildShimmer(BuildContext context, bool isDark) {
     return Shimmer.fromColors(
-      baseColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE8E8E8),
-      highlightColor:
-          isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
-      period: const Duration(milliseconds: 1200),
+      baseColor: isDark ? AppColors.darkBg2 : AppColors.lightBg2,
+      highlightColor: isDark ? AppColors.darkBg3 : AppColors.lightBg1,
+      period: const Duration(milliseconds: 1300),
       child: Container(
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFE8E8E8),
+          color: isDark ? AppColors.darkBg2 : AppColors.lightBg2,
           borderRadius: borderRadius,
         ),
       ),

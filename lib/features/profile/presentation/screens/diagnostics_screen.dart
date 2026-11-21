@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:pivote/core/animations/app_animations.dart';
-import 'package:pivote/core/theme/app_typography.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/profile/presentation/screens/storage_manager_screen.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 
@@ -63,7 +64,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
       _status = 'Analizando estabilidad de la red...';
     });
 
-    await Future.delayed(const Duration(milliseconds: 480));
+    await Future.delayed(const Duration(milliseconds: 450));
     if (!mounted) return;
 
     setState(() => _status = 'Estimando capacidad de streaming...');
@@ -71,7 +72,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     target = target.clamp(6, 118).toDouble();
 
     for (var i = 0; i < 24; i++) {
-      await Future.delayed(const Duration(milliseconds: 65));
+      await Future.delayed(const Duration(milliseconds: 60));
       if (!mounted) return;
       final progress = i / 23;
       final sample =
@@ -83,7 +84,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     }
 
     setState(() => _status = 'Generando recomendación...');
-    await Future.delayed(const Duration(milliseconds: 520));
+    await Future.delayed(const Duration(milliseconds: 420));
     if (!mounted) return;
 
     await HapticFeedback.mediumImpact();
@@ -124,19 +125,24 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
+    final accent = AppTheme.accent(context);
+    final danger = AppTheme.danger(context);
     final currentSpeed = _completed ? _finalSpeed : _speed;
     final normalizedBar = (currentSpeed / 100.0).clamp(0.0, 1.0);
+    final isLimited = _completed && _finalSpeed < 5;
 
     return ProfileSubsectionScaffold(
       title: 'Diagnóstico',
+      subtitle: 'Rendimiento de red para streaming',
       children: [
         AppAnimations.staggeredSlideIn(
           index: 0,
           child: ProfileGroupCard(
+            highlighted: _completed || _isTesting,
+            glowColor: isLimited ? danger : accent,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -148,34 +154,41 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                           currentSpeed > 0
                               ? currentSpeed.toStringAsFixed(1)
                               : '0.0',
-                          style: AppFont.primary(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.9,
-                            color: palette.text,
+                          style: AppFont.mono(
+                            fontSize: 38,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -1.0,
+                            color: AppTheme.textPrimary(context),
                           ),
                         ),
                         const SizedBox(width: 6),
                         Text(
                           'Mbps',
                           style: AppFont.primary(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: palette.muted,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textTertiary(context),
                           ),
                         ),
                         const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
+                            horizontal: 11,
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: palette.iconBox,
-                            borderRadius: BorderRadius.circular(999),
+                            color: isLimited
+                                ? AppTheme.dangerDim(context)
+                                : _completed || _isTesting
+                                    ? AppTheme.accentDim(context)
+                                    : AppTheme.surface2(context),
+                            borderRadius: BorderRadius.circular(AppRadius.pill),
                             border: Border.all(
-                              color: palette.border,
-                              width: 1,
+                              color: isLimited
+                                  ? danger.withValues(alpha: 0.36)
+                                  : _completed || _isTesting
+                                      ? accent.withValues(alpha: 0.36)
+                                      : AppTheme.border(context),
                             ),
                           ),
                           child: Text(
@@ -185,9 +198,13 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                                     ? 'Analizando'
                                     : 'En espera',
                             style: AppFont.primary(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: palette.text,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: isLimited
+                                  ? danger
+                                  : _completed || _isTesting
+                                      ? accent
+                                      : AppTheme.textSecondary(context),
                             ),
                           ),
                         ),
@@ -197,23 +214,22 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                     Text(
                       _status,
                       style: AppFont.primary(
-                        fontSize: 13.5,
-                        color: palette.muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.textSecondary(context),
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    // Segmented bar (.bar: height 10, border-radius 999)
+                    const SizedBox(height: 16),
+                    // Barra de progreso estrictamente con el color del tema
                     Container(
                       height: 10,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: palette.isDark
-                            ? palette.bg
-                            : const Color(0xFFE2E8F0),
-                        borderRadius: BorderRadius.circular(999),
+                        color: AppTheme.surface3(context),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
+                        borderRadius: BorderRadius.circular(AppRadius.pill),
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: AnimatedFractionallySizedBox(
@@ -224,12 +240,12 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                                 : normalizedBar,
                             heightFactor: 1.0,
                             child: Container(
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    Color(0xFF9B6BE6),
-                                    Color(0xFF4F9BF0),
-                                    Color(0xFF3FD1A0),
+                                    (isLimited ? danger : accent)
+                                        .withValues(alpha: 0.65),
+                                    isLimited ? danger : accent,
                                   ],
                                 ),
                               ),
@@ -242,7 +258,11 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 ),
               ),
               ProfileGroupRow(
-                leading: const _DiagnosticDot(color: Color(0xFF4F9BF0)),
+                leading: _MetricIconBox(
+                  icon: Icons.network_ping_rounded,
+                  alert: _ping >= 85,
+                  active: _ping > 0 && _ping < 85,
+                ),
                 title: 'Latencia (Ping)',
                 subtitle: _ping == 0
                     ? 'Tiempo de respuesta del servidor'
@@ -254,7 +274,10 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 valueText: _ping > 0 ? '$_ping ms' : '--',
               ),
               ProfileGroupRow(
-                leading: const _DiagnosticDot(color: Color(0xFF3FD1A0)),
+                leading: _MetricIconBox(
+                  icon: Icons.graphic_eq_rounded,
+                  active: _stability > 0,
+                ),
                 title: 'Estabilidad de red',
                 subtitle: 'Continuidad del flujo de datos',
                 valueText: _stability > 0
@@ -262,16 +285,24 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                     : '--',
               ),
               ProfileGroupRow(
-                leading: const _DiagnosticDot(color: Color(0xFFF0C93A)),
+                leading: _MetricIconBox(
+                  icon: Icons.sync_problem_rounded,
+                  alert: _loss > 0,
+                  active: _completed && _loss == 0,
+                ),
                 title: 'Pérdida de paquetes',
                 subtitle: _loss == 0
                     ? 'Sin interrupciones detectadas'
                     : 'Leve fluctuación en la señal',
-                valueText:
-                    _completed || _isTesting ? '${_loss.toStringAsFixed(1)}%' : '--',
+                valueText: _completed || _isTesting
+                    ? '${_loss.toStringAsFixed(1)}%'
+                    : '--',
               ),
               ProfileGroupRow(
-                leading: const _DiagnosticDot(color: Color(0xFF9B6BE6)),
+                leading: _MetricIconBox(
+                  icon: Icons.hd_outlined,
+                  active: _completed,
+                ),
                 title: 'Calidad recomendada',
                 subtitle: 'Resolución óptima según tu velocidad',
                 valueText: _completed ? _resolution(_finalSpeed) : '--',
@@ -301,12 +332,16 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 children: [
                   if (_completed)
                     ProfileGroupRow(
-                      title: 'Diagnóstico: ${_resolution(_finalSpeed)}',
+                      leading: const ProfileSettingIconBox(
+                        icon: Icons.check_circle_outline_rounded,
+                        highlight: true,
+                      ),
+                      title: 'Resultado: ${_resolution(_finalSpeed)}',
                       subtitle: _recommendationMessage(_finalSpeed),
                     ),
                   ProfileGroupRow(
                     leading: const ProfileSettingIconBox(
-                      svgString: ProfileSvgIcons.storage,
+                      icon: Icons.storage_rounded,
                     ),
                     title: 'Almacenamiento y búfer',
                     subtitle: 'Liberar caché para mejorar la reproducción',
@@ -330,20 +365,44 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   }
 }
 
-class _DiagnosticDot extends StatelessWidget {
-  final Color color;
+class _MetricIconBox extends StatelessWidget {
+  final IconData icon;
+  final bool active;
+  final bool alert;
 
-  const _DiagnosticDot({required this.color});
+  const _MetricIconBox({
+    required this.icon,
+    this.active = false,
+    this.alert = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final color = alert
+        ? AppTheme.danger(context)
+        : active
+            ? AppTheme.accent(context)
+            : AppTheme.textTertiary(context);
+    final bg = alert
+        ? AppTheme.dangerDim(context)
+        : active
+            ? AppTheme.accentDim(context)
+            : AppTheme.surface2(context);
+
     return Container(
-      width: 12,
-      height: 12,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(
+          color: (active || alert)
+              ? color.withValues(alpha: 0.30)
+              : AppTheme.border(context),
+        ),
       ),
+      alignment: Alignment.center,
+      child: Icon(icon, size: 18, color: color),
     );
   }
 }

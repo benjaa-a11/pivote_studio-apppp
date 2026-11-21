@@ -9,9 +9,11 @@ import 'package:provider/provider.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
+import 'package:pivote/shared/widgets/common/apple_pressable.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
-/// Paleta unificada conectada directamente al Design System (`AppTheme` / `AppColors`).
-/// Comparte exactamente la misma identidad visual en modo oscuro y modo claro.
+/// Adaptador delgado conectado directamente a `AppTheme` (paleta estricta de 3 colores).
 class ProfilePalette {
   final bool isDark;
   final Color bg;
@@ -58,56 +60,33 @@ class ProfilePalette {
   });
 
   factory ProfilePalette.of(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = AppTheme.isDark(context);
+    final accent = AppTheme.accent(context);
+    final onAccent = AppTheme.onAccent(context);
+    final danger = AppTheme.danger(context);
 
-    if (isDark) {
-      return ProfilePalette(
-        isDark: true,
-        bg: AppTheme.darkBg,
-        card: AppTheme.darkBg1,
-        cardPressed: AppTheme.darkBg2,
-        border: AppColors.glassBorderSubtle,
-        iconBox: AppTheme.darkBg2,
-        text: AppTheme.darkText,
-        muted: AppTheme.darkText3,
-        chevron: AppTheme.darkText3,
-        switchOff: AppTheme.darkBg4,
-        switchOn: AppTheme.darkAccent,
-        switchThumbOn: AppColors.onDarkAccent,
-        accent: AppTheme.darkAccent,
-        primaryBtnBg: AppTheme.darkAccent,
-        primaryBtnText: AppColors.onDarkAccent,
-        danger: AppTheme.darkDanger,
-        dangerBg: AppTheme.darkDangerDim,
-        dangerBorder: AppTheme.darkDanger.withValues(alpha: 0.35),
-        avatarPlaceholderBg: AppTheme.darkBg3,
-        cardShadow: AppShadows.card(context),
-      );
-    } else {
-      return ProfilePalette(
-        isDark: false,
-        bg: AppTheme.lightBg,
-        card: AppTheme.lightBg1,
-        cardPressed: AppTheme.lightBg2,
-        border: AppTheme.lightBorder,
-        iconBox: AppTheme.lightBg2,
-        text: AppTheme.lightText,
-        muted: AppTheme.lightText2,
-        chevron: AppTheme.lightText3,
-        switchOff: AppTheme.lightBg4,
-        switchOn: AppTheme.lightAccent,
-        switchThumbOn: AppColors.onLightAccent,
-        accent: AppTheme.lightAccent,
-        primaryBtnBg: AppTheme.lightAccent,
-        primaryBtnText: AppColors.onLightAccent,
-        danger: AppTheme.lightDanger,
-        dangerBg: AppTheme.lightDangerDim,
-        dangerBorder: AppTheme.lightDanger.withValues(alpha: 0.25),
-        avatarPlaceholderBg: AppTheme.lightText3,
-        cardShadow: AppShadows.appleDepth(context, elevation: 0.7),
-      );
-    }
+    return ProfilePalette(
+      isDark: isDark,
+      bg: AppTheme.bg(context),
+      card: AppTheme.surface1(context),
+      cardPressed: AppTheme.surface2(context),
+      border: AppTheme.border(context),
+      iconBox: AppTheme.surface2(context),
+      text: AppTheme.textPrimary(context),
+      muted: AppTheme.textSecondary(context),
+      chevron: AppTheme.textTertiary(context),
+      switchOff: AppTheme.surface4(context),
+      switchOn: accent,
+      switchThumbOn: onAccent,
+      accent: accent,
+      primaryBtnBg: accent,
+      primaryBtnText: onAccent,
+      danger: danger,
+      dangerBg: AppTheme.dangerDim(context),
+      dangerBorder: danger.withValues(alpha: isDark ? 0.35 : 0.28),
+      avatarPlaceholderBg: AppTheme.surface3(context),
+      cardShadow: AppShadows.card(context),
+    );
   }
 }
 
@@ -156,9 +135,10 @@ class ProfileSvgIcons {
   }
 }
 
-/// Contenedor estándar de subsecciones con ancho adaptable.
+/// Contenedor estándar de subsecciones con atmósfera difuminada y sin rebote.
 class ProfileSubsectionScaffold extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final List<Widget> children;
   final VoidCallback? onBack;
   final Widget? trailing;
@@ -166,6 +146,7 @@ class ProfileSubsectionScaffold extends StatelessWidget {
   const ProfileSubsectionScaffold({
     super.key,
     required this.title,
+    this.subtitle,
     required this.children,
     this.onBack,
     this.trailing,
@@ -173,36 +154,38 @@ class ProfileSubsectionScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
     final topPad = MediaQuery.paddingOf(context).top;
     final bottomPad = MediaQuery.paddingOf(context).bottom;
-    final hPad = AppResponsive.screenHorizontalPadding(context).horizontal / 2;
+    final hPad = AppResponsive.horizontalPadding(context);
 
     return Scaffold(
-      backgroundColor: palette.bg,
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        behavior: HitTestBehavior.translucent,
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: ListView(
-              physics: const ClampingScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
-                hPad,
-                topPad + 10,
-                hPad,
-                math.max(24, bottomPad + 22),
-              ),
-              children: [
-                ProfileSubHeader(
-                  title: title,
-                  onBack: onBack,
-                  trailing: trailing,
+      backgroundColor: AppTheme.bg(context),
+      body: PivoteAmbientBackdrop(
+        child: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          behavior: HitTestBehavior.translucent,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: ListView(
+                physics: const ClampingScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(
+                  hPad,
+                  topPad + 6,
+                  hPad,
+                  math.max(28, bottomPad + 24),
                 ),
-                ...children,
-              ],
+                children: [
+                  PivoteSubHeader(
+                    title: title,
+                    subtitle: subtitle,
+                    onBack: onBack,
+                    trailing: trailing,
+                  ),
+                  ...children,
+                ],
+              ),
             ),
           ),
         ),
@@ -211,7 +194,7 @@ class ProfileSubsectionScaffold extends StatelessWidget {
   }
 }
 
-/// Encabezado de subsección unificado.
+/// Alias retrocompatible hacia `PivoteSubHeader`.
 class ProfileSubHeader extends StatelessWidget {
   final String title;
   final VoidCallback? onBack;
@@ -228,66 +211,16 @@ class ProfileSubHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 8, 2, 18),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          if (showBackButton)
-            _PressableScale(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                if (onBack != null) {
-                  onBack!();
-                } else {
-                  Navigator.of(context).maybePop();
-                }
-              },
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: palette.card,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  border: Border.all(
-                    color: palette.border,
-                    width: 1,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: ProfileSvgIcons.svg(
-                  ProfileSvgIcons.chevronLeft,
-                  size: 19,
-                  color: palette.text,
-                ),
-              ),
-            )
-          else
-            const SizedBox(width: 44, height: 44),
-          Expanded(
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppFont.primary(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-                color: palette.text,
-              ),
-            ),
-          ),
-          trailing ?? const SizedBox(width: 44, height: 44),
-        ],
-      ),
+    return PivoteSubHeader(
+      title: title,
+      onBack: onBack,
+      trailing: trailing,
+      showBackButton: showBackButton,
     );
   }
 }
 
-/// Título de sección con jerarquía tipográfica unificada.
+/// Título de sección unificado (delega a `PivoteSectionHeader` estilo MatchesHero).
 class ProfileSectionTitle extends StatelessWidget {
   final String text;
   final bool first;
@@ -300,72 +233,57 @@ class ProfileSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
     return Padding(
-      padding: EdgeInsets.fromLTRB(8, first ? 0 : 18, 8, 8),
-      child: Text(
-        text.toUpperCase(),
-        style: AppFont.primary(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.75,
-          color: palette.muted,
-        ),
-      ),
+      padding: EdgeInsets.only(top: first ? 4 : 22, bottom: 10),
+      child: PivoteSectionHeader(title: text),
     );
   }
 }
 
-/// Tarjeta de grupo con bordes y radios unificados (`AppRadius.lg`).
+/// Tarjeta de grupo difuminada estilo MatchesHero con divisores 1px.
 class ProfileGroupCard extends StatelessWidget {
   final List<Widget> children;
   final EdgeInsetsGeometry? padding;
+  final bool highlighted;
+  final Color? glowColor;
 
   const ProfileGroupCard({
     super.key,
     required this.children,
     this.padding,
+    this.highlighted = false,
+    this.glowColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: palette.card,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: palette.border, width: 1),
-        boxShadow: palette.cardShadow,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.lg - 1),
-        child: Padding(
-          padding: padding ?? EdgeInsets.zero,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (int i = 0; i < children.length; i++) ...[
-                children[i],
-                if (i < children.length - 1 && padding == null)
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: palette.isDark
-                        ? AppColors.darkBorder
-                        : palette.border,
-                  ),
-              ],
-            ],
-          ),
-        ),
+    return PivoteDiffusedCard(
+      borderRadius: AppRadius.lg,
+      glowColor: glowColor,
+      glowAlignment: const Alignment(-0.85, -0.8),
+      glowOpacity: highlighted ? 1.15 : 0.58,
+      highlighted: highlighted,
+      padding: padding ?? EdgeInsets.zero,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (int i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i < children.length - 1 && padding == null)
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: AppTheme.border(context),
+              ),
+          ],
+        ],
       ),
     );
   }
 }
 
-/// Fila interactiva dentro de un grupo.
+/// Fila interactiva moderna dentro de un grupo.
 class ProfileGroupRow extends StatefulWidget {
   final Widget? leading;
   final String title;
@@ -387,7 +305,7 @@ class ProfileGroupRow extends StatefulWidget {
     this.showChevron = false,
     this.isDanger = false,
     this.onTap,
-    this.horizontalGap = 12,
+    this.horizontalGap = 13,
   });
 
   @override
@@ -399,7 +317,6 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
     final interactive = widget.onTap != null;
 
     return GestureDetector(
@@ -414,9 +331,11 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
             }
           : null,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        color: _pressed ? palette.cardPressed : Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: const Duration(milliseconds: 110),
+        color: _pressed
+            ? AppTheme.surface2(context).withValues(alpha: 0.72)
+            : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13.5),
         child: Row(
           children: [
             if (widget.leading != null) ...[
@@ -431,21 +350,23 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
                   Text(
                     widget.title,
                     style: AppFont.primary(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14.8,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: -0.2,
-                      color: widget.isDanger ? palette.danger : palette.text,
+                      color: widget.isDanger
+                          ? AppTheme.danger(context)
+                          : AppTheme.textPrimary(context),
                     ),
                   ),
                   if (widget.subtitle != null &&
                       widget.subtitle!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 2.5),
                     Text(
                       widget.subtitle!,
                       style: AppFont.primary(
-                        fontSize: 12.8,
+                        fontSize: 12.2,
                         fontWeight: FontWeight.w500,
-                        color: palette.muted,
+                        color: AppTheme.textTertiary(context),
                         height: 1.35,
                       ),
                     ),
@@ -455,25 +376,34 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
             ),
             if (widget.valueText != null && widget.valueText!.isNotEmpty) ...[
               const SizedBox(width: 8),
-              Text(
-                widget.valueText!,
-                style: AppFont.primary(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: palette.muted,
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface2(context),
+                  borderRadius: BorderRadius.circular(AppRadius.xs),
+                  border: Border.all(color: AppTheme.border(context)),
+                ),
+                child: Text(
+                  widget.valueText!,
+                  style: AppFont.primary(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textSecondary(context),
+                  ),
                 ),
               ),
             ],
             if (widget.trailing != null) ...[
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               widget.trailing!,
             ],
             if (widget.showChevron) ...[
-              SizedBox(width: widget.valueText != null ? 8 : 10),
-              ProfileSvgIcons.svg(
-                ProfileSvgIcons.chevronRight,
-                size: 18,
-                color: palette.chevron,
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 19,
+                color: AppTheme.textTertiary(context),
               ),
             ],
           ],
@@ -483,35 +413,48 @@ class _ProfileGroupRowState extends State<ProfileGroupRow> {
   }
 }
 
-/// Caja de icono de 38x38 con radio `AppRadius.sm`.
+/// Caja de icono 38x38 moderna con tinte suave y borde 1px.
 class ProfileSettingIconBox extends StatelessWidget {
-  final String svgString;
+  final String? svgString;
+  final IconData? icon;
+  final bool highlight;
 
   const ProfileSettingIconBox({
     super.key,
-    required this.svgString,
+    this.svgString,
+    this.icon,
+    this.highlight = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
+    final accent = AppTheme.accent(context);
     return Container(
-      width: 40,
-      height: 40,
+      width: 38,
+      height: 38,
       decoration: BoxDecoration(
-        color: palette.iconBox,
+        color: highlight
+            ? AppTheme.accentDim(context)
+            : AppTheme.surface2(context),
         borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(
-          color: palette.border.withValues(alpha: 0.6),
-          width: 1,
+          color: highlight
+              ? accent.withValues(alpha: 0.30)
+              : AppTheme.border(context),
         ),
       ),
       alignment: Alignment.center,
-      child: ProfileSvgIcons.svg(
-        svgString,
-        size: 20,
-        color: palette.text,
-      ),
+      child: icon != null
+          ? Icon(
+              icon,
+              size: 19,
+              color: highlight ? accent : AppTheme.textPrimary(context),
+            )
+          : ProfileSvgIcons.svg(
+              svgString ?? ProfileSvgIcons.about,
+              size: 19,
+              color: highlight ? accent : AppTheme.textPrimary(context),
+            ),
     );
   }
 }
@@ -531,10 +474,12 @@ class ProfileSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
+    final isDark = AppTheme.isDark(context);
+    final accent = AppTheme.accent(context);
+    final onAccent = AppTheme.onAccent(context);
 
     return Opacity(
-      opacity: enabled ? 1.0 : 0.5,
+      opacity: enabled ? 1.0 : 0.45,
       child: GestureDetector(
         onTap: enabled && onChanged != null
             ? () {
@@ -550,7 +495,16 @@ class ProfileSwitch extends StatelessWidget {
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.pill),
-            color: value ? palette.switchOn : palette.switchOff,
+            color: value ? accent : AppTheme.surface4(context),
+            boxShadow: value
+                ? [
+                    BoxShadow(
+                      color: accent.withValues(alpha: isDark ? 0.28 : 0.18),
+                      blurRadius: 10,
+                      spreadRadius: -2,
+                    ),
+                  ]
+                : null,
           ),
           child: AnimatedAlign(
             duration: const Duration(milliseconds: 200),
@@ -561,11 +515,11 @@ class ProfileSwitch extends StatelessWidget {
               height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: value ? palette.switchThumbOn : Colors.white,
+                color: value ? onAccent : Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 3,
+                    color: Colors.black.withValues(alpha: 0.22),
+                    blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
                 ],
@@ -580,7 +534,7 @@ class ProfileSwitch extends StatelessWidget {
 
 enum ProfileButtonVariant { primary, soft, danger }
 
-/// Botón de acción de ancho completo unificado con el sistema de diseño.
+/// Botón de acción de ancho completo unificado (adapta Modo Claro y Oscuro).
 class ProfileActionButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -599,63 +553,57 @@ class ProfileActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
+    final accent = AppTheme.accent(context);
+    final onAccent = AppTheme.onAccent(context);
+    final danger = AppTheme.danger(context);
 
-    Color? bgColor;
-    Gradient? gradient;
-    List<BoxShadow>? boxShadow;
+    Color bgColor;
     Color textColor;
     Border? border;
+    List<BoxShadow>? boxShadow;
 
     switch (variant) {
       case ProfileButtonVariant.primary:
-        gradient = AppGradients.buttonPrimary;
-        boxShadow = [
-          BoxShadow(
-            color: palette.accent.withValues(alpha: 0.40),
-            blurRadius: 20,
-            spreadRadius: -4,
-            offset: const Offset(0, 6),
-          ),
-        ];
-        textColor = AppColors.onDarkAccent;
+        bgColor = accent;
+        textColor = onAccent;
         border = null;
+        boxShadow = AppShadows.glow(accent, alpha: 0.26);
         break;
       case ProfileButtonVariant.soft:
-        bgColor = palette.card;
-        textColor = palette.text;
-        border = Border.all(color: palette.border, width: 1);
+        bgColor = AppTheme.surface1(context);
+        textColor = AppTheme.textPrimary(context);
+        border = Border.all(color: AppTheme.border(context), width: 1);
+        boxShadow = AppShadows.card(context);
         break;
       case ProfileButtonVariant.danger:
-        bgColor = palette.dangerBg;
-        textColor = palette.danger;
-        border = Border.all(color: palette.dangerBorder, width: 1);
+        bgColor = AppTheme.dangerDim(context);
+        textColor = danger;
+        border = Border.all(color: danger.withValues(alpha: 0.34), width: 1);
+        boxShadow = null;
         break;
     }
 
     return Padding(
       padding: const EdgeInsets.only(top: 16),
-      child: _PressableScale(
+      child: ApplePressable(
+        scaleDownFactor: 0.975,
+        borderRadius: BorderRadius.circular(AppRadius.md),
         onTap: loading ? null : onTap,
         child: Container(
           width: double.infinity,
-          height: 52,
+          height: 50,
           decoration: BoxDecoration(
             color: bgColor,
-            gradient: gradient,
             boxShadow: boxShadow,
             borderRadius: BorderRadius.circular(AppRadius.md),
             border: border,
           ),
           alignment: Alignment.center,
           child: loading
-              ? SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    valueColor: AlwaysStoppedAnimation<Color>(textColor),
-                  ),
+              ? PivoteLoader(
+                  size: 20,
+                  strokeWidth: 2.3,
+                  color: textColor,
                 )
               : Row(
                   mainAxisSize: MainAxisSize.min,
@@ -663,13 +611,13 @@ class ProfileActionButton extends StatelessWidget {
                   children: [
                     if (leadingIcon != null) ...[
                       leadingIcon!,
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 9),
                     ],
                     Text(
                       label,
                       style: AppFont.primary(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
                         letterSpacing: -0.15,
                         color: textColor,
                       ),
@@ -682,135 +630,7 @@ class ProfileActionButton extends StatelessWidget {
   }
 }
 
-/// Banner de portada de perfil unificado con la estética de Pivote.
-class ProfileCoverBanner extends StatelessWidget {
-  const ProfileCoverBanner({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
-
-    return Container(
-      height: 200,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(
-          color: palette.border,
-          width: 1,
-        ),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: palette.isDark
-              ? const [
-                  AppColors.ink1,
-                  AppColors.ink2,
-                ]
-              : const [
-                  AppColors.lightBg2,
-                  AppColors.lightBg3,
-                ],
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.xl - 1),
-        child: CustomPaint(
-          painter: _CloudCoverPainter(
-            isDark: palette.isDark,
-            accentColor: palette.accent,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CloudCoverPainter extends CustomPainter {
-  final bool isDark;
-  final Color accentColor;
-
-  _CloudCoverPainter({
-    required this.isDark,
-    required this.accentColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (isDark) {
-      final accentGlow = Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-0.35, -0.25),
-          radius: 0.85,
-          colors: [
-            accentColor.withValues(alpha: 0.22),
-            accentColor.withValues(alpha: 0.05),
-            Colors.transparent,
-          ],
-          stops: const [0.0, 0.55, 1.0],
-        ).createShader(Offset.zero & size);
-      canvas.drawRect(Offset.zero & size, accentGlow);
-
-      _drawCloudBlob(
-        canvas,
-        size,
-        center: Offset(size.width * 0.72, size.height * 0.45),
-        rx: size.width * 0.42,
-        ry: size.height * 0.40,
-        innerColor: AppColors.info.withValues(alpha: 0.16),
-        midColor: AppColors.info.withValues(alpha: 0.04),
-      );
-    } else {
-      _drawCloudBlob(
-        canvas,
-        size,
-        center: Offset(size.width * 0.30, size.height * 0.38),
-        rx: size.width * 0.52,
-        ry: size.height * 0.45,
-        innerColor: accentColor.withValues(alpha: 0.12),
-        midColor: accentColor.withValues(alpha: 0.03),
-      );
-      _drawCloudBlob(
-        canvas,
-        size,
-        center: Offset(size.width * 0.72, size.height * 0.58),
-        rx: size.width * 0.38,
-        ry: size.height * 0.32,
-        innerColor: AppColors.info.withValues(alpha: 0.10),
-        midColor: Colors.white.withValues(alpha: 0.45),
-      );
-    }
-  }
-
-  void _drawCloudBlob(
-    Canvas canvas,
-    Size size, {
-    required Offset center,
-    required double rx,
-    required double ry,
-    required Color innerColor,
-    required Color midColor,
-  }) {
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.scale(rx, ry);
-    final paint = Paint()
-      ..shader = RadialGradient(
-        colors: [innerColor, midColor, Colors.transparent],
-        stops: const [0.0, 0.45, 0.85],
-      ).createShader(const Rect.fromLTRB(-1.0, -1.0, 1.0, 1.0));
-    canvas.drawCircle(Offset.zero, 1.0, paint);
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _CloudCoverPainter oldDelegate) {
-    return oldDelegate.isDark != isDark ||
-        oldDelegate.accentColor != accentColor;
-  }
-}
-
-/// Avatar circular con anillo degradado animado.
+/// Avatar circular con anillo tonal de un solo acento (sin arcos multicolores).
 class ProfileAvatarWithRing extends StatefulWidget {
   final double size;
   final String? imagePath;
@@ -820,7 +640,7 @@ class ProfileAvatarWithRing extends StatefulWidget {
 
   const ProfileAvatarWithRing({
     super.key,
-    this.size = 156,
+    this.size = 76,
     this.imagePath,
     this.photoUrl,
     required this.fallbackInitial,
@@ -840,7 +660,7 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 9),
+      duration: const Duration(seconds: 10),
     )..repeat();
   }
 
@@ -852,7 +672,8 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
+    final isDark = AppTheme.isDark(context);
+    final accent = AppTheme.accent(context);
     final reduceAnimations = context.select<ThemeProvider, bool>(
       (p) => p.reduceAnimations,
     );
@@ -865,20 +686,21 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
 
     ImageProvider<Object>? imageProvider;
     if (!kIsWeb && widget.imagePath != null && widget.imagePath!.isNotEmpty) {
-      imageProvider = FileImage(File(widget.imagePath!));
+      final f = File(widget.imagePath!);
+      if (f.existsSync()) imageProvider = FileImage(f);
     } else if (widget.photoUrl != null && widget.photoUrl!.isNotEmpty) {
       imageProvider = NetworkImage(widget.photoUrl!);
     }
 
-    final ringPad = widget.size >= 120 ? 5.0 : 4.0;
-    final gapPad = widget.size >= 120 ? 6.0 : 4.5;
+    final ringPad = widget.size >= 96 ? 3.0 : 2.4;
+    final gapPad = widget.size >= 96 ? 3.5 : 2.6;
 
     return GestureDetector(
       onTap: widget.onTap,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, child) {
-          final angle = 3.4906585 + (_controller.value * 2 * math.pi);
+          final angle = _controller.value * 2 * math.pi;
           return Container(
             width: widget.size,
             height: widget.size,
@@ -886,12 +708,11 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: SweepGradient(
-                colors: const [
-                  AppColors.darkAccent,
-                  AppColors.info,
-                  AppColors.positive,
-                  AppColors.violet,
-                  AppColors.darkAccent,
+                colors: [
+                  accent,
+                  accent.withValues(alpha: isDark ? 0.28 : 0.22),
+                  accent.withValues(alpha: isDark ? 0.72 : 0.65),
+                  accent,
                 ],
                 transform: GradientRotation(angle),
               ),
@@ -903,12 +724,12 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
           padding: EdgeInsets.all(gapPad),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: palette.bg,
+            color: AppTheme.surface1(context),
           ),
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: palette.avatarPlaceholderBg,
+              color: AppTheme.surface2(context),
               image: imageProvider != null
                   ? DecorationImage(
                       image: imageProvider,
@@ -923,7 +744,7 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
                     style: AppFont.primary(
                       fontSize: widget.size * 0.36,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: accent,
                     ),
                   )
                 : null,
@@ -934,7 +755,7 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
   }
 }
 
-/// Píldora de estado de cuenta (VIP o Normal).
+/// Píldora moderna de estado de cuenta (VIP en acento de marca / Estándar neutro).
 class ProfilePlanBadge extends StatelessWidget {
   final bool isVip;
   final bool compact;
@@ -947,34 +768,21 @@ class ProfilePlanBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
+    final accent = AppTheme.accent(context);
 
     if (isVip) {
       return Container(
         padding: EdgeInsets.symmetric(
-          horizontal: compact ? 12 : 14,
-          vertical: compact ? 4 : 6,
+          horizontal: compact ? 10 : 11,
+          vertical: compact ? 3.5 : 4.5,
         ),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.pill),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF7E08A),
-              AppColors.gold,
-            ],
+          color: AppTheme.accentDim(context),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.42),
+            width: 1,
           ),
-          boxShadow: compact
-              ? null
-              : [
-                  BoxShadow(
-                    color: AppColors.gold.withValues(alpha: 0.38),
-                    blurRadius: 12,
-                    spreadRadius: -4,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -982,17 +790,17 @@ class ProfilePlanBadge extends StatelessWidget {
             if (!compact) ...[
               ProfileSvgIcons.svg(
                 ProfileSvgIcons.crown,
-                size: 15,
-                color: const Color(0xFF422F00),
+                size: 13,
+                color: accent,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
             ],
             Text(
-              compact ? 'VIP' : 'Usuario VIP',
-              style: AppFont.primary(
-                fontSize: compact ? 12.5 : 13.5,
+              compact ? 'VIP' : 'Miembro VIP',
+              style: AppFont.mono(
+                fontSize: compact ? 11 : 11.5,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF422F00),
+                color: accent,
               ),
             ),
           ],
@@ -1002,56 +810,21 @@ class ProfilePlanBadge extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: compact ? 12 : 14,
-        vertical: compact ? 4 : 6,
+        horizontal: compact ? 10 : 11,
+        vertical: compact ? 3.5 : 4.5,
       ),
       decoration: BoxDecoration(
-        color: palette.card,
+        color: AppTheme.surface2(context),
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        border: Border.all(color: palette.border, width: 1),
+        border: Border.all(color: AppTheme.border(context), width: 1),
       ),
       child: Text(
-        compact ? 'Normal' : 'Usuario normal',
+        compact ? 'Estándar' : 'Plan Estándar',
         style: AppFont.primary(
-          fontSize: compact ? 12.5 : 13.5,
+          fontSize: compact ? 11.5 : 12,
           fontWeight: FontWeight.w700,
-          color: palette.muted,
+          color: AppTheme.textSecondary(context),
         ),
-      ),
-    );
-  }
-}
-
-class _PressableScale extends StatefulWidget {
-  final Widget child;
-  final VoidCallback? onTap;
-
-  const _PressableScale({
-    required this.child,
-    this.onTap,
-  });
-
-  @override
-  State<_PressableScale> createState() => _PressableScaleState();
-}
-
-class _PressableScaleState extends State<_PressableScale> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = widget.onTap != null;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
-      onTapUp: enabled ? (_) => setState(() => _pressed = false) : null,
-      onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 110),
-        curve: Curves.easeOutCubic,
-        child: widget.child,
       ),
     );
   }

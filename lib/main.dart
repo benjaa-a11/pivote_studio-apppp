@@ -23,7 +23,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 import 'package:pivote/shared/screens/firebase_required_screen.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 import 'package:pivote/features/auth/presentation/screens/suspended_screen.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/wakelock_service.dart';
@@ -186,6 +186,16 @@ class _NoBounceScrollBehavior extends MaterialScrollBehavior {
   ScrollPhysics getScrollPhysics(BuildContext context) {
     return const ClampingScrollPhysics();
   }
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    // Elimina el estiramiento / rebote visual de Android 12+ e iOS en toda la app.
+    return child;
+  }
 }
 
 class _AuthenticationWrapper extends StatefulWidget {
@@ -288,37 +298,7 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
     }
 
     if (_isCheckingAuth) {
-      // Mostrar logo + spinner mientras se verifica la sesión.
-      // Antes: SizedBox.shrink() → pantalla en negro durante ~1-2 s.
-      return Scaffold(
-        backgroundColor: AppTheme.darkBg,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 80,
-                height: 80,
-                child: SvgPicture.asset(
-                  'assets/logo.svg',
-                  width: 80,
-                  height: 80,
-                ),
-              ),
-              const SizedBox(height: 28),
-              const SizedBox(
-                width: 36,
-                height: 36,
-                child: PivoteLoader(
-                  color: AppTheme.darkAccent,
-                  strokeWidth: 3,
-                  size: 36,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return const _BrandedStartupView();
     }
 
     if (!_isLoggedIn) {
@@ -330,7 +310,6 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
 
     return Consumer3<UserProvider, ChannelProvider, SoccerProvider>(
       builder: (context, userProvider, channelProvider, soccerProvider, child) {
-        // If user is suspended, show the elegant suspended account screen immediately
         if (userProvider.user?.isSuspended == true) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             FlutterNativeSplash.remove();
@@ -345,38 +324,61 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
           });
           return const MainScreen();
         }
-        return Scaffold(
-          backgroundColor: AppTheme.darkBg,
-          body: Center(
-            child: AppAnimations.smoothFadeInScale(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 84,
-                    height: 84,
+        return const _BrandedStartupView();
+      },
+    );
+  }
+}
+
+class _BrandedStartupView extends StatelessWidget {
+  const _BrandedStartupView();
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppTheme.accent(context);
+    return Scaffold(
+      backgroundColor: AppTheme.bg(context),
+      body: PivoteAmbientBackdrop(
+        intensity: 1.35,
+        child: Center(
+          child: AppAnimations.smoothFadeInScale(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PivoteDiffusedCard(
+                  borderRadius: 28,
+                  glowColor: accent,
+                  glowAlignment: const Alignment(0.0, -0.6),
+                  glowOpacity: 1.4,
+                  highlighted: true,
+                  padding: const EdgeInsets.all(20),
+                  child: SizedBox(
+                    width: 68,
+                    height: 68,
                     child: SvgPicture.asset(
                       'assets/logo.svg',
-                      width: 84,
-                      height: 84,
+                      width: 68,
+                      height: 68,
                     ),
                   ),
-                  const SizedBox(height: 32),
-                  const SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: PivoteLoader(
-                      color: AppTheme.darkAccent,
-                      strokeWidth: 3,
-                      size: 40,
+                ),
+                const SizedBox(height: 28),
+                SizedBox(
+                  width: 112,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      minHeight: 3.5,
+                      backgroundColor: AppTheme.surface3(context),
+                      valueColor: AlwaysStoppedAnimation<Color>(accent),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

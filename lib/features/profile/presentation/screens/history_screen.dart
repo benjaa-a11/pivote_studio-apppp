@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
-import 'package:pivote/core/theme/app_typography.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/favorites/data/services/viewing_history_service.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
@@ -13,10 +14,12 @@ import 'package:pivote/features/video/presentation/providers/channel_provider.da
 import 'package:pivote/features/video/presentation/screens/player_screen.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
+import 'package:pivote/shared/widgets/common/app_state_views.dart';
+import 'package:pivote/shared/widgets/common/loading_shimmer.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
+
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
@@ -75,53 +78,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ProfilePalette.of(context);
-
     return ProfileSubsectionScaffold(
       title: 'Historial',
+      subtitle: 'Reproducidos recientemente',
       children: [
         if (_loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 80),
-            child: Center(child: PivoteLoader(size: 38)),
-          )
+          const PivoteHistorySkeleton(itemCount: 6)
         else if (_items.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: ProfileGroupCard(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
-              children: [
-                Column(
-                  children: [
-                    Icon(
-                      Icons.history_rounded,
-                      size: 42,
-                      color: palette.muted,
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Historial vacío',
-                      textAlign: TextAlign.center,
-                      style: AppFont.primary(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: palette.text,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Los canales que reproduzcas aparecerán acá para volver a verlos rápido.',
-                      textAlign: TextAlign.center,
-                      style: AppFont.primary(
-                        fontSize: 13.5,
-                        color: palette.muted,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          const AppStateView.empty(
+            icon: Icons.history_rounded,
+            title: 'Historial vacío',
+            subtitle:
+                'Los canales que reproduzcas aparecerán acá para volver a verlos rápido.',
+            compact: true,
           )
         else ...[
           AppAnimations.staggeredSlideIn(
@@ -146,20 +115,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildChannelRow(BuildContext context, Channel channel) {
-    final palette = ProfilePalette.of(context);
+    final isDark = AppTheme.isDark(context);
     final favProvider = context.watch<FavoritesProvider>();
     final isFav = favProvider.isFavorite(channel.id);
-    final logo = channel.getLogoUrl(palette.isDark);
+    final logo = channel.getLogoUrl(isDark);
 
     return ProfileGroupRow(
       horizontalGap: 14,
       leading: Container(
-        width: 42,
-        height: 42,
+        width: 44,
+        height: 44,
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: palette.iconBox,
-          borderRadius: BorderRadius.circular(12),
+          color: AppTheme.surface2(context),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: Border.all(color: AppTheme.border(context)),
         ),
         child: logo.isNotEmpty
             ? CachedNetworkImage(
@@ -168,16 +138,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 imageUrl: logo,
                 fit: BoxFit.contain,
                 memCacheWidth: 100,
+                placeholder: (_, __) => const PivoteShimmer(
+                  child: PivoteShimmerBone(width: 28, height: 18),
+                ),
                 errorWidget: (_, __, ___) => Icon(
                   Icons.tv_rounded,
                   size: 20,
-                  color: palette.text,
+                  color: AppTheme.textTertiary(context),
                 ),
               )
             : Icon(
                 Icons.tv_rounded,
                 size: 20,
-                color: palette.text,
+                color: AppTheme.textTertiary(context),
               ),
       ),
       title: channel.name,
@@ -192,7 +165,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
           child: Icon(
             isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
             size: 20,
-            color: isFav ? palette.danger : palette.muted,
+            color: isFav
+                ? AppTheme.danger(context)
+                : AppTheme.textTertiary(context),
           ),
         ),
       ),

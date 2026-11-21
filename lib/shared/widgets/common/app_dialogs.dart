@@ -1,10 +1,12 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/theme/dialog_styles.dart';
-import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 import 'package:pivote/shared/widgets/common/apple_pressable.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 export 'package:pivote/core/theme/dialog_styles.dart' show AppDialogType;
 
@@ -20,7 +22,7 @@ class AppDialogs {
   }) async {
     return showDialog<bool>(
       context: context,
-      barrierColor: Colors.black.withAlpha(153),
+      barrierColor: AppTheme.barrierColor(context),
       builder: (_) => _ModernDialog(
         title: title,
         message: message,
@@ -41,7 +43,7 @@ class AppDialogs {
   }) async {
     return showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withAlpha(153),
+      barrierColor: AppTheme.barrierColor(context),
       builder: (_) => _ModernDialog(
         title: title,
         message: message,
@@ -51,23 +53,55 @@ class AppDialogs {
     );
   }
 
+  /// Diálogo moderno con campo de texto integrado (recuperar clave, confirmar
+  /// contraseña actual, etc.) con estética de cristal difuminado.
+  static Future<String?> showInputDialog({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required String hintText,
+    String initialValue = '',
+    String confirmLabel = 'Confirmar',
+    String cancelLabel = 'Cancelar',
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+    IconData icon = Icons.lock_outline_rounded,
+  }) async {
+    return showDialog<String>(
+      context: context,
+      barrierColor: AppTheme.barrierColor(context),
+      builder: (_) => _ModernInputDialog(
+        title: title,
+        message: message,
+        hintText: hintText,
+        initialValue: initialValue,
+        confirmLabel: confirmLabel,
+        cancelLabel: cancelLabel,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        icon: icon,
+      ),
+    );
+  }
+
+  /// Bottom Sheet unificado de Pivote: cristal esmerilado, difuminación radial
+  /// superior estilo MatchesHero, indicador de arrastre y soporte de teclado.
   static Future<T?> showModal<T>({
     required BuildContext context,
     required Widget child,
     bool scrollable = true,
+    Color? glowColor,
   }) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
     return showModalBottomSheet<T>(
       context: context,
       backgroundColor: Colors.transparent,
-      barrierColor: dark
-          ? const Color(0xBD02040A)
-          : const Color(0x8C02040A),
+      barrierColor: AppTheme.barrierColor(context),
       isScrollControlled: true,
       showDragHandle: false,
       useSafeArea: true,
       builder: (ctx) => _ModernBottomSheet(
         scrollable: scrollable,
+        glowColor: glowColor,
         child: child,
       ),
     );
@@ -80,7 +114,7 @@ class AppDialogs {
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withAlpha(140),
+      barrierColor: AppTheme.barrierColor(context),
       builder: (_) => _ModernLoadingDialog(message: message),
     );
   }
@@ -107,113 +141,319 @@ class _ModernDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final iconColor = DialogStyles.getIconColor(type, isDark);
-    final iconBgColor = DialogStyles.getIconBgColor(type, isDark);
+    final isDark = AppTheme.isDark(context);
+    final iconColor = isDestructive
+        ? AppTheme.danger(context)
+        : DialogStyles.getIconColor(type, isDark);
+    final iconBgColor = isDestructive
+        ? AppTheme.dangerDim(context)
+        : DialogStyles.getIconBgColor(type, isDark);
     final iconData = DialogStyles.getIcon(type);
 
     return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
       child: Dialog(
-        backgroundColor: isDark
-            ? AppTheme.darkBg2.withValues(alpha: 0.94)
-            : AppTheme.lightBg1.withValues(alpha: 0.96),
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(DialogStyles.borderRadius),
-          side: BorderSide(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          decoration: BoxDecoration(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.09)
-                : AppTheme.lightBorder,
+                ? AppColors.darkBg1.withValues(alpha: 0.96)
+                : AppColors.lightBg1.withValues(alpha: 0.98),
+            borderRadius: BorderRadius.circular(DialogStyles.borderRadius),
+            border: Border.all(color: AppTheme.borderStrong(context)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.58 : 0.16),
+                blurRadius: 36,
+                spreadRadius: -8,
+                offset: const Offset(0, 18),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(0.0, -1.05),
+                        radius: 1.15,
+                        colors: [
+                          iconColor.withValues(alpha: isDark ? 0.22 : 0.12),
+                          iconColor.withValues(alpha: 0.0),
+                        ],
+                        stops: const [0.0, 0.72],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: DialogStyles.contentPadding,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: iconBgColor,
+                        borderRadius: BorderRadius.circular(AppRadius.card),
+                        border: Border.all(
+                          color: iconColor.withValues(alpha: 0.30),
+                          width: 1.1,
+                        ),
+                      ),
+                      child: Center(
+                        child: Icon(iconData, color: iconColor, size: 28),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: AppFont.primary(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.35,
+                        color: AppTheme.textPrimary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: AppFont.primary(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w500,
+                        height: 1.48,
+                        color: AppTheme.textSecondary(context),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (isConfirm)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DialogButton(
+                              label: cancelLabel ?? 'Cancelar',
+                              isPrimary: false,
+                              onTap: () => Navigator.pop(context, false),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _DialogButton(
+                              label: confirmLabel ?? 'Confirmar',
+                              isPrimary: true,
+                              isDestructive: isDestructive,
+                              accentColor: iconColor,
+                              onTap: () => Navigator.pop(context, true),
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: _DialogButton(
+                          label: 'Entendido',
+                          isPrimary: true,
+                          accentColor: iconColor,
+                          onTap: () => Navigator.pop(context),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Padding(
-          padding: DialogStyles.contentPadding,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      ),
+    );
+  }
+}
+
+class _ModernInputDialog extends StatefulWidget {
+  final String title;
+  final String message;
+  final String hintText;
+  final String initialValue;
+  final String confirmLabel;
+  final String cancelLabel;
+  final bool obscureText;
+  final TextInputType keyboardType;
+  final IconData icon;
+
+  const _ModernInputDialog({
+    required this.title,
+    required this.message,
+    required this.hintText,
+    required this.initialValue,
+    required this.confirmLabel,
+    required this.cancelLabel,
+    required this.obscureText,
+    required this.keyboardType,
+    required this.icon,
+  });
+
+  @override
+  State<_ModernInputDialog> createState() => _ModernInputDialogState();
+}
+
+class _ModernInputDialogState extends State<_ModernInputDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+    final accent = AppTheme.accent(context);
+
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 22),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppColors.darkBg1.withValues(alpha: 0.96)
+                : AppColors.lightBg1.withValues(alpha: 0.98),
+            borderRadius: BorderRadius.circular(DialogStyles.borderRadius),
+            border: Border.all(color: AppTheme.borderStrong(context)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.58 : 0.16),
+                blurRadius: 36,
+                spreadRadius: -8,
+                offset: const Offset(0, 18),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
             children: [
-              Container(
-                width: 68,
-                height: 68,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [iconBgColor, iconBgColor.withValues(alpha: 0.5)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: iconColor.withValues(alpha: 0.24),
-                    width: 1.2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: iconColor.withValues(alpha: 0.18),
-                      blurRadius: 16,
-                      offset: const Offset(0, 5),
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(0.0, -1.1),
+                        radius: 1.1,
+                        colors: [
+                          accent.withValues(alpha: isDark ? 0.18 : 0.10),
+                          accent.withValues(alpha: 0.0),
+                        ],
+                        stops: const [0.0, 0.72],
+                      ),
                     ),
-                  ],
-                ),
-                child:
-                    Center(child: Icon(iconData, color: iconColor, size: 32)),
-              ),
-              const SizedBox(height: 22),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: AppFont.primary(
-                  fontSize: 19.5,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.35,
-                  color: theme.colorScheme.onSurface,
+                  ),
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: AppFont.primary(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  height: 1.48,
-                  color: AppTheme.textSecondary(context),
-                ),
-              ),
-              const SizedBox(height: 28),
-              if (isConfirm)
-                Row(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _DialogButton(
-                        label: cancelLabel ?? 'Cancelar',
-                        isPrimary: false,
-                        onTap: () => Navigator.pop(context, false),
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentDim(context),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            border: Border.all(
+                              color: accent.withValues(alpha: 0.30),
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(widget.icon, size: 20, color: accent),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            widget.title,
+                            style: AppFont.primary(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                              color: AppTheme.textPrimary(context),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.message,
+                      style: AppFont.primary(
+                        fontSize: 13.5,
+                        height: 1.45,
+                        color: AppTheme.textSecondary(context),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _DialogButton(
-                        label: confirmLabel ?? 'Confirmar',
-                        isPrimary: true,
-                        isDestructive: isDestructive,
-                        accentColor: iconColor,
-                        onTap: () => Navigator.pop(context, true),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _controller,
+                      autofocus: true,
+                      obscureText: widget.obscureText,
+                      keyboardType: widget.keyboardType,
+                      style: AppFont.primary(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimary(context),
                       ),
+                      decoration: InputDecoration(
+                        hintText: widget.hintText,
+                        filled: true,
+                        fillColor: AppTheme.surface2(context),
+                      ),
+                      onSubmitted: (val) => Navigator.pop(context, val),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _DialogButton(
+                            label: widget.cancelLabel,
+                            isPrimary: false,
+                            onTap: () => Navigator.pop(context),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _DialogButton(
+                            label: widget.confirmLabel,
+                            isPrimary: true,
+                            accentColor: accent,
+                            onTap: () =>
+                                Navigator.pop(context, _controller.text),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                )
-              else
-                SizedBox(
-                  width: double.infinity,
-                  child: _DialogButton(
-                    label: 'Entendido',
-                    isPrimary: true,
-                    accentColor: iconColor,
-                    onTap: () => Navigator.pop(context),
-                  ),
                 ),
+              ),
             ],
           ),
         ),
@@ -239,15 +479,13 @@ class _DialogButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final bg = !isPrimary
-        ? (isDark ? AppTheme.darkBg3 : AppTheme.lightBg2)
+        ? AppTheme.surface2(context)
         : isDestructive
-            ? theme.colorScheme.error
-            : accentColor ?? theme.colorScheme.primary;
+            ? AppTheme.danger(context)
+            : accentColor ?? AppTheme.accent(context);
     final fg = !isPrimary
-        ? theme.colorScheme.onSurface
+        ? AppTheme.textPrimary(context)
         : isDestructive
             ? Colors.white
             : (bg.computeLuminance() > 0.45
@@ -257,26 +495,26 @@ class _DialogButton extends StatelessWidget {
     return ApplePressable(
       scaleDownFactor: 0.96,
       borderRadius: BorderRadius.circular(AppRadius.md),
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        height: 46,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: !isPrimary
-              ? Border.all(
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : AppTheme.lightBorder,
-                )
+              ? Border.all(color: AppTheme.border(context))
               : null,
           boxShadow: isPrimary
               ? [
                   BoxShadow(
-                    color: bg.withValues(alpha: 0.26),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: bg.withValues(alpha: 0.24),
+                    blurRadius: 14,
+                    spreadRadius: -2,
+                    offset: const Offset(0, 5),
                   ),
                 ]
               : null,
@@ -284,8 +522,8 @@ class _DialogButton extends StatelessWidget {
         child: Text(
           label,
           style: AppFont.primary(
-            fontSize: 14.5,
-            fontWeight: FontWeight.w700,
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
             color: fg,
             letterSpacing: -0.15,
           ),
@@ -298,70 +536,97 @@ class _DialogButton extends StatelessWidget {
 class _ModernBottomSheet extends StatelessWidget {
   final Widget child;
   final bool scrollable;
-  const _ModernBottomSheet({required this.child, required this.scrollable});
+  final Color? glowColor;
+
+  const _ModernBottomSheet({
+    required this.child,
+    required this.scrollable,
+    this.glowColor,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final mq = MediaQuery.of(context);
-    final dark = theme.brightness == Brightness.dark;
+    final isDark = AppTheme.isDark(context);
+    final glow = glowColor ?? AppTheme.accent(context);
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(AppRadius.xl),
-      ),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-        child: Container(
-          constraints: BoxConstraints(maxHeight: mq.size.height * 0.90),
-          decoration: BoxDecoration(
-            color: dark
-                ? const Color(0xEB121622)
-                : AppTheme.lightBg1.withValues(alpha: 0.97),
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(AppRadius.xl),
-            ),
-            border: Border(
-              top: BorderSide(
-                color: dark
-                    ? AppColors.glassBorder
-                    : AppTheme.lightBorder,
-                width: 1.0,
+    return Padding(
+      padding: EdgeInsets.only(bottom: mq.viewInsets.bottom),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.xl),
+        ),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            constraints: BoxConstraints(maxHeight: mq.size.height * 0.90),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.darkBg1.withValues(alpha: 0.92)
+                  : AppColors.lightBg1.withValues(alpha: 0.96),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(AppRadius.xl),
               ),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: dark ? 0.65 : 0.16),
-                blurRadius: 40,
-                offset: const Offset(0, -12),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 12, bottom: 10),
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: dark
-                        ? AppColors.darkBorder2
-                        : AppColors.lightBorder2,
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
+              border: Border(
+                top: BorderSide(
+                  color: AppTheme.borderStrong(context),
+                  width: 1.0,
                 ),
               ),
-              scrollable
-                  ? Flexible(
-                      child: SingleChildScrollView(
-                        physics: const ClampingScrollPhysics(),
-                        child: child,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.65 : 0.16),
+                  blurRadius: 40,
+                  offset: const Offset(0, -12),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                // Difuminación ambiental superior estilo MatchesHero
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: RadialGradient(
+                          center: const Alignment(0.0, -1.15),
+                          radius: 1.15,
+                          colors: [
+                            glow.withValues(alpha: isDark ? 0.16 : 0.085),
+                            glow.withValues(alpha: 0.0),
+                          ],
+                          stops: const [0.0, 0.68],
+                        ),
                       ),
-                    )
-                  : Flexible(child: child),
-            ],
+                    ),
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12, bottom: 8),
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppTheme.borderStrong(context),
+                          borderRadius: BorderRadius.circular(AppRadius.pill),
+                        ),
+                      ),
+                    ),
+                    scrollable
+                        ? Flexible(
+                            child: SingleChildScrollView(
+                              physics: const ClampingScrollPhysics(),
+                              child: child,
+                            ),
+                          )
+                        : Flexible(child: child),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -369,40 +634,31 @@ class _ModernBottomSheet extends StatelessWidget {
   }
 }
 
-class _ModernLoadingDialog extends StatefulWidget {
+class _ModernLoadingDialog extends StatelessWidget {
   final String message;
+
   const _ModernLoadingDialog({required this.message});
 
   @override
-  State<_ModernLoadingDialog> createState() => _ModernLoadingDialogState();
-}
-
-class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
-    final accent = theme.colorScheme.primary;
+    final isDark = AppTheme.isDark(context);
+    final accent = AppTheme.accent(context);
 
     return PopScope(
       canPop: false,
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Center(
           child: Container(
-            width: 292,
+            width: 288,
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
             decoration: BoxDecoration(
-              color: dark ? AppTheme.darkBg2 : AppTheme.lightBg1,
+              color: isDark ? AppColors.darkBg1 : AppColors.lightBg1,
               borderRadius: BorderRadius.circular(AppRadius.hero),
-              border: Border.all(
-                color: dark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : AppTheme.lightBorder,
-              ),
+              border: Border.all(color: AppTheme.borderStrong(context)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: dark ? 0.35 : 0.10),
+                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.12),
                   blurRadius: 32,
                   offset: const Offset(0, 14),
                 ),
@@ -412,22 +668,22 @@ class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 58,
-                  height: 58,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.12),
+                    color: AppTheme.accentDim(context),
                     borderRadius: BorderRadius.circular(AppRadius.card),
                   ),
-                  child: PivoteLoader(color: accent, strokeWidth: 3, size: 30),
+                  child: PivoteLoader(color: accent, strokeWidth: 3, size: 28),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
                 Text(
-                  widget.message,
+                  message,
                   textAlign: TextAlign.center,
                   style: AppFont.primary(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
-                    color: theme.colorScheme.onSurface,
+                    color: AppTheme.textPrimary(context),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -435,20 +691,9 @@ class _ModernLoadingDialogState extends State<_ModernLoadingDialog> {
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                   child: LinearProgressIndicator(
                     value: null,
-                    minHeight: 5,
-                    backgroundColor: accent.withValues(alpha: 0.10),
+                    minHeight: 4,
+                    backgroundColor: AppTheme.surface2(context),
                     valueColor: AlwaysStoppedAnimation<Color>(accent),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Este proceso puede tardar un momento. La ventana se cerrará cuando termine.',
-                  textAlign: TextAlign.center,
-                  style: AppFont.primary(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: AppTheme.textTertiary(context),
-                    height: 1.38,
                   ),
                 ),
               ],

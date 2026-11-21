@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:pivote/core/theme/app_colors.dart';
-import 'package:pivote/core/theme/app_tokens.dart';
-import 'package:pivote/core/theme/app_typography.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/shared/widgets/common/pivote_loader.dart';
 
 // ─── Paleta de Auth adaptativa a ambos temas ─────────────────────────────────
 class AuthPalette {
@@ -56,17 +55,16 @@ class AuthPalette {
   });
 
   factory AuthPalette.of(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = AppTheme.isDark(context);
 
     if (isDark) {
       return AuthPalette(
         isDark: true,
         scaffoldBg: AppColors.darkBg,
         panelBg: AppColors.darkBg1,
-        heroBg: AppColors.darkBg2,
-        heroBubble1: AppColors.accent.withValues(alpha: 0.22),
-        heroBubble2: AppColors.accentTint.withValues(alpha: 0.14),
+        heroBg: AppColors.darkBg,
+        heroBubble1: AppColors.darkAccent.withValues(alpha: 0.24),
+        heroBubble2: AppColors.darkAccent.withValues(alpha: 0.12),
         text: AppColors.darkText,
         muted: AppColors.darkText3,
         fieldBg: AppColors.darkBg2,
@@ -75,39 +73,39 @@ class AuthPalette {
         line: AppColors.darkBorder,
         btnMainBg: AppColors.darkAccent,
         btnMainPressed: AppColors.accentStrong,
-        btnMainGradient: AppGradients.buttonPrimary,
+        btnMainGradient: null,
         btnMainText: AppColors.onDarkAccent,
         googleBtnBg: AppColors.darkBg2,
         googleBtnBorder: AppColors.darkBorder2,
         googleBtnText: AppColors.darkText,
-        backBtnBg: AppColors.darkBg3.withValues(alpha: 0.8),
+        backBtnBg: AppColors.darkBg2,
         backBtnIcon: AppColors.darkText,
-        linkColor: AppColors.accentTint,
+        linkColor: AppColors.darkAccent,
       );
     } else {
-      return const AuthPalette(
+      return AuthPalette(
         isDark: false,
         scaffoldBg: AppColors.lightBg,
-        panelBg: Colors.white,
-        heroBg: AppColors.darkAccent,
-        heroBubble1: Color(0x2E0B0D12),
-        heroBubble2: Color(0x1A0B0D12),
+        panelBg: AppColors.lightBg1,
+        heroBg: AppColors.lightBg,
+        heroBubble1: AppColors.lightAccent.withValues(alpha: 0.16),
+        heroBubble2: AppColors.lightAccent.withValues(alpha: 0.09),
         text: AppColors.lightText,
         muted: AppColors.lightText2,
-        fieldBg: Color(0xFFF4F6F9),
-        fieldFocusBg: Color(0xFFECEFF4),
+        fieldBg: AppColors.lightBg2,
+        fieldFocusBg: AppColors.lightBg3,
         fieldBorder: AppColors.lightBorder,
         line: AppColors.lightBorder,
-        btnMainBg: AppColors.darkAccent,
-        btnMainPressed: AppColors.accentStrong,
-        btnMainGradient: AppGradients.buttonPrimary,
-        btnMainText: AppColors.onDarkAccent,
-        googleBtnBg: Colors.white,
+        btnMainBg: AppColors.lightAccent,
+        btnMainPressed: AppColors.lightAccentTint,
+        btnMainGradient: null,
+        btnMainText: AppColors.onLightAccent,
+        googleBtnBg: AppColors.lightBg1,
         googleBtnBorder: AppColors.lightBorder,
         googleBtnText: AppColors.lightText,
-        backBtnBg: Color(0x1F0B0D12),
-        backBtnIcon: AppColors.onDarkAccent,
-        linkColor: AppColors.darkAccent,
+        backBtnBg: AppColors.lightBg1,
+        backBtnIcon: AppColors.lightText,
+        linkColor: AppColors.lightAccent,
       );
     }
   }
@@ -283,30 +281,36 @@ class AuthHero extends StatelessWidget {
             child: Container(color: palette.heroBg),
           ),
 
-          // Burbuja 1 (.gold) posicionada armónicamente
-          Positioned(
-            left: -62,
-            bottom: -42,
-            child: Container(
-              width: 164,
-              height: 164,
+          // Difuminación radial izquierda estilo MatchesHero
+          Positioned.fill(
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: palette.heroBubble1,
+                gradient: RadialGradient(
+                  center: const Alignment(-0.82, 0.2),
+                  radius: 1.05,
+                  colors: [
+                    palette.heroBubble1,
+                    palette.heroBubble1.withValues(alpha: 0.0),
+                  ],
+                  stops: const [0.0, 0.72],
+                ),
               ),
             ),
           ),
 
-          // Burbuja 2 (.green) posicionada armónicamente a la derecha
-          Positioned(
-            right: -38,
-            bottom: -48,
-            child: Container(
-              width: 142,
-              height: 142,
+          // Difuminación radial derecha equilibrada
+          Positioned.fill(
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: palette.heroBubble2,
+                gradient: RadialGradient(
+                  center: const Alignment(0.85, -0.35),
+                  radius: 0.95,
+                  colors: [
+                    palette.heroBubble2,
+                    palette.heroBubble2.withValues(alpha: 0.0),
+                  ],
+                  stops: const [0.0, 0.74],
+                ),
               ),
             ),
           ),
@@ -324,9 +328,9 @@ class AuthHero extends StatelessWidget {
                 style: AppFont.primary(
                   fontSize: 32,
                   height: 1.14,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
-                  color: palette.isDark ? AppColors.darkText : AppColors.onDarkAccent,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.6,
+                  color: palette.text,
                 ),
               ),
             ),
@@ -432,7 +436,7 @@ class _AuthGoogleBtnState extends State<AuthGoogleBtn> {
           height: 52,
           decoration: BoxDecoration(
             color: _isPressed
-                ? (palette.isDark ? palette.fieldFocusBg : const Color(0xFFFAFAFA))
+                ? palette.fieldFocusBg
                 : palette.googleBtnBg,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: palette.googleBtnBorder, width: 1),
@@ -1077,13 +1081,10 @@ class _AuthMainBtnState extends State<AuthMainBtn> {
             ),
             alignment: Alignment.center,
             child: widget.isLoading
-                ? SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: palette.btnMainText,
-                    ),
+                ? PivoteLoader(
+                    size: 20,
+                    strokeWidth: 2.3,
+                    color: palette.btnMainText,
                   )
                 : Text(
                     widget.label,

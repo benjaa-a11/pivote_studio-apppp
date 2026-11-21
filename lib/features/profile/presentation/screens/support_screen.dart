@@ -29,6 +29,10 @@ class SupportScreen extends StatelessWidget {
               ProfileGroupCard(
                 children: [
                   ProfileGroupRow(
+                    leading: const ProfileSettingIconBox(
+                      icon: Icons.speed_rounded,
+                      highlight: true,
+                    ),
                     title: 'Diagnóstico de red',
                     subtitle: 'Comprobar velocidad, ping y calidad sugerida',
                     showChevron: true,
@@ -38,6 +42,9 @@ class SupportScreen extends StatelessWidget {
                     ),
                   ),
                   ProfileGroupRow(
+                    leading: const ProfileSettingIconBox(
+                      icon: Icons.storage_rounded,
+                    ),
                     title: 'Gestionar almacenamiento',
                     subtitle: 'Liberar caché para optimizar la reproducción',
                     showChevron: true,
@@ -72,7 +79,7 @@ class SupportScreen extends StatelessWidget {
                   ProfileGroupRow(
                     title: '¿Cómo cambio el tema visual?',
                     subtitle:
-                        'Desde Perfil > Apariencia podés elegir entre Claro, Oscuro o Sistema y personalizar el color de acento.',
+                        'Desde Perfil > Apariencia podés elegir entre Claro, Oscuro o Sistema y ajustar el tamaño del texto.',
                   ),
                 ],
               ),
@@ -88,12 +95,18 @@ class SupportScreen extends StatelessWidget {
               ProfileGroupCard(
                 children: [
                   ProfileGroupRow(
+                    leading: const ProfileSettingIconBox(
+                      icon: Icons.mail_outline_rounded,
+                    ),
                     title: 'Correo de soporte',
                     valueText: 'soporte@pivote.com',
                     showChevron: true,
                     onTap: () => _openUrl('mailto:soporte@pivote.com'),
                   ),
                   ProfileGroupRow(
+                    leading: const ProfileSettingIconBox(
+                      icon: Icons.send_rounded,
+                    ),
                     title: 'Telegram oficial',
                     valueText: '@pivote_support',
                     showChevron: true,

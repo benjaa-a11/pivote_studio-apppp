@@ -2,12 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:pivote/core/theme/app_typography.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/features/auth/presentation/screens/signup_screen.dart';
 import 'package:pivote/features/auth/presentation/widgets/auth_components.dart';
 import 'package:pivote/features/home/presentation/screens/main_screen.dart';
@@ -100,93 +100,24 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  void _showForgotPasswordDialog() {
-    final palette = AuthPalette.of(context);
-    final resetEmailController =
-        TextEditingController(text: _emailController.text.trim());
-    showDialog(
+  Future<void> _showForgotPasswordDialog() async {
+    final email = await AppDialogs.showInputDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: palette.panelBg,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: palette.line),
-        ),
-        title: Text(
-          'Recuperar Contraseña',
-          style: AppFont.primary(
-            fontWeight: FontWeight.w700,
-            color: palette.text,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ingresa tu correo para recibir las instrucciones de recuperación.',
-              style: AppFont.primary(
-                color: palette.muted,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: resetEmailController,
-              keyboardType: TextInputType.emailAddress,
-              style: AppFont.primary(color: palette.text),
-              decoration: InputDecoration(
-                hintText: 'ejemplo@correo.com',
-                hintStyle: AppFont.primary(color: palette.muted),
-                filled: true,
-                fillColor: palette.fieldBg,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  borderSide: BorderSide(color: palette.fieldBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  borderSide: BorderSide(color: palette.fieldBorder),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  borderSide: BorderSide(color: palette.linkColor),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(
-              'Cancelar',
-              style: AppFont.primary(color: palette.muted),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: palette.btnMainBg,
-              foregroundColor: palette.btnMainText,
-              shape: const StadiumBorder(),
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              AppNotifications.showSuccess(
-                context,
-                'Si el correo está registrado, recibirás un enlace de recuperación.',
-              );
-            },
-            child: Text(
-              'Enviar enlace',
-              style: AppFont.primary(fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
+      title: 'Recuperar contraseña',
+      message:
+          'Ingresá tu correo electrónico para recibir las instrucciones de recuperación.',
+      hintText: 'ejemplo@correo.com',
+      initialValue: _emailController.text.trim(),
+      confirmLabel: 'Enviar enlace',
+      keyboardType: TextInputType.emailAddress,
+      icon: Icons.mark_email_read_outlined,
     );
+    if (email != null && mounted) {
+      AppNotifications.showSuccess(
+        context,
+        'Si el correo está registrado, recibirás un enlace de recuperación.',
+      );
+    }
   }
 
   @override
