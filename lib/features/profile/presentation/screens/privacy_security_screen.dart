@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
-import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
-import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
@@ -21,8 +18,6 @@ class PrivacySecurityScreen extends StatefulWidget {
 class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
   bool _saveHistory = true;
   bool _privateProfile = false;
-  bool _twoFactorEnabled = true;
-  bool _deleting = false;
 
   @override
   void initState() {
@@ -36,7 +31,6 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     setState(() {
       _saveHistory = prefs.getBool('privacy_save_history') ?? true;
       _privateProfile = prefs.getBool('privacy_private_profile') ?? false;
-      _twoFactorEnabled = prefs.getBool('security_two_factor') ?? true;
     });
   }
 
@@ -47,59 +41,15 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     setState(() {
       if (key == 'privacy_save_history') _saveHistory = value;
       if (key == 'privacy_private_profile') _privateProfile = value;
-      if (key == 'security_two_factor') _twoFactorEnabled = value;
     });
   }
 
-  void _showTwoFactorSheet() {
-    AppDialogs.showModal<void>(
-      context: context,
-      child: Builder(
-        builder: (ctx) => SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const PivoteSheetHeader(
-                  title: 'Verificación en dos pasos',
-                  subtitle: 'Protección adicional de inicio de sesión',
-                  icon: Icons.verified_user_outlined,
-                ),
-                const SizedBox(height: 16),
-                ProfileGroupCard(
-                  children: [
-                    ProfileGroupRow(
-                      title: 'Protección en dos pasos',
-                      subtitle:
-                          'Solicitar confirmación adicional al iniciar sesión en un dispositivo nuevo',
-                      onTap: () {
-                        final next = !_twoFactorEnabled;
-                        _updatePref('security_two_factor', next);
-                        Navigator.pop(ctx);
-                      },
-                      trailing: ProfileSwitch(
-                        value: _twoFactorEnabled,
-                        onChanged: (val) {
-                          _updatePref('security_two_factor', val);
-                          Navigator.pop(ctx);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   void _showConnectedDevicesSheet() {
-    final email = context.read<UserProvider>().user?.email ?? 'Sesión activa';
+    final user = context.read<UserProvider>().user;
+    final email = user?.email ?? 'Sesión activa';
+    final maxDevices = user?.maxDispositivos ?? 1;
+    final linkedCount = user?.dispositivos.length ??
+        ((user?.deviceId != null && user!.deviceId!.isNotEmpty) ? 1 : 0);
 
     AppDialogs.showModal<void>(
       context: context,
@@ -111,9 +61,9 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const PivoteSheetHeader(
-                title: 'Dispositivos conectados',
-                subtitle: 'Sesiones activas en tu cuenta',
+              PivoteSheetHeader(
+                title: 'Dispositivos autorizados',
+                subtitle: 'Límite de tu cuenta: $linkedCount / $maxDevices',
                 icon: Icons.devices_rounded,
               ),
               const SizedBox(height: 16),
@@ -125,16 +75,17 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                       highlight: true,
                     ),
                     title: 'Este dispositivo',
-                    subtitle: '$email · En línea ahora',
-                    valueText: 'Actual',
-                  ),
-                  const ProfileGroupRow(
-                    leading: ProfileSettingIconBox(
-                      icon: Icons.tv_rounded,
-                    ),
-                    title: 'Pivote Web / Smart TV',
-                    subtitle: 'Sincronizado con tu cuenta',
+                    subtitle: '$email · Sesión verificada',
                     valueText: 'Activo',
+                  ),
+                  ProfileGroupRow(
+                    leading: const ProfileSettingIconBox(
+                      icon: Icons.shield_outlined,
+                    ),
+                    title: 'Cambio de dispositivo',
+                    subtitle:
+                        'Si cambiás de equipo, pedí al administrador que resetee tu dispositivo.',
+                    valueText: 'Máx. $maxDevices',
                   ),
                 ],
               ),
@@ -145,41 +96,21 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
     );
   }
 
-  Future<void> _deleteAccount() async {
-    final confirmed = await AppDialogs.showConfirm(
+  void _showRequestAccountRemovalInfo() {
+    AppDialogs.showAlert(
       context: context,
-      title: '¿Eliminar tu cuenta?',
+      title: 'Baja de cuenta privada',
       message:
-          'Esta acción es permanente e irreversible. Se borrarán tus datos y preferencias.',
-      confirmLabel: 'Eliminar cuenta',
-      cancelLabel: 'Cancelar',
-      isDestructive: true,
-      type: AppDialogType.error,
+          'Al ser una app con acceso privado administrado, la baja definitiva de cuentas se gestiona directamente con el administrador.',
+      type: AppDialogType.info,
     );
-    if (confirmed != true || !mounted) return;
-
-    final userProvider = context.read<UserProvider>();
-    final navigator = Navigator.of(context);
-    await HapticFeedback.mediumImpact();
-    if (!mounted) return;
-    setState(() => _deleting = true);
-
-    try {
-      await userProvider.deleteAccount();
-      if (!mounted) return;
-      await navigator.pushAndRemoveUntil(
-        AppAnimations.createFadeRoute(const LoginScreen()),
-        (route) => false,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      AppNotifications.showError(context, 'No se pudo eliminar la cuenta');
-      setState(() => _deleting = false);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<UserProvider>().user;
+    final maxDevices = user?.maxDispositivos ?? 1;
+
     return ProfileSubsectionScaffold(
       title: 'Privacidad y seguridad',
       children: [
@@ -240,14 +171,8 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                     },
                   ),
                   ProfileGroupRow(
-                    title: 'Verificación en dos pasos',
-                    valueText: _twoFactorEnabled ? 'Activada' : 'Desactivada',
-                    showChevron: true,
-                    onTap: _showTwoFactorSheet,
-                  ),
-                  ProfileGroupRow(
-                    title: 'Dispositivos conectados',
-                    valueText: '2',
+                    title: 'Dispositivos autorizados',
+                    valueText: 'Máx. $maxDevices',
                     showChevron: true,
                     onTap: _showConnectedDevicesSheet,
                   ),
@@ -259,10 +184,9 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
         AppAnimations.staggeredSlideIn(
           index: 2,
           child: ProfileActionButton(
-            label: 'Eliminar cuenta',
-            variant: ProfileButtonVariant.danger,
-            loading: _deleting,
-            onTap: _deleteAccount,
+            label: 'Solicitar baja de cuenta',
+            variant: ProfileButtonVariant.soft,
+            onTap: _showRequestAccountRemovalInfo,
           ),
         ),
       ],

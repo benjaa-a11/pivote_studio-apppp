@@ -273,19 +273,6 @@ class AppGradients {
     end: Alignment.bottomRight,
     colors: [Colors.white24, Colors.transparent],
   );
-
-  /// Degradado inferior para pósters y banners.
-  static LinearGradient posterFade(bool isDark) {
-    return LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        Colors.transparent,
-        (isDark ? AppColors.darkBg : Colors.black).withValues(alpha: 0.86),
-      ],
-      stops: const [0.38, 1.0],
-    );
-  }
 }
 
 /// Tokens de cristal esmerilado y superficies translúcidas.
@@ -364,31 +351,6 @@ class AppResponsive {
     double spacing = 12,
   }) {
     final cols = channelColumns(context);
-    return SliverGridDelegateWithFixedCrossAxisCount(
-      crossAxisCount: cols,
-      childAspectRatio: aspectRatio,
-      crossAxisSpacing: spacing,
-      mainAxisSpacing: spacing,
-    );
-  }
-
-  /// Número de columnas para pósters de películas.
-  static int posterColumns(BuildContext context) {
-    final w = widthOf(context);
-    if (w >= 1100) return 6;
-    if (w >= 840) return 5;
-    if (w >= 600) return 4;
-    if (w >= 430) return 3;
-    return 2;
-  }
-
-  /// Grilla adaptativa para tarjetas verticales de películas.
-  static SliverGridDelegateWithFixedCrossAxisCount posterGridDelegate(
-    BuildContext context, {
-    double aspectRatio = 0.64,
-    double spacing = 14,
-  }) {
-    final cols = posterColumns(context);
     return SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: cols,
       childAspectRatio: aspectRatio,

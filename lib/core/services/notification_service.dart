@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pivote/core/services/firebase_service.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 
 class NotificationService {
@@ -96,12 +97,8 @@ class NotificationService {
   static Future<void> _saveTokenToFirestore(String token) async {
     try {
       final uid = AuthService.currentUserId;
-      if (uid == null) return;
-      await _firestore.collection('usuarios').doc(uid).update({
-        'fcmToken': token,
-        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
-        'notificationsDisabled': false
-      });
+      if (uid == null || !FirebaseService.isInitialized) return;
+      await AuthService.updateFcmToken(token);
     } catch (e) {
       debugPrint('❌ Error saving FCM token: $e');
     }
@@ -171,9 +168,17 @@ class NotificationService {
     if (kIsWeb) return;
     try {
       final uid = AuthService.currentUserId;
-      if (uid == null) return;
-      await _firestore.collection('usuarios').doc(uid).update(
-          {'fcmToken': FieldValue.delete(), 'notificationsDisabled': true});
+      if (uid == null || !FirebaseService.isInitialized) return;
+      await _firestore.collection('users').doc(uid).update({
+        'fcmToken': FieldValue.delete(),
+        'notificationsDisabled': true,
+        'actualizadoEn': FieldValue.serverTimestamp(),
+      });
+      await FirebaseService.userPrefsDoc(uid).set({
+        'fcmToken': null,
+        'notificationsDisabled': true,
+        'actualizadoEn': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
       await _messaging.deleteToken();
     } catch (e) {
       debugPrint('❌ Error disabling notifications: $e');

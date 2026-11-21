@@ -26,9 +26,24 @@ class ChannelProvider extends ChangeNotifier {
   ChannelProvider(ThemeProvider themeProvider) {
     themeProvider.addListener(_onThemeChanged);
     _isDarkMode = themeProvider.isDarkMode;
-    loadChannelsFromFirestore();
-    _loadViewCounts();
+    // No consultar Firestore antes de autenticar: las reglas exigen `esActivo()`.
+    // `_AuthenticationWrapper` invoca `loadChannelsFromFirestore()` al validar acceso.
     _setupPeriodicRefresh();
+  }
+
+  /// Limpia canales y métricas en memoria al cerrar sesión o ser revocado.
+  void clearOnLogout() {
+    _channels = [];
+    _filteredChannels = [];
+    _searchQuery = '';
+    _selectedCategory = 'Todos';
+    _viewCounts = {};
+    _lastViewed = {};
+    _cachedSortedChannels = null;
+    _needsResort = true;
+    _isLoading = false;
+    _isInitialized = false;
+    notifyListeners();
   }
 
   void _setupPeriodicRefresh() {

@@ -1,68 +1,98 @@
-// Test básico de arranque de Pivote.
-// No intenta conectar a Firebase ni servicios externos.
-// Verifica que los modelos y servicios de auth compilan correctamente.
+// Pruebas unitarias del modelo de usuario privado y control de acceso de Pivote.
+// No conecta a Firebase ni servicios externos.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pivote/features/auth/data/models/user_model.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 
 void main() {
-  group('UserModel', () {
-    test('fromJson crea el modelo correctamente', () {
+  group('UserModel (users/{uid})', () {
+    test('fromJson crea el modelo correctamente con el nuevo esquema', () {
+      final futureDate = DateTime.now().add(const Duration(days: 30));
       final json = {
         'uid': 'test-uid-123',
-        'name': 'Juan',
-        'lastName': 'García',
+        'nombre': 'Juan',
+        'apellido': 'García',
         'email': 'juan@test.com',
-        'isVip': false,
-        'userType': 'standard',
-        'isSuspended': false,
-        'favorites': <String>[],
-        'createdAt': '2026-01-01T00:00:00',
+        'activo': true,
+        'plan': 'standard',
+        'vence': futureDate.toIso8601String(),
+        'deviceId': 'device-abc-123',
+        'maxDispositivos': 1,
+        'creadoEn': '2026-01-01T00:00:00.000Z',
       };
 
       final user = UserModel.fromJson(json);
 
       expect(user.uid, 'test-uid-123');
+      expect(user.nombre, 'Juan');
+      expect(user.apellido, 'García');
       expect(user.name, 'Juan');
       expect(user.lastName, 'García');
       expect(user.email, 'juan@test.com');
+      expect(user.activo, true);
       expect(user.isVip, false);
-      expect(user.isSuspended, false);
-      expect(user.favorites, isEmpty);
+      expect(user.isExpired, false);
+      expect(user.hasValidAccess, true);
+      expect(user.deviceId, 'device-abc-123');
+      expect(user.maxDispositivos, 1);
     });
 
-    test('toJson / fromJson round-trip', () {
+    test('toJson / fromJson round-trip conserva campos de acceso', () {
+      final futureDate = DateTime.now().add(const Duration(days: 60));
       final original = UserModel(
         uid: 'uid-456',
-        name: 'María',
-        lastName: 'López',
+        nombre: 'María',
+        apellido: 'López',
         email: 'maria@test.com',
-        isVip: true,
-        userType: 'vip',
-        isSuspended: false,
-        favorites: ['channel-1', 'channel-2'],
+        activo: true,
+        plan: 'vip',
+        vence: futureDate,
+        deviceId: 'dev-99999999',
+        dispositivos: const ['dev-99999999'],
+        maxDispositivos: 2,
       );
 
       final json = original.toJson();
       final restored = UserModel.fromJson(json);
 
       expect(restored.uid, original.uid);
-      expect(restored.name, original.name);
-      expect(restored.lastName, original.lastName);
+      expect(restored.nombre, original.nombre);
+      expect(restored.apellido, original.apellido);
       expect(restored.email, original.email);
-      expect(restored.isVip, original.isVip);
-      expect(restored.favorites, original.favorites);
+      expect(restored.activo, true);
+      expect(restored.isVip, true);
+      expect(restored.maxDispositivos, 2);
+      expect(restored.deviceId, 'dev-99999999');
+      expect(restored.hasValidAccess, true);
     });
 
-    test('fromJson maneja campos nulos con defaults', () {
-      final json = <String, dynamic>{'uid': '', 'email': ''};
-      final user = UserModel.fromJson(json);
+    test('bloquea acceso si activo == false o vence está vencido', () {
+      final past = DateTime.now().subtract(const Duration(minutes: 5));
+      final future = DateTime.now().add(const Duration(days: 5));
 
-      expect(user.uid, '');
-      expect(user.name, '');
-      expect(user.isSuspended, false);
-      expect(user.favorites, isEmpty);
+      final pendingUser = UserModel(
+        uid: 'u-pending',
+        nombre: 'A',
+        apellido: 'B',
+        email: 'a@b.com',
+        activo: false,
+        vence: future,
+      );
+      expect(pendingUser.hasValidAccess, false);
+      expect(pendingUser.blockReason, AccountBlockReason.pending);
+
+      final expiredUser = UserModel(
+        uid: 'u-expired',
+        nombre: 'A',
+        apellido: 'B',
+        email: 'a@b.com',
+        activo: true,
+        vence: past,
+      );
+      expect(expiredUser.isExpired, true);
+      expect(expiredUser.hasValidAccess, false);
+      expect(expiredUser.blockReason, AccountBlockReason.expired);
     });
 
     test('isValidEmail detecta correos válidos e inválidos', () {
@@ -71,52 +101,48 @@ void main() {
       expect(UserModel.isValidEmail('sin-arroba.com'), false);
     });
 
-    test('isSuspended se lee correctamente del JSON', () {
-      final suspended = UserModel.fromJson({
-        'uid': 'x',
-        'email': 'x@x.com',
-        'isSuspended': true,
-      });
-      expect(suspended.isSuspended, true);
-    });
-
     test('copyWith actualiza solo los campos especificados', () {
-      final user = UserModel(
+      const user = UserModel(
         uid: 'u1',
-        name: 'Original',
-        lastName: 'Name',
+        nombre: 'Original',
+        apellido: 'Name',
         email: 'orig@test.com',
       );
 
-      final updated = user.copyWith(name: 'Actualizado');
-      expect(updated.name, 'Actualizado');
-      expect(updated.uid, 'u1'); // sin cambio
-      expect(updated.email, 'orig@test.com'); // sin cambio
+      final updated = user.copyWith(nombre: 'Actualizado');
+      expect(updated.nombre, 'Actualizado');
+      expect(updated.uid, 'u1');
+      expect(updated.email, 'orig@test.com');
     });
   });
 
   group('AuthService error messages', () {
     test('getErrorMessage retorna mensaje legible para PivoteAuthException',
         () {
-      final ex = PivoteAuthException(
+      const ex = PivoteAuthException(
         code: 'email-already-in-use',
-        message: 'raw message',
+        message: 'Este correo ya está registrado.',
       );
       final msg = AuthService.getErrorMessage(ex);
-      expect(msg, isNotEmpty);
-      expect(msg, contains('correo electrónico'));
+      expect(msg, 'Este correo ya está registrado.');
+    });
+
+    test('getErrorMessage retorna mensaje legible para AccountAccessBlockedException',
+        () {
+      const pending = AccountAccessBlockedException(
+        reason: AccountBlockReason.pending,
+      );
+      const expired = AccountAccessBlockedException(
+        reason: AccountBlockReason.expired,
+      );
+      expect(AuthService.getErrorMessage(pending), contains('pendiente'));
+      expect(AuthService.getErrorMessage(expired), contains('venció'));
     });
 
     test('getErrorMessage retorna mensaje para error de red', () {
       final msg =
           AuthService.getErrorMessage('network error: connection refused');
       expect(msg, isNotEmpty);
-    });
-
-    test('PivoteAuthException tiene toString útil', () {
-      final ex = PivoteAuthException(code: 'test', message: 'Test error');
-      expect(ex.toString(), contains('test'));
-      expect(ex.toString(), contains('Test error'));
     });
   });
 }

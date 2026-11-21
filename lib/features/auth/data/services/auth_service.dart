@@ -1,481 +1,694 @@
 import 'dart:convert';
-import 'dart:math';
-import 'package:crypto/crypto.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pivote/features/auth/data/models/user_model.dart';
 import 'package:pivote/core/services/firebase_service.dart';
+import 'package:pivote/features/auth/data/models/user_model.dart';
 
-/// Custom authentication exception for the Pivote auth system.
+/// Excepción controlada del flujo de autenticación privada de Pivote.
 class PivoteAuthException implements Exception {
   final String code;
   final String message;
-  PivoteAuthException({required this.code, required this.message});
+
+  const PivoteAuthException({required this.code, required this.message});
 
   @override
   String toString() => 'PivoteAuthException(code: $code, message: $message)';
 }
 
-/// Fully custom authentication service for Pivote Studio.
-/// Uses Firestore 'usuarios' collection as the user database.
-/// Passwords are hashed with SHA-256 + random salt.
-/// Session is managed via SharedPreferences (no Firebase Auth).
+/// Excepción emitida cuando el usuario autenticó en Firebase Auth pero su cuenta
+/// no tiene acceso habilitado (pendiente de aprobación, vencida o desactivada).
+class AccountAccessBlockedException implements Exception {
+  final AccountBlockReason reason;
+  final String? email;
+  final DateTime? vence;
+  final String? plan;
+
+  const AccountAccessBlockedException({
+    required this.reason,
+    this.email,
+    this.vence,
+    this.plan,
+  });
+
+  @override
+  String toString() =>
+      'AccountAccessBlockedException(reason: $reason, email: $email, vence: $vence)';
+}
+
+/// Resultado del registro con código de invitación.
+class SignUpResult {
+  final UserModel user;
+  final bool requiresApproval;
+
+  const SignUpResult({
+    required this.user,
+    required this.requiresApproval,
+  });
+}
+
+/// Servicio de autenticación privada basado en Firebase Auth + Firestore Security Rules.
+///
+/// - `users/{uid}` almacena estado de acceso (`activo`, `vence`, `plan`, `deviceId`, `maxDispositivos`).
+/// - `invitaciones/{codigo}` valida y canjea códigos de invitación de forma atómica.
+/// - `users/{uid}/datos/avatar` persiste el logo/avatar del usuario en Firestore (plan Spark gratuito).
 class AuthService {
+  static FirebaseAuth get _auth => FirebaseAuth.instance;
   static FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
-  static const String _usersCollection = 'usuarios';
-  static const String _sessionKey = 'pivote_session_uid';
-  static const String _sessionUserKey = 'pivote_session_user';
+  static const String _legacySessionKey = 'pivote_session_uid';
+  static const String _legacySessionUserKey = 'pivote_session_user';
+  static const int maxAvatarBase64Length = 340000; // Margen bajo el límite 350000 de Rules
 
-  // Cached current user ID for synchronous access
-  static String? _cachedUid;
+  /// UID actual de Firebase Auth (fuente real de `request.auth.uid`).
+  static String? get currentUserId {
+    if (!FirebaseService.isInitialized) return null;
+    return _auth.currentUser?.uid;
+  }
 
-  /// Get current user ID or null (synchronous, from cache)
-  static String? get currentUserId => _cachedUid;
+  /// Usuario actual de Firebase Auth.
+  static User? get currentFirebaseUser {
+    if (!FirebaseService.isInitialized) return null;
+    return _auth.currentUser;
+  }
 
-  /// Initialize session from SharedPreferences (call once at app start)
+  /// Inicializa sesión y limpia rastros de la antigua autenticación custom.
   static Future<void> initSession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _cachedUid = prefs.getString(_sessionKey);
-      debugPrint('🔵 AuthService: Session initialized, uid=$_cachedUid');
+      if (prefs.containsKey(_legacySessionKey)) {
+        await prefs.remove(_legacySessionKey);
+      }
+      if (prefs.containsKey(_legacySessionUserKey)) {
+        await prefs.remove(_legacySessionUserKey);
+      }
+      debugPrint('🔵 AuthService: Firebase Auth uid=$currentUserId');
     } catch (e) {
-      debugPrint('❌ AuthService: Error initializing session: $e');
+      debugPrint('⚠️ AuthService: Error limpiando sesión legada: $e');
     }
   }
 
-  /// Check if a user session exists
+  /// Verifica si hay una sesión activa en Firebase Auth.
   static Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    final uid = prefs.getString(_sessionKey);
-    _cachedUid = uid;
-    return uid != null && uid.isNotEmpty;
+    if (!FirebaseService.isInitialized) return false;
+    return _auth.currentUser != null;
   }
 
-  // ─── Password Hashing ───────────────────────────────────────────
+  // ─── Registro con código de invitación (Transacción Atómica) ────
 
-  /// Generate a random 16-byte salt
-  static String _generateSalt() {
-    final random = Random.secure();
-    final saltBytes = List<int>.generate(16, (_) => random.nextInt(256));
-    return base64Encode(saltBytes);
-  }
-
-  /// Hash a password with SHA-256 using a salt
-  static String _hashPassword(String password, String salt) {
-    final bytes = utf8.encode('$salt:$password');
-    final digest = sha256.convert(bytes);
-    return digest.toString();
-  }
-
-  /// Verify a password against a stored hash and salt
-  static bool _verifyPassword(String password, String storedHash, String salt) {
-    final computedHash = _hashPassword(password, salt);
-    return computedHash == storedHash;
-  }
-
-  // ─── Sign Up ────────────────────────────────────────────────────
-
-  /// Register a new user with email, password, name and lastName.
-  /// Stores user data in the 'usuarios' Firestore collection.
-  static Future<UserModel> signUp({
+  /// Registra un usuario nuevo validando y marcando como usado `invitaciones/{codigo}`
+  /// en la misma transacción atómica que crea `users/{uid}`.
+  ///
+  /// Política de activación (aplicada y exigida por Firestore Rules):
+  /// - Por defecto (`autoActivar != true`): se crea con `activo: false` hasta aprobación manual.
+  /// - Si el admin creó la invitación con `autoActivar: true` y `venceAcceso` futuro:
+  ///   se crea con `activo: true` y exactamente esa fecha de vencimiento.
+  static Future<SignUpResult> signUpWithInvitation({
+    required String invitationCode,
     required String email,
     required String password,
-    required String name,
-    required String lastName,
+    required String nombre,
+    required String apellido,
   }) async {
-    try {
-      _requireFirebase();
-      debugPrint('🔵 AuthService: Starting sign-up for $email...');
+    _requireFirebase();
 
-      final normalizedEmail = email.trim().toLowerCase();
+    final normalizedCode = invitationCode.trim().toUpperCase();
+    final normalizedEmail = email.trim().toLowerCase();
+    final cleanNombre = nombre.trim();
+    final cleanApellido = apellido.trim();
 
-      // 1. Check if email is already registered
-      final existing = await _firestore
-          .collection(_usersCollection)
-          .where('email', isEqualTo: normalizedEmail)
-          .limit(1)
-          .get();
-
-      if (existing.docs.isNotEmpty) {
-        throw PivoteAuthException(
-          code: 'email-already-in-use',
-          message: 'Este correo electrónico ya está registrado.',
-        );
-      }
-
-      // 2. Generate unique user ID
-      final uid = _firestore.collection(_usersCollection).doc().id;
-
-      // 3. Hash the password
-      final salt = _generateSalt();
-      final hashedPassword = _hashPassword(password, salt);
-
-      // 4. Create user document
-      final now = DateTime.now().toIso8601String();
-      final userData = {
-        'uid': uid,
-        'name': name.trim(),
-        'lastName': lastName.trim(),
-        'email': normalizedEmail,
-        'passwordHash': hashedPassword,
-        'passwordSalt': salt,
-        'isVip': false,
-        'userType': 'standard',
-        'isSuspended': false,
-        'fcmToken': null,
-        'favorites': <String>[],
-        'createdAt': now,
-        'updatedAt': now,
-      };
-
-      await _firestore.collection(_usersCollection).doc(uid).set(userData);
-      debugPrint('✅ AuthService: User document created: $uid');
-
-      // 5. Save session locally
-      await _saveSession(uid, userData);
-
-      // 6. Return the user model
-      return UserModel.fromJson(userData);
-    } on PivoteAuthException {
-      rethrow;
-    } catch (e) {
-      debugPrint('❌ AuthService: Error in sign-up: $e');
-      throw PivoteAuthException(
-        code: 'signup-error',
-        message: 'Error al crear la cuenta. Inténtalo de nuevo.',
+    if (normalizedCode.length < 6 ||
+        normalizedCode.length > 64 ||
+        normalizedCode.contains('/')) {
+      throw const PivoteAuthException(
+        code: 'invalid-invitation',
+        message: 'Ingresá un código de invitación válido.',
       );
     }
-  }
+    if (cleanNombre.isEmpty || cleanApellido.isEmpty) {
+      throw const PivoteAuthException(
+        code: 'invalid-name',
+        message: 'Ingresá tu nombre y apellido.',
+      );
+    }
+    if (!UserModel.isValidEmail(normalizedEmail)) {
+      throw const PivoteAuthException(
+        code: 'invalid-email',
+        message: 'Ingresá un correo electrónico válido.',
+      );
+    }
+    if (password.length < 6) {
+      throw const PivoteAuthException(
+        code: 'weak-password',
+        message: 'La contraseña debe tener al menos 6 caracteres.',
+      );
+    }
 
-  // ─── Sign In ────────────────────────────────────────────────────
+    UserCredential? credential;
+    bool createdInAuth = false;
 
-  /// Sign in with email and password.
-  static Future<UserModel> signIn(String email, String password) async {
     try {
-      _requireFirebase();
-      debugPrint('🔵 AuthService: Starting sign-in for $email...');
+      debugPrint('🔵 AuthService: Creando cuenta Auth para $normalizedEmail...');
+      credential = await _auth.createUserWithEmailAndPassword(
+        email: normalizedEmail,
+        password: password,
+      );
+      createdInAuth = true;
 
-      final normalizedEmail = email.trim().toLowerCase();
+      final authUser = credential.user!;
+      final uid = authUser.uid;
+      final authEmail = (authUser.email ?? normalizedEmail).toLowerCase();
 
-      // 1. Find user by email
-      final query = await _firestore
-          .collection(_usersCollection)
-          .where('email', isEqualTo: normalizedEmail)
-          .limit(1)
-          .get();
+      // Asegura que el ID Token recién emitido esté disponible antes de la transacción.
+      await authUser.getIdToken(true);
 
-      if (query.docs.isEmpty) {
-        throw PivoteAuthException(
-          code: 'user-not-found',
-          message: 'No encontramos una cuenta con este correo electrónico.',
-        );
-      }
+      bool willAutoActivate = false;
+      DateTime? assignedVence;
+      String assignedPlan = 'standard';
+      int assignedMaxDevices = 1;
 
-      final doc = query.docs.first;
-      final data = doc.data();
+      final invRef = FirebaseService.invitacionesCollection.doc(normalizedCode);
+      final userRef = FirebaseService.usersCollection.doc(uid);
 
-      // 2. Verify password
-      final storedHash = data['passwordHash'] as String? ?? '';
-      final storedSalt = data['passwordSalt'] as String? ?? '';
+      await _firestore.runTransaction((tx) async {
+        final invSnap = await tx.get(invRef);
 
-      if (!_verifyPassword(password, storedHash, storedSalt)) {
-        throw PivoteAuthException(
-          code: 'wrong-password',
-          message: 'La contraseña es incorrecta.',
-        );
-      }
+        if (!invSnap.exists || invSnap.data() == null) {
+          throw const PivoteAuthException(
+            code: 'invalid-invitation',
+            message: 'El código de invitación no existe. Verificalo e intentá otra vez.',
+          );
+        }
 
-      debugPrint('✅ AuthService: Password verified for ${data['uid']}');
+        final invData = invSnap.data()!;
+        if (invData['usado'] == true) {
+          throw const PivoteAuthException(
+            code: 'invitation-used',
+            message: 'Este código de invitación ya fue utilizado.',
+          );
+        }
 
-      // 3. Update last login timestamp
-      await doc.reference.update({
-        'updatedAt': DateTime.now().toIso8601String(),
+        final invVenceTs = invData['vence'];
+        if (invVenceTs is! Timestamp ||
+            !invVenceTs.toDate().isAfter(DateTime.now())) {
+          throw const PivoteAuthException(
+            code: 'invitation-expired',
+            message: 'Este código de invitación venció. Pedí uno nuevo al administrador.',
+          );
+        }
+
+        final autoActivar = invData['autoActivar'] == true;
+        final venceAccesoTs = invData['venceAcceso'];
+        final hasValidAutoExpiration = autoActivar &&
+            venceAccesoTs is Timestamp &&
+            venceAccesoTs.toDate().isAfter(DateTime.now());
+
+        willAutoActivate = hasValidAutoExpiration;
+        assignedVence = hasValidAutoExpiration ? venceAccesoTs.toDate() : null;
+        assignedPlan = (invData['plan'] as String?) ?? 'standard';
+        assignedMaxDevices = (invData['maxDispositivos'] as num?)?.toInt() ?? 1;
+
+        // 1. Marcar invitación como usada atómicamente
+        tx.update(invRef, {
+          'usado': true,
+          'usadoPor': uid,
+          'usadoEn': FieldValue.serverTimestamp(),
+        });
+
+        // 2. Crear `users/{uid}` cumpliendo exactamente el contrato de las Rules
+        tx.set(userRef, {
+          'uid': uid,
+          'email': authEmail,
+          'nombre': cleanNombre,
+          'apellido': cleanApellido,
+          'activo': willAutoActivate,
+          'plan': assignedPlan,
+          'vence': willAutoActivate
+              ? venceAccesoTs
+              : FieldValue.serverTimestamp(),
+          'deviceId': null,
+          'dispositivos': <String>[],
+          'maxDispositivos': assignedMaxDevices,
+          'photoUrl': null,
+          'fcmToken': null,
+          'codigoInvitacion': normalizedCode,
+          'creadoEn': FieldValue.serverTimestamp(),
+          'actualizadoEn': FieldValue.serverTimestamp(),
+        });
       });
 
-      // 4. Save session locally
-      await _saveSession(data['uid'] as String, data);
-
-      // 5. Return user model
-      return UserModel.fromJson(data);
-    } on PivoteAuthException {
-      rethrow;
-    } catch (e) {
-      debugPrint('❌ AuthService: Error in sign-in: $e');
-      throw PivoteAuthException(
-        code: 'signin-error',
-        message: 'Error al iniciar sesión. Inténtalo de nuevo.',
-      );
-    }
-  }
-
-  // ─── Session Management ─────────────────────────────────────────
-
-  /// Save session to SharedPreferences
-  static Future<void> _saveSession(
-      String uid, Map<String, dynamic> userData) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_sessionKey, uid);
-
-      // Cache user data locally for fast loading
-      final safeData = Map<String, dynamic>.from(userData);
-      safeData.remove('passwordHash');
-      safeData.remove('passwordSalt');
-      await prefs.setString(_sessionUserKey, jsonEncode(safeData));
-
-      _cachedUid = uid;
-      debugPrint('✅ AuthService: Session saved for $uid');
-    } catch (e) {
-      debugPrint('❌ AuthService: Error saving session: $e');
-    }
-  }
-
-  /// Logout — clear session
-  static Future<void> logout() async {
-    try {
-      debugPrint('🔵 AuthService: Starting logout...');
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_sessionKey);
-      await prefs.remove(_sessionUserKey);
-      _cachedUid = null;
-      debugPrint('✅ AuthService: Logout completed');
-    } catch (e) {
-      debugPrint('❌ AuthService: Error during logout: $e');
-      rethrow;
-    }
-  }
-
-  // ─── User Data ──────────────────────────────────────────────────
-
-  /// Get current user model from Firestore
-  static Future<UserModel?> getUser() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final uid = prefs.getString(_sessionKey);
-
-      if (uid == null || uid.isEmpty) {
-        debugPrint('⚠️ AuthService: No session found');
-        return null;
-      }
-
-      _cachedUid = uid;
-
-      // Try loading from Firestore first
-      _requireFirebase();
-      debugPrint('🔵 AuthService: Fetching user data from Firestore: $uid');
-
-      final doc = await _firestore.collection(_usersCollection).doc(uid).get();
-
-      if (doc.exists && doc.data() != null) {
-        debugPrint('✅ AuthService: User data retrieved from Firestore');
-        final data = doc.data()!;
-        return UserModel.fromJson(data);
-      }
-
-      // Fallback: load from local cache
-      final cachedUserJson = prefs.getString(_sessionUserKey);
-      if (cachedUserJson != null) {
-        debugPrint('⚠️ AuthService: Using cached user data');
-        return UserModel.fromJsonString(cachedUserJson);
-      }
-
-      return null;
-    } catch (e) {
-      debugPrint('❌ AuthService: Error getting user data: $e');
-
-      // Last resort: try local cache
+      // Actualizar displayName en Auth (no crítico si falla)
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final cachedUserJson = prefs.getString(_sessionUserKey);
-        if (cachedUserJson != null) {
-          return UserModel.fromJsonString(cachedUserJson);
-        }
+        await authUser.updateDisplayName('$cleanNombre $cleanApellido');
       } catch (_) {}
 
+      final createdModel = UserModel(
+        uid: uid,
+        nombre: cleanNombre,
+        apellido: cleanApellido,
+        email: authEmail,
+        activo: willAutoActivate,
+        plan: assignedPlan,
+        vence: assignedVence,
+        maxDispositivos: assignedMaxDevices,
+        codigoInvitacion: normalizedCode,
+        creadoEn: DateTime.now(),
+      );
+
+      // Si requiere aprobación manual (`activo == false`), cerramos sesión inmediatamente:
+      // nunca queda una sesión abierta esperando en segundo plano ni entra a la home.
+      if (!willAutoActivate) {
+        await _auth.signOut();
+        debugPrint('🔒 AuthService: Registro completado (pendiente de aprobación). Sesión cerrada.');
+        return SignUpResult(user: createdModel, requiresApproval: true);
+      }
+
+      // Si el admin marcó la invitación como pre-aprobada (`autoActivar: true`), releer del servidor
+      final verified = await fetchUserFromServer(uid);
+      if (verified == null || !verified.hasValidAccess) {
+        await _auth.signOut();
+        return SignUpResult(user: createdModel, requiresApproval: true);
+      }
+
+      debugPrint('✅ AuthService: Registro pre-aprobado exitoso para $uid');
+      return SignUpResult(user: verified, requiresApproval: false);
+    } on PivoteAuthException {
+      if (createdInAuth) {
+        await _rollbackCreatedAuthUser(credential?.user);
+      }
+      rethrow;
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseAuthException(e);
+    } on FirebaseException catch (e) {
+      if (createdInAuth) {
+        await _rollbackCreatedAuthUser(credential?.user);
+      }
+      if (e.code == 'permission-denied') {
+        throw const PivoteAuthException(
+          code: 'invalid-invitation',
+          message: 'El código de invitación es inválido, ya fue usado o venció.',
+        );
+      }
+      throw PivoteAuthException(
+        code: e.code,
+        message: 'No se pudo completar el registro. Verificá tu conexión e intentá de nuevo.',
+      );
+    } catch (e) {
+      if (createdInAuth) {
+        await _rollbackCreatedAuthUser(credential?.user);
+      }
+      debugPrint('❌ AuthService: Error inesperado en registro: $e');
+      throw const PivoteAuthException(
+        code: 'signup-error',
+        message: 'No se pudo crear la cuenta. Intentá nuevamente.',
+      );
+    }
+  }
+
+  /// Elimina el usuario recién creado en Firebase Auth si falló el canje de invitación
+  /// para que el correo no quede huérfano ni bloqueado.
+  static Future<void> _rollbackCreatedAuthUser(User? user) async {
+    try {
+      if (user != null) {
+        await user.delete();
+        debugPrint('↩️ AuthService: Rollback de cuenta Auth tras código inválido');
+      }
+    } catch (e) {
+      debugPrint('⚠️ AuthService: No se pudo eliminar cuenta Auth en rollback: $e');
+      try {
+        await _auth.signOut();
+      } catch (_) {}
+    }
+  }
+
+  // ─── Inicio de sesión con verificación obligatoria en servidor ──
+
+  /// Autentica con Firebase Auth y valida `users/{uid}` directamente desde el servidor.
+  /// Si `activo == false`, el documento no existe o `vence <= ahora`, CIERRA SESIÓN
+  /// y lanza [AccountAccessBlockedException]. Nunca deja pasar a la home.
+  static Future<UserModel> signIn(String email, String password) async {
+    _requireFirebase();
+
+    final normalizedEmail = email.trim().toLowerCase();
+
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: normalizedEmail,
+        password: password,
+      );
+
+      final uid = credential.user!.uid;
+      await credential.user!.getIdToken(true);
+
+      final user = await fetchUserFromServer(uid);
+
+      if (user == null) {
+        await _auth.signOut();
+        throw AccountAccessBlockedException(
+          reason: AccountBlockReason.missingProfile,
+          email: normalizedEmail,
+        );
+      }
+
+      if (!user.activo) {
+        await _auth.signOut();
+        throw AccountAccessBlockedException(
+          reason: AccountBlockReason.pending,
+          email: user.email,
+          vence: user.vence,
+          plan: user.plan,
+        );
+      }
+
+      if (user.isExpired) {
+        await _auth.signOut();
+        throw AccountAccessBlockedException(
+          reason: AccountBlockReason.expired,
+          email: user.email,
+          vence: user.vence,
+          plan: user.plan,
+        );
+      }
+
+      debugPrint('✅ AuthService: Login verificado en servidor para $uid');
+      return user;
+    } on AccountAccessBlockedException {
+      rethrow;
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseAuthException(e);
+    } on FirebaseException catch (e) {
+      await _auth.signOut();
+      throw PivoteAuthException(
+        code: e.code,
+        message: 'No pudimos verificar el estado de tu cuenta. Revisá tu conexión.',
+      );
+    }
+  }
+
+  // ─── Lectura y escucha en tiempo real de `users/{uid}` ──────────
+
+  /// Lee `users/{uid}` priorizando el servidor para evitar saltear bloqueos con caché local.
+  static Future<UserModel?> fetchUserFromServer(String uid) async {
+    _requireFirebase();
+    final doc = await FirebaseService.usersCollection
+        .doc(uid)
+        .get(const GetOptions(source: Source.server));
+    if (!doc.exists || doc.data() == null) return null;
+    return UserModel.fromJson(doc.data()!, docId: doc.id);
+  }
+
+  /// Obtiene el usuario actual (intenta servidor primero; si no hay red temporal, cae a caché).
+  static Future<UserModel?> getUser({bool forceServer = true}) async {
+    final uid = currentUserId;
+    if (uid == null) return null;
+
+    _requireFirebase();
+    try {
+      final doc = await FirebaseService.usersCollection.doc(uid).get(
+            GetOptions(
+              source: forceServer ? Source.server : Source.serverAndCache,
+            ),
+          );
+      if (!doc.exists || doc.data() == null) return null;
+      return UserModel.fromJson(doc.data()!, docId: doc.id);
+    } on FirebaseException catch (e) {
+      if (e.code == 'unavailable' && forceServer) {
+        final cached = await FirebaseService.usersCollection
+            .doc(uid)
+            .get(const GetOptions(source: Source.cache));
+        if (cached.exists && cached.data() != null) {
+          return UserModel.fromJson(cached.data()!, docId: cached.id);
+        }
+      }
+      rethrow;
+    }
+  }
+
+  /// Stream en tiempo real sobre `users/{uid}` para expulsión inmediata si se desactiva o vence.
+  static Stream<DocumentSnapshot<Map<String, dynamic>>> watchUserDocument(
+    String uid,
+  ) {
+    return FirebaseService.usersCollection.doc(uid).snapshots();
+  }
+
+  // ─── Avatar persistente en la nube (`users/{uid}/datos/avatar`) ─
+
+  /// Guarda el avatar comprimido en Firestore (100% gratis en plan Spark).
+  /// Sobrevive a cierres de sesión y desinstalaciones de la app.
+  static Future<void> saveUserAvatarBytes(Uint8List bytes) async {
+    final uid = currentUserId;
+    if (uid == null) {
+      throw const PivoteAuthException(
+        code: 'no-current-user',
+        message: 'No hay una sesión activa.',
+      );
+    }
+    _requireFirebase();
+
+    final encoded = base64Encode(bytes);
+    if (encoded.length > maxAvatarBase64Length) {
+      throw const PivoteAuthException(
+        code: 'avatar-too-large',
+        message: 'La imagen es demasiado pesada. Elegí una foto más liviana.',
+      );
+    }
+
+    await FirebaseService.userAvatarDoc(uid).set({
+      'base64': encoded,
+      'mimeType': 'image/jpeg',
+      'actualizadoEn': FieldValue.serverTimestamp(),
+    });
+    debugPrint('✅ AuthService: Avatar guardado en Firestore (${bytes.length} bytes)');
+  }
+
+  /// Recupera el avatar guardado en la nube para el usuario actual.
+  static Future<Uint8List?> fetchUserAvatarBytes(String uid) async {
+    try {
+      _requireFirebase();
+      final doc = await FirebaseService.userAvatarDoc(uid).get();
+      if (!doc.exists || doc.data() == null) return null;
+      final raw = doc.data()!['base64'] as String?;
+      if (raw == null || raw.isEmpty) return null;
+      return base64Decode(raw);
+    } catch (e) {
+      debugPrint('⚠️ AuthService: No se pudo cargar avatar remoto: $e');
       return null;
     }
   }
 
-  /// Update user information in Firestore
+  /// Borra el avatar de la nube (solo cuando el usuario lo solicita explícitamente).
+  static Future<void> deleteUserAvatar() async {
+    final uid = currentUserId;
+    if (uid == null) return;
+    _requireFirebase();
+
+    await FirebaseService.userAvatarDoc(uid).delete();
+    try {
+      await FirebaseService.usersCollection.doc(uid).update({
+        'photoUrl': null,
+        'actualizadoEn': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+    debugPrint('🗑️ AuthService: Avatar eliminado de la nube por el usuario');
+  }
+
+  // ─── Perfil, contraseña y token FCM ─────────────────────────────
+
+  /// Actualiza únicamente los campos seguros del perfil permitidos por Rules (`nombre`, `apellido`).
   static Future<void> updateUser(UserModel user) async {
-    if (_cachedUid == null) {
-      debugPrint('⚠️ AuthService: No current user to update');
-      return;
+    final uid = currentUserId;
+    if (uid == null) return;
+
+    _requireFirebase();
+    final cleanNombre = user.nombre.trim();
+    final cleanApellido = user.apellido.trim();
+
+    if (cleanNombre.isEmpty || cleanApellido.isEmpty) {
+      throw const PivoteAuthException(
+        code: 'invalid-name',
+        message: 'Ingresá tu nombre y apellido.',
+      );
     }
+
+    await FirebaseService.usersCollection.doc(uid).update({
+      'nombre': cleanNombre,
+      'apellido': cleanApellido,
+      'actualizadoEn': FieldValue.serverTimestamp(),
+    });
 
     try {
-      _requireFirebase();
-      debugPrint('🔵 AuthService: Updating user information...');
-
-      final updateData = {
-        'name': user.name,
-        'lastName': user.lastName,
-        'email': user.email,
-        'updatedAt': DateTime.now().toIso8601String(),
-      };
-
-      if (user.photoUrl != null) {
-        updateData['photoUrl'] = user.photoUrl!;
-      }
-
-      await _firestore
-          .collection(_usersCollection)
-          .doc(_cachedUid)
-          .update(updateData);
-
-      // Update local cache
-      final prefs = await SharedPreferences.getInstance();
-      final cachedJson = prefs.getString(_sessionUserKey);
-      if (cachedJson != null) {
-        final cached = jsonDecode(cachedJson) as Map<String, dynamic>;
-        cached.addAll(updateData);
-        await prefs.setString(_sessionUserKey, jsonEncode(cached));
-      }
-
-      debugPrint('✅ AuthService: User information updated successfully');
-    } catch (e) {
-      debugPrint('❌ AuthService: Error updating user: $e');
-      rethrow;
-    }
+      await _auth.currentUser?.updateDisplayName('$cleanNombre $cleanApellido');
+    } catch (_) {}
   }
 
-  /// Update password (requires knowledge of old password)
+  /// Cambia la contraseña real en Firebase Auth tras reautenticar.
   static Future<void> updatePassword(
-      String currentPassword, String newPassword) async {
-    if (_cachedUid == null) {
-      throw PivoteAuthException(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    final user = currentFirebaseUser;
+    if (user == null || user.email == null) {
+      throw const PivoteAuthException(
         code: 'no-current-user',
         message: 'No hay usuario autenticado.',
       );
     }
 
     try {
-      _requireFirebase();
-
-      // Fetch current user data to verify old password
-      final doc =
-          await _firestore.collection(_usersCollection).doc(_cachedUid).get();
-
-      if (!doc.exists) {
-        throw PivoteAuthException(
-          code: 'user-not-found',
-          message: 'Usuario no encontrado.',
-        );
-      }
-
-      final data = doc.data()!;
-      final storedHash = data['passwordHash'] as String? ?? '';
-      final storedSalt = data['passwordSalt'] as String? ?? '';
-
-      if (!_verifyPassword(currentPassword, storedHash, storedSalt)) {
-        throw PivoteAuthException(
-          code: 'wrong-password',
-          message: 'La contraseña actual es incorrecta.',
-        );
-      }
-
-      // Generate new hash
-      final newSalt = _generateSalt();
-      final newHash = _hashPassword(newPassword, newSalt);
-
-      await doc.reference.update({
-        'passwordHash': newHash,
-        'passwordSalt': newSalt,
-        'updatedAt': DateTime.now().toIso8601String(),
-      });
-
-      debugPrint('✅ AuthService: Password updated successfully');
-    } on PivoteAuthException {
-      rethrow;
-    } catch (e) {
-      debugPrint('❌ AuthService: Error updating password: $e');
-      throw PivoteAuthException(
-        code: 'password-update-error',
-        message: 'Error al actualizar la contraseña.',
+      final cred = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
       );
+      await user.reauthenticateWithCredential(cred);
+      await user.updatePassword(newPassword);
+      debugPrint('✅ AuthService: Contraseña actualizada en Firebase Auth');
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseAuthException(e);
     }
   }
 
-  /// Update FCM token for push notifications
+  /// Envía correo real de recuperación de contraseña vía Firebase Auth.
+  static Future<void> sendPasswordResetEmail(String email) async {
+    _requireFirebase();
+    final normalized = email.trim().toLowerCase();
+    if (!UserModel.isValidEmail(normalized)) {
+      throw const PivoteAuthException(
+        code: 'invalid-email',
+        message: 'Ingresá un correo electrónico válido.',
+      );
+    }
+    try {
+      await _auth.sendPasswordResetEmail(email: normalized);
+    } on FirebaseAuthException catch (e) {
+      throw _mapFirebaseAuthException(e);
+    }
+  }
+
+  /// Guarda el token FCM en `users/{uid}` (allowlisted por Rules) y en `datos/preferencias`.
   static Future<void> updateFcmToken(String token) async {
-    if (_cachedUid == null) return;
-
-    try {
-      await _firestore.collection(_usersCollection).doc(_cachedUid).update({
-        'fcmToken': token,
-      });
-      debugPrint('✅ AuthService: FCM token updated');
-    } catch (e) {
-      debugPrint('❌ AuthService: Error updating FCM token: $e');
-    }
-  }
-
-  /// Delete user account and all data
-  static Future<void> deleteAccount() async {
-    if (_cachedUid == null) {
-      throw PivoteAuthException(
-        code: 'no-current-user',
-        message: 'No hay usuario autenticado.',
-      );
-    }
+    final uid = currentUserId;
+    if (uid == null || token.isEmpty) return;
 
     try {
       _requireFirebase();
-      debugPrint('🔵 AuthService: Deleting user account: $_cachedUid');
-
-      // Delete Firestore document
-      await _firestore.collection(_usersCollection).doc(_cachedUid).delete();
-
-      // Clear session
-      await logout();
-
-      debugPrint('✅ AuthService: Account deleted successfully');
+      await FirebaseService.usersCollection.doc(uid).update({
+        'fcmToken': token,
+        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+        'notificationsDisabled': false,
+        'actualizadoEn': FieldValue.serverTimestamp(),
+      });
+      await FirebaseService.userPrefsDoc(uid).set({
+        'fcmToken': token,
+        'actualizadoEn': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      debugPrint('✅ AuthService: Token FCM guardado en la nube');
     } catch (e) {
-      debugPrint('❌ AuthService: Error deleting account: $e');
+      debugPrint('⚠️ AuthService: Error actualizando token FCM: $e');
+    }
+  }
+
+  /// Cierra sesión de Firebase Auth (sin borrar datos persistentes de la nube).
+  static Future<void> logout() async {
+    try {
+      if (FirebaseService.isInitialized) {
+        await _auth.signOut();
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_legacySessionKey);
+      await prefs.remove(_legacySessionUserKey);
+      debugPrint('✅ AuthService: Sesión cerrada en Firebase Auth');
+    } catch (e) {
+      debugPrint('❌ AuthService: Error al cerrar sesión: $e');
       rethrow;
     }
   }
 
-  // ─── Helpers ────────────────────────────────────────────────────
+  // ─── Helpers y mapeo de errores ─────────────────────────────────
 
   static void _requireFirebase() {
     if (!FirebaseService.isInitialized) {
-      throw PivoteAuthException(
+      throw const PivoteAuthException(
         code: 'firebase-not-initialized',
         message:
-            'La app no pudo conectarse. Verifica tu conexión e inténtalo de nuevo.',
+            'No se pudo conectar al servidor. Revisá tu conexión e intentá de nuevo.',
       );
     }
   }
 
-  /// Map error codes to professional Spanish messages
-  static String getErrorMessage(dynamic error) {
-    debugPrint('🔍 AuthService: Processing error: $error');
+  static PivoteAuthException _mapFirebaseAuthException(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'email-already-in-use':
+        return const PivoteAuthException(
+          code: 'email-already-in-use',
+          message: 'Este correo ya está registrado. Probá iniciar sesión.',
+        );
+      case 'invalid-email':
+        return const PivoteAuthException(
+          code: 'invalid-email',
+          message: 'El correo electrónico no tiene un formato válido.',
+        );
+      case 'weak-password':
+        return const PivoteAuthException(
+          code: 'weak-password',
+          message: 'La contraseña es demasiado débil (mínimo 6 caracteres).',
+        );
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return const PivoteAuthException(
+          code: 'invalid-credential',
+          message: 'Correo o contraseña incorrectos.',
+        );
+      case 'user-disabled':
+        return const PivoteAuthException(
+          code: 'user-disabled',
+          message: 'Tu cuenta fue deshabilitada por el administrador.',
+        );
+      case 'too-many-requests':
+        return const PivoteAuthException(
+          code: 'too-many-requests',
+          message: 'Demasiados intentos seguidos. Esperá unos minutos e intentá otra vez.',
+        );
+      case 'network-request-failed':
+        return const PivoteAuthException(
+          code: 'network-request-failed',
+          message: 'Sin conexión a internet. Revisá tu red e intentá nuevamente.',
+        );
+      default:
+        return PivoteAuthException(
+          code: e.code,
+          message: e.message ?? 'Error de autenticación. Intentá nuevamente.',
+        );
+    }
+  }
 
-    if (error is PivoteAuthException) {
-      switch (error.code) {
-        case 'firebase-not-initialized':
-          return 'No se pudo conectar al servidor. Revisa tu internet.';
-        case 'email-already-in-use':
-          return 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
-        case 'user-not-found':
-          return 'No encontramos una cuenta con este correo electrónico.';
-        case 'wrong-password':
-          return 'La contraseña es incorrecta. Verificá tus datos.';
-        case 'no-current-user':
-          return 'No hay usuario autenticado.';
-        default:
-          return error.message;
+  static String getErrorMessage(dynamic error) {
+    if (error is PivoteAuthException) return error.message;
+    if (error is FirebaseAuthException) {
+      return _mapFirebaseAuthException(error).message;
+    }
+    if (error is AccountAccessBlockedException) {
+      switch (error.reason) {
+        case AccountBlockReason.pending:
+          return 'Tu cuenta está pendiente de aprobación por el administrador.';
+        case AccountBlockReason.expired:
+          return 'Tu plan venció. Contactá al administrador para renovarlo.';
+        case AccountBlockReason.revoked:
+          return 'Tu acceso fue desactivado por el administrador.';
+        case AccountBlockReason.missingProfile:
+          return 'Tu cuenta no tiene perfil activo asignado.';
       }
     }
-
-    final errorString = error.toString().toLowerCase();
-    if (errorString.contains('network') || errorString.contains('connection')) {
-      return 'Error de conexión. Revisa tu internet e inténtalo de nuevo.';
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('network') ||
+        raw.contains('unavailable') ||
+        raw.contains('connection')) {
+      return 'Error de conexión. Revisá tu internet e intentá de nuevo.';
     }
-
-    return 'Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo.';
+    if (raw.contains('permission-denied')) {
+      return 'Acceso denegado por el servidor.';
+    }
+    return 'Ocurrió un error inesperado. Intentá de nuevo.';
   }
 }

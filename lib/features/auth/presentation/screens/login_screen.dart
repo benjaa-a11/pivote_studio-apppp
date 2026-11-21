@@ -2,15 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
-import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/core/animations/app_animations.dart';
-import 'package:pivote/core/services/app_activity_service.dart';
-import 'package:pivote/shared/widgets/app_notifications.dart';
-import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
+import 'package:pivote/features/auth/data/services/auth_service.dart';
+import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/auth/presentation/screens/signup_screen.dart';
 import 'package:pivote/features/auth/presentation/widgets/auth_components.dart';
-import 'package:pivote/features/home/presentation/screens/main_screen.dart';
+import 'package:pivote/shared/widgets/app_notifications.dart';
+import 'package:pivote/shared/widgets/common/app_dialogs.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -78,11 +78,17 @@ class _LoginScreenState extends State<LoginScreen>
         _passwordController.text,
       );
       if (mounted) {
-        unawaited(context.read<AppActivityService>().onUserLogin());
         AppNotifications.showSuccess(context, '¡Bienvenido de nuevo!');
-        unawaited(Navigator.of(context).pushReplacement(
-          AppAnimations.createFadeRoute(const MainScreen()),
-        ));
+        // Si LoginScreen estaba apilado sobre el wrapper raíz, volvemos a la raíz;
+        // _AuthenticationWrapper transiciona automáticamente a MainScreen.
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } on AccountAccessBlockedException {
+      // UserProvider ya cambió authStatus a `blocked` y cerró sesión;
+      // el wrapper raíz mostrará AccountStatusScreen al instante.
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {
       if (mounted) {
@@ -93,36 +99,39 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  void _handleGoogleSignIn() {
-    AppNotifications.showInfo(
-      context,
-      'Inicio de sesión con Google próximamente disponible',
-    );
-  }
-
   Future<void> _showForgotPasswordDialog() async {
     final email = await AppDialogs.showInputDialog(
       context: context,
       title: 'Recuperar contraseña',
       message:
-          'Ingresá tu correo electrónico para recibir las instrucciones de recuperación.',
+          'Ingresá tu correo electrónico para recibir el enlace oficial de restablecimiento.',
       hintText: 'ejemplo@correo.com',
       initialValue: _emailController.text.trim(),
       confirmLabel: 'Enviar enlace',
       keyboardType: TextInputType.emailAddress,
       icon: Icons.mark_email_read_outlined,
     );
-    if (email != null && mounted) {
-      AppNotifications.showSuccess(
-        context,
-        'Si el correo está registrado, recibirás un enlace de recuperación.',
-      );
+    if (email == null || email.trim().isEmpty || !mounted) return;
+
+    try {
+      await AuthService.sendPasswordResetEmail(email.trim());
+      if (mounted) {
+        AppNotifications.showSuccess(
+          context,
+          'Te enviamos un enlace para restablecer tu contraseña.',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppNotifications.showError(context, AuthService.getErrorMessage(e));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
+    final accent = AppTheme.accent(context);
 
     return AuthStageLayout(
       onBack: canPop ? () => Navigator.of(context).pop() : null,
@@ -131,18 +140,16 @@ class _LoginScreenState extends State<LoginScreen>
         child: SlideTransition(
           position: _slideAnim,
           child: AuthCard(
-            // ─── Hero exacto (.hero.single: height 122px) ───────────────
             hero: const AuthHero(
               title: 'Inicia sesión',
               single: true,
             ),
-            // ─── Panel blanco (.panel) ──────────────────────────────────
             panel: AuthPanel(
               footer: AuthFootLink(
-                prefix: '¿Eres nuevo?',
-                linkText: 'Crea una cuenta',
+                prefix: '¿Tenés código de invitación?',
+                linkText: 'Crea tu cuenta',
                 onTap: () {
-                  Navigator.of(context).pushReplacement(
+                  Navigator.of(context).push(
                     AppAnimations.createFadeRoute(
                       const SignUpScreen(),
                     ),
@@ -150,44 +157,66 @@ class _LoginScreenState extends State<LoginScreen>
                 },
               ),
               children: [
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
-                // Botón Google
-                AuthGoogleBtn(
-                  label: 'Iniciar sesión con Google',
-                  onTap: _handleGoogleSignIn,
+                // Etiqueta discreta de acceso privado
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentDim(context),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(
+                      color: accent.withValues(alpha: 0.30),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.lock_outline_rounded, size: 14, color: accent),
+                      const SizedBox(width: 6),
+                      Text(
+                        'ACCESO PRIVADO POR INVITACIÓN',
+                        style: AppFont.mono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: accent,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
-                // Separador "o"
-                const AuthOrText(),
+                const SizedBox(height: 22),
 
-                // Formulario de campos
+                // Formulario de acceso
                 Form(
                   key: _formKey,
                   child: Column(
                     children: [
-                      // Correo electrónico (.field.pill)
                       AuthPillInput(
                         controller: _emailController,
                         focusNode: _emailFocus,
                         placeholder: 'Correo electrónico',
                         keyboardType: TextInputType.emailAddress,
+                        autocorrect: false,
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => FocusScope.of(context)
                             .requestFocus(_passwordFocus),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
-                            return 'Ingresa tu correo';
+                            return 'Ingresá tu correo';
                           }
                           if (!v.contains('@') || !v.contains('.')) {
-                            return 'Ingresa un correo válido';
+                            return 'Ingresá un correo válido';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 14),
-
-                      // Contraseña (.row.pw)
                       AuthPasswordInput(
                         controller: _passwordController,
                         focusNode: _passwordFocus,
@@ -196,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen>
                         onSubmitted: (_) => _handleLogin(),
                         validator: (v) {
                           if (v == null || v.isEmpty) {
-                            return 'Ingresa tu contraseña';
+                            return 'Ingresá tu contraseña';
                           }
                           if (v.length < 6) {
                             return 'Mínimo 6 caracteres';
@@ -208,14 +237,12 @@ class _LoginScreenState extends State<LoginScreen>
                   ),
                 ),
 
-                // Botón principal negro (.btn-main)
                 AuthMainBtn(
                   label: 'Iniciar sesión',
                   isLoading: _isLoading,
                   onTap: _handleLogin,
                 ),
 
-                // Solicitar nueva contraseña (.small)
                 AuthSmallLink(
                   text: '¿Olvidaste tu contraseña? ',
                   linkText: 'Recupérala',

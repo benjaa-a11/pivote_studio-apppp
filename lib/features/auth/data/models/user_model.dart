@@ -1,143 +1,231 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Model representing a user in the Pivote application.
-/// Stored in the Firestore 'usuarios' collection.
+/// Motivo por el cual una cuenta no puede ingresar a la app privada.
+enum AccountBlockReason {
+  pending,
+  expired,
+  revoked,
+  missingProfile,
+}
+
+/// Modelo de usuario vinculado a `users/{uid}` en Firestore.
 class UserModel {
   final String uid;
-  final String name;
-  final String lastName;
+  final String nombre;
+  final String apellido;
   final String email;
+  final bool activo;
+  final String plan; // 'standard', 'vip', 'admin'
+  final DateTime? vence;
+  final String? deviceId;
+  final List<String> dispositivos;
+  final int maxDispositivos;
   final String? photoUrl;
-  final bool isVip;
-  final String userType; // 'standard', 'vip', 'admin'
-  final bool isSuspended;
   final String? fcmToken;
-  final List<String> favorites;
-  final String? createdAt;
+  final String? codigoInvitacion;
+  final DateTime? creadoEn;
+  final DateTime? actualizadoEn;
 
-  UserModel({
+  const UserModel({
     required this.uid,
-    required this.name,
-    required this.lastName,
+    required this.nombre,
+    required this.apellido,
     required this.email,
+    this.activo = false,
+    this.plan = 'standard',
+    this.vence,
+    this.deviceId,
+    this.dispositivos = const [],
+    this.maxDispositivos = 1,
     this.photoUrl,
-    this.isVip = false,
-    this.userType = 'standard',
-    this.isSuspended = false,
     this.fcmToken,
-    this.favorites = const [],
-    this.createdAt,
+    this.codigoInvitacion,
+    this.creadoEn,
+    this.actualizadoEn,
   });
 
-  /// Create UserModel from Firestore document JSON
-  factory UserModel.fromJson(Map<String, dynamic> json) {
+  // Getters de compatibilidad con la UI existente
+  String get name => nombre;
+  String get lastName => apellido;
+  String get userType => plan;
+  bool get isVip =>
+      plan.toLowerCase() == 'vip' || plan.toLowerCase() == 'admin';
+  bool get isSuspended => !activo;
+  String? get createdAt => creadoEn?.toIso8601String();
+
+  /// Verdadero si la suscripción/vigencia ya venció (o no tiene fecha `vence`).
+  bool get isExpired {
+    if (vence == null) return true;
+    return !vence!.isAfter(DateTime.now());
+  }
+
+  /// Verdadero únicamente si la cuenta está activa y vigente.
+  bool get hasValidAccess => activo && !isExpired;
+
+  /// Motivo de bloqueo cuando [hasValidAccess] es falso.
+  AccountBlockReason? get blockReason {
+    if (!activo) return AccountBlockReason.pending;
+    if (isExpired) return AccountBlockReason.expired;
+    return null;
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    if (value is String && value.isNotEmpty) return DateTime.tryParse(value);
+    return null;
+  }
+
+  /// Construye [UserModel] desde un documento de Firestore `users/{uid}` o JSON local.
+  factory UserModel.fromJson(Map<String, dynamic> json, {String? docId}) {
+    final rawDevices = json['dispositivos'];
+    final devicesList = rawDevices is List
+        ? rawDevices.map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+        : <String>[];
+
+    final parsedDeviceId = json['deviceId'] as String?;
+    if (parsedDeviceId != null &&
+        parsedDeviceId.isNotEmpty &&
+        !devicesList.contains(parsedDeviceId)) {
+      devicesList.insert(0, parsedDeviceId);
+    }
+
+    final rawPlan = (json['plan'] ?? json['userType'] ?? 'standard').toString();
+    final rawActivo = json.containsKey('activo')
+        ? json['activo'] == true
+        : !(json['isSuspended'] == true);
+
     return UserModel(
-      uid: json['uid'] as String? ?? '',
-      name: json['name'] as String? ?? '',
-      lastName: json['lastName'] as String? ?? '',
-      email: json['email'] as String? ?? '',
+      uid: (json['uid'] as String?)?.isNotEmpty == true
+          ? json['uid'] as String
+          : (docId ?? ''),
+      nombre: (json['nombre'] ?? json['name'] ?? '').toString(),
+      apellido: (json['apellido'] ?? json['lastName'] ?? '').toString(),
+      email: (json['email'] ?? '').toString().trim().toLowerCase(),
+      activo: rawActivo,
+      plan: rawPlan,
+      vence: _parseDate(json['vence']),
+      deviceId: parsedDeviceId,
+      dispositivos: devicesList,
+      maxDispositivos: (json['maxDispositivos'] as num?)?.toInt() ?? 1,
       photoUrl: json['photoUrl'] as String?,
-      isVip: json['isVip'] as bool? ?? false,
-      userType: json['userType'] as String? ?? 'standard',
-      isSuspended: json['isSuspended'] as bool? ?? false,
       fcmToken: json['fcmToken'] as String?,
-      favorites: (json['favorites'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
-      createdAt: json['createdAt'] as String?,
+      codigoInvitacion: json['codigoInvitacion'] as String?,
+      creadoEn: _parseDate(json['creadoEn'] ?? json['createdAt']),
+      actualizadoEn: _parseDate(json['actualizadoEn'] ?? json['updatedAt']),
     );
   }
 
-  /// Convert UserModel to JSON for Firestore storage
+  /// Serialización JSON para caché local (sin tipos Firestore).
   Map<String, dynamic> toJson() {
     return {
       'uid': uid,
-      'name': name,
-      'lastName': lastName,
+      'nombre': nombre,
+      'apellido': apellido,
       'email': email,
+      'activo': activo,
+      'plan': plan,
+      'vence': vence?.toIso8601String(),
+      'deviceId': deviceId,
+      'dispositivos': dispositivos,
+      'maxDispositivos': maxDispositivos,
       'photoUrl': photoUrl,
-      'isVip': isVip,
-      'userType': userType,
-      'isSuspended': isSuspended,
       'fcmToken': fcmToken,
-      'favorites': favorites,
-      'createdAt': createdAt,
+      'codigoInvitacion': codigoInvitacion,
+      'creadoEn': creadoEn?.toIso8601String(),
+      'actualizadoEn': actualizadoEn?.toIso8601String(),
     };
   }
 
-  /// Convert UserModel to JSON string for local storage
-  String toJsonString() {
-    return jsonEncode(toJson());
-  }
+  String toJsonString() => jsonEncode(toJson());
 
-  /// Create UserModel from JSON string
   factory UserModel.fromJsonString(String jsonString) {
     return UserModel.fromJson(jsonDecode(jsonString) as Map<String, dynamic>);
   }
 
-  /// Validate email format
   static bool isValidEmail(String email) {
     final emailRegex = RegExp(
       r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
     );
-    return emailRegex.hasMatch(email);
+    return emailRegex.hasMatch(email.trim());
   }
 
-  /// Validate name (not empty and reasonable length)
   static bool isValidName(String name) {
     return name.trim().isNotEmpty && name.trim().length >= 2;
   }
 
-  /// Create a copy with updated fields
   UserModel copyWith({
     String? uid,
+    String? nombre,
     String? name,
+    String? apellido,
     String? lastName,
     String? email,
+    bool? activo,
+    String? plan,
+    DateTime? vence,
+    String? deviceId,
+    List<String>? dispositivos,
+    int? maxDispositivos,
     String? photoUrl,
-    bool? isVip,
-    String? userType,
-    bool? isSuspended,
     String? fcmToken,
-    List<String>? favorites,
-    String? createdAt,
+    String? codigoInvitacion,
+    DateTime? creadoEn,
+    DateTime? actualizadoEn,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
-      name: name ?? this.name,
-      lastName: lastName ?? this.lastName,
+      nombre: nombre ?? name ?? this.nombre,
+      apellido: apellido ?? lastName ?? this.apellido,
       email: email ?? this.email,
+      activo: activo ?? this.activo,
+      plan: plan ?? this.plan,
+      vence: vence ?? this.vence,
+      deviceId: deviceId ?? this.deviceId,
+      dispositivos: dispositivos ?? this.dispositivos,
+      maxDispositivos: maxDispositivos ?? this.maxDispositivos,
       photoUrl: photoUrl ?? this.photoUrl,
-      isVip: isVip ?? this.isVip,
-      userType: userType ?? this.userType,
-      isSuspended: isSuspended ?? this.isSuspended,
       fcmToken: fcmToken ?? this.fcmToken,
-      favorites: favorites ?? this.favorites,
-      createdAt: createdAt ?? this.createdAt,
+      codigoInvitacion: codigoInvitacion ?? this.codigoInvitacion,
+      creadoEn: creadoEn ?? this.creadoEn,
+      actualizadoEn: actualizadoEn ?? this.actualizadoEn,
     );
   }
 
   @override
   String toString() =>
-      'UserModel(uid: $uid, name: $name, lastName: $lastName, email: $email, isVip: $isVip, userType: $userType, isSuspended: $isSuspended)';
+      'UserModel(uid: $uid, email: $email, activo: $activo, plan: $plan, vence: $vence, maxDispositivos: $maxDispositivos)';
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is UserModel &&
         other.uid == uid &&
-        other.name == name &&
-        other.lastName == lastName &&
+        other.nombre == nombre &&
+        other.apellido == apellido &&
         other.email == email &&
-        other.isSuspended == isSuspended;
+        other.activo == activo &&
+        other.plan == plan &&
+        other.vence == vence &&
+        other.deviceId == deviceId &&
+        other.maxDispositivos == maxDispositivos &&
+        other.photoUrl == photoUrl;
   }
 
   @override
-  int get hashCode =>
-      uid.hashCode ^
-      name.hashCode ^
-      lastName.hashCode ^
-      email.hashCode ^
-      isSuspended.hashCode;
+  int get hashCode => Object.hash(
+        uid,
+        nombre,
+        apellido,
+        email,
+        activo,
+        plan,
+        vence,
+        deviceId,
+        maxDispositivos,
+        photoUrl,
+      );
 }

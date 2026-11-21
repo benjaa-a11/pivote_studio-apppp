@@ -2,14 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
+import 'package:pivote/core/theme/app_theme.dart';
+import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
-import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
+import 'package:pivote/features/auth/presentation/widgets/auth_components.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
-import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
-import 'package:pivote/features/auth/presentation/widgets/auth_components.dart';
-import 'package:pivote/features/home/presentation/screens/main_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -21,11 +20,13 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
+  final _codeController = TextEditingController();
   final _nameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  final _codeFocus = FocusNode();
   final _nameFocus = FocusNode();
   final _lastNameFocus = FocusNode();
   final _emailFocus = FocusNode();
@@ -60,10 +61,12 @@ class _SignUpScreenState extends State<SignUpScreen>
 
   @override
   void dispose() {
+    _codeController.dispose();
     _nameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _codeFocus.dispose();
     _nameFocus.dispose();
     _lastNameFocus.dispose();
     _emailFocus.dispose();
@@ -80,19 +83,28 @@ class _SignUpScreenState extends State<SignUpScreen>
     setState(() => _isLoading = true);
     try {
       final userProvider = context.read<UserProvider>();
-      await userProvider.register(
-        _emailController.text.trim(),
-        _passwordController.text,
-        _nameController.text.trim(),
-        _lastNameController.text.trim(),
+      final result = await userProvider.registerWithInvitation(
+        invitationCode: _codeController.text.trim().toUpperCase(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        nombre: _nameController.text.trim(),
+        apellido: _lastNameController.text.trim(),
       );
 
-      if (mounted) {
+      if (!mounted) return;
+
+      if (result.requiresApproval) {
+        AppNotifications.showInfo(
+          context,
+          'Cuenta creada. Esperando aprobación del administrador.',
+        );
+      } else {
         AppNotifications.showSuccess(context, '¡Bienvenido a Pivote!');
-        unawaited(Navigator.of(context).pushReplacement(
-          AppAnimations.createFadeRoute(const MainScreen()),
-        ));
       }
+
+      // Volvemos al wrapper raíz, que muestra AccountStatusScreen (si quedó pendiente)
+      // o carga MainScreen (si la invitación era pre-aprobada).
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (mounted) {
         final errorMessage = AuthService.getErrorMessage(e);
@@ -100,13 +112,6 @@ class _SignUpScreenState extends State<SignUpScreen>
         setState(() => _isLoading = false);
       }
     }
-  }
-
-  void _handleGoogleSignUp() {
-    AppNotifications.showInfo(
-      context,
-      'Registro con Google próximamente disponible',
-    );
   }
 
   void _showPolicyDialog(String title, String body) {
@@ -121,6 +126,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   @override
   Widget build(BuildContext context) {
     final canPop = Navigator.of(context).canPop();
+    final accent = AppTheme.accent(context);
 
     return AuthStageLayout(
       onBack: canPop ? () => Navigator.of(context).pop() : null,
@@ -129,42 +135,87 @@ class _SignUpScreenState extends State<SignUpScreen>
         child: SlideTransition(
           position: _slideAnim,
           child: AuthCard(
-            // ─── Hero exacto de 2 líneas (.hero: height 174px) ───────────
             hero: const AuthHero(
               title: 'Crea una\ncuenta',
               single: false,
             ),
-            // ─── Panel blanco (.panel) ──────────────────────────────────
             panel: AuthPanel(
               footer: AuthFootLink(
-                prefix: '¿Ya tienes una cuenta?',
-                linkText: 'Inicia sesión aquí',
+                prefix: '¿Ya tenés cuenta?',
+                linkText: 'Iniciá sesión aquí',
                 onTap: () {
-                  Navigator.of(context).pushReplacement(
-                    AppAnimations.createFadeRoute(
-                      const LoginScreen(),
-                    ),
-                  );
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  }
                 },
               ),
               children: [
                 const SizedBox(height: 6),
 
-                // Botón Google
-                AuthGoogleBtn(
-                  label: 'Registrarse con Google',
-                  onTap: _handleGoogleSignUp,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentDim(context),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(
+                      color: accent.withValues(alpha: 0.30),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.vpn_key_outlined, size: 14, color: accent),
+                      const SizedBox(width: 6),
+                      Text(
+                        'REQUIERE CÓDIGO DE INVITACIÓN',
+                        style: AppFont.mono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: accent,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
-                // Separador "o"
-                const AuthOrText(),
+                const SizedBox(height: 18),
 
-                // Formulario de campos
                 Form(
                   key: _formKey,
                   child: Column(
                     children: [
-                      // Nombre y Apellido (.row con 2 .field)
+                      // Código de invitación obligatorio
+                      AuthPillInput(
+                        controller: _codeController,
+                        focusNode: _codeFocus,
+                        placeholder: 'Código de invitación',
+                        keyboardType: TextInputType.text,
+                        textCapitalization: TextCapitalization.characters,
+                        autocorrect: false,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) =>
+                            FocusScope.of(context).requestFocus(_nameFocus),
+                        validator: (v) {
+                          final code = (v ?? '').trim();
+                          if (code.isEmpty) {
+                            return 'Ingresá tu código de invitación';
+                          }
+                          if (code.length < 6) {
+                            return 'El código es demasiado corto';
+                          }
+                          if (code.contains('/')) {
+                            return 'Código con formato inválido';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Nombre y Apellido
                       AuthSplitNameRow(
                         firstController: _nameController,
                         lastController: _lastNameController,
@@ -180,8 +231,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                           }
                           return null;
                         },
-                        onLastSubmitted: (_) => FocusScope.of(context)
-                            .requestFocus(_emailFocus),
+                        onLastSubmitted: (_) =>
+                            FocusScope.of(context).requestFocus(_emailFocus),
                         lastValidator: (v) {
                           if (v == null || v.trim().isEmpty) {
                             return 'Apellido requerido';
@@ -191,28 +242,29 @@ class _SignUpScreenState extends State<SignUpScreen>
                       ),
                       const SizedBox(height: 12),
 
-                      // Correo electrónico (.field.pill)
+                      // Correo electrónico
                       AuthPillInput(
                         controller: _emailController,
                         focusNode: _emailFocus,
                         placeholder: 'Correo electrónico',
                         keyboardType: TextInputType.emailAddress,
+                        autocorrect: false,
                         textInputAction: TextInputAction.next,
                         onSubmitted: (_) => FocusScope.of(context)
                             .requestFocus(_passwordFocus),
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) {
-                            return 'Ingresa tu correo';
+                            return 'Ingresá tu correo';
                           }
                           if (!v.contains('@') || !v.contains('.')) {
-                            return 'Ingresa un correo válido';
+                            return 'Ingresá un correo válido';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 12),
 
-                      // Contraseña (.row.pw)
+                      // Contraseña
                       AuthPasswordInput(
                         controller: _passwordController,
                         focusNode: _passwordFocus,
@@ -221,7 +273,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         onSubmitted: (_) => _handleSignUp(),
                         validator: (v) {
                           if (v == null || v.isEmpty) {
-                            return 'Ingresa tu contraseña';
+                            return 'Ingresá tu contraseña';
                           }
                           if (v.length < 6) {
                             return 'Mínimo 6 caracteres';
@@ -233,22 +285,20 @@ class _SignUpScreenState extends State<SignUpScreen>
                   ),
                 ),
 
-                // Botón principal negro (.btn-main)
                 AuthMainBtn(
                   label: 'Crear cuenta',
                   isLoading: _isLoading,
                   onTap: _handleSignUp,
                 ),
 
-                // Aviso Legal (.legal)
                 AuthLegalNotice(
                   onPrivacyTap: () => _showPolicyDialog(
                     'Política de Privacidad',
-                    'En Pivote nos tomamos tu privacidad con seriedad. No compartimos tus credenciales ni tus datos personales con terceros.',
+                    'En Pivote protegemos tu cuenta y tus datos de acceso. Nunca compartimos tus credenciales ni tu información con terceros.',
                   ),
                   onTermsTap: () => _showPolicyDialog(
                     'Términos de Servicio',
-                    'Al utilizar Pivote aceptas disfrutar de los contenidos y transmisiones de manera responsable.',
+                    'El acceso a Pivote es privado, personal y sujeto a la vigencia y aprobación del administrador.',
                   ),
                 ),
               ],

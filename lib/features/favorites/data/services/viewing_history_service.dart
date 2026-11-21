@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pivote/core/services/firebase_service.dart';
+import 'package:pivote/features/auth/data/services/auth_service.dart';
 
 /// Advanced viewing history service for tracking channel views
-/// and managing user viewing patterns
+/// and persisting user viewing history in Firestore (`users/{uid}/datos/preferencias`).
 class ViewingHistoryService {
   // Keys for SharedPreferences
   static const String _viewCountsKey = 'channel_view_counts';
@@ -13,7 +17,7 @@ class ViewingHistoryService {
   static const String _lastClearKey = 'viewing_history_last_clear';
 
   /// Track a channel view
-  /// Increments view count and updates timestamps
+  /// Increments view count and updates timestamps (local + nube)
   static Future<void> trackChannelView(String channelId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -33,15 +37,114 @@ class ViewingHistoryService {
         firstViewed[channelId] = now;
       }
 
-      // Save all data
+      // Save all data locally
       await prefs.setString(_viewCountsKey, json.encode(viewCounts));
       await prefs.setString(_lastViewedKey, json.encode(lastViewed));
       await prefs.setString(_firstViewedKey, json.encode(firstViewed));
+
+      // Sincronizar con la nube en background
+      unawaited(syncToCloud(
+        viewCounts: viewCounts,
+        lastViewed: lastViewed,
+        firstViewed: firstViewed,
+      ));
 
       debugPrint(
           '📊 View tracked: $channelId (Total: ${viewCounts[channelId]})');
     } catch (e) {
       debugPrint('❌ Error tracking view: $e');
+    }
+  }
+
+  /// Sube el historial actual a `users/{uid}/datos/preferencias`.
+  static Future<void> syncToCloud({
+    Map<String, int>? viewCounts,
+    Map<String, int>? lastViewed,
+    Map<String, int>? firstViewed,
+  }) async {
+    final uid = AuthService.currentUserId;
+    if (uid == null || !FirebaseService.isInitialized) return;
+    try {
+      final counts = viewCounts ?? await getAllViewCounts();
+      final last = lastViewed ?? await _getLastViewed();
+      final first = firstViewed ?? await _getFirstViewed();
+      await FirebaseService.userPrefsDoc(uid).set({
+        'viewingHistory': {
+          'viewCounts': counts,
+          'lastViewed': last,
+          'firstViewed': first,
+        },
+        'actualizadoEn': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('⚠️ ViewingHistoryService: Error sincronizando a la nube: $e');
+    }
+  }
+
+  /// Restaura y fusiona el historial desde `users/{uid}/datos/preferencias`.
+  static Future<void> syncFromCloud() async {
+    final uid = AuthService.currentUserId;
+    if (uid == null || !FirebaseService.isInitialized) return;
+    try {
+      final doc = await FirebaseService.userPrefsDoc(uid).get();
+      if (!doc.exists || doc.data() == null) return;
+      final rawHistory = doc.data()!['viewingHistory'];
+      if (rawHistory is! Map) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final localCounts = await getAllViewCounts();
+      final localLast = await _getLastViewed();
+      final localFirst = await _getFirstViewed();
+
+      final remoteCountsRaw = rawHistory['viewCounts'];
+      final remoteLastRaw = rawHistory['lastViewed'];
+      final remoteFirstRaw = rawHistory['firstViewed'];
+
+      if (remoteCountsRaw is Map) {
+        remoteCountsRaw.forEach((k, v) {
+          final key = k.toString();
+          final val = (v as num?)?.toInt() ?? 0;
+          if (val > (localCounts[key] ?? 0)) localCounts[key] = val;
+        });
+      }
+      if (remoteLastRaw is Map) {
+        remoteLastRaw.forEach((k, v) {
+          final key = k.toString();
+          final val = (v as num?)?.toInt() ?? 0;
+          if (val > (localLast[key] ?? 0)) localLast[key] = val;
+        });
+      }
+      if (remoteFirstRaw is Map) {
+        remoteFirstRaw.forEach((k, v) {
+          final key = k.toString();
+          final val = (v as num?)?.toInt() ?? 0;
+          if (val > 0 &&
+              (!localFirst.containsKey(key) || val < localFirst[key]!)) {
+            localFirst[key] = val;
+          }
+        });
+      }
+
+      await prefs.setString(_viewCountsKey, json.encode(localCounts));
+      await prefs.setString(_lastViewedKey, json.encode(localLast));
+      await prefs.setString(_firstViewedKey, json.encode(localFirst));
+      debugPrint(
+          '✅ ViewingHistoryService: Historial restaurado (${localCounts.length} canales)');
+    } catch (e) {
+      debugPrint('⚠️ ViewingHistoryService: Error restaurando desde la nube: $e');
+    }
+  }
+
+  /// Limpia solo el caché local al cerrar sesión (NO borra el historial en la nube).
+  static Future<void> clearLocalCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_viewCountsKey);
+      await prefs.remove(_lastViewedKey);
+      await prefs.remove(_firstViewedKey);
+      await prefs.remove(_totalWatchTimeKey);
+    } catch (e) {
+      debugPrint('⚠️ ViewingHistoryService: Error limpiando caché local: $e');
     }
   }
 
@@ -165,7 +268,7 @@ class ViewingHistoryService {
     return viewCounts.values.fold<int>(0, (int sum, int count) => sum + count);
   }
 
-  /// Clear all viewing history
+  /// Clear all viewing history (local y nube, cuando el usuario lo pide)
   static Future<void> clearHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -174,6 +277,12 @@ class ViewingHistoryService {
       await prefs.remove(_firstViewedKey);
       await prefs.remove(_totalWatchTimeKey);
       await prefs.setInt(_lastClearKey, DateTime.now().millisecondsSinceEpoch);
+
+      await syncToCloud(
+        viewCounts: {},
+        lastViewed: {},
+        firstViewed: {},
+      );
 
       debugPrint('🗑️ Viewing history cleared');
     } catch (e) {

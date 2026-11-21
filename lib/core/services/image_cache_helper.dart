@@ -14,7 +14,7 @@ class ImageCacheHelper {
   static const String _userAgent =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
 
-  /// Manager principal para imágenes de alta calidad (posters, fondos)
+  /// Manager principal para imágenes de alta calidad (banners, fondos)
   /// - 500 objetos en caché
   /// - 30 días de retención (logos/imágenes rara vez cambian)
   static final CacheManager customCacheManager = CacheManager(
@@ -64,7 +64,7 @@ class ImageCacheHelper {
   /// No bloquea la UI — las requests corren en paralelo de forma silenciosa.
   ///
   /// Usar [isLogos] = true para logos/escudos pequeños (default),
-  /// false para imágenes grandes como posters de películas.
+  /// false para imágenes grandes como fondos o banners.
   static void warmUpCache(List<String> urls, {bool isLogos = true}) {
     if (kIsWeb || urls.isEmpty) return;
     final manager = isLogos ? logoCacheManager : customCacheManager;

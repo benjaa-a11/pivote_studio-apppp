@@ -54,8 +54,8 @@ class _SearchScreenState extends State<SearchScreen> {
     ),
     (
       name: 'Entretenimiento',
-      subtitle: 'Series y cine',
-      icon: Icons.movie_filter_rounded,
+      subtitle: 'TV y variedades',
+      icon: Icons.live_tv_rounded,
       type: 'category',
     ),
     (

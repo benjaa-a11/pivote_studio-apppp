@@ -495,6 +495,8 @@ class AuthPillInput extends StatefulWidget {
   final String placeholder;
   final TextInputType keyboardType;
   final TextInputAction textInputAction;
+  final TextCapitalization textCapitalization;
+  final bool autocorrect;
   final ValueChanged<String>? onSubmitted;
   final FormFieldValidator<String>? validator;
 
@@ -505,6 +507,8 @@ class AuthPillInput extends StatefulWidget {
     required this.placeholder,
     this.keyboardType = TextInputType.text,
     this.textInputAction = TextInputAction.next,
+    this.textCapitalization = TextCapitalization.none,
+    this.autocorrect = true,
     this.onSubmitted,
     this.validator,
   });
@@ -566,6 +570,8 @@ class _AuthPillInputState extends State<AuthPillInput> {
             focusNode: widget.focusNode,
             keyboardType: widget.keyboardType,
             textInputAction: widget.textInputAction,
+            textCapitalization: widget.textCapitalization,
+            autocorrect: widget.autocorrect,
             onFieldSubmitted: widget.onSubmitted,
             cursorColor: palette.linkColor,
             cursorWidth: 1.5,

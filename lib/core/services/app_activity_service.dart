@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pivote/core/services/firebase_service.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 
 /// Service to track and persist app usage statistics and active session time.
@@ -63,9 +64,7 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
       _sessionCount++;
       await prefs.setInt(_keySessionCount, _sessionCount);
 
-      // Merge with any cloud data (keeps the highest values)
-      await _mergeFromFirestore(prefs);
-
+      // No consultar Firestore antes de autenticar; `onUserLogin()` sincroniza tras validar acceso.
       _startTimer();
       notifyListeners();
     } catch (e) {
@@ -73,20 +72,17 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
     }
   }
 
-  // ─── Firestore sync ──────────────────────────────────────────────
+  // ─── Firestore sync (`users/{uid}/datos/preferencias`) ──────────
 
   /// Pull stats from Firestore and merge by keeping the maximum value.
   Future<void> _mergeFromFirestore(SharedPreferences prefs) async {
     try {
       final uid = AuthService.currentUserId;
-      if (uid == null) return;
+      if (uid == null || !FirebaseService.isInitialized) return;
 
-      final doc = await FirebaseFirestore.instance
-          .collection('usuarios')
-          .doc(uid)
-          .get();
+      final doc = await FirebaseService.userPrefsDoc(uid).get();
 
-      if (!doc.exists) return;
+      if (!doc.exists || doc.data() == null) return;
       final data = doc.data()!;
 
       final remoteSeconds = (data['totalActiveSeconds'] as num?)?.toInt() ?? 0;
@@ -136,7 +132,7 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
   Future<void> _syncToFirestore({bool force = false}) async {
     try {
       final uid = AuthService.currentUserId;
-      if (uid == null) return;
+      if (uid == null || !FirebaseService.isInitialized) return;
 
       final now = DateTime.now();
       if (!force &&
@@ -146,7 +142,7 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
       }
       _lastFirestoreSync = now;
 
-      await FirebaseFirestore.instance.collection('usuarios').doc(uid).update({
+      await FirebaseService.userPrefsDoc(uid).set({
         'totalActiveSeconds': totalActiveSeconds,
         'sessionCount': _sessionCount,
         'channelsWatched': _channelsWatched,
@@ -154,7 +150,8 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
         'matchesViewed': _matchesViewed,
         'firstActiveDate': _firstActiveDate?.toIso8601String(),
         'statsUpdatedAt': DateTime.now().toIso8601String(),
-      });
+        'actualizadoEn': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
       debugPrint('✅ AppActivityService: Stats synced to Firestore');
     } catch (e) {
       debugPrint('⚠️ AppActivityService: Could not sync to Firestore: $e');
@@ -239,6 +236,31 @@ class AppActivityService with ChangeNotifier, WidgetsBindingObserver {
     final prefs = await SharedPreferences.getInstance();
     await _mergeFromFirestore(prefs);
     notifyListeners();
+  }
+
+  /// Limpia contadores locales al cerrar sesión (sin borrar los datos en Firestore).
+  Future<void> onUserLogout() async {
+    try {
+      _totalActiveSeconds = 0;
+      _currentSessionSeconds = 0;
+      _sessionCount = 0;
+      _channelsWatched = 0;
+      _radiosListened = 0;
+      _matchesViewed = 0;
+      _firstActiveDate = null;
+      _lastFirestoreSync = null;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyActiveSeconds);
+      await prefs.remove(_keySessionCount);
+      await prefs.remove(_keyChannelsWatched);
+      await prefs.remove(_keyRadiosListened);
+      await prefs.remove(_keyMatchesViewed);
+      await prefs.remove(_keyFirstActive);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('⚠️ AppActivityService: Error en onUserLogout: $e');
+    }
   }
 
   // ─── Lifecycle ───────────────────────────────────────────────────

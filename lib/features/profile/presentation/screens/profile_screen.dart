@@ -11,10 +11,11 @@ import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
-import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
 import 'package:pivote/features/favorites/data/services/viewing_history_service.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/favorites/presentation/screens/favorites_screen.dart';
+import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
+import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/profile/presentation/screens/about_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/activity_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/appearance_settings_screen.dart';
@@ -88,17 +89,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
       type: AppDialogType.warning,
     );
     if (confirmed == true) {
-      await AuthService.logout();
       if (!context.mounted) return;
-      await Provider.of<UserProvider>(context, listen: false).clearUser();
+      final userProvider = context.read<UserProvider>();
+      final channelProvider = context.read<ChannelProvider>();
+      final radioProvider = context.read<RadioProvider>();
+      final favProvider = context.read<FavoritesProvider>();
+      final activityService = context.read<AppActivityService>();
+
+      await AuthService.logout();
+      channelProvider.clearOnLogout();
+      radioProvider.clearOnLogout();
+      favProvider.clearLocalFavorites();
+      await ViewingHistoryService.clearLocalCache();
+      await activityService.onUserLogout();
+      await userProvider.clearUser();
+
       if (!context.mounted) return;
       AppNotifications.showInfo(context, 'Sesión cerrada correctamente');
-      unawaited(
-        Navigator.of(context).pushAndRemoveUntil(
-          AppAnimations.createFadeRoute(const LoginScreen()),
-          (route) => false,
-        ),
-      );
+      // Volvemos a la raíz (_AuthenticationWrapper), que mostrará LoginScreen
+      // manteniendo el guardián de autenticación siempre activo.
+      Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
 
@@ -202,6 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             children: [
                               ProfileAvatarWithRing(
                                 size: 70,
+                                avatarBytes: userProvider.avatarBytes,
                                 imagePath: userProvider.profileImagePath,
                                 photoUrl: user?.photoUrl,
                                 fallbackInitial: initial,

@@ -1,0 +1,44 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    function esAdmin() {
+      return estaAutenticado()
+        && 'admin' in request.auth.token
+        && request.auth.token.admin == true;
+    }
+
+    // Validación cruzada contra Firestore (soportada también en plan Spark)
+    function esActivo() {
+      return estaAutenticado()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('activo', false) == true
+        && 'vence' in firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.vence > request.time;
+    }
+
+    // Avatar / logo del usuario: persistente en la nube, solo se actualiza o borra si el usuario lo pide.
+    match /users/{uid}/avatar.jpg {
+      allow read: if esAdmin() || (estaAutenticado() && request.auth.uid == uid);
+      allow create, update: if esAdmin()
+        || (estaAutenticado()
+            && request.auth.uid == uid
+            && esActivo()
+            && request.resource != null
+            && request.resource.size <= 3 * 1024 * 1024
+            && request.resource.contentType != null
+            && request.resource.contentType.matches('image/(jpeg|jpg|png|webp)'));
+      allow delete: if esAdmin()
+        || (estaAutenticado() && request.auth.uid == uid && esActivo());
+    }
+
+    // Bloqueo total por defecto
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

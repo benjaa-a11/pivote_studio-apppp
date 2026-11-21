@@ -633,6 +633,7 @@ class ProfileActionButton extends StatelessWidget {
 /// Avatar circular con anillo tonal de un solo acento (sin arcos multicolores).
 class ProfileAvatarWithRing extends StatefulWidget {
   final double size;
+  final Uint8List? avatarBytes;
   final String? imagePath;
   final String? photoUrl;
   final String fallbackInitial;
@@ -641,6 +642,7 @@ class ProfileAvatarWithRing extends StatefulWidget {
   const ProfileAvatarWithRing({
     super.key,
     this.size = 76,
+    this.avatarBytes,
     this.imagePath,
     this.photoUrl,
     required this.fallbackInitial,
@@ -685,7 +687,11 @@ class _ProfileAvatarWithRingState extends State<ProfileAvatarWithRing>
     }
 
     ImageProvider<Object>? imageProvider;
-    if (!kIsWeb && widget.imagePath != null && widget.imagePath!.isNotEmpty) {
+    if (widget.avatarBytes != null && widget.avatarBytes!.isNotEmpty) {
+      imageProvider = MemoryImage(widget.avatarBytes!);
+    } else if (!kIsWeb &&
+        widget.imagePath != null &&
+        widget.imagePath!.isNotEmpty) {
       final f = File(widget.imagePath!);
       if (f.existsSync()) imageProvider = FileImage(f);
     } else if (widget.photoUrl != null && widget.photoUrl!.isNotEmpty) {

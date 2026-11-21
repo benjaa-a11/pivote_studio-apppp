@@ -8,6 +8,7 @@ import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
 import 'package:pivote/shared/widgets/app_notifications.dart';
 import 'package:pivote/shared/widgets/common/app_dialogs.dart';
+import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final bool focusPassword;
@@ -22,7 +23,8 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  late final TextEditingController _usernameController;
+  late final TextEditingController _nameController;
+  late final TextEditingController _lastNameController;
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
   final FocusNode _passwordFocusNode = FocusNode();
@@ -34,19 +36,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
     final user = context.read<UserProvider>().user;
-    final fullName = [
-      if (user?.name.isNotEmpty == true) user!.name,
-      if (user?.lastName.isNotEmpty == true) user!.lastName,
-    ].join(' ').trim();
 
-    _usernameController = TextEditingController(
-      text: fullName.isNotEmpty ? fullName : 'Usuario',
-    )..addListener(() {
+    _nameController = TextEditingController(text: user?.nombre ?? '')
+      ..addListener(() {
         if (mounted) setState(() {});
       });
-    _emailController = TextEditingController(
-      text: user?.email ?? 'usuario@correo.com',
-    );
+    _lastNameController = TextEditingController(text: user?.apellido ?? '')
+      ..addListener(() {
+        if (mounted) setState(() {});
+      });
+    _emailController = TextEditingController(text: user?.email ?? '');
     _passwordController = TextEditingController(text: _maskedPassword);
 
     if (widget.focusPassword) {
@@ -61,11 +60,114 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _nameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _passwordFocusNode.dispose();
     super.dispose();
+  }
+
+  String _formatDate(DateTime date) {
+    final d = date.day.toString().padLeft(2, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final y = date.year.toString();
+    return '$d/$m/$y';
+  }
+
+  Future<void> _showAvatarOptionsSheet() async {
+    final userProvider = context.read<UserProvider>();
+    final hasImage = userProvider.hasProfileImage;
+
+    final action = await AppDialogs.showModal<String>(
+      context: context,
+      child: Builder(
+        builder: (ctx) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const PivoteSheetHeader(
+                  title: 'Logo / foto de perfil',
+                  subtitle:
+                      'Se guarda en tu cuenta en la nube y nunca se pierde al reinstalar',
+                  icon: Icons.photo_camera_outlined,
+                ),
+                const SizedBox(height: 16),
+                ProfileGroupCard(
+                  children: [
+                    ProfileGroupRow(
+                      leading: const ProfileSettingIconBox(
+                        icon: Icons.photo_library_outlined,
+                        highlight: true,
+                      ),
+                      title: hasImage
+                          ? 'Cambiar foto / logo'
+                          : 'Subir foto / logo',
+                      subtitle: 'Elegir imagen desde tu galería',
+                      showChevron: true,
+                      onTap: () => Navigator.pop(ctx, 'pick'),
+                    ),
+                    if (hasImage)
+                      ProfileGroupRow(
+                        leading: const ProfileSettingIconBox(
+                          icon: Icons.delete_outline_rounded,
+                        ),
+                        title: 'Eliminar foto / logo',
+                        subtitle: 'Quitar imagen guardada en tu cuenta',
+                        isDanger: true,
+                        onTap: () => Navigator.pop(ctx, 'delete'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+
+    if (action == 'pick') {
+      try {
+        final updated = await userProvider.updateProfileImage();
+        if (updated && mounted) {
+          AppNotifications.showSuccess(
+            context,
+            'Logo actualizado y guardado en tu cuenta',
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          AppNotifications.showError(context, AuthService.getErrorMessage(e));
+        }
+      }
+    } else if (action == 'delete') {
+      final confirm = await AppDialogs.showConfirm(
+        context: context,
+        title: '¿Eliminar foto de perfil?',
+        message: 'Tu logo guardado se eliminará de tu cuenta.',
+        confirmLabel: 'Eliminar',
+        cancelLabel: 'Cancelar',
+        isDestructive: true,
+        type: AppDialogType.warning,
+      );
+      if (confirm != true || !mounted) return;
+      try {
+        await userProvider.removeProfileImage();
+        if (mounted) {
+          AppNotifications.showInfo(context, 'Foto de perfil eliminada');
+        }
+      } catch (e) {
+        if (mounted) {
+          AppNotifications.showError(context, AuthService.getErrorMessage(e));
+        }
+      }
+    }
   }
 
   Future<String?> _askCurrentPassword() {
@@ -85,16 +187,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final user = provider.user;
     if (user == null) return;
 
-    final fullInput = _usernameController.text.trim();
-    if (fullInput.isEmpty) {
-      AppNotifications.showWarning(context, 'Ingresá un nombre de usuario');
+    final firstName = _nameController.text.trim();
+    final lastName = _lastNameController.text.trim();
+    if (firstName.isEmpty || lastName.isEmpty) {
+      AppNotifications.showWarning(context, 'Ingresá tu nombre y apellido');
       return;
     }
 
-    final parts = fullInput.split(RegExp(r'\s+'));
-    final firstName = parts.first;
-    final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-    final newEmail = _emailController.text.trim();
     final rawPass = _passwordController.text.trim();
     final passwordChanged = rawPass.isNotEmpty && rawPass != _maskedPassword;
 
@@ -119,9 +218,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     try {
       final updated = user.copyWith(
-        name: firstName,
-        lastName: lastName,
-        email: newEmail.isNotEmpty ? newEmail : user.email,
+        nombre: firstName,
+        apellido: lastName,
       );
 
       await AuthService.updateUser(updated);
@@ -152,12 +250,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final imagePath = userProvider.profileImagePath;
     final photoUrl = user?.photoUrl;
 
-    final currentText = _usernameController.text.trim();
+    final currentName = _nameController.text.trim();
     final initial =
-        currentText.isNotEmpty ? currentText[0].toUpperCase() : 'U';
-    final isVip = user?.isVip == true ||
-        user?.userType.toLowerCase() == 'vip' ||
-        user?.userType.toLowerCase() == 'admin';
+        currentName.isNotEmpty ? currentName[0].toUpperCase() : 'U';
+    final isVip = user?.isVip == true;
 
     return ProfileSubsectionScaffold(
       title: 'Editar perfil',
@@ -176,12 +272,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   children: [
                     ProfileAvatarWithRing(
                       size: 108,
+                      avatarBytes: userProvider.avatarBytes,
                       imagePath: imagePath,
                       photoUrl: photoUrl,
                       fallbackInitial: initial,
                       onTap: () {
                         HapticFeedback.lightImpact();
-                        userProvider.updateProfileImage();
+                        _showAvatarOptionsSheet();
                       },
                     ),
                     Positioned(
@@ -190,7 +287,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: GestureDetector(
                         onTap: () {
                           HapticFeedback.lightImpact();
-                          userProvider.updateProfileImage();
+                          _showAvatarOptionsSheet();
                         },
                         child: Container(
                           width: 34,
@@ -223,14 +320,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: ProfileGroupCard(
             children: [
               _EditableProfileField(
-                label: 'Nombre de usuario',
-                controller: _usernameController,
+                label: 'Nombre',
+                controller: _nameController,
                 keyboardType: TextInputType.name,
               ),
               _EditableProfileField(
-                label: 'Correo electrónico',
+                label: 'Apellido',
+                controller: _lastNameController,
+                keyboardType: TextInputType.name,
+              ),
+              _EditableProfileField(
+                label: 'Correo electrónico (vinculado a tu cuenta)',
                 controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
+                readOnly: true,
               ),
               _EditableProfileField(
                 label: 'Contraseña',
@@ -251,7 +353,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const ProfileSectionTitle('Plan'),
+              const ProfileSectionTitle('Acceso y plan'),
               ProfileGroupCard(
                 children: [
                   ProfileGroupRow(
@@ -261,6 +363,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       compact: true,
                     ),
                   ),
+                  if (user?.vence != null)
+                    ProfileGroupRow(
+                      title: 'Vigencia del acceso',
+                      subtitle: 'Gestionado por el administrador',
+                      valueText: _formatDate(user!.vence!),
+                    ),
                 ],
               ),
             ],
@@ -284,6 +392,7 @@ class _EditableProfileField extends StatefulWidget {
   final TextEditingController controller;
   final TextInputType? keyboardType;
   final bool obscureText;
+  final bool readOnly;
   final FocusNode? focusNode;
   final VoidCallback? onTap;
 
@@ -292,6 +401,7 @@ class _EditableProfileField extends StatefulWidget {
     required this.controller,
     this.keyboardType,
     this.obscureText = false,
+    this.readOnly = false,
     this.focusNode,
     this.onTap,
   });
@@ -334,10 +444,12 @@ class _EditableProfileFieldState extends State<_EditableProfileField> {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {
-        _node.requestFocus();
-        widget.onTap?.call();
-      },
+      onTap: widget.readOnly
+          ? null
+          : () {
+              _node.requestFocus();
+              widget.onTap?.call();
+            },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         child: Column(
@@ -348,7 +460,7 @@ class _EditableProfileFieldState extends State<_EditableProfileField> {
               style: AppFont.primary(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: _focused
+                color: _focused && !widget.readOnly
                     ? AppTheme.accent(context)
                     : AppTheme.textTertiary(context),
               ),
@@ -358,13 +470,17 @@ class _EditableProfileFieldState extends State<_EditableProfileField> {
             TextField(
               controller: widget.controller,
               focusNode: _node,
+              readOnly: widget.readOnly,
+              enabled: !widget.readOnly,
               keyboardType: widget.keyboardType,
               obscureText: widget.obscureText,
               onTap: widget.onTap,
               style: AppFont.primary(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary(context),
+                color: widget.readOnly
+                    ? AppTheme.textTertiary(context)
+                    : AppTheme.textPrimary(context),
               ),
               decoration: const InputDecoration(
                 isDense: true,
@@ -372,6 +488,7 @@ class _EditableProfileFieldState extends State<_EditableProfileField> {
                 contentPadding: EdgeInsets.zero,
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
               ),
             ),

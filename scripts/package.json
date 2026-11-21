@@ -1,0 +1,15 @@
+{
+  "name": "pivote-admin-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scripts de migración y administración de Firebase Auth / Firestore para Pivote Studio",
+  "scripts": {
+    "migrate": "node migrate_users.mjs",
+    "migrate:dry": "node migrate_users.mjs --dry-run",
+    "set-admin": "node set_admin_claim.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.2"
+  }
+}

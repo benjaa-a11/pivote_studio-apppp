@@ -210,39 +210,3 @@ class RadioLogoImage extends StatelessWidget {
     );
   }
 }
-
-/// Variante pre-configurada para posters de películas
-class MoviePosterImage extends StatelessWidget {
-  final String imageUrl;
-  final double? width;
-  final double? height;
-
-  const MoviePosterImage({
-    required this.imageUrl,
-    this.width,
-    this.height,
-    super.key,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return AppCachedImage(
-      imageUrl: imageUrl,
-      fit: BoxFit.cover,
-      width: width,
-      height: height,
-      memCacheWidth: 400,
-      memCacheHeight: 600,
-      useLogoManager: false, // Usa customCacheManager para imágenes grandes
-      fadeInDuration: const Duration(milliseconds: 300),
-      errorWidget: Center(
-        child: Icon(
-          Icons.movie_rounded,
-          size: 36,
-          color: isDark ? Colors.white24 : Colors.black26,
-        ),
-      ),
-    );
-  }
-}

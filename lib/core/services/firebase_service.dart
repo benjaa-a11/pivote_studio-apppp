@@ -116,9 +116,24 @@ class FirebaseService {
   // COLLECTION REFERENCES
   // ============================================
 
-  /// Users collection reference
-  static CollectionReference get usersCollection {
-    return firestore.collection('usuarios');
+  /// Users access-control collection reference (`users/{uid}`)
+  static CollectionReference<Map<String, dynamic>> get usersCollection {
+    return firestore.collection('users');
+  }
+
+  /// Invitation codes collection reference (`invitaciones/{codigo}`)
+  static CollectionReference<Map<String, dynamic>> get invitacionesCollection {
+    return firestore.collection('invitaciones');
+  }
+
+  /// Persistent UX preferences document (`users/{uid}/datos/preferencias`)
+  static DocumentReference<Map<String, dynamic>> userPrefsDoc(String uid) {
+    return usersCollection.doc(uid).collection('datos').doc('preferencias');
+  }
+
+  /// Persistent user avatar document (`users/{uid}/datos/avatar`)
+  static DocumentReference<Map<String, dynamic>> userAvatarDoc(String uid) {
+    return usersCollection.doc(uid).collection('datos').doc('avatar');
   }
 
   /// Channels collection reference

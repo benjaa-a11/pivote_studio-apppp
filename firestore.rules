@@ -1,0 +1,346 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =========================================================================
+    // FUNCIONES DE SEGURIDAD BASE
+    // =========================================================================
+
+    function estaAutenticado() {
+      return request.auth != null;
+    }
+
+    // Solo el custom claim `admin: true` otorgado por Firebase Admin SDK otorga rol admin.
+    // NUNCA usar un campo editable en Firestore para roles.
+    function esAdmin() {
+      return estaAutenticado()
+        && 'admin' in request.auth.token
+        && request.auth.token.admin == true;
+    }
+
+    function esDueno(uid) {
+      return estaAutenticado() && request.auth.uid == uid;
+    }
+
+    // Acceso habilitado del lado del servidor: activo == true y fecha `vence` vigente.
+    function esActivo() {
+      return estaAutenticado()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('activo', false) == true
+        && 'vence' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.vence is timestamp
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.vence > request.time;
+    }
+
+    // =========================================================================
+    // VALIDACIONES ATÓMICAS DE REGISTRO CON CÓDIGO DE INVITACIÓN (PLAN SPARK)
+    // =========================================================================
+
+    function invitacionValidaParaRegistro(uid, codigo) {
+      return codigo is string
+        && codigo.size() >= 6
+        && codigo.size() <= 64
+        && exists(/databases/$(database)/documents/invitaciones/$(codigo))
+        && get(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('usado', true) == false
+        && 'vence' in get(/databases/$(database)/documents/invitaciones/$(codigo)).data
+        && get(/databases/$(database)/documents/invitaciones/$(codigo)).data.vence is timestamp
+        && get(/databases/$(database)/documents/invitaciones/$(codigo)).data.vence > request.time
+        && getAfter(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('usado', false) == true
+        && getAfter(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('usadoPor', '') == uid;
+    }
+
+    function politicaActivacionValida(codigo) {
+      return (
+        // Política por defecto (aprobación manual): autoActivar ausente o false ->
+        // el cliente SOLO puede crear el usuario con activo=false y vence=request.time.
+        get(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('autoActivar', false) == false
+          && request.resource.data.activo == false
+          && request.resource.data.plan == get(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('plan', 'standard')
+          && request.resource.data.vence == request.time
+          && request.resource.data.maxDispositivos == get(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('maxDispositivos', 1)
+      ) || (
+        // Política opcional pre-aprobada por el admin en la invitación:
+        // solo válida si el admin definió autoActivar=true y venceAcceso futuro.
+        get(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('autoActivar', false) == true
+          && 'venceAcceso' in get(/databases/$(database)/documents/invitaciones/$(codigo)).data
+          && get(/databases/$(database)/documents/invitaciones/$(codigo)).data.venceAcceso is timestamp
+          && get(/databases/$(database)/documents/invitaciones/$(codigo)).data.venceAcceso > request.time
+          && request.resource.data.activo == true
+          && request.resource.data.plan == get(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('plan', 'standard')
+          && request.resource.data.vence == get(/databases/$(database)/documents/invitaciones/$(codigo)).data.venceAcceso
+          && request.resource.data.maxDispositivos == get(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('maxDispositivos', 1)
+      );
+    }
+
+    function crearUsuarioConInvitacion(uid) {
+      return esDueno(uid)
+        && 'email' in request.auth.token
+        && request.resource.data.keys().hasAll([
+             'uid', 'email', 'nombre', 'apellido',
+             'activo', 'plan', 'vence',
+             'deviceId', 'dispositivos', 'maxDispositivos',
+             'photoUrl', 'fcmToken',
+             'codigoInvitacion', 'creadoEn', 'actualizadoEn'
+           ])
+        && request.resource.data.keys().hasOnly([
+             'uid', 'email', 'nombre', 'apellido',
+             'activo', 'plan', 'vence',
+             'deviceId', 'dispositivos', 'maxDispositivos',
+             'photoUrl', 'fcmToken',
+             'codigoInvitacion', 'creadoEn', 'actualizadoEn'
+           ])
+        && request.resource.data.uid == uid
+        && request.resource.data.email is string
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() >= 1
+        && request.resource.data.nombre.size() <= 80
+        && request.resource.data.apellido is string
+        && request.resource.data.apellido.size() >= 1
+        && request.resource.data.apellido.size() <= 80
+        && request.resource.data.deviceId == null
+        && request.resource.data.dispositivos is list
+        && request.resource.data.dispositivos.size() == 0
+        && request.resource.data.photoUrl == null
+        && request.resource.data.fcmToken == null
+        && request.resource.data.creadoEn == request.time
+        && request.resource.data.actualizadoEn == request.time
+        && invitacionValidaParaRegistro(uid, request.resource.data.codigoInvitacion)
+        && politicaActivacionValida(request.resource.data.codigoInvitacion);
+    }
+
+    function canjearInvitacion(codigo) {
+      return estaAutenticado()
+        && !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && resource.data.get('usado', true) == false
+        && 'vence' in resource.data
+        && resource.data.vence is timestamp
+        && resource.data.vence > request.time
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['usado', 'usadoPor', 'usadoEn'])
+        && request.resource.data.get('usado', false) == true
+        && request.resource.data.get('usadoPor', '') == request.auth.uid
+        && 'usadoEn' in request.resource.data
+        && request.resource.data.usadoEn == request.time
+        && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('codigoInvitacion', '') == codigo;
+    }
+
+    // =========================================================================
+    // ACTUALIZACIONES SEGURAS PERMITIDAS AL PROPIO USUARIO ACTIVO
+    // (Nunca puede tocar: activo, plan, vence, maxDispositivos, email, uid, creadoEn)
+    // =========================================================================
+
+    function actualizarPerfilOTokenPropio(uid) {
+      return esDueno(uid)
+        && esActivo()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly([
+               'nombre', 'apellido', 'photoUrl',
+               'fcmToken', 'fcmTokenUpdatedAt', 'notificationsDisabled',
+               'actualizadoEn'
+             ])
+        && (!('nombre' in request.resource.data.diff(resource.data).affectedKeys())
+             || ('nombre' in request.resource.data
+                 && request.resource.data.nombre is string
+                 && request.resource.data.nombre.size() >= 1
+                 && request.resource.data.nombre.size() <= 80))
+        && (!('apellido' in request.resource.data.diff(resource.data).affectedKeys())
+             || ('apellido' in request.resource.data
+                 && request.resource.data.apellido is string
+                 && request.resource.data.apellido.size() >= 1
+                 && request.resource.data.apellido.size() <= 80))
+        && (!('photoUrl' in request.resource.data.diff(resource.data).affectedKeys())
+             || !('photoUrl' in request.resource.data)
+             || request.resource.data.photoUrl == null
+             || (request.resource.data.photoUrl is string
+                 && request.resource.data.photoUrl.size() <= 1024
+                 && request.resource.data.photoUrl.matches('^https://firebasestorage\\.googleapis\\.com/.*')))
+        && (!('fcmToken' in request.resource.data.diff(resource.data).affectedKeys())
+             || !('fcmToken' in request.resource.data)
+             || request.resource.data.fcmToken == null
+             || (request.resource.data.fcmToken is string
+                 && request.resource.data.fcmToken.size() <= 512))
+        && (!('fcmTokenUpdatedAt' in request.resource.data.diff(resource.data).affectedKeys())
+             || !('fcmTokenUpdatedAt' in request.resource.data)
+             || request.resource.data.fcmTokenUpdatedAt == null
+             || request.resource.data.fcmTokenUpdatedAt == request.time)
+        && (!('notificationsDisabled' in request.resource.data.diff(resource.data).affectedKeys())
+             || ('notificationsDisabled' in request.resource.data
+                 && request.resource.data.notificationsDisabled is bool))
+        && (!('actualizadoEn' in request.resource.data.diff(resource.data).affectedKeys())
+             || ('actualizadoEn' in request.resource.data
+                 && request.resource.data.actualizadoEn == request.time));
+    }
+
+    // Vinculación de dispositivo controlada por servidor:
+    // - Permite registrar el primer dispositivo si deviceId == null (o tras reset del admin).
+    // - Si maxDispositivos > 1, permite solo agregar sin borrar dispositivos previos.
+    // - El usuario NUNCA puede borrar/reemplazar deviceId por su cuenta.
+    function vincularDispositivoPropio(uid) {
+      return esDueno(uid)
+        && esActivo()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['deviceId', 'dispositivos', 'actualizadoEn'])
+        && 'actualizadoEn' in request.resource.data
+        && request.resource.data.actualizadoEn == request.time
+        && 'deviceId' in request.resource.data
+        && request.resource.data.deviceId is string
+        && request.resource.data.deviceId.size() >= 8
+        && request.resource.data.deviceId.size() <= 128
+        && 'dispositivos' in request.resource.data
+        && request.resource.data.dispositivos is list
+        && request.resource.data.dispositivos.size() >= 1
+        && request.resource.data.dispositivos.size() <= resource.data.get('maxDispositivos', 1)
+        && (
+          (
+            resource.data.get('deviceId', null) == null
+              && request.resource.data.dispositivos.size() == 1
+              && request.resource.data.dispositivos[0] == request.resource.data.deviceId
+          )
+          ||
+          (
+            resource.data.get('deviceId', null) != null
+              && request.resource.data.deviceId == resource.data.deviceId
+              && request.resource.data.deviceId in request.resource.data.dispositivos
+              && resource.data.get('dispositivos', []) is list
+              && request.resource.data.dispositivos.hasAll(resource.data.get('dispositivos', []))
+              && request.resource.data.dispositivos.size() > resource.data.get('dispositivos', []).size()
+          )
+        );
+    }
+
+    // =========================================================================
+    // COLECCIÓN `users/{uid}` Y PREFERENCIAS PERSISTENTES DEL USUARIO
+    // =========================================================================
+
+    match /users/{uid} {
+      // El usuario solo lee su propio doc; el admin lee y lista todo.
+      allow get: if esAdmin() || esDueno(uid);
+      allow list: if esAdmin();
+
+      // Creación: admin o registro atómico con código de invitación válido.
+      allow create: if esAdmin() || crearUsuarioConInvitacion(uid);
+
+      // Escritura: admin libre; usuario activo SOLO perfil/token seguro o alta de dispositivo.
+      allow update: if esAdmin()
+        || actualizarPerfilOTokenPropio(uid)
+        || vincularDispositivoPropio(uid);
+
+      allow delete: if esAdmin();
+
+      // Subcolección de persistencia UX:
+      // - `preferencias`: favoritos de canales, emisoras, historial, estadísticas, tokens por dispositivo.
+      // - `avatar`: respaldo seguro del logo/avatar comprimido en Firestore si no tenés Storage habilitado en Spark.
+      match /datos/{docId} {
+        allow read: if esAdmin() || (esDueno(uid) && esActivo());
+        allow create, update: if esAdmin()
+          || (esDueno(uid) && esActivo() && docId == 'preferencias')
+          || (esDueno(uid) && esActivo() && docId == 'avatar'
+              && request.resource.data.keys().hasOnly(['base64', 'mimeType', 'actualizadoEn'])
+              && request.resource.data.base64 is string
+              && request.resource.data.base64.size() <= 350000);
+        allow delete: if esAdmin()
+          || (esDueno(uid) && esActivo() && docId == 'avatar');
+      }
+    }
+
+    // =========================================================================
+    // COLECCIÓN `invitaciones/{codigo}`
+    // =========================================================================
+
+    match /invitaciones/{codigo} {
+      // NUNCA permitir listar invitaciones a clientes comunes.
+      allow list: if esAdmin();
+
+      // Lectura puntual por ID exacto solo para admin o cuenta recién creada que aún no tiene `users/{uid}`.
+      allow get: if esAdmin()
+        || (estaAutenticado() && !exists(/databases/$(database)/documents/users/$(request.auth.uid)));
+
+      allow create, delete: if esAdmin();
+      allow update: if esAdmin() || canjearInvitacion(codigo);
+    }
+
+    // =========================================================================
+    // CONTENIDO PROTEGIDO (LECTURA SOLO SI esActivo() O esAdmin(); ESCRITURA SOLO ADMIN)
+    // =========================================================================
+
+    // Colecciones actuales de Pivote Studio
+    match /channels/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    match /radio/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    match /agenda/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    match /teams/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    match /tournaments/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    match /profile/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    // Colecciones adicionales de tu arquitectura / panel admin y ETAPA 5 (`config`)
+    match /canales/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    match /servidores/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    match /servers/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    match /partidos/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    match /config/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    match /notificaciones/{docId} {
+      allow read: if esActivo() || esAdmin();
+      allow write: if esAdmin();
+    }
+
+    // =========================================================================
+    // COLECCIÓN LEGADA `usuarios` BLOQUEADA A CLIENTES
+    // =========================================================================
+
+    match /usuarios/{docId} {
+      allow read, write: if esAdmin();
+    }
+
+    // =========================================================================
+    // DENEGACIÓN TOTAL POR DEFECTO
+    // =========================================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -6,16 +6,19 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
+import 'package:pivote/features/favorites/data/services/viewing_history_service.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
 import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:pivote/features/radio/presentation/providers/audio_manager.dart';
+import 'package:pivote/features/auth/data/models/user_model.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/services/firebase_service.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
 import 'package:pivote/features/home/presentation/screens/main_screen.dart';
 import 'package:pivote/features/auth/presentation/screens/login_screen.dart';
+import 'package:pivote/features/auth/presentation/screens/account_status_screen.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:pivote/shared/widgets/connectivity_wrapper.dart';
 import 'package:pivote/core/services/notification_service.dart';
@@ -24,11 +27,14 @@ import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 import 'package:pivote/shared/screens/firebase_required_screen.dart';
 import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
-import 'package:pivote/features/auth/presentation/screens/suspended_screen.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
 import 'package:pivote/core/services/wakelock_service.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/features/home/presentation/providers/notifications_provider.dart';
+
+/// Navigator global para poder cerrar cualquier subpantalla (incluido el reproductor)
+/// al instante si la cuenta es revocada en tiempo real desde el panel admin.
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -57,9 +63,6 @@ void main() async {
     }
   }
 
-  // Configurar caché de imágenes en RAM antes de todo
-  // Aumenta los límites de Flutter (default: 100 MB / 1000 imgs)
-  // para evitar que logos y escudos sean expulsados de la RAM
   try {
     ImageCacheHelper.configurePaintingCache();
   } catch (e) {
@@ -82,7 +85,6 @@ void main() async {
     }
   }
 
-  // Initialize custom auth session
   try {
     await AuthService.initSession();
   } catch (e) {
@@ -154,6 +156,7 @@ class PivoteApp extends StatelessWidget {
           );
           return ConnectivityWrapper(
             child: MaterialApp(
+              navigatorKey: rootNavigatorKey,
               title: 'Pivote',
               debugShowCheckedModeBanner: false,
               scrollBehavior: const _NoBounceScrollBehavior(),
@@ -164,7 +167,8 @@ class PivoteApp extends StatelessWidget {
                 final mediaQuery = MediaQuery.of(context);
                 return MediaQuery(
                   data: mediaQuery.copyWith(
-                    textScaler: TextScaler.linear(themeProvider.textScaleFactor),
+                    textScaler:
+                        TextScaler.linear(themeProvider.textScaleFactor),
                   ),
                   child: child ?? const SizedBox.shrink(),
                 );
@@ -193,7 +197,6 @@ class _NoBounceScrollBehavior extends MaterialScrollBehavior {
     Widget child,
     ScrollableDetails details,
   ) {
-    // Elimina el estiramiento / rebote visual de Android 12+ e iOS en toda la app.
     return child;
   }
 }
@@ -206,125 +209,139 @@ class _AuthenticationWrapper extends StatefulWidget {
 }
 
 class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
-  bool _isCheckingAuth = true;
-  bool _isLoggedIn = false;
+  String? _hydratedUid;
 
   @override
   void initState() {
     super.initState();
-    _checkAuthStatus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final userProvider = context.read<UserProvider>();
+      userProvider.setOnSessionRevoked(_handleRealtimeRevocation);
+      if (FirebaseService.isInitialized) {
+        unawaited(userProvider.checkInitialAuth());
+      }
+    });
   }
 
-  Future<void> _checkAuthStatus() async {
-    if (!FirebaseService.isInitialized) {
-      setState(() {
-        _isCheckingAuth = false;
-        _isLoggedIn = false;
-      });
-      return;
-    }
-
+  @override
+  void dispose() {
     try {
-      final loggedIn = await AuthService.isLoggedIn();
-      if (loggedIn) {
-        // Let's verify with Firestore that the user isn't suspended!
-        final user = await AuthService.getUser();
-        if (user == null) {
-          await AuthService.logout();
-          if (mounted) {
-            setState(() {
-              _isLoggedIn = false;
-              _isCheckingAuth = false;
-            });
-          }
-        } else {
-          // Sync local UserProvider state as well
-          if (mounted) {
-            final userProvider =
-                Provider.of<UserProvider>(context, listen: false);
-            final favoritesProvider =
-                Provider.of<FavoritesProvider>(context, listen: false);
+      context.read<UserProvider>().setOnSessionRevoked(null);
+    } catch (_) {}
+    super.dispose();
+  }
 
-            if (userProvider.user == null) {
-              await userProvider.refreshUser();
-            }
+  /// Expulsión inmediata si el admin desactiva la cuenta o vence el plan mientras se usa la app.
+  void _handleRealtimeRevocation() {
+    _clearSessionScopedProviders();
+    // Cerrar cualquier subpantalla abierta (player, perfil, etc.) y volver a la raíz
+    rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+  }
 
-            // Trigger favorites sync too!
-            unawaited(favoritesProvider.refreshFromFirestore());
+  /// Carga contenido protegido y sincroniza preferencias persistentes SOLO tras verificar acceso activo.
+  void _hydrateForActiveUser(String uid) {
+    if (_hydratedUid == uid) return;
+    _hydratedUid = uid;
 
-            // Trigger FCM token sync too!
-            if (!kIsWeb) {
-              unawaited(NotificationService.getToken().then((token) {
-                if (token != null) {
-                  unawaited(AuthService.updateFcmToken(token));
-                }
-              }));
-            }
+    final channelProvider = context.read<ChannelProvider>();
+    final radioProvider = context.read<RadioProvider>();
+    final favoritesProvider = context.read<FavoritesProvider>();
+    final activityService = context.read<AppActivityService>();
 
-            setState(() {
-              _isLoggedIn = true;
-              _isCheckingAuth = false;
-            });
-          }
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isLoggedIn = false;
-            _isCheckingAuth = false;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('❌ _AuthenticationWrapper: Error checking auth: $e');
-      // Fallback to local session check if there's no internet/transient error
-      final loggedIn = await AuthService.isLoggedIn();
+    unawaited(channelProvider.loadChannelsFromFirestore());
+    unawaited(radioProvider.loadForAuthenticatedUser());
+    unawaited(favoritesProvider.refreshFromFirestore());
+    unawaited(ViewingHistoryService.syncFromCloud().then((_) {
       if (mounted) {
-        setState(() {
-          _isLoggedIn = loggedIn;
-          _isCheckingAuth = false;
-        });
+        unawaited(channelProvider.refreshViewCounts());
       }
-    }
+    }));
+    unawaited(activityService.onUserLogin());
+  }
+
+  /// Limpia datos en memoria/caché local al salir o ser revocado (SIN borrar la nube).
+  void _clearSessionScopedProviders() {
+    if (_hydratedUid == null) return;
+    _hydratedUid = null;
+
+    if (!mounted) return;
+    context.read<ChannelProvider>().clearOnLogout();
+    context.read<RadioProvider>().clearOnLogout();
+    context.read<FavoritesProvider>().clearLocalFavorites();
+    unawaited(ViewingHistoryService.clearLocalCache());
+    unawaited(context.read<AppActivityService>().onUserLogout());
+  }
+
+  void _removeSplash() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        FlutterNativeSplash.remove();
+      } catch (_) {}
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     if (!FirebaseService.isInitialized) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        FlutterNativeSplash.remove();
-      });
+      _removeSplash();
       return const FirebaseRequiredScreen();
     }
 
-    if (_isCheckingAuth) {
-      return const _BrandedStartupView();
-    }
+    return Consumer2<UserProvider, ChannelProvider>(
+      builder: (context, userProvider, channelProvider, child) {
+        switch (userProvider.authStatus) {
+          case AuthGateStatus.checking:
+            return const _BrandedStartupView();
 
-    if (!_isLoggedIn) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        FlutterNativeSplash.remove();
-      });
-      return const LoginScreen();
-    }
+          case AuthGateStatus.unauthenticated:
+            if (_hydratedUid != null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _clearSessionScopedProviders();
+              });
+            }
+            _removeSplash();
+            return const LoginScreen();
 
-    return Consumer3<UserProvider, ChannelProvider, SoccerProvider>(
-      builder: (context, userProvider, channelProvider, soccerProvider, child) {
-        if (userProvider.user?.isSuspended == true) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            FlutterNativeSplash.remove();
-          });
-          return const SuspendedScreen();
+          case AuthGateStatus.blocked:
+            if (_hydratedUid != null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _clearSessionScopedProviders();
+              });
+            }
+            _removeSplash();
+            return AccountStatusScreen(
+              info: userProvider.blockInfo ??
+                  const AccountBlockInfo(reason: AccountBlockReason.pending),
+            );
+
+          case AuthGateStatus.authenticatedActive:
+            final user = userProvider.user;
+            if (user == null || !user.hasValidAccess) {
+              _removeSplash();
+              return AccountStatusScreen(
+                info: AccountBlockInfo(
+                  reason: user?.blockReason ?? AccountBlockReason.pending,
+                  email: user?.email,
+                  vence: user?.vence,
+                  plan: user?.plan,
+                ),
+              );
+            }
+
+            if (_hydratedUid != user.uid) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) _hydrateForActiveUser(user.uid);
+              });
+            }
+
+            if (!channelProvider.isInitialized) {
+              return const _BrandedStartupView();
+            }
+
+            _removeSplash();
+            return const MainScreen();
         }
-
-        final isDataReady = channelProvider.isInitialized;
-        if (isDataReady) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            FlutterNativeSplash.remove();
-          });
-          return const MainScreen();
-        }
-        return const _BrandedStartupView();
       },
     );
   }
