@@ -87,8 +87,30 @@ class SoccerProvider extends ChangeNotifier {
   }
 
   SoccerProvider() {
-    fetchData();
+    // No consultar el Worker ni iniciar el polling antes de autenticar.
+    // `_AuthenticationWrapper` invoca `startAuthenticatedSession()` tras cargar `config/app`.
+  }
+
+  /// Arranca la carga de partidos y el refresco cada 15 s solo tras autenticar.
+  Future<void> startAuthenticatedSession() async {
+    await fetchData();
     _startAutoUpdate();
+  }
+
+  /// Detiene el polling y limpia los partidos al cerrar sesión o ser revocado.
+  void clearOnLogout() {
+    _updateTimer?.cancel();
+    _updateTimer = null;
+    _soccerData = null;
+    _dateCache.clear();
+    _selectedDateKey = 'today';
+    _error = null;
+    _dateError = null;
+    _lastFetchedAt = null;
+    _isLoading = false;
+    _isLoadingDate = false;
+    _isFetching = false;
+    notifyListeners();
   }
 
   static String formatDateKey(DateTime date) {

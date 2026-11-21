@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pivote/firebase_options.dart';
@@ -53,6 +54,10 @@ class FirebaseService {
       }
 
       await Firebase.initializeApp(options: options);
+
+      // Endurecimiento (ETAPA 5): activar Firebase App Check
+      // Release Android -> Play Integrity | Debug -> Debug Provider (imprime token en logcat)
+      await _activateAppCheck();
 
       _firestore = FirebaseFirestore.instance;
 
@@ -134,6 +139,30 @@ class FirebaseService {
   /// Persistent user avatar document (`users/{uid}/datos/avatar`)
   static DocumentReference<Map<String, dynamic>> userAvatarDoc(String uid) {
     return usersCollection.doc(uid).collection('datos').doc('avatar');
+  }
+
+  /// Protected app runtime configuration (`config/app`, readable only by active users/admin)
+  static DocumentReference<Map<String, dynamic>> get appConfigDoc {
+    return firestore.collection('config').doc('app');
+  }
+
+  static Future<void> _activateAppCheck() async {
+    if (kIsWeb) return;
+    try {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: kReleaseMode
+            ? AndroidProvider.playIntegrity
+            : AndroidProvider.debug,
+        appleProvider: kReleaseMode
+            ? AppleProvider.appAttest
+            : AppleProvider.debug,
+      );
+      debugPrint(
+        '🛡️ Firebase App Check activado (${kReleaseMode ? 'Play Integrity / App Attest' : 'Debug Provider'})',
+      );
+    } catch (e) {
+      debugPrint('⚠️ No se pudo activar Firebase App Check: $e');
+    }
   }
 
   /// Channels collection reference

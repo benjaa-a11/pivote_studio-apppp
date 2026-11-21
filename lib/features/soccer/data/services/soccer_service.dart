@@ -2,15 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:pivote/core/services/app_remote_config_service.dart';
 import 'package:pivote/features/soccer/data/models/soccer_models.dart';
 
 class SoccerService {
-  static const String baseUrl =
-      'https://apipro-pivo.provip.workers.dev/api/v1/matches';
-
   // === PREFETCHING OPTIMIZATION ===
   static Future<SoccerData>? _prefetchFuture;
 
+  /// Pre-carga partidos únicamente cuando la sesión activa y `config/app` están listos.
   static void prefetchLiveSoccerData() {
     debugPrint('🚀 SoccerService: Iniciando pre-fetch de partidos de hoy...');
     final future = SoccerService()._executeFetch(date: 'today');
@@ -21,6 +20,10 @@ class SoccerService {
         _prefetchFuture = null;
       }
     }));
+  }
+
+  static void resetPrefetch() {
+    _prefetchFuture = null;
   }
 
   Future<SoccerData> fetchLiveSoccerData() => fetchMatches(date: 'today');
@@ -41,33 +44,56 @@ class SoccerService {
     return _executeFetch(date: date);
   }
 
+  Future<String> _requireMatchesBaseUrl() async {
+    if (!AppRemoteConfigService.isLoaded) {
+      await AppRemoteConfigService.load();
+    }
+    final url = AppRemoteConfigService.matchesApiUrl;
+    if (url == null || url.isEmpty) {
+      throw Exception(
+        'Falta configurar `matchesApiUrl` en Firestore (colección `config`, doc `app`).',
+      );
+    }
+    return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+  }
+
+  Future<http.Response> _authorizedGet(String url) async {
+    final headers = await AppRemoteConfigService.buildAuthorizedHeaders(
+      extra: const {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    );
+
+    if (kIsWeb) {
+      try {
+        return await http
+            .get(Uri.parse(url), headers: headers)
+            .timeout(const Duration(seconds: 12));
+      } catch (_) {
+        final proxyBase = AppRemoteConfigService.webProxyUrl;
+        if (proxyBase == null || proxyBase.isEmpty) rethrow;
+        final sep = proxyBase.contains('?') ? '&' : '?';
+        final proxiedUrl =
+            '$proxyBase${sep}url=${Uri.encodeComponent(url)}';
+        return await http
+            .get(Uri.parse(proxiedUrl), headers: headers)
+            .timeout(const Duration(seconds: 12));
+      }
+    }
+
+    return await http
+        .get(Uri.parse(url), headers: headers)
+        .timeout(const Duration(seconds: 12));
+  }
+
   Future<SoccerData> _executeFetch({String date = 'today'}) async {
     try {
+      final baseUrl = await _requireMatchesBaseUrl();
       final url = '$baseUrl?date=${Uri.encodeQueryComponent(date)}';
-      http.Response response;
-      if (kIsWeb) {
-        try {
-          response = await http
-              .get(Uri.parse(url))
-              .timeout(const Duration(seconds: 12));
-        } catch (_) {
-          final proxiedUrl =
-              'https://myproxy.canalesonline24.workers.dev/?url=${Uri.encodeComponent(url)}';
-          response = await http
-              .get(Uri.parse(proxiedUrl))
-              .timeout(const Duration(seconds: 12));
-        }
-      } else {
-        response = await http.get(
-          Uri.parse(url),
-          headers: const {
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          },
-        ).timeout(const Duration(seconds: 12));
-      }
+      final response = await _authorizedGet(url);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> decoded = json.decode(response.body);
@@ -83,31 +109,9 @@ class SoccerService {
 
   Future<SoccerMatchDetail> fetchMatchDetail(String matchId) async {
     try {
+      final baseUrl = await _requireMatchesBaseUrl();
       final url = '$baseUrl/${Uri.encodeComponent(matchId)}';
-      http.Response response;
-      if (kIsWeb) {
-        try {
-          response = await http
-              .get(Uri.parse(url))
-              .timeout(const Duration(seconds: 12));
-        } catch (_) {
-          final proxiedUrl =
-              'https://myproxy.canalesonline24.workers.dev/?url=${Uri.encodeComponent(url)}';
-          response = await http
-              .get(Uri.parse(proxiedUrl))
-              .timeout(const Duration(seconds: 12));
-        }
-      } else {
-        response = await http.get(
-          Uri.parse(url),
-          headers: const {
-            'Accept': 'application/json',
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          },
-        ).timeout(const Duration(seconds: 12));
-      }
+      final response = await _authorizedGet(url);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> decoded = json.decode(response.body);

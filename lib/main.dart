@@ -28,6 +28,7 @@ import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 import 'package:pivote/shared/screens/firebase_required_screen.dart';
 import 'package:pivote/shared/widgets/common/pivote_surfaces.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
+import 'package:pivote/core/services/app_remote_config_service.dart';
 import 'package:pivote/core/services/wakelock_service.dart';
 import 'package:pivote/core/services/image_cache_helper.dart';
 import 'package:pivote/features/home/presentation/providers/notifications_provider.dart';
@@ -89,12 +90,6 @@ void main() async {
     await AuthService.initSession();
   } catch (e) {
     debugPrint('⚠️ Error initializing AuthService session: $e');
-  }
-
-  try {
-    SoccerService.prefetchLiveSoccerData();
-  } catch (e) {
-    debugPrint('⚠️ Error prefetching soccer data: $e');
   }
 
   late final AudioManager audioManager;
@@ -239,16 +234,22 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
     rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
   }
 
-  /// Carga contenido protegido y sincroniza preferencias persistentes SOLO tras verificar acceso activo.
+  /// Carga contenido protegido, `config/app` y preferencias SOLO tras verificar acceso activo.
   void _hydrateForActiveUser(String uid) {
     if (_hydratedUid == uid) return;
     _hydratedUid = uid;
 
     final channelProvider = context.read<ChannelProvider>();
     final radioProvider = context.read<RadioProvider>();
+    final soccerProvider = context.read<SoccerProvider>();
     final favoritesProvider = context.read<FavoritesProvider>();
     final activityService = context.read<AppActivityService>();
 
+    unawaited(AppRemoteConfigService.load(forceRefresh: true).then((_) {
+      if (mounted) {
+        unawaited(soccerProvider.startAuthenticatedSession());
+      }
+    }));
     unawaited(channelProvider.loadChannelsFromFirestore());
     unawaited(radioProvider.loadForAuthenticatedUser());
     unawaited(favoritesProvider.refreshFromFirestore());
@@ -265,9 +266,12 @@ class _AuthenticationWrapperState extends State<_AuthenticationWrapper> {
     if (_hydratedUid == null) return;
     _hydratedUid = null;
 
+    AppRemoteConfigService.clear();
+    SoccerService.resetPrefetch();
     if (!mounted) return;
     context.read<ChannelProvider>().clearOnLogout();
     context.read<RadioProvider>().clearOnLogout();
+    context.read<SoccerProvider>().clearOnLogout();
     context.read<FavoritesProvider>().clearLocalFavorites();
     unawaited(ViewingHistoryService.clearLocalCache());
     unawaited(context.read<AppActivityService>().onUserLogout());

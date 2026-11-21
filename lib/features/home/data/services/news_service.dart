@@ -1,15 +1,30 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:pivote/core/services/app_remote_config_service.dart';
 import 'package:pivote/features/home/data/models/app_notification.dart';
 
 class NewsService {
-  static const String _baseUrl = 'https://newsdata.io/api/1/latest';
-  static const String _apiKey = 'pub_0ca293f34dec4079be9b27f81f5fe8e5';
-
+  /// Lee la API key y el endpoint desde Firestore `config/app` (detrás de `esActivo()`),
+  /// evitando cualquier clave hardcodeada dentro del binario de la app.
   static Future<List<AppNotification>> fetchFootballNews() async {
-    final uri = Uri.parse(_baseUrl).replace(queryParameters: const {
-      'apikey': _apiKey,
+    if (!AppRemoteConfigService.isLoaded) {
+      await AppRemoteConfigService.load();
+    }
+
+    final apiKey = AppRemoteConfigService.newsApiKey;
+    final baseUrl = AppRemoteConfigService.newsBaseUrl;
+
+    if (apiKey == null || apiKey.isEmpty) {
+      debugPrint(
+        'ℹ️ NewsService: `newsApiKey` no configurada en Firestore config/app; omitiendo noticias.',
+      );
+      return const [];
+    }
+
+    final uri = Uri.parse(baseUrl).replace(queryParameters: {
+      'apikey': apiKey,
       'q': 'futbol noticias argentina',
     });
 

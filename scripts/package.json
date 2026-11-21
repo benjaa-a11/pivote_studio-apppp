@@ -7,7 +7,8 @@
   "scripts": {
     "migrate": "node migrate_users.mjs",
     "migrate:dry": "node migrate_users.mjs --dry-run",
-    "set-admin": "node set_admin_claim.mjs"
+    "set-admin": "node set_admin_claim.mjs",
+    "seed-config": "node seed_config.mjs"
   },
   "dependencies": {
     "firebase-admin": "^13.0.2"

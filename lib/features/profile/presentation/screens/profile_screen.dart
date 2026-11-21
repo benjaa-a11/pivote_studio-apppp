@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:pivote/core/animations/app_animations.dart';
 import 'package:pivote/core/services/app_activity_service.dart';
+import 'package:pivote/core/services/app_remote_config_service.dart';
 import 'package:pivote/core/services/cache_manager_service.dart';
+import 'package:pivote/features/soccer/data/services/soccer_service.dart';
 import 'package:pivote/core/theme/app_theme.dart';
 import 'package:pivote/core/theme/app_tokens.dart';
 import 'package:pivote/core/theme/theme_provider.dart';
@@ -15,6 +17,7 @@ import 'package:pivote/features/favorites/data/services/viewing_history_service.
 import 'package:pivote/features/favorites/presentation/providers/favorites_provider.dart';
 import 'package:pivote/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:pivote/features/radio/presentation/providers/radio_provider.dart';
+import 'package:pivote/features/soccer/presentation/providers/soccer_provider.dart';
 import 'package:pivote/features/video/presentation/providers/channel_provider.dart';
 import 'package:pivote/features/profile/presentation/screens/about_screen.dart';
 import 'package:pivote/features/profile/presentation/screens/activity_screen.dart';
@@ -93,12 +96,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final userProvider = context.read<UserProvider>();
       final channelProvider = context.read<ChannelProvider>();
       final radioProvider = context.read<RadioProvider>();
+      final soccerProvider = context.read<SoccerProvider>();
       final favProvider = context.read<FavoritesProvider>();
       final activityService = context.read<AppActivityService>();
 
       await AuthService.logout();
+      AppRemoteConfigService.clear();
+      SoccerService.resetPrefetch();
       channelProvider.clearOnLogout();
       radioProvider.clearOnLogout();
+      soccerProvider.clearOnLogout();
       favProvider.clearLocalFavorites();
       await ViewingHistoryService.clearLocalCache();
       await activityService.onUserLogout();
