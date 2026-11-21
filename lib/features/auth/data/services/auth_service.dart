@@ -118,14 +118,15 @@ class AuthService {
   }) async {
     _requireFirebase();
 
-    final normalizedCode = invitationCode.trim().toUpperCase();
+    final rawCode = invitationCode.trim();
+    final upperCode = rawCode.toUpperCase();
     final normalizedEmail = email.trim().toLowerCase();
     final cleanNombre = nombre.trim();
     final cleanApellido = apellido.trim();
 
-    if (normalizedCode.length < 6 ||
-        normalizedCode.length > 64 ||
-        normalizedCode.contains('/')) {
+    if (rawCode.length < 6 ||
+        rawCode.length > 64 ||
+        rawCode.contains('/')) {
       throw const PivoteAuthException(
         code: 'invalid-invitation',
         message: 'Ingresá un código de invitación válido.',
@@ -150,18 +151,15 @@ class AuthService {
       );
     }
 
-    UserCredential? credential;
+    User? createdAuthUser;
     bool createdInAuth = false;
 
     try {
       debugPrint('🔵 AuthService: Creando cuenta Auth para $normalizedEmail...');
-      credential = await _auth.createUserWithEmailAndPassword(
-        email: normalizedEmail,
-        password: password,
-      );
+      createdAuthUser = await _createUserWithFallback(normalizedEmail, password);
       createdInAuth = true;
 
-      final authUser = credential.user!;
+      final authUser = createdAuthUser;
       final uid = authUser.uid;
       final authEmail = (authUser.email ?? normalizedEmail).toLowerCase();
 
@@ -172,12 +170,21 @@ class AuthService {
       DateTime? assignedVence;
       String assignedPlan = 'standard';
       int assignedMaxDevices = 1;
+      String resolvedCode = upperCode;
 
-      final invRef = FirebaseService.invitacionesCollection.doc(normalizedCode);
       final userRef = FirebaseService.usersCollection.doc(uid);
 
       await _firestore.runTransaction((tx) async {
-        final invSnap = await tx.get(invRef);
+        // Busca primero en MAYÚSCULAS (estándar del panel) y si no existe intenta tal cual lo escribió
+        var candidateCode = upperCode;
+        var invRef = FirebaseService.invitacionesCollection.doc(candidateCode);
+        var invSnap = await tx.get(invRef);
+
+        if (!invSnap.exists && rawCode != upperCode) {
+          candidateCode = rawCode;
+          invRef = FirebaseService.invitacionesCollection.doc(candidateCode);
+          invSnap = await tx.get(invRef);
+        }
 
         if (!invSnap.exists || invSnap.data() == null) {
           throw const PivoteAuthException(
@@ -186,6 +193,7 @@ class AuthService {
           );
         }
 
+        resolvedCode = candidateCode;
         final invData = invSnap.data()!;
         if (invData['usado'] == true) {
           throw const PivoteAuthException(
@@ -221,7 +229,10 @@ class AuthService {
           'usadoEn': FieldValue.serverTimestamp(),
         });
 
-        // 2. Crear `users/{uid}` cumpliendo exactamente el contrato de las Rules
+        // 2. Crear `users/{uid}` cumpliendo exactamente el contrato de las Rules.
+        // Cuando requiere aprobación manual (`activo: false`), `vence` queda `null`
+        // para que al aprobarse (`activo: true`) funcione de inmediato incluso si
+        // el admin no define una fecha límite.
         tx.set(userRef, {
           'uid': uid,
           'email': authEmail,
@@ -229,15 +240,13 @@ class AuthService {
           'apellido': cleanApellido,
           'activo': willAutoActivate,
           'plan': assignedPlan,
-          'vence': willAutoActivate
-              ? venceAccesoTs
-              : FieldValue.serverTimestamp(),
+          'vence': willAutoActivate ? venceAccesoTs : null,
           'deviceId': null,
           'dispositivos': <String>[],
           'maxDispositivos': assignedMaxDevices,
           'photoUrl': null,
           'fcmToken': null,
-          'codigoInvitacion': normalizedCode,
+          'codigoInvitacion': resolvedCode,
           'creadoEn': FieldValue.serverTimestamp(),
           'actualizadoEn': FieldValue.serverTimestamp(),
         });
@@ -257,7 +266,7 @@ class AuthService {
         plan: assignedPlan,
         vence: assignedVence,
         maxDispositivos: assignedMaxDevices,
-        codigoInvitacion: normalizedCode,
+        codigoInvitacion: resolvedCode,
         creadoEn: DateTime.now(),
       );
 
@@ -282,15 +291,16 @@ class AuthService {
       return SignUpResult(user: boundUser, requiresApproval: false);
     } on PivoteAuthException {
       if (createdInAuth) {
-        await _rollbackCreatedAuthUser(credential?.user);
+        await _rollbackCreatedAuthUser(createdAuthUser);
       }
       rethrow;
     } on FirebaseAuthException catch (e) {
       throw _mapFirebaseAuthException(e);
     } on FirebaseException catch (e) {
       if (createdInAuth) {
-        await _rollbackCreatedAuthUser(credential?.user);
+        await _rollbackCreatedAuthUser(createdAuthUser);
       }
+      debugPrint('❌ AuthService: FirebaseException en registro (${e.code}): ${e.message}');
       if (e.code == 'permission-denied') {
         throw const PivoteAuthException(
           code: 'invalid-invitation',
@@ -303,7 +313,7 @@ class AuthService {
       );
     } catch (e) {
       if (createdInAuth) {
-        await _rollbackCreatedAuthUser(credential?.user);
+        await _rollbackCreatedAuthUser(createdAuthUser);
       }
       debugPrint('❌ AuthService: Error inesperado en registro: $e');
       throw const PivoteAuthException(
@@ -311,6 +321,66 @@ class AuthService {
         message: 'No se pudo crear la cuenta. Intentá nuevamente.',
       );
     }
+  }
+
+  /// Crea usuario en Firebase Auth con protección frente al bug de Pigeon (`PigeonUserDetails`).
+  static Future<User> _createUserWithFallback(
+    String email,
+    String password,
+  ) async {
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      if (credential.user != null) return credential.user!;
+    } on FirebaseAuthException {
+      rethrow;
+    } catch (e) {
+      final recovered = _auth.currentUser;
+      if (recovered != null &&
+          (recovered.email ?? '').trim().toLowerCase() == email) {
+        debugPrint('⚠️ AuthService: Recuperado usuario tras excepción Pigeon en registro: $e');
+        return recovered;
+      }
+      rethrow;
+    }
+    final fallback = _auth.currentUser;
+    if (fallback != null) return fallback;
+    throw const PivoteAuthException(
+      code: 'signup-error',
+      message: 'No se pudo crear la cuenta en Firebase Auth.',
+    );
+  }
+
+  /// Inicia sesión en Firebase Auth con protección frente al bug de Pigeon (`PigeonUserDetails`).
+  static Future<User> _signInWithFallback(
+    String email,
+    String password,
+  ) async {
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      if (credential.user != null) return credential.user!;
+    } on FirebaseAuthException {
+      rethrow;
+    } catch (e) {
+      final recovered = _auth.currentUser;
+      if (recovered != null &&
+          (recovered.email ?? '').trim().toLowerCase() == email) {
+        debugPrint('⚠️ AuthService: Recuperada sesión tras excepción Pigeon en login: $e');
+        return recovered;
+      }
+      rethrow;
+    }
+    final fallback = _auth.currentUser;
+    if (fallback != null) return fallback;
+    throw const PivoteAuthException(
+      code: 'signin-error',
+      message: 'No se pudo iniciar sesión. Intentá nuevamente.',
+    );
   }
 
   /// Elimina el usuario recién creado en Firebase Auth si falló el canje de invitación
@@ -340,13 +410,9 @@ class AuthService {
     final normalizedEmail = email.trim().toLowerCase();
 
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: normalizedEmail,
-        password: password,
-      );
-
-      final uid = credential.user!.uid;
-      await credential.user!.getIdToken(true);
+      final authUser = await _signInWithFallback(normalizedEmail, password);
+      final uid = authUser.uid;
+      await authUser.getIdToken(true);
 
       final user = await fetchUserFromServer(uid);
 
@@ -388,11 +454,18 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw _mapFirebaseAuthException(e);
     } on FirebaseException catch (e) {
+      debugPrint('❌ AuthService: FirebaseException en signIn (${e.code}): ${e.message}');
       await _auth.signOut();
       throw PivoteAuthException(
         code: e.code,
         message: 'No pudimos verificar el estado de tu cuenta. Revisá tu conexión.',
       );
+    } catch (e) {
+      debugPrint('❌ AuthService: Error inesperado en signIn: $e');
+      try {
+        await _auth.signOut();
+      } catch (_) {}
+      rethrow;
     }
   }
 

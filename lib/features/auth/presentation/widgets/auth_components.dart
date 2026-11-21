@@ -557,9 +557,11 @@ class _AuthPillInputState extends State<AuthPillInput> {
             color: bgColor,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: _isFocused
-                  ? palette.linkColor
-                  : (palette.isDark ? palette.fieldBorder : Colors.transparent),
+              color: _errorText != null
+                  ? AppColors.live.withValues(alpha: 0.80)
+                  : (_isFocused
+                      ? palette.linkColor
+                      : (palette.isDark ? palette.fieldBorder : Colors.transparent)),
               width: 1,
             ),
           ),
@@ -573,10 +575,15 @@ class _AuthPillInputState extends State<AuthPillInput> {
             textCapitalization: widget.textCapitalization,
             autocorrect: widget.autocorrect,
             onFieldSubmitted: widget.onSubmitted,
+            onChanged: (_) {
+              if (_errorText != null) {
+                setState(() => _errorText = null);
+              }
+            },
             cursorColor: palette.linkColor,
             cursorWidth: 1.5,
             style: AppFont.primary(
-              fontSize: 17,
+              fontSize: 16.5,
               fontWeight: FontWeight.w400,
               color: palette.text,
             ),
@@ -589,9 +596,15 @@ class _AuthPillInputState extends State<AuthPillInput> {
               enabledBorder: InputBorder.none,
               errorBorder: InputBorder.none,
               focusedErrorBorder: InputBorder.none,
+              errorStyle: const TextStyle(
+                height: 0.01,
+                fontSize: 0,
+                color: Colors.transparent,
+              ),
+              errorMaxLines: 1,
               hintText: widget.placeholder,
               hintStyle: AppFont.primary(
-                fontSize: 17,
+                fontSize: 16.5,
                 fontWeight: FontWeight.w400,
                 color: palette.muted,
               ),
@@ -603,19 +616,19 @@ class _AuthPillInputState extends State<AuthPillInput> {
                   setState(() => _errorText = err);
                 }
               });
-              return err;
+              return err != null ? '' : null;
             },
           ),
         ),
         if (_errorText != null)
           Padding(
-            padding: const EdgeInsets.only(left: 20, top: 4),
+            padding: const EdgeInsets.only(left: 20, top: 5),
             child: Text(
               _errorText!,
               style: AppFont.primary(
                 fontSize: 12,
                 color: AppColors.live,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -714,9 +727,11 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                   color: firstBg,
                   borderRadius: leftRadius,
                   border: Border.all(
-                    color: _firstFocused
-                        ? palette.linkColor
-                        : (palette.isDark ? palette.fieldBorder : Colors.transparent),
+                    color: _firstError != null
+                        ? AppColors.live.withValues(alpha: 0.80)
+                        : (_firstFocused
+                            ? palette.linkColor
+                            : (palette.isDark ? palette.fieldBorder : Colors.transparent)),
                     width: 1,
                   ),
                 ),
@@ -728,10 +743,15 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                   textInputAction: TextInputAction.next,
                   textCapitalization: TextCapitalization.words,
                   onFieldSubmitted: widget.onFirstSubmitted,
+                  onChanged: (_) {
+                    if (_firstError != null) {
+                      setState(() => _firstError = null);
+                    }
+                  },
                   cursorColor: palette.linkColor,
                   cursorWidth: 1.5,
                   style: AppFont.primary(
-                    fontSize: 17,
+                    fontSize: 16.5,
                     fontWeight: FontWeight.w400,
                     color: palette.text,
                   ),
@@ -744,9 +764,15 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                     enabledBorder: InputBorder.none,
                     errorBorder: InputBorder.none,
                     focusedErrorBorder: InputBorder.none,
+                    errorStyle: const TextStyle(
+                      height: 0.01,
+                      fontSize: 0,
+                      color: Colors.transparent,
+                    ),
+                    errorMaxLines: 1,
                     hintText: widget.firstPlaceholder,
                     hintStyle: AppFont.primary(
-                      fontSize: 17,
+                      fontSize: 16.5,
                       fontWeight: FontWeight.w400,
                       color: palette.muted,
                     ),
@@ -758,7 +784,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                         setState(() => _firstError = err);
                       }
                     });
-                    return err;
+                    return err != null ? '' : null;
                   },
                 ),
               ),
@@ -774,9 +800,11 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                   color: lastBg,
                   borderRadius: rightRadius,
                   border: Border.all(
-                    color: _lastFocused
-                        ? palette.linkColor
-                        : (palette.isDark ? palette.fieldBorder : Colors.transparent),
+                    color: _lastError != null
+                        ? AppColors.live.withValues(alpha: 0.80)
+                        : (_lastFocused
+                            ? palette.linkColor
+                            : (palette.isDark ? palette.fieldBorder : Colors.transparent)),
                     width: 1,
                   ),
                 ),
@@ -788,10 +816,15 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                   textInputAction: TextInputAction.next,
                   textCapitalization: TextCapitalization.words,
                   onFieldSubmitted: widget.onLastSubmitted,
+                  onChanged: (_) {
+                    if (_lastError != null) {
+                      setState(() => _lastError = null);
+                    }
+                  },
                   cursorColor: palette.linkColor,
                   cursorWidth: 1.5,
                   style: AppFont.primary(
-                    fontSize: 17,
+                    fontSize: 16.5,
                     fontWeight: FontWeight.w400,
                     color: palette.text,
                   ),
@@ -804,9 +837,15 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                     enabledBorder: InputBorder.none,
                     errorBorder: InputBorder.none,
                     focusedErrorBorder: InputBorder.none,
+                    errorStyle: const TextStyle(
+                      height: 0.01,
+                      fontSize: 0,
+                      color: Colors.transparent,
+                    ),
+                    errorMaxLines: 1,
                     hintText: widget.lastPlaceholder,
                     hintStyle: AppFont.primary(
-                      fontSize: 17,
+                      fontSize: 16.5,
                       fontWeight: FontWeight.w400,
                       color: palette.muted,
                     ),
@@ -818,7 +857,7 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
                         setState(() => _lastError = err);
                       }
                     });
-                    return err;
+                    return err != null ? '' : null;
                   },
                 ),
               ),
@@ -827,13 +866,15 @@ class _AuthSplitNameRowState extends State<AuthSplitNameRow> {
         ),
         if (_firstError != null || _lastError != null)
           Padding(
-            padding: const EdgeInsets.only(left: 20, top: 4),
+            padding: const EdgeInsets.only(left: 20, top: 5),
             child: Text(
-              _firstError ?? _lastError!,
+              (_firstError != null && _lastError != null)
+                  ? 'Ingresá tu nombre y apellido'
+                  : (_firstError ?? _lastError!),
               style: AppFont.primary(
                 fontSize: 12,
                 color: AppColors.live,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -916,9 +957,11 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                   color: bgColor,
                   borderRadius: leftRadius,
                   border: Border.all(
-                    color: _isFocused
-                        ? palette.linkColor
-                        : (palette.isDark ? palette.fieldBorder : Colors.transparent),
+                    color: _errorText != null
+                        ? AppColors.live.withValues(alpha: 0.80)
+                        : (_isFocused
+                            ? palette.linkColor
+                            : (palette.isDark ? palette.fieldBorder : Colors.transparent)),
                     width: 1,
                   ),
                 ),
@@ -930,10 +973,15 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                   obscureText: _isObscured,
                   textInputAction: widget.textInputAction,
                   onFieldSubmitted: widget.onSubmitted,
+                  onChanged: (_) {
+                    if (_errorText != null) {
+                      setState(() => _errorText = null);
+                    }
+                  },
                   cursorColor: palette.linkColor,
                   cursorWidth: 1.5,
                   style: AppFont.primary(
-                    fontSize: 17,
+                    fontSize: 16.5,
                     fontWeight: FontWeight.w400,
                     color: palette.text,
                   ),
@@ -946,9 +994,15 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                     enabledBorder: InputBorder.none,
                     errorBorder: InputBorder.none,
                     focusedErrorBorder: InputBorder.none,
+                    errorStyle: const TextStyle(
+                      height: 0.01,
+                      fontSize: 0,
+                      color: Colors.transparent,
+                    ),
+                    errorMaxLines: 1,
                     hintText: widget.placeholder,
                     hintStyle: AppFont.primary(
-                      fontSize: 17,
+                      fontSize: 16.5,
                       fontWeight: FontWeight.w400,
                       color: palette.muted,
                     ),
@@ -960,7 +1014,7 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                         setState(() => _errorText = err);
                       }
                     });
-                    return err;
+                    return err != null ? '' : null;
                   },
                 ),
               ),
@@ -975,9 +1029,11 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
                 color: bgColor,
                 borderRadius: rightRadius,
                 border: Border.all(
-                  color: _isFocused
-                      ? palette.linkColor
-                      : (palette.isDark ? palette.fieldBorder : Colors.transparent),
+                  color: _errorText != null
+                      ? AppColors.live.withValues(alpha: 0.80)
+                      : (_isFocused
+                          ? palette.linkColor
+                          : (palette.isDark ? palette.fieldBorder : Colors.transparent)),
                   width: 1,
                 ),
               ),
@@ -1011,13 +1067,13 @@ class _AuthPasswordInputState extends State<AuthPasswordInput> {
         ),
         if (_errorText != null)
           Padding(
-            padding: const EdgeInsets.only(left: 20, top: 4),
+            padding: const EdgeInsets.only(left: 20, top: 5),
             child: Text(
               _errorText!,
               style: AppFont.primary(
                 fontSize: 12,
                 color: AppColors.live,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -1126,43 +1182,43 @@ class AuthLegalNotice extends StatelessWidget {
       padding: const EdgeInsets.only(top: 18),
       child: Text.rich(
         TextSpan(
-          text: 'Al registrarte en Pivote aceptas la\n',
+          text: 'Al registrarte en Pivote aceptás la\n',
           style: AppFont.primary(
-            fontSize: 14.5,
+            fontSize: 13,
             height: 1.45,
             color: palette.muted,
             fontWeight: FontWeight.w400,
           ),
           children: [
             WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
               child: GestureDetector(
                 onTap: onPrivacyTap,
                 child: Text(
                   'Política de Privacidad',
                   style: AppFont.primary(
-                    fontSize: 14.5,
+                    fontSize: 13,
                     height: 1.45,
                     color: palette.text,
-                    fontWeight: FontWeight.w500,
-                    decoration: TextDecoration.underline,
-                    decorationColor: palette.text,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ),
             const TextSpan(text: ' y los '),
             WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
               child: GestureDetector(
                 onTap: onTermsTap,
                 child: Text(
                   'Términos de Servicio',
                   style: AppFont.primary(
-                    fontSize: 14.5,
+                    fontSize: 13,
                     height: 1.45,
                     color: palette.text,
-                    fontWeight: FontWeight.w500,
-                    decoration: TextDecoration.underline,
-                    decorationColor: palette.text,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -1184,7 +1240,7 @@ class AuthSmallLink extends StatelessWidget {
 
   const AuthSmallLink({
     super.key,
-    this.text = '¿Olvidaste tu contraseña? ',
+    this.text = '¿Olvidaste tu contraseña?',
     this.linkText = 'Recupérala',
     required this.onTap,
   });
@@ -1195,34 +1251,46 @@ class AuthSmallLink extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(top: 18),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            text,
-            style: AppFont.primary(
-              fontSize: 15.5,
-              color: palette.muted,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              onTap();
-            },
-            child: Text(
-              linkText,
+      child: SizedBox(
+        width: double.infinity,
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 5,
+          runSpacing: 4,
+          children: [
+            Text(
+              text.trim(),
+              textAlign: TextAlign.center,
               style: AppFont.primary(
-                fontSize: 15.5,
-                color: palette.linkColor,
-                fontWeight: FontWeight.w600,
-                decoration: TextDecoration.underline,
-                decorationColor: palette.linkColor,
+                fontSize: 14,
+                height: 1.35,
+                color: palette.muted,
+                fontWeight: FontWeight.w400,
               ),
             ),
-          ),
-        ],
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onTap();
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  linkText,
+                  textAlign: TextAlign.center,
+                  style: AppFont.primary(
+                    fontSize: 14,
+                    height: 1.35,
+                    color: palette.linkColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1246,36 +1314,47 @@ class AuthFootLink extends StatelessWidget {
     final palette = AuthPalette.of(context);
 
     return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            prefix,
-            style: AppFont.primary(
-              fontSize: 16.5,
-              color: palette.muted,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(width: 5),
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              onTap();
-            },
-            child: Text(
-              linkText,
+      padding: const EdgeInsets.only(top: 6, bottom: 4),
+      child: SizedBox(
+        width: double.infinity,
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            Text(
+              prefix.trim(),
+              textAlign: TextAlign.center,
               style: AppFont.primary(
-                fontSize: 16.5,
-                color: palette.linkColor,
-                fontWeight: FontWeight.w700,
-                decoration: TextDecoration.underline,
-                decorationColor: palette.linkColor,
+                fontSize: 14.5,
+                height: 1.35,
+                color: palette.muted,
+                fontWeight: FontWeight.w400,
               ),
             ),
-          ),
-        ],
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onTap();
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  linkText,
+                  textAlign: TextAlign.center,
+                  style: AppFont.primary(
+                    fontSize: 14.5,
+                    height: 1.35,
+                    color: palette.linkColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

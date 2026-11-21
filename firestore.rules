@@ -22,14 +22,19 @@ service cloud.firestore {
       return estaAutenticado() && request.auth.uid == uid;
     }
 
-    // Acceso habilitado del lado del servidor: activo == true y fecha `vence` vigente.
+    // Acceso habilitado del lado del servidor:
+    // activo == true y sin vencimiento (vence == null) O fecha `vence` futura.
     function esActivo() {
       return estaAutenticado()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('activo', false) == true
-        && 'vence' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.vence is timestamp
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.vence > request.time;
+        && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('vence', null) == null
+          || (
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.vence is timestamp
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.vence > request.time
+          )
+        );
     }
 
     // =========================================================================
@@ -52,11 +57,13 @@ service cloud.firestore {
     function politicaActivacionValida(codigo) {
       return (
         // Política por defecto (aprobación manual): autoActivar ausente o false ->
-        // el cliente SOLO puede crear el usuario con activo=false y vence=request.time.
+        // el cliente SOLO puede crear el usuario con activo=false y vence=null (o request.time).
+        // Así cuando el admin aprueba activando `activo: true`, funciona al instante
+        // incluso si el admin decide dejarlo sin fecha de vencimiento.
         get(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('autoActivar', false) == false
           && request.resource.data.activo == false
           && request.resource.data.plan == get(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('plan', 'standard')
-          && request.resource.data.vence == request.time
+          && (request.resource.data.vence == null || request.resource.data.vence == request.time)
           && request.resource.data.maxDispositivos == get(/databases/$(database)/documents/invitaciones/$(codigo)).data.get('maxDispositivos', 1)
       ) || (
         // Política opcional pre-aprobada por el admin en la invitación:
@@ -194,13 +201,14 @@ service cloud.firestore {
         && request.resource.data.dispositivos.size() <= resource.data.get('maxDispositivos', 1)
         && (
           (
-            resource.data.get('deviceId', null) == null
+            (resource.data.get('deviceId', null) == null || resource.data.get('deviceId', '') == '')
               && request.resource.data.dispositivos.size() == 1
               && request.resource.data.dispositivos[0] == request.resource.data.deviceId
           )
           ||
           (
             resource.data.get('deviceId', null) != null
+              && resource.data.get('deviceId', '') != ''
               && request.resource.data.deviceId == resource.data.deviceId
               && request.resource.data.deviceId in request.resource.data.dispositivos
               && resource.data.get('dispositivos', []) is list
@@ -332,6 +340,10 @@ service cloud.firestore {
     // =========================================================================
 
     match /usuarios/{docId} {
+      allow read, write: if esAdmin();
+    }
+
+    match /admin_logs/{docId} {
       allow read, write: if esAdmin();
     }
 

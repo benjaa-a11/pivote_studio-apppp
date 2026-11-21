@@ -56,9 +56,10 @@ class UserModel {
   bool get isSuspended => !activo;
   String? get createdAt => creadoEn?.toIso8601String();
 
-  /// Verdadero si la suscripción/vigencia ya venció (o no tiene fecha `vence`).
+  /// Verdadero únicamente si existe fecha `vence` y ya expiró.
+  /// Si `vence == null`, la cuenta no tiene fecha de caducidad (solo depende de `activo`).
   bool get isExpired {
-    if (vence == null) return true;
+    if (vence == null) return false;
     return !vence!.isAfter(DateTime.now());
   }
 

@@ -146,8 +146,8 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             panel: AuthPanel(
               footer: AuthFootLink(
-                prefix: '¿Tenés código de invitación?',
-                linkText: 'Crea tu cuenta',
+                prefix: '¿Eres nuevo?',
+                linkText: 'Crea una cuenta',
                 onTap: () {
                   Navigator.of(context).push(
                     AppAnimations.createFadeRoute(

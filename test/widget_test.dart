@@ -93,6 +93,30 @@ void main() {
       expect(expiredUser.isExpired, true);
       expect(expiredUser.hasValidAccess, false);
       expect(expiredUser.blockReason, AccountBlockReason.expired);
+
+      // Aprobación manual directa (`activo: true` sin fecha de caducidad)
+      const approvedNoExpiry = UserModel(
+        uid: 'u-unlimited',
+        nombre: 'A',
+        apellido: 'B',
+        email: 'a@b.com',
+        activo: true,
+        vence: null,
+      );
+      expect(approvedNoExpiry.isExpired, false);
+      expect(approvedNoExpiry.hasValidAccess, true);
+
+      // Pendiente recién registrado (`activo: false` y `vence: null`)
+      const pendingNoExpiry = UserModel(
+        uid: 'u-pending-null',
+        nombre: 'A',
+        apellido: 'B',
+        email: 'a@b.com',
+        activo: false,
+        vence: null,
+      );
+      expect(pendingNoExpiry.hasValidAccess, false);
+      expect(pendingNoExpiry.blockReason, AccountBlockReason.pending);
     });
 
     test('control de dispositivos respeta maxDispositivos y autorización', () {
