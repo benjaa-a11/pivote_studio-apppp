@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/services/firebase_service.dart';
 import 'package:pivote/features/auth/data/models/user_model.dart';
+import 'package:pivote/features/auth/data/services/device_identity_service.dart';
 
 /// Excepción controlada del flujo de autenticación privada de Pivote.
 class PivoteAuthException implements Exception {
@@ -24,17 +25,21 @@ class AccountAccessBlockedException implements Exception {
   final String? email;
   final DateTime? vence;
   final String? plan;
+  final int? maxDispositivos;
+  final int? linkedDevicesCount;
 
   const AccountAccessBlockedException({
     required this.reason,
     this.email,
     this.vence,
     this.plan,
+    this.maxDispositivos,
+    this.linkedDevicesCount,
   });
 
   @override
   String toString() =>
-      'AccountAccessBlockedException(reason: $reason, email: $email, vence: $vence)';
+      'AccountAccessBlockedException(reason: $reason, email: $email, vence: $vence, maxDispositivos: $maxDispositivos)';
 }
 
 /// Resultado del registro con código de invitación.
@@ -264,15 +269,17 @@ class AuthService {
         return SignUpResult(user: createdModel, requiresApproval: true);
       }
 
-      // Si el admin marcó la invitación como pre-aprobada (`autoActivar: true`), releer del servidor
+      // Si el admin marcó la invitación como pre-aprobada (`autoActivar: true`), releer y vincular dispositivo
       final verified = await fetchUserFromServer(uid);
       if (verified == null || !verified.hasValidAccess) {
         await _auth.signOut();
         return SignUpResult(user: createdModel, requiresApproval: true);
       }
 
+      final boundUser = await verifyAndBindDevice(verified);
+
       debugPrint('✅ AuthService: Registro pre-aprobado exitoso para $uid');
-      return SignUpResult(user: verified, requiresApproval: false);
+      return SignUpResult(user: boundUser, requiresApproval: false);
     } on PivoteAuthException {
       if (createdInAuth) {
         await _rollbackCreatedAuthUser(credential?.user);
@@ -371,8 +378,11 @@ class AuthService {
         );
       }
 
-      debugPrint('✅ AuthService: Login verificado en servidor para $uid');
-      return user;
+      // Control de dispositivos (ETAPA 3): verificar o vincular `deviceId` respetando `maxDispositivos`
+      final boundUser = await verifyAndBindDevice(user);
+
+      debugPrint('✅ AuthService: Login y dispositivo verificados en servidor para $uid');
+      return boundUser;
     } on AccountAccessBlockedException {
       rethrow;
     } on FirebaseAuthException catch (e) {
@@ -384,6 +394,101 @@ class AuthService {
         message: 'No pudimos verificar el estado de tu cuenta. Revisá tu conexión.',
       );
     }
+  }
+
+  // ─── Control de dispositivos (ETAPA 3) ──────────────────────────
+
+  /// Verifica que el dispositivo actual esté autorizado para [user] o lo vincula
+  /// en `users/{uid}` si aún hay cupo (`deviceId == null` o `dispositivos.length < maxDispositivos`).
+  ///
+  /// Seguridad del lado del servidor:
+  /// Las Firestore Rules (`vincularDispositivoPropio`) garantizan que ningún cliente
+  /// pueda sobrescribir un `deviceId` ya vinculado ni exceder `maxDispositivos`.
+  /// Si se supera el límite, CIERRA SESIÓN y lanza [AccountAccessBlockedException].
+  static Future<UserModel> verifyAndBindDevice(UserModel user) async {
+    _requireFirebase();
+    final identity = await DeviceIdentityService.getDeviceIdentity();
+
+    // 1. Dispositivo ya autorizado -> solo refrescar metadatos legibles en preferencias
+    if (user.isDeviceAuthorized(identity.id)) {
+      _saveDeviceMetadataSilently(user.uid, identity);
+      return user;
+    }
+
+    // 2. Cupo agotado -> bloquear nuevo dispositivo y cerrar sesión
+    if (!user.hasAvailableDeviceSlot) {
+      await _auth.signOut();
+      throw AccountAccessBlockedException(
+        reason: AccountBlockReason.deviceLimitReached,
+        email: user.email,
+        vence: user.vence,
+        plan: user.plan,
+        maxDispositivos: user.maxDispositivos,
+        linkedDevicesCount: user.effectiveDevices.length,
+      );
+    }
+
+    // 3. Hay cupo disponible -> vincular respetando exactamente el contrato de Firestore Rules
+    final isFirstBind = user.deviceId == null || user.deviceId!.isEmpty;
+    final nextPrimaryDeviceId = isFirstBind ? identity.id : user.deviceId!;
+    final nextDevices = isFirstBind
+        ? <String>[identity.id]
+        : <String>[...user.effectiveDevices, identity.id];
+
+    try {
+      await FirebaseService.usersCollection.doc(user.uid).update({
+        'deviceId': nextPrimaryDeviceId,
+        'dispositivos': nextDevices,
+        'actualizadoEn': FieldValue.serverTimestamp(),
+      });
+
+      _saveDeviceMetadataSilently(user.uid, identity);
+      debugPrint(
+        '📱 AuthService: Dispositivo vinculado (${identity.label}) -> ${nextDevices.length}/${user.maxDispositivos}',
+      );
+
+      return user.copyWith(
+        deviceId: nextPrimaryDeviceId,
+        dispositivos: nextDevices,
+      );
+    } on FirebaseException catch (e) {
+      // Si dos dispositivos compitieron al mismo tiempo o las Rules rechazaron el cupo
+      if (e.code == 'permission-denied') {
+        await _auth.signOut();
+        throw AccountAccessBlockedException(
+          reason: AccountBlockReason.deviceLimitReached,
+          email: user.email,
+          vence: user.vence,
+          plan: user.plan,
+          maxDispositivos: user.maxDispositivos,
+          linkedDevicesCount: user.maxDispositivos,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  /// Guarda el modelo y sistema operativo legibles en `users/{uid}/datos/preferencias`
+  /// para que el panel admin aparte pueda mostrar el nombre del equipo junto al `deviceId`.
+  static void _saveDeviceMetadataSilently(
+    String uid,
+    DeviceIdentity identity,
+  ) {
+    FirebaseService.userPrefsDoc(uid).set({
+      'ultimoDispositivo': {
+        ...identity.toMetadataMap(),
+        'ultimaConexion': FieldValue.serverTimestamp(),
+      },
+      'dispositivosInfo': {
+        identity.id: {
+          ...identity.toMetadataMap(),
+          'ultimaConexion': FieldValue.serverTimestamp(),
+        },
+      },
+      'actualizadoEn': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true)).catchError((Object e) {
+      debugPrint('⚠️ AuthService: Error guardando metadata de dispositivo: $e');
+    });
   }
 
   // ─── Lectura y escucha en tiempo real de `users/{uid}` ──────────
@@ -678,6 +783,10 @@ class AuthService {
           return 'Tu acceso fue desactivado por el administrador.';
         case AccountBlockReason.missingProfile:
           return 'Tu cuenta no tiene perfil activo asignado.';
+        case AccountBlockReason.deviceLimitReached:
+          return 'Esta cuenta ya alcanzó el límite máximo de dispositivos autorizados.';
+        case AccountBlockReason.deviceRevoked:
+          return 'Este dispositivo fue desvinculado por el administrador.';
       }
     }
     final raw = error.toString().toLowerCase();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/animations/app_animations.dart';
+import 'package:pivote/features/auth/data/services/device_identity_service.dart';
 import 'package:pivote/features/auth/presentation/providers/user_provider.dart';
 import 'package:pivote/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:pivote/features/profile/presentation/widgets/profile_design_system.dart';
@@ -45,11 +46,15 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
   }
 
   void _showConnectedDevicesSheet() {
-    final user = context.read<UserProvider>().user;
-    final email = user?.email ?? 'Sesión activa';
+    final userProvider = context.read<UserProvider>();
+    final user = userProvider.user;
+    final currentDevice = userProvider.currentDevice;
     final maxDevices = user?.maxDispositivos ?? 1;
-    final linkedCount = user?.dispositivos.length ??
-        ((user?.deviceId != null && user!.deviceId!.isNotEmpty) ? 1 : 0);
+    final linkedCount = user?.effectiveDevices.length ?? 0;
+    final deviceTitle = currentDevice?.label ?? 'Este dispositivo';
+    final shortId = DeviceIdentityService.shortId(
+      currentDevice?.id ?? user?.deviceId,
+    );
 
     AppDialogs.showModal<void>(
       context: context,
@@ -63,7 +68,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
             children: [
               PivoteSheetHeader(
                 title: 'Dispositivos autorizados',
-                subtitle: 'Límite de tu cuenta: $linkedCount / $maxDevices',
+                subtitle: 'Uso actual: $linkedCount / $maxDevices dispositivo${maxDevices == 1 ? '' : 's'}',
                 icon: Icons.devices_rounded,
               ),
               const SizedBox(height: 16),
@@ -74,9 +79,9 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                       icon: Icons.smartphone_rounded,
                       highlight: true,
                     ),
-                    title: 'Este dispositivo',
-                    subtitle: '$email · Sesión verificada',
-                    valueText: 'Activo',
+                    title: deviceTitle,
+                    subtitle: 'ID: $shortId · Vinculado a tu cuenta',
+                    valueText: 'Actual',
                   ),
                   ProfileGroupRow(
                     leading: const ProfileSettingIconBox(
@@ -84,8 +89,8 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                     ),
                     title: 'Cambio de dispositivo',
                     subtitle:
-                        'Si cambiás de equipo, pedí al administrador que resetee tu dispositivo.',
-                    valueText: 'Máx. $maxDevices',
+                        'Si cambiás de celular, pedí al administrador que resetee tu dispositivo.',
+                    valueText: '$linkedCount / $maxDevices',
                   ),
                 ],
               ),
@@ -172,7 +177,8 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen> {
                   ),
                   ProfileGroupRow(
                     title: 'Dispositivos autorizados',
-                    valueText: 'Máx. $maxDevices',
+                    valueText:
+                        '${user?.effectiveDevices.length ?? 0} / $maxDevices',
                     showChevron: true,
                     onTap: _showConnectedDevicesSheet,
                   ),

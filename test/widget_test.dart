@@ -95,6 +95,39 @@ void main() {
       expect(expiredUser.blockReason, AccountBlockReason.expired);
     });
 
+    test('control de dispositivos respeta maxDispositivos y autorización', () {
+      final future = DateTime.now().add(const Duration(days: 30));
+      final singleSlotFree = UserModel(
+        uid: 'u-dev-1',
+        nombre: 'Test',
+        apellido: 'User',
+        email: 'dev@test.com',
+        activo: true,
+        vence: future,
+        deviceId: null,
+        maxDispositivos: 1,
+      );
+      expect(singleSlotFree.hasAvailableDeviceSlot, true);
+      expect(singleSlotFree.isDeviceAuthorized('and_11111111'), false);
+
+      final singleSlotFull = singleSlotFree.copyWith(
+        deviceId: 'and_11111111',
+        dispositivos: const ['and_11111111'],
+      );
+      expect(singleSlotFull.hasAvailableDeviceSlot, false);
+      expect(singleSlotFull.isDeviceAuthorized('and_11111111'), true);
+      expect(singleSlotFull.isDeviceAuthorized('and_22222222'), false);
+
+      final multiDevice = singleSlotFull.copyWith(maxDispositivos: 2);
+      expect(multiDevice.hasAvailableDeviceSlot, true);
+      final multiFull = multiDevice.copyWith(
+        dispositivos: const ['and_11111111', 'and_22222222'],
+      );
+      expect(multiFull.hasAvailableDeviceSlot, false);
+      expect(multiFull.isDeviceAuthorized('and_22222222'), true);
+      expect(multiFull.isDeviceAuthorized('and_33333333'), false);
+    });
+
     test('isValidEmail detecta correos válidos e inválidos', () {
       expect(UserModel.isValidEmail('user@example.com'), true);
       expect(UserModel.isValidEmail('invalido'), false);

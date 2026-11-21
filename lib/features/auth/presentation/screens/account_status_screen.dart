@@ -57,6 +57,20 @@ class AccountStatusScreen extends StatelessWidget {
       final dateStr = info.vence != null ? ' el ${_formatDate(info.vence!)}' : '';
       body =
           'Tu acceso venció$dateStr.\n\nContactá al administrador para renovar tu suscripción y volver a ingresar a Pivote.';
+    } else if (info.reason == AccountBlockReason.deviceLimitReached) {
+      icon = Icons.phonelink_lock_rounded;
+      badgeText = 'LÍMITE DE DISPOSITIVOS';
+      title = 'Dispositivo no autorizado';
+      final maxD = info.maxDispositivos ?? 1;
+      final usedD = info.linkedDevicesCount ?? maxD;
+      body =
+          'Esta cuenta ya tiene $usedD de $maxD dispositivo${maxD == 1 ? '' : 's'} autorizado${maxD == 1 ? '' : 's'}.\n\nPor seguridad no se permite iniciar sesión desde otro equipo. Si cambiaste de celular, pedile al administrador que resetee tu dispositivo.';
+    } else if (info.reason == AccountBlockReason.deviceRevoked) {
+      icon = Icons.devices_other_rounded;
+      badgeText = 'DISPOSITIVO DESVINCULADO';
+      title = 'Sesión finalizada';
+      body =
+          'El administrador reseteó o desvinculó este dispositivo de tu cuenta.\n\nPodés volver a iniciar sesión si tenés un cupo disponible.';
     } else if (info.reason == AccountBlockReason.revoked) {
       icon = Icons.lock_person_rounded;
       badgeText = 'ACCESO DESACTIVADO';

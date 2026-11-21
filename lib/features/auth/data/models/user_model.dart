@@ -7,6 +7,8 @@ enum AccountBlockReason {
   expired,
   revoked,
   missingProfile,
+  deviceLimitReached,
+  deviceRevoked,
 }
 
 /// Modelo de usuario vinculado a `users/{uid}` en Firestore.
@@ -68,6 +70,32 @@ class UserModel {
     if (!activo) return AccountBlockReason.pending;
     if (isExpired) return AccountBlockReason.expired;
     return null;
+  }
+
+  /// Lista efectiva y sin duplicados de dispositivos vinculados (`deviceId` + `dispositivos`).
+  List<String> get effectiveDevices {
+    final result = <String>[];
+    if (deviceId != null && deviceId!.isNotEmpty) {
+      result.add(deviceId!);
+    }
+    for (final d in dispositivos) {
+      if (d.isNotEmpty && !result.contains(d)) {
+        result.add(d);
+      }
+    }
+    return result;
+  }
+
+  /// Verdadero si [currentDeviceId] ya figura entre los dispositivos autorizados.
+  bool isDeviceAuthorized(String currentDeviceId) {
+    if (currentDeviceId.isEmpty) return false;
+    return effectiveDevices.contains(currentDeviceId);
+  }
+
+  /// Verdadero si todavía hay cupo para vincular un nuevo dispositivo según `maxDispositivos`.
+  bool get hasAvailableDeviceSlot {
+    final limit = maxDispositivos < 1 ? 1 : maxDispositivos;
+    return effectiveDevices.length < limit;
   }
 
   static DateTime? _parseDate(dynamic value) {

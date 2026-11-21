@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pivote/core/services/notification_service.dart';
 import 'package:pivote/features/auth/data/models/user_model.dart';
 import 'package:pivote/features/auth/data/services/auth_service.dart';
+import 'package:pivote/features/auth/data/services/device_identity_service.dart';
 
 /// Estado global de control de acceso privado de la app.
 enum AuthGateStatus {
@@ -17,23 +18,28 @@ enum AuthGateStatus {
   authenticatedActive,
 }
 
-/// Información de bloqueo mostrada en la pantalla "Cuenta pendiente / vencida".
+/// Información de bloqueo mostrada en la pantalla "Cuenta pendiente / vencida / dispositivo".
 class AccountBlockInfo {
   final AccountBlockReason reason;
   final String? email;
   final DateTime? vence;
   final String? plan;
+  final int? maxDispositivos;
+  final int? linkedDevicesCount;
 
   const AccountBlockInfo({
     required this.reason,
     this.email,
     this.vence,
     this.plan,
+    this.maxDispositivos,
+    this.linkedDevicesCount,
   });
 }
 
 class UserProvider with ChangeNotifier {
   UserModel? _user;
+  DeviceIdentity? _currentDevice;
   Uint8List? _avatarBytes;
   String? _profileImagePath;
   bool _isLoading = false;
@@ -45,6 +51,7 @@ class UserProvider with ChangeNotifier {
   VoidCallback? _onSessionRevoked;
 
   UserModel? get user => _user;
+  DeviceIdentity? get currentDevice => _currentDevice;
   Uint8List? get avatarBytes => _avatarBytes;
   String? get profileImagePath => _profileImagePath;
   bool get isLoading => _isLoading;
@@ -115,7 +122,20 @@ class UserProvider with ChangeNotifier {
         return;
       }
 
-      await _activateVerifiedSession(fetched);
+      // Control de dispositivos en arranque en frío (ETAPA 3)
+      final boundUser = await AuthService.verifyAndBindDevice(fetched);
+      await _activateVerifiedSession(boundUser);
+    } on AccountAccessBlockedException catch (blocked) {
+      await _forceBlockAndSignOut(
+        AccountBlockInfo(
+          reason: blocked.reason,
+          email: blocked.email,
+          vence: blocked.vence,
+          plan: blocked.plan,
+          maxDispositivos: blocked.maxDispositivos,
+          linkedDevicesCount: blocked.linkedDevicesCount,
+        ),
+      );
     } catch (e) {
       debugPrint('❌ UserProvider: Error verificando sesión inicial: $e');
       // Política fail-closed: si no podemos verificar acceso activo, nunca dejamos pasar a la home.
@@ -126,9 +146,10 @@ class UserProvider with ChangeNotifier {
     }
   }
 
-  /// Activa una sesión ya verificada: arranca listener en tiempo real `snapshots()`,
-  /// programa chequeo de vencimiento, carga avatar persistente y sincroniza FCM.
+  /// Activa una sesión ya verificada: carga identidad de dispositivo, arranca listener
+  /// en tiempo real `snapshots()`, programa chequeo de vencimiento, carga avatar y FCM.
   Future<void> _activateVerifiedSession(UserModel verifiedUser) async {
+    _currentDevice = await DeviceIdentityService.getDeviceIdentity();
     _user = verifiedUser;
     _blockInfo = null;
     _authStatus = AuthGateStatus.authenticatedActive;
@@ -187,6 +208,26 @@ class UserProvider with ChangeNotifier {
               email: updated.email,
               vence: updated.vence,
               plan: updated.plan,
+            ),
+          );
+          return;
+        }
+
+        // Control de dispositivos en tiempo real (ETAPA 3):
+        // Si el admin reseteó `deviceId` o removió este dispositivo, cerrar sesión al instante.
+        final myDeviceId = _currentDevice?.id;
+        if (myDeviceId != null &&
+            !snapshot.metadata.isFromCache &&
+            !updated.isDeviceAuthorized(myDeviceId)) {
+          debugPrint('🚨 UserProvider: Dispositivo revocado/reseteado desde panel -> expulsión');
+          await _handleRealtimeRevocation(
+            AccountBlockInfo(
+              reason: AccountBlockReason.deviceRevoked,
+              email: updated.email,
+              vence: updated.vence,
+              plan: updated.plan,
+              maxDispositivos: updated.maxDispositivos,
+              linkedDevicesCount: updated.effectiveDevices.length,
             ),
           );
           return;
@@ -299,6 +340,8 @@ class UserProvider with ChangeNotifier {
         email: blocked.email,
         vence: blocked.vence,
         plan: blocked.plan,
+        maxDispositivos: blocked.maxDispositivos,
+        linkedDevicesCount: blocked.linkedDevicesCount,
       );
       _authStatus = AuthGateStatus.blocked;
       notifyListeners();
